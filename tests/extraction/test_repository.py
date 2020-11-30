@@ -14,6 +14,7 @@ from gitential2.extraction.repository import (
 )
 from gitential2.extraction.output import DataCollector
 from gitential2.datatypes import (
+    GitRepository,
     LocalGitRepository,
     GitRepositoryState,
     GitRepositoryStateChange,
@@ -30,30 +31,31 @@ TEST_HTTPS_PRIVATE_REPOSITORY = "https://gitlab.com/gitential-com/test-repositor
 @pytest.fixture(scope="session")
 def test_repositories():
     repositories = [
-        ("flask", "https://github.com/pallets/flask.git"),
-        ("hostname", "https://github.com/laco/hostname.git"),
+        ("flask", 1, "https://github.com/pallets/flask.git"),
+        ("hostname", 2, "https://github.com/laco/hostname.git"),
     ]
     ret = {}
-    for name, clone_url in repositories:
+    for name, repo_id, clone_url in repositories:
         local_path = os.path.join("/tmp", name)
         if os.path.isdir(local_path):
-            ret[name] = LocalGitRepository(pathlib.PosixPath(local_path))
+            ret[name] = LocalGitRepository(repo_id, pathlib.PosixPath(local_path))
         else:
-            ret[name] = clone_repository(clone_url=clone_url, destination_path=local_path)
+            repo = GitRepository(repo_id, clone_url)
+            ret[name] = clone_repository(repository=repo, destination_path=local_path)
 
     return ret
 
 
 @pytest.mark.slow
 def test_clone_repository_without_credential(tmp_path):
-    ret = clone_repository(clone_url=TEST_PUBLIC_REPOSITORY, destination_path=tmp_path)
+    ret = clone_repository(GitRepository(repo_id=1, clone_url=TEST_PUBLIC_REPOSITORY), destination_path=tmp_path)
     assert isinstance(ret, LocalGitRepository)
 
 
 @pytest.mark.slow
 def test_clone_repository_with_userpass(tmp_path, secrets):
     ret = clone_repository(
-        clone_url=TEST_HTTPS_PRIVATE_REPOSITORY,
+        repository=GitRepository(repo_id=1, clone_url=TEST_HTTPS_PRIVATE_REPOSITORY),
         destination_path=tmp_path,
         credentials=UserPassCredential(
             secrets["TEST_HTTPS_PRIVATE_REPOSITORY_USERNAME"], secrets["TEST_HTTPS_PRIVATE_REPOSITORY_PASSWORD"]
@@ -65,7 +67,7 @@ def test_clone_repository_with_userpass(tmp_path, secrets):
 @pytest.mark.slow
 def test_clone_repository_ssh_with_keypair(tmp_path, secrets):
     ret = clone_repository(
-        clone_url=TEST_SSH_PRIVATE_REPOSITORY,
+        repository=GitRepository(repo_id=1, clone_url=TEST_SSH_PRIVATE_REPOSITORY),
         destination_path=tmp_path,
         credentials=KeypairCredentials(
             username="git",

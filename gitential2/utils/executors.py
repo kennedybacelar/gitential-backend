@@ -47,7 +47,7 @@ class SingleThreadExecutor(Executor):
 
 class ProcessPoolExecutor(Executor):
     def __init__(self, **kwargs):
-        self.pool_size = kwargs.pop("pool_size", 4)
+        self.pool_size = kwargs.pop("pool_size", 8)
         super().__init__(**kwargs)
 
     def _process(self, fn_partial: Callable, items: Iterable, progress_bar):

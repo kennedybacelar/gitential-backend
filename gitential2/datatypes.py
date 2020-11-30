@@ -51,7 +51,14 @@ class UserPassCredential(RepositoryCredentials):
 
 
 @dataclass
+class GitRepository:
+    repo_id: int
+    clone_url: str
+
+
+@dataclass
 class LocalGitRepository:
+    repo_id: int
     directory: Path
 
 

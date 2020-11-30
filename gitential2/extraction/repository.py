@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Generator, List
+from typing import Optional, Dict, Generator
 from collections import defaultdict
 from pathlib import Path
 import subprocess
@@ -6,8 +6,10 @@ import math
 import re
 import numpy as np
 import pygit2
+from structlog import get_logger
 
 from gitential2.datatypes import (
+    GitRepository,
     RepositoryCredentials,
     LocalGitRepository,
     GitRepositoryState,
@@ -23,9 +25,13 @@ from gitential2.utils.tempdir import TemporaryDirectory
 from gitential2.utils.timer import Timer
 from gitential2.utils.executors import ProcessPoolExecutor
 
+
+logger = get_logger(__name__)
+
+
 # https://stackoverflow.com/questions/40883798/how-to-get-git-diff-of-the-first-commit
 EMPTY_TREE_HASH = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-COMMIT_ID_RE = re.compile("^\w{40}")
+COMMIT_ID_RE = re.compile(r"^\w{40}")
 
 
 def extract_incremental(
@@ -46,13 +52,12 @@ def extract_incremental(
 
 
 def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler):
-    # print(f"{commit_id}")
     extract_commit(local_repo, commit_id, output)
     extract_commit_patches(local_repo, commit_id, output)
 
 
 def clone_repository(
-    clone_url: str, destination_path: Path, credentials: Optional[RepositoryCredentials] = None
+    repository: GitRepository, destination_path: Path, credentials: Optional[RepositoryCredentials] = None
 ) -> LocalGitRepository:
     with TemporaryDirectory() as workdir:
 
@@ -70,8 +75,10 @@ def clone_repository(
                 return pygit2.RemoteCallbacks(credentials=keypair)
             return None
 
-        pygit2.clone_repository(url=clone_url, path=str(destination_path), callbacks=_construct_callbacks(credentials))
-        return LocalGitRepository(destination_path)
+        pygit2.clone_repository(
+            url=repository.clone_url, path=str(destination_path), callbacks=_construct_callbacks(credentials)
+        )
+        return LocalGitRepository(repository.repo_id, destination_path)
 
 
 def _git2_repo(repository: LocalGitRepository) -> pygit2.Repository:
@@ -166,9 +173,13 @@ def extract_commit_patches(repository: LocalGitRepository, commit_id: str, outpu
 
     parents, diffs = _get_parents_and_diffs()
 
+    patch_count = 0
     for parent, diff in zip(parents, diffs):
         for patch in diff:
             _extract_patch(commit, parent, patch, g2_repo, output)
+            patch_count += 1
+    logger.debug("patch count", patch_count=patch_count, repository=repository, commit_id=commit_id)
+    return patch_count
 
 
 def _extract_patch(commit, parent, patch, g2_repo, output):
@@ -203,22 +214,23 @@ def _extract_patch(commit, parent, patch, g2_repo, output):
 
 
 def _get_patch_stats(patch):
-    if len(patch.hunks) == 0:  # pylint: disable=compare-to-zero
-        return np.zeros(8)
+    with Timer("_get_patch_stats", threshold_ms=100):
+        if len(patch.hunks) == 0:  # pylint: disable=compare-to-zero
+            return np.zeros(8)
 
-    addition = "+"
-    deletion = "-"
-    stats = np.zeros((len(patch.hunks), 4), dtype=np.int32)
-    view = stats[:, :]
-    for i, hunk in enumerate(patch.hunks):
-        for line in hunk.lines:
-            if line.origin == deletion:
-                view[i, 0] = view[i, 0] + 1
-                view[i, 2] = view[i, 2] + _indentation(line.raw_content)
-            elif line.origin == addition:
-                view[i, 1] = view[i, 1] + 1
-                view[i, 3] = view[i, 3] + _indentation(line.raw_content)
-    return np.hstack((stats.sum(axis=0), stats.std(axis=0)))
+        addition = "+"
+        deletion = "-"
+        stats = np.zeros((len(patch.hunks), 4), dtype=np.int32)
+        view = stats[:, :]
+        for i, hunk in enumerate(patch.hunks):
+            for line in hunk.lines:
+                if line.origin == deletion:
+                    view[i, 0] = view[i, 0] + 1
+                    view[i, 2] = view[i, 2] + _indentation(line.raw_content)
+                elif line.origin == addition:
+                    view[i, 1] = view[i, 1] + 1
+                    view[i, 3] = view[i, 3] + _indentation(line.raw_content)
+        return np.hstack((stats.sum(axis=0), stats.std(axis=0)))
 
 
 def _indentation(s, tabsize=4):
@@ -240,7 +252,7 @@ def _indentation(s, tabsize=4):
     return 0
 
 
-def _extract_patch_rewrites(commit, parent, patch, g2_repo, output):
+def _extract_patch_rewrites(commit, parent, patch, g2_repo, output):  # pylint: disable=too-complex
     def _is_addition():
         return patch.delta.status_char() == "A"
 
@@ -259,32 +271,35 @@ def _extract_patch_rewrites(commit, parent, patch, g2_repo, output):
     deletion = "-"
     filepath = patch.delta.old_file.path
     rewrites = defaultdict(int)
-    line_blame_dict = blame_porcelain(g2_repo.path, filepath, str(parent.id))
+    with Timer("blame_porcelain", threshold_ms=1000):
+        line_blame_dict = blame_porcelain(g2_repo.path, filepath, str(parent.id))
 
     if not line_blame_dict:
         return 0, 0
 
-    for hunk in patch.hunks:
-        for line in hunk.lines:
-            if line.origin == deletion:
-                blame_co_id = line_blame_dict[line.old_lineno]
-                rewrites[blame_co_id] += 1
+    with Timer("calc rewrites", threshold_ms=1000):
+        for hunk in patch.hunks:
+            for line in hunk.lines:
+                if line.origin == deletion:
+                    blame_co_id = line_blame_dict[line.old_lineno]
+                    rewrites[blame_co_id] += 1
 
-    for rewritten_commit_id, line_count in rewrites.items():
-        rewritten = g2_repo.get(rewritten_commit_id)
-        output.write(
-            Kind.E_PATCH_REWRITE.value,
-            EPatchRewrite(
-                commit_id=commit.id.hex,
-                atime=_utc_timestamp_for(commit.author),
-                aemail=commit.author.email,
-                newpath=patch.delta.new_file.path,
-                rewritten_commit_id=str(rewritten_commit_id),
-                rewritten_atime=_utc_timestamp_for(rewritten.author),
-                rewritten_aemail=rewritten.author.email,
-                loc_d=line_count,
-            ),
-        )
+    with Timer("construct output", threshold_ms=1000):
+        for rewritten_commit_id, line_count in rewrites.items():
+            rewritten = g2_repo.get(rewritten_commit_id)
+            output.write(
+                Kind.E_PATCH_REWRITE.value,
+                EPatchRewrite(
+                    commit_id=commit.id.hex,
+                    atime=_utc_timestamp_for(commit.author),
+                    aemail=commit.author.email,
+                    newpath=patch.delta.new_file.path,
+                    rewritten_commit_id=str(rewritten_commit_id),
+                    rewritten_atime=_utc_timestamp_for(rewritten.author),
+                    rewritten_aemail=rewritten.author.email,
+                    loc_d=line_count,
+                ),
+            )
 
     return len(rewrites), sum(rewrites.values())
 
@@ -297,11 +312,27 @@ def blame_porcelain(git_path, filepath, newest_commit) -> Dict[int, str]:
     """Returns with line-> commit_id mapping"""
 
     blame_porcelain_command = ["git", "blame", newest_commit, "--porcelain", "--", filepath]
-    completed_process = subprocess.run(blame_porcelain_command, capture_output=True, cwd=git_path)
+    try:
+        completed_process = subprocess.run(blame_porcelain_command, capture_output=True, cwd=git_path, check=True)
+    except subprocess.CalledProcessError:
+        logger.exception("Failed to run git blame.", newest_commit=newest_commit, git_path=git_path, filepath=filepath)
+        return {}
     porcelain_output = completed_process.stdout.decode(errors="ignore")
+
+    def is_not_header(line):
+        return (
+            line.startswith("\t")
+            or line.startswith("author")
+            or line.startswith("committer")
+            or line.startswith("summary")
+            or line.startswith("filename")
+            or line.startswith("previous")
+        )
 
     headers = {}
     for line in porcelain_output.splitlines():
+        if is_not_header(line):
+            continue
         words = line.split(" ")
         # THE PORCELAIN FORMAT
         # In this format, each line is output after a header;
