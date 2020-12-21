@@ -1,2 +1,4 @@
 .secrets.env
 *pyc
+*.egg-info
+dist/
