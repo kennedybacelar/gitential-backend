@@ -22,7 +22,6 @@ def cli(ctx):
 @click.argument("clone_url")
 @click.pass_context
 def extract_git_metrics(ctx, repo_id, clone_url):
-    print("!!!!", ctx.obj["settings"].log_level)
     repository = GitRepository(repo_id=repo_id, clone_url=clone_url)
     output = DataCollector()
     extract_incremental(repository, output=output, settings=ctx.obj["settings"])
