@@ -14,3 +14,8 @@ class DataCollector(OutputHandler):
 
     def write(self, kind, value):
         self.values[kind].append(value)
+
+    def __iter__(self):
+        for kind in self.values.keys():
+            for value in self.values[kind]:
+                yield kind, value

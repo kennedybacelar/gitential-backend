@@ -2,6 +2,7 @@ import os
 import pytest
 from cryptography.fernet import Fernet
 from gitential2.secrets import FernetVault
+from gitential2.settings import GitentialSettings
 
 # SECRETS = {
 #     "TEST_HTTPS_PRIVATE_REPOSITORY_PASSWORD":
@@ -25,3 +26,8 @@ def secrets():
     # vault["..."] = ...
     # vault.save(vault_file_path)
     return vault
+
+
+@pytest.fixture
+def settings():
+    return GitentialSettings(executor="process_pool", show_progress=False)

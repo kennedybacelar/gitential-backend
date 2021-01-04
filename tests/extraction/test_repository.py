@@ -11,6 +11,7 @@ from gitential2.extraction.repository import (
     extract_commit,
     extract_commit_patches,
     blame_porcelain,
+    extract_incremental,
 )
 from gitential2.extraction.output import DataCollector
 from gitential2.datatypes import (
@@ -64,6 +65,7 @@ def test_clone_repository_with_userpass(tmp_path, secrets):
     assert isinstance(ret, LocalGitRepository)
 
 
+@pytest.mark.skip
 @pytest.mark.slow
 def test_clone_repository_ssh_with_keypair(tmp_path, secrets):
     ret = clone_repository(
@@ -185,9 +187,22 @@ def test_extract_commit_patches_and_rewrites(test_repositories):
     }
 
 
-@pytest.mark.wip
 def test_blame_porcelain(test_repositories):
     repo = test_repositories["flask"]
     result = blame_porcelain(repo.directory, "tests/test_json.py", "373f0dd82e68ab7cac7a77344e715dbe68faebd3")
     assert result[1] == "a0e2aca770c756d9f7de53339e2cf9067a52df11"
     assert result[412] == "6def8a4a489ce1321a44bc1947c5c86620afdb3f"
+
+
+@pytest.mark.slow
+def test_extract_incremental(settings, test_repositories):
+    output = DataCollector()
+    repository = GitRepository(repo_id=1, clone_url=str(test_repositories["hostname"].directory))
+    result = extract_incremental(
+        repository=repository,
+        output=output,
+        settings=settings,
+    )
+    assert isinstance(result, GitRepositoryState)
+    assert "master" in result.branches
+    assert "e_commit" in output.values and len(output.values["e_commit"]) >= 2

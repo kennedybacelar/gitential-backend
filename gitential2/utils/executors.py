@@ -4,6 +4,8 @@ from typing import Iterable, Callable
 from multiprocessing import Pool
 import abc
 from tqdm import tqdm
+from gitential2.settings import GitentialSettings, Executor as ExecutorSettings
+from gitential2.extraction.output import DataCollector
 
 
 class Executor(abc.ABC):
@@ -42,17 +44,32 @@ class SingleThreadExecutor(Executor):
     def _process(self, fn_partial: Callable, items: Iterable, progress_bar):
         for item in items:
             progress_bar.update(1)
-            yield fn_partial(item)
+            fn_partial(item)
 
 
 class ProcessPoolExecutor(Executor):
     def __init__(self, **kwargs):
         self.pool_size = kwargs.pop("pool_size", 8)
+        self.original_output = kwargs.pop("output", DataCollector())
+        kwargs["output"] = DataCollector()
         super().__init__(**kwargs)
 
     def _process(self, fn_partial: Callable, items: Iterable, progress_bar):
         pool = Pool(self.pool_size)
-        for _ in pool.imap_unordered(fn_partial, items):
+        for output in pool.imap_unordered(fn_partial, items):
+            for kind, value in output:
+                self.original_output.write(kind, value)
             progress_bar.update(1)
         pool.close()
         pool.join()
+
+
+def create_executor(settings: GitentialSettings, **kwargs) -> Executor:
+    kwargs.setdefault("show_progress", settings.show_progress)
+    if settings.executor == ExecutorSettings.process_pool:
+        kwargs.setdefault("pool_size", settings.process_pool_size)
+        return ProcessPoolExecutor(**kwargs)
+    elif settings.executor == ExecutorSettings.single_tread:
+        return SingleThreadExecutor(**kwargs)
+    else:
+        raise ValueError("Invalid executor settings")

@@ -20,10 +20,11 @@ from gitential2.datatypes import (
     UserPassCredential,
     KeypairCredentials,
 )
+from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import OutputHandler
 from gitential2.utils.tempdir import TemporaryDirectory
 from gitential2.utils.timer import Timer
-from gitential2.utils.executors import ProcessPoolExecutor
+from gitential2.utils.executors import create_executor
 
 
 logger = get_logger(__name__)
@@ -35,25 +36,25 @@ COMMIT_ID_RE = re.compile(r"^\w{40}")
 
 
 def extract_incremental(
-    clone_url: str,
+    repository: GitRepository,
     output: OutputHandler,
+    settings: GitentialSettings,
     credentials: Optional[RepositoryCredentials] = None,
     previous_state: Optional[GitRepositoryState] = None,
 ):
     with TemporaryDirectory() as workdir:
-        local_repo = clone_repository(clone_url, destination_path=workdir.path, credentials=credentials)
+        local_repo = clone_repository(repository, destination_path=workdir.path, credentials=credentials)
         current_state = get_repository_state(local_repo)
         commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
-
-        executor = ProcessPoolExecutor(local_repo=local_repo, output=output, description="Extracting commits")
+        executor = create_executor(settings, local_repo=local_repo, output=output, description="Extracting commits")
         executor.map(fn=_extract_single_commit, items=commits)
-
         return current_state
 
 
 def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler):
     extract_commit(local_repo, commit_id, output)
     extract_commit_patches(local_repo, commit_id, output)
+    return output
 
 
 def clone_repository(
@@ -156,6 +157,7 @@ def extract_commit(repository: LocalGitRepository, commit_id: str, output: Outpu
             tree_id=str(commit.tree_id),
         ),
     )
+    return output
 
 
 def extract_commit_patches(repository: LocalGitRepository, commit_id: str, output: OutputHandler, **kwargs):
@@ -211,6 +213,7 @@ def _extract_patch(commit, parent, patch, g2_repo, output):
             rewrites_loc=rewrites_loc,
         ),
     )
+    return output
 
 
 def _get_patch_stats(patch):
