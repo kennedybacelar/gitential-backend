@@ -21,7 +21,7 @@ poetry_invoke_lint:
     - poetry run invoke lint
 
 unit_tests:
-  extends: .ge_poetry_common
+  extends: .poetry_common
   stage: test
   script:
     - poetry run invoke unit-test
