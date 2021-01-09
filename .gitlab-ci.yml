@@ -4,8 +4,15 @@ workflow:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH == "master"
 
+variables:
+  IMAGE_NAME: "gitential2"
+  KANIKO_VERBOSITY: info
+  DOCKERFILE: Dockerfile
+  IMAGE_VERSION_POSTFIX: ""
+
 stages:
   - test
+  - build
 
 .poetry_common: &poetry_common
   before_script:
@@ -13,6 +20,36 @@ stages:
   image:
     name: nexus-docker.ops.gitential.com/python-poetry:v1-py3.8.6-build
     entrypoint: [""]
+
+.kaniko:
+  image:
+    name: gcr.io/kaniko-project/executor:debug-v0.23.0
+    entrypoint: [""]
+  resource_group: nexus
+  retry: 1
+  before_script:
+    - echo $DOCKER_AUTH_CONFIG > /kaniko/.docker/config.json
+    - export CI_VERSION=${CI_COMMIT_TAG:-${CI_COMMIT_SHORT_SHA}}
+    - export IMAGE_VERSION=$CI_VERSION
+    - >
+      if [ "$CI_COMMIT_TAG" != "" or $CI_COMMIT_BRANCH == "master" ]; then
+        export SKIP_PUSH=""
+      else
+        export SKIP_PUSH="--no-push"
+      fi
+  script:
+    - echo "Building $DESTINATION_REGISTRY/$IMAGE_NAME:${IMAGE_VERSION}${IMAGE_VERSION_POSTFIX} ..."
+    - |
+      /kaniko/executor \
+      --verbosity=$KANIKO_VERBOSITY \
+      --context $CI_PROJECT_DIR \
+      --dockerfile $CI_PROJECT_DIR/$DOCKERFILE \
+      --destination $DESTINATION_REGISTRY/$IMAGE_NAME:${IMAGE_VERSION}${IMAGE_VERSION_POSTFIX} \
+      --build-arg NEXUS_USERNAME=$NEXUS_USERNAME \
+      --build-arg NEXUS_PASSWORD=$NEXUS_PASSWORD \
+      --build-arg NEXUS_HOSTNAME=$NEXUS_HOSTNAME \
+      --build-arg PYTHON_VERSION=$PYTHON_VERSION \
+      $SKIP_PUSH
 
 poetry_invoke_lint:
   extends: .poetry_common
@@ -25,3 +62,7 @@ unit_tests:
   stage: test
   script:
     - poetry run invoke unit-test
+
+build_and_publish_image:
+  extends: .kaniko
+  stage: build
