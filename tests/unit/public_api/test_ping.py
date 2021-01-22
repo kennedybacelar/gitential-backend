@@ -9,6 +9,6 @@ def client():
 
 
 def test_read_ping(client):
-    response = client.get("/ping")
+    response = client.get("/v2/ping")
     assert response.status_code == 200
     assert response.json() == {"success": True, "msg": "pong"}
