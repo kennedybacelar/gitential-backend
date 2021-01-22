@@ -1,9 +1,11 @@
-import os
-import pathlib
 from datetime import datetime, timezone
 
 import pytest
 
+
+from gitential2.extraction.output import DataCollector
+from gitential2.datatypes.repositories import GitRepository, GitRepositoryState
+from gitential2.datatypes.extraction import LocalGitRepository, UserPassCredential, KeypairCredentials, Langtype
 from gitential2.extraction.repository import (
     clone_repository,
     get_repository_state,
@@ -13,38 +15,10 @@ from gitential2.extraction.repository import (
     blame_porcelain,
     extract_incremental,
 )
-from gitential2.extraction.output import DataCollector
-from gitential2.datatypes import (
-    GitRepository,
-    LocalGitRepository,
-    GitRepositoryState,
-    GitRepositoryStateChange,
-    ECommit,
-    UserPassCredential,
-    KeypairCredentials,
-)
 
 TEST_PUBLIC_REPOSITORY = "https://github.com/laco/hostname.git"
 TEST_SSH_PRIVATE_REPOSITORY = "git@gitlab.com:gitential-com/test-repository.git"
 TEST_HTTPS_PRIVATE_REPOSITORY = "https://gitlab.com/gitential-com/test-repository.git"
-
-
-@pytest.fixture(scope="session")
-def test_repositories():
-    repositories = [
-        ("flask", 1, "https://github.com/pallets/flask.git"),
-        ("hostname", 2, "https://github.com/laco/hostname.git"),
-    ]
-    ret = {}
-    for name, repo_id, clone_url in repositories:
-        local_path = os.path.join("/tmp", name)
-        if os.path.isdir(local_path):
-            ret[name] = LocalGitRepository(repo_id, pathlib.PosixPath(local_path))
-        else:
-            repo = GitRepository(repo_id, clone_url)
-            ret[name] = clone_repository(repository=repo, destination_path=local_path)
-
-    return ret
 
 
 @pytest.mark.slow
@@ -127,8 +101,8 @@ def test_extract_commit(test_repositories):
 
     extract_commit(repo, commit_id, output)
 
-    assert "e_commit" in output.values
-    res = output.values["e_commit"][0]
+    assert "extracted_commit" in output.values
+    res = output.values["extracted_commit"][0]
 
     assert res.commit_id == "dc11cdb4a4627b9f8c79e47e39aa7e1357151896"
     assert res.atime == datetime(2020, 11, 5, 9, 0, 57, tzinfo=timezone.utc)
@@ -150,17 +124,18 @@ def _get_first(iterable, condition):
 
 def test_extract_commit_patches_and_rewrites(test_repositories):
     repo = test_repositories["flask"]
+
     # https://github.com/pallets/flask/commit/dc11cdb4a4627b9f8c79e47e39aa7e1357151896
     commit_id = "253570784cdcc85d82142128ce33e3b9d8f8db14"
     output = DataCollector()
 
     extract_commit_patches(repo, commit_id, output)
 
-    assert "e_patch" in output.values
-    assert "e_patch_rewrite" in output.values
+    assert "extracted_patch" in output.values
+    assert "extracted_patch_rewrite" in output.values
 
-    patches = output.values["e_patch"]
-    patch_rewrites = output.values["e_patch_rewrite"]
+    patches = output.values["extracted_patch"]
+    patch_rewrites = output.values["extracted_patch_rewrite"]
 
     cli_p = _get_first(patches, lambda p: p.newpath == "src/flask/cli.py")
     assert cli_p.oldpath == cli_p.newpath == "src/flask/cli.py"
@@ -172,6 +147,7 @@ def test_extract_commit_patches_and_rewrites(test_repositories):
     assert (cli_p.comp_i_std, cli_p.comp_d_std) == (0, 0)
     assert (cli_p.oldsize, cli_p.newsize) == (31013, 30906)
     assert (cli_p.nrewrites, cli_p.rewrites_loc) == (6, 24)
+    assert (cli_p.lang, cli_p.langtype) == ("Python", Langtype.PROGRAMMING)
 
     cli_rewrites = [p_r for p_r in patch_rewrites if p_r.newpath == "src/flask/cli.py"]
     assert len(cli_rewrites) == 6
@@ -197,7 +173,7 @@ def test_blame_porcelain(test_repositories):
 @pytest.mark.slow
 def test_extract_incremental(settings, test_repositories):
     output = DataCollector()
-    repository = GitRepository(repo_id=1, clone_url=str(test_repositories["hostname"].directory))
+    repository = GitRepository(id=1, clone_url=str(test_repositories["hostname"].directory))
     result = extract_incremental(
         repository=repository,
         output=output,
@@ -205,4 +181,4 @@ def test_extract_incremental(settings, test_repositories):
     )
     assert isinstance(result, GitRepositoryState)
     assert "master" in result.branches
-    assert "e_commit" in output.values and len(output.values["e_commit"]) >= 2
+    assert "extracted_commit" in output.values and len(output.values["extracted_commit"]) >= 2

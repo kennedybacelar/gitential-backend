@@ -8,24 +8,24 @@ import numpy as np
 import pygit2
 from structlog import get_logger
 
-from gitential2.datatypes import (
-    GitRepository,
+from gitential2.datatypes.repositories import GitRepository, GitRepositoryState
+from gitential2.datatypes.extraction import (
     RepositoryCredentials,
     LocalGitRepository,
-    GitRepositoryState,
-    ECommit,
-    EPatch,
-    EPatchRewrite,
-    Kind,
+    ExtractedCommit,
+    ExtractedPatch,
+    ExtractedPatchRewrite,
+    ExtractedKind,
     UserPassCredential,
     KeypairCredentials,
 )
 from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import OutputHandler
+from gitential2.extraction.langdetection import detect_lang
 from gitential2.utils.tempdir import TemporaryDirectory
 from gitential2.utils.timer import Timer
 from gitential2.utils.executors import create_executor
-
+from gitential2.utils.ignorespec import IgnoreSpec, default_ignorespec
 
 logger = get_logger(__name__)
 
@@ -41,19 +41,22 @@ def extract_incremental(
     settings: GitentialSettings,
     credentials: Optional[RepositoryCredentials] = None,
     previous_state: Optional[GitRepositoryState] = None,
+    ignore_spec: IgnoreSpec = default_ignorespec,
 ):
     with TemporaryDirectory() as workdir:
         local_repo = clone_repository(repository, destination_path=workdir.path, credentials=credentials)
         current_state = get_repository_state(local_repo)
         commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
-        executor = create_executor(settings, local_repo=local_repo, output=output, description="Extracting commits")
+        executor = create_executor(
+            settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
+        )
         executor.map(fn=_extract_single_commit, items=commits)
         return current_state
 
 
-def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler):
+def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler, ignore_spec: IgnoreSpec):
     extract_commit(local_repo, commit_id, output)
-    extract_commit_patches(local_repo, commit_id, output)
+    extract_commit_patches(local_repo, commit_id, output, ignore_spec)
     return output
 
 
@@ -79,7 +82,7 @@ def clone_repository(
         pygit2.clone_repository(
             url=repository.clone_url, path=str(destination_path), callbacks=_construct_callbacks(credentials)
         )
-        return LocalGitRepository(repository.repo_id, destination_path)
+        return LocalGitRepository(id=repository.id, directory=destination_path)
 
 
 def _git2_repo(repository: LocalGitRepository) -> pygit2.Repository:
@@ -143,8 +146,8 @@ def extract_commit(repository: LocalGitRepository, commit_id: str, output: Outpu
     ctime = _utc_timestamp_for(commit.committer)
 
     output.write(
-        Kind.E_COMMIT.value,
-        ECommit(
+        ExtractedKind.EXTRACTED_COMMIT.value,
+        ExtractedCommit(
             commit_id=commit.id.hex,
             atime=atime,
             aemail=commit.author.email,
@@ -160,7 +163,13 @@ def extract_commit(repository: LocalGitRepository, commit_id: str, output: Outpu
     return output
 
 
-def extract_commit_patches(repository: LocalGitRepository, commit_id: str, output: OutputHandler, **kwargs):
+def extract_commit_patches(
+    repository: LocalGitRepository,
+    commit_id: str,
+    output: OutputHandler,
+    ignore_spec: IgnoreSpec = default_ignorespec,
+    **kwargs,
+):
     g2_repo = kwargs.get("g2_repo") or _git2_repo(repository)
     commit = kwargs.get("commit") or g2_repo.get(commit_id)
 
@@ -178,18 +187,20 @@ def extract_commit_patches(repository: LocalGitRepository, commit_id: str, outpu
     patch_count = 0
     for parent, diff in zip(parents, diffs):
         for patch in diff:
-            _extract_patch(commit, parent, patch, g2_repo, output)
+            if not ignore_spec.should_ignore(patch.delta.new_file.path):
+                _extract_patch(commit, parent, patch, g2_repo, output)
             patch_count += 1
-    logger.debug("patch count", patch_count=patch_count, repository=repository, commit_id=commit_id)
+    # logger.debug("patch count", patch_count=patch_count, repository=repository, commit_id=commit_id)
     return patch_count
 
 
 def _extract_patch(commit, parent, patch, g2_repo, output):
     patch_stats = _get_patch_stats(patch)
     nrewrites, rewrites_loc = _extract_patch_rewrites(commit, parent, patch, g2_repo, output)
+    lang, langtype = _get_patch_lang_and_langtype(commit, patch, g2_repo)
     output.write(
-        Kind.E_PATCH.value,
-        EPatch(
+        ExtractedKind.EXTRACTED_PATCH.value,
+        ExtractedPatch(
             commit_id=commit.id.hex,
             parent_commit_id=parent.id.hex,
             status=patch.delta.status_char(),
@@ -198,8 +209,8 @@ def _extract_patch(commit, parent, patch, g2_repo, output):
             newsize=patch.delta.new_file.size,
             oldsize=patch.delta.old_file.size,
             is_binary=patch.delta.is_binary,
-            lang="todo",
-            langtype="todo",
+            lang=lang,
+            langtype=langtype,
             loc_d=patch_stats[0],
             loc_i=patch_stats[1],
             comp_d=patch_stats[2],
@@ -214,6 +225,16 @@ def _extract_patch(commit, parent, patch, g2_repo, output):
         ),
     )
     return output
+
+
+def _get_patch_lang_and_langtype(commit, patch, g2_repo):
+    filepath, filesize, is_binary, commit_id = (
+        patch.delta.new_file.path,
+        patch.delta.new_file.size,
+        patch.delta.is_binary,
+        str(commit.id.hex),
+    )
+    return detect_lang(filepath, filesize, is_binary, commit_id, g2_repo.path)
 
 
 def _get_patch_stats(patch):
@@ -291,8 +312,8 @@ def _extract_patch_rewrites(commit, parent, patch, g2_repo, output):  # pylint: 
         for rewritten_commit_id, line_count in rewrites.items():
             rewritten = g2_repo.get(rewritten_commit_id)
             output.write(
-                Kind.E_PATCH_REWRITE.value,
-                EPatchRewrite(
+                ExtractedKind.EXTRACTED_PATCH_REWRITE.value,
+                ExtractedPatchRewrite(
                     commit_id=commit.id.hex,
                     atime=_utc_timestamp_for(commit.author),
                     aemail=commit.author.email,

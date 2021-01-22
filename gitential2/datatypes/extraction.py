@@ -1,35 +1,15 @@
 from abc import ABC
-from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional
+from typing import Optional
 from pathlib import Path
+from datetime import datetime
+from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 
 
-class Kind(Enum):
-    E_COMMIT = "e_commit"
-    E_PATCH = "e_patch"
-    E_PATCH_REWRITE = "e_patch_rewrite"
-
-
-@dataclass
-class GitRepositoryState:
-    branches: Dict[str, str]
-    tags: Dict[str, str]
-
-    @property
-    def commit_ids(self):
-        return list(self.branches.values()) + list(self.tags.values())
-
-
-@dataclass
-class GitRepositoryStateChange:
-    old_state: GitRepositoryState
-    new_state: GitRepositoryState
-
-    @property
-    def new_branches(self):
-        return {b: cid for b, cid in self.new_state.branches.items() if b not in self.old_state.branches}
+class LocalGitRepository(BaseModel):
+    repo_id: Optional[int] = None
+    directory: Path
 
 
 class RepositoryCredentials(ABC):
@@ -50,20 +30,13 @@ class UserPassCredential(RepositoryCredentials):
     password: str
 
 
-@dataclass
-class GitRepository:
-    repo_id: int
-    clone_url: str
+class ExtractedKind(str, Enum):
+    EXTRACTED_COMMIT = "extracted_commit"
+    EXTRACTED_PATCH = "extracted_patch"
+    EXTRACTED_PATCH_REWRITE = "extracted_patch_rewrite"
 
 
-@dataclass
-class LocalGitRepository:
-    repo_id: int
-    directory: Path
-
-
-@dataclass
-class ECommit:
+class ExtractedCommit(BaseModel):
     commit_id: str
     atime: datetime
     aemail: str
@@ -76,8 +49,15 @@ class ECommit:
     tree_id: str
 
 
-@dataclass
-class EPatch:
+class Langtype(Enum):
+    UNKNOWN = 0
+    PROGRAMMING = 1
+    MARKUP = 2
+    PROSE = 3
+    DATA = 4
+
+
+class ExtractedPatch(BaseModel):
     commit_id: str
     parent_commit_id: str
     status: str
@@ -87,7 +67,7 @@ class EPatch:
     oldsize: int
     is_binary: bool
     lang: str
-    langtype: str
+    langtype: Langtype
 
     loc_i: int
     loc_d: int
@@ -103,8 +83,7 @@ class EPatch:
     rewrites_loc: int
 
 
-@dataclass
-class EPatchRewrite:
+class ExtractedPatchRewrite(BaseModel):
     commit_id: str
     atime: datetime
     aemail: str

@@ -1,0 +1,40 @@
+version: "3.7"
+
+services:
+  db:
+    image: postgres:13.1
+    restart: always
+    environment:
+      POSTGRES_DB: gitential
+      POSTGRES_USER: gitential
+      POSTGRES_PASSWORD: secret123
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@gitential.com
+      PGADMIN_DEFAULT_PASSWORD: secret123
+      PGADMIN_LISTEN_PORT: 8079
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    links:
+      - "db:db"
+    ports:
+      - "8079:8079"
+  redis:
+    image: redis:6.0.10
+    restart: always
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  db-data:
+  pgadmin-data:
+  redis-data:
