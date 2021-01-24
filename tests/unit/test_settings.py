@@ -6,6 +6,7 @@ from gitential2.settings import load_settings, GitentialSettings
 
 def test_load_settings():
     read_data = """
+secret: "this:is:a:hash:of:real:secret"
 log_level: debug
 executor: process_pool
 show_progress: true
@@ -21,6 +22,7 @@ repository_sources:
     with patch("gitential2.settings.open", mock_open(read_data=read_data)):
         settings = load_settings()
         assert isinstance(settings, GitentialSettings)
+        assert settings.secret == "this:is:a:hash:of:real:secret"
         assert settings.log_level == "debug"
         assert settings.executor == "process_pool"
         assert "gitlab" in settings.repository_sources

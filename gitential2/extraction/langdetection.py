@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Optional
-from enum import Enum
 import os
 from gitential2.datatypes.extraction import Langtype
 

@@ -1,6 +1,36 @@
 from typing import List
 
 
+class Gitential:
+    # setup backend, cache and other things based on the config
+    def __init__(self, config):
+        pass
+
+    def set_user(self, user_info):
+        pass
+
+    def unset_user(self):
+        pass
+
+    def create_workspace(self, workspace):
+        pass
+
+    def update_workspace(self, workspace):
+        pass
+
+    def delete_workspace(self, workspace):
+        pass
+
+    def list_workspaces(self):
+        pass
+
+    def list_users(self):
+        pass
+
+    def delete_user(self):
+        pass
+
+
 class Workspace:
     pass
 

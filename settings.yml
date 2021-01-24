@@ -3,11 +3,26 @@ executor: process_pool
 show_progress: true
 backend: sql
 backend_connection: postgresql://gitential:secret123@localhost:5432/gitential
-repository_sources:
-  gitlab:
-    source_type: gitlab
+integrations:
+  gitlab-internal:
+    type: gitlab
     base_url: https://gitlab.ops.gitential.com
-    client_id: "d043df035355fe747d2a62d35b0f6089cff4c8c45fb8ca0066459792e388230d"
-    client_secret: "9bcb53d633178a83b3e46849bcec95d3d2c15d817bc48c1a1e35a84e8a4964c7"
-    use_as_login: true
-    login_text: "Login with gitlab.ops"
+    oauth:
+      client_id: "d043df035355fe747d2a62d35b0f6089cff4c8c45fb8ca0066459792e388230d"
+      client_secret: "9bcb53d633178a83b3e46849bcec95d3d2c15d817bc48c1a1e35a84e8a4964c7"
+    login: true
+    login_text: "Login with internal Gitlab"
+
+  github:
+    type: github
+    oauth:
+      client_id: "51bcf9e28ac872d75f2b"
+      client_secret: "2df3da7633b18e78b0b790a6538282f2051277c0"
+    login: true
+    login_text: "Login with GitHub"
+
+  linkedin:
+    type: linkedin
+    oauth:
+      client_id: 78niu9tfn4fufa
+      client_secret: 1LH59EYaQQnxGAHn

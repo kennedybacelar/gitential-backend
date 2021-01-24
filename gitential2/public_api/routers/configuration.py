@@ -1,7 +1,8 @@
 from typing import Optional
 from fastapi import APIRouter
 from fastapi import Request
-from gitential2.integrations import construct_login_configuration
+
+# from gitential2.integrations import construct_login_configuration
 
 router = APIRouter()
 
@@ -40,15 +41,25 @@ gitlab_application_id = "d043df035355fe747d2a62d35b0f6089cff4c8c45fb8ca006645979
 gitlab_application_secret = "9bcb53d633178a83b3e46849bcec95d3d2c15d817bc48c1a1e35a84e8a4964c7"
 
 
-@router.get("/login/{source_name}")
-def login(source_name: str, code: str, state: Optional[str] = None):
-    return {"ok": True, "source_name": source_name}
+# @router.get("/login/{source_name}")
+# def login(source_name: str, code: str, state: Optional[str] = None):
+#     return {"ok": True, "source_name": source_name}
 
 
 @router.get("/configuration")
 def configuration(request: Request):
-    logins = construct_login_configuration(request.app.state.settings, frontend_url="http://example.com")
-
+    # logins = construct_login_configuration(request.app.state.settings, frontend_url="http://example.com")
+    logins = {}
+    integrations_settings = request.app.state.settings.integrations
+    print(integrations_settings)
+    for name, settings in integrations_settings.items():
+        if settings.login:
+            logins[name] = {
+                "login_text": settings.login_text or f"Login with {name}",
+                "signup_text": settings.signup_text or f"Sign up with {name}",
+                "type": settings.type_,
+                "url": request.url_for("auth", backend=name),
+            }
     return {
         "license": {
             "valid_until": 1640908800,
