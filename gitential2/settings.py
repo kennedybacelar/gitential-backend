@@ -50,6 +50,7 @@ class BackendType(str, Enum):
 
 class GitentialSettings(BaseSettings):
     secret: str = "gitential.secret.change.me"
+    fernet_key: str
     base_url: str = "http://localhost:8080"
     log_level: LogLevel = LogLevel.info
     executor: Executor = Executor.process_pool

@@ -1,3 +1,5 @@
+from gitential2.datatypes import UserInfoCreate
+
 from .base import BaseIntegration, OAuthLoginMixin
 
 # from typing import List
@@ -9,33 +11,79 @@ from .base import BaseIntegration, OAuthLoginMixin
 #     pass
 
 
-async def normalize_userinfo(client, data):
-    return {
-        "sub": str(data["id"]),
-        "name": data["name"],
-        "email": data.get("email"),
-        "preferred_username": data["username"],
-        "profile": data["web_url"],
-        "picture": data["avatar_url"],
-        "website": data.get("website_url"),
-    }
-
-
 class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
+    def __init__(self, name, settings):
+        super().__init__(name, settings)
+        self.base_url = self.settings.base_url or "https://gitlab.com"
+        self.api_base_url = "{}/api/v4/".format(self.base_url)
+        self.authorize_url = "{}/oauth/authorize".format(self.base_url)
+        self.token_url = "{}/oauth/token".format(self.base_url)
+
     def oauth_register(self):
-        api_base_url = "{}/api/v4/".format(self.settings.base_url)
-        authorize_url = "{}/oauth/authorize".format(self.settings.base_url)
-        token_url = "{}/oauth/token".format(self.settings.base_url)
+
         return {
-            "api_base_url": api_base_url,
-            "access_token_url": token_url,
-            "authorize_url": authorize_url,
+            "api_base_url": self.api_base_url,
+            "access_token_url": self.token_url,
+            "authorize_url": self.authorize_url,
             "userinfo_endpoint": "user",
             # "userinfo_compliance_fix": normalize_userinfo,
-            "client_kwargs": {"scope": "read_user"},
+            "client_kwargs": {"scope": "api read_repository email read_user"},
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
         }
+
+    def refresh_token(self, token):
+        client = self.get_oauth2_client(token=token)
+        new_token = client.refresh_token(self.token_url, refresh_token=token["refresh_token"])
+        client.close()
+        return new_token
+
+    def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
+        return UserInfoCreate(
+            integration_name=self.name,
+            integration_type="gitlab",
+            sub=str(data["id"]),
+            name=data["name"],
+            email=data.get("email"),
+            preferred_username=data["username"],
+            profile=data["web_url"],
+            picture=data["avatar_url"],
+            website=data.get("website_url"),
+            extra=data,
+        )
+
+    def list_available_private_repositories(self, token, update_token):
+        def _get_next_link(link_header):
+            link, rel = link_header.split(";")
+            if "next" in rel.lower():
+                return link.strip("<>")
+
+        def _keyset_pagination(client, starting_url, acc=None):
+            acc = acc or []
+            response = client.request("GET", starting_url)
+            items, headers = response.json(), response.headers
+            acc = acc + items
+            if headers.get("Link"):
+                next_url = _get_next_link(headers.get("Link"))
+                return _keyset_pagination(client, next_url, acc)
+            else:
+                return acc
+
+        def _project_dict(project):
+            return {
+                "clone_url": project["http_url_to_repo"],
+                "id": project["id"],
+                "name": project["path"],
+                "source": project["namespace"]["full_path"],
+                "private": project["visibility"] == "private",
+            }
+
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        projects = _keyset_pagination(
+            client, f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id"
+        )
+        client.close()
+        return [_project_dict(p) for p in projects]
 
 
 """

@@ -28,11 +28,14 @@ authlib = "^0.15.3"
 httpx = "^0.16.1"
 itsdangerous = "^1.1.0"
 loginpass = "^0.5"
+mypy = "^0.800"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 black = {version = "^20.8b1", allow-prereleases = true}
 pylint = "^2.6.0"
+mypy = "^0.800"
+sqlalchemy-stubs = "^0.4"
 
 [tool.black]
 line-length = 120

@@ -1,3 +1,4 @@
+from gitential2.datatypes import UserInfoCreate
 from .base import BaseIntegration, OAuthLoginMixin
 
 
@@ -15,6 +16,9 @@ class LinkedinIntegration(OAuthLoginMixin, BaseIntegration):
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
         }
+
+    def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
+        pass
 
 
 example_result = {

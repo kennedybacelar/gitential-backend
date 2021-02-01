@@ -1,7 +1,11 @@
+from gitential2.datatypes import UserInfoCreate
 from .base import OAuthLoginMixin, BaseIntegration
 
 
 class GithubIntegration(OAuthLoginMixin, BaseIntegration):
+    def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
+        pass
+
     def oauth_register(self):
         return {
             "api_base_url": "https://api.github.com/",

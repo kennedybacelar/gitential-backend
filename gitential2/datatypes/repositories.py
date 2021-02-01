@@ -1,6 +1,32 @@
 from typing import Optional, Union, Dict
 from pydantic import BaseModel, Field
 
+from .common import IDModelMixin, DateTimeModelMixin, CoreModel, ExtraFieldMixin
+
+
+class RepositoryBase(ExtraFieldMixin, CoreModel):
+    clone_url: str
+    name: str = ""
+    namespace: str = ""
+    private: bool = False
+    source: str = ""
+
+
+class RepositoryCreate(RepositoryBase):
+    pass
+
+
+class RepositoryUpdate(RepositoryBase):
+    pass
+
+
+class RepositoryInDB(IDModelMixin, DateTimeModelMixin, RepositoryBase):
+    pass
+
+
+class RepositoryPublic(IDModelMixin, DateTimeModelMixin, RepositoryBase):
+    pass
+
 
 class GitRepository(BaseModel):
     id: Optional[int] = None

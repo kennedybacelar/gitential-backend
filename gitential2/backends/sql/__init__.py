@@ -1,60 +1,64 @@
 import uuid
 import datetime as dt
+from typing import Optional, List, Type
 import sqlalchemy as sa
+from sqlalchemy.sql import and_
 from sqlalchemy_utils.types import UUIDType
+from gitential2.settings import GitentialSettings
+
+from gitential2.datatypes import (
+    UserInDB,
+    UserInfoInDB,
+    CredentialInDB,
+    WorkspaceInDB,
+)
+
+from ..common import (
+    GitentialBackend,
+    IdType,
+    CreateType,
+    UpdateType,
+    InDBType,
+    BaseRepository,
+    UserRepository,
+    UserInfoRepository,
+    CredentialRepository,
+    WorkspaceRepository,
+)
+
+from .tables import users_table, user_infos_table, credentials_table, workspaces_table, metadata
+from .repositories import SQLUserRepository, SQLUserInfoRepository, SQLCredentialRepository, SQLWorkspaceRepository
 
 
-def get_metadata():
-    metadata = sa.MetaData()
-    users = sa.Table(
-        "users",
-        metadata,
-        sa.Column("id", UUIDType, default=uuid.uuid4, primary_key=True),
-        sa.Column("login", sa.String(128), nullable=True),
-        sa.Column("email", sa.String(256), nullable=True),
-        sa.Column("is_admin", sa.Boolean, default=False, nullable=False),
-        sa.Column("created_at", sa.DateTime, default=dt.datetime.now, nullable=False),
-        sa.Column("updated_at", sa.DateTime, default=dt.datetime.now, nullable=False),
-        sa.Column("tc_consent_accepted_at", sa.String(32), nullable=True),
-        sa.Column("marketing_consent_accepted", sa.Boolean, nullable=False, default=False),
-    )
+class SQLGitentialBackend(GitentialBackend):
+    def __init__(self, settings: GitentialSettings):
+        super().__init__(settings)
+        self._engine = sa.create_engine(settings.backend_connection)
+        self._metadata = metadata
+        self._metadata.create_all(self._engine)
 
-    workspaces = sa.Table(
-        "workspaces",
-        metadata,
-        sa.Column("id", UUIDType, default=uuid.uuid4, primary_key=True),
-        sa.Column("name", sa.String(128), nullable=True),
-        sa.Column("created_at", sa.DateTime, default=dt.datetime.now, nullable=False),
-        sa.Column("updated_at", sa.DateTime, default=dt.datetime.now, nullable=False),
-    )
+        self._users = SQLUserRepository(table=users_table, engine=self._engine, in_db_cls=UserInDB)
+        self._user_infos = SQLUserInfoRepository(table=user_infos_table, engine=self._engine, in_db_cls=UserInfoInDB)
+        self._credentials = SQLCredentialRepository(
+            table=credentials_table, engine=self._engine, in_db_cls=CredentialInDB
+        )
+        self._workspaces = SQLWorkspaceRepository(table=workspaces_table, engine=self._engine, in_db_cls=WorkspaceInDB)
 
-    workspace_roles = sa.Table(
-        "workspace_roles",
-        metadata,
-        sa.Column("id", UUIDType, default=uuid.uuid4, primary_key=True),
-        sa.Column("user_id", UUIDType, sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("workspace_id", UUIDType, sa.ForeignKey("workspaces.id"), nullable=False),
-        sa.Column("role", sa.Integer, default=1),
-    )
+    @property
+    def users(self) -> UserRepository:
+        return self._users
 
-    credentials = sa.Table(
-        "credentials",
-        metadata,
-        sa.Column("id", UUIDType, default=uuid.uuid4, primary_key=True),
-        sa.Column("owner_id", UUIDType, sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("type", sa.String(32), nullable=False),
-        sa.Column("source_name", sa.String(32), nullable=True),
-        sa.Column("name", sa.String(128), nullable=True),
-        sa.Column("token", sa.BLOB, nullable=True),
-        sa.Column("refresh_token", sa.BLOB, nullable=True),
-        sa.Column("public_key", sa.BLOB, nullable=True),
-        sa.Column("private_key", sa.BLOB, nullable=True),
-        sa.Column("passphrase", sa.BLOB, nullable=True),
-        sa.Column("created_at", sa.DateTime, default=dt.datetime.now, nullable=False),
-        sa.Column("updated_at", sa.DateTime, default=dt.datetime.now, nullable=False),
-    )
+    @property
+    def user_infos(self) -> UserInfoRepository:
+        return self._user_infos
 
-    return metadata
+    @property
+    def credentials(self) -> CredentialRepository:
+        return self._credentials
+
+    @property
+    def workspaces(self) -> WorkspaceRepository:
+        return self._workspaces
 
 
 def get_workspace_metadata():

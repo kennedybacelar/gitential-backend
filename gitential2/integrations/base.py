@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from authlib.integrations.requests_client import OAuth2Session
 
 from gitential2.settings import IntegrationSettings
+from gitential2.datatypes import UserInfoCreate
 
 
 class BaseIntegration:
@@ -27,3 +28,7 @@ class OAuthLoginMixin(ABC):
         params = self.oauth_register()
         params.update(kwargs)
         return OAuth2Session(**params)
+
+    @abstractmethod
+    def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
+        pass

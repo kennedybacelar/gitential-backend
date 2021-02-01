@@ -1,7 +1,8 @@
 log_level: info
 executor: process_pool
 show_progress: true
-backend: sql
+fernet_key: "lhym9nQ8fSq2jr1Aydewq9_6G0aYSZtpQlngByj90rY="
+backend: in_memory
 backend_connection: postgresql://gitential:secret123@localhost:5432/gitential
 integrations:
   gitlab-internal:

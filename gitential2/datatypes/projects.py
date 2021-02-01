@@ -1,17 +1,39 @@
 from typing import Optional, List
-from datetime import datetime
-from pydantic import BaseModel
-from .repositories import GitRepository
+from pydantic import BaseModel, constr
+
+from .common import IDModelMixin, CoreModel, DateTimeModelMixin
+from .repositories import RepositoryCreate, RepositoryPublic
 
 
-class Project(BaseModel):
-    id: int
-    name: str
-    shareable: bool
+class ProjectBase(CoreModel):
+    name: Optional[str]
+    shareable: bool = False
     pattern: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
 
 
-class ProjectDetail(Project):
-    repositories: List[GitRepository]
+class ProjectCreate(ProjectBase):
+    name: constr(min_length=2, max_length=128)
+
+
+class ProjectCreateWithRepositories(ProjectCreate):
+    repositories: List[RepositoryCreate]
+
+
+class ProjectUpdate(ProjectBase):
+    pass
+
+
+class ProjectUpdateWithRepositories(ProjectUpdate):
+    repositories: List[RepositoryCreate]
+
+
+class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase):
+    pass
+
+
+class ProjectPublic(IDModelMixin, DateTimeModelMixin, ProjectBase):
+    pass
+
+
+class ProjectPublicWithRepositories(ProjectPublic):
+    repositories: List[RepositoryPublic]
