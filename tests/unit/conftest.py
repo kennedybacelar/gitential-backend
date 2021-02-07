@@ -1,12 +1,7 @@
 import os
 import pytest
-from cryptography.fernet import Fernet
 from gitential2.secrets import FernetVault
-from gitential2.settings import GitentialSettings
-
-# SECRETS = {
-#     "TEST_HTTPS_PRIVATE_REPOSITORY_PASSWORD":
-# }
+from gitential2.settings import GitentialSettings, BackendType
 
 
 @pytest.fixture(scope="session")
@@ -30,4 +25,10 @@ def secrets():
 
 @pytest.fixture
 def settings():
-    return GitentialSettings(executor="process_pool", show_progress=False, integrations={}, secret="test" * 8)
+    return GitentialSettings(
+        backend=BackendType.in_memory,
+        executor="process_pool",
+        show_progress=False,
+        integrations={},
+        secret="test" * 8,
+    )
