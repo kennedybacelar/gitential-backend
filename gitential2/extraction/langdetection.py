@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 import os
 from gitential2.datatypes.extraction import Langtype
 
@@ -11,16 +11,16 @@ def detect_lang(
     is_binary: bool = False,
     commit_id: Optional[str] = None,
     repo_path: Optional[Path] = None,
-) -> (str, Langtype):
+) -> Tuple[str, Langtype]:
 
     name, ext = os.path.basename(file_path), os.path.splitext(file_path)[1]
-    match = DEFAULT_FILENAME_INDEX.get(name, None)
-    if match is not None:
-        return (match[0][0], Langtype(match[0][1]))
+    matched_by_name = DEFAULT_FILENAME_INDEX.get(name, None)
+    if matched_by_name is not None:
+        return (matched_by_name[0][0], Langtype(matched_by_name[0][1]))
 
-    match = DEFAULT_EXTENSION_INDEX.get(ext, None)
-    if match is not None:
-        return (match[0][0], Langtype(match[0][1]))
+    matched_by_ext = DEFAULT_EXTENSION_INDEX.get(ext, None)
+    if matched_by_ext is not None:
+        return (matched_by_ext[0][0], Langtype(matched_by_ext[0][1]))
 
     return ("unknown", Langtype.UNKNOWN)
 

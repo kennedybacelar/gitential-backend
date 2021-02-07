@@ -1,4 +1,3 @@
-from typing import Optional
 from fastapi import APIRouter
 from fastapi import Request
 
@@ -8,18 +7,39 @@ router = APIRouter()
 
 
 @router.get("/session")
-async def session():
-    return {}
-    return {
-        "user_id": 2090,
-        "login": "gitential-user",
-        "github_id": 15088218,
-        "bitbucket_id": None,
-        "vsts_id": None,
-        "private": True,
-        "tc_consent_accepted_at": "2020-03-20",
-        "marketing_consent_accepted": True,
-    }
+async def session(request: Request):
+    current_user = request.session.get("current_user")
+    print("current_user:", current_user)
+    if current_user:
+        return {
+            "user_id": current_user["id"],
+            "login": current_user["login"],
+            # "github_id": 15088218,
+            # "bitbucket_id": None,
+            # "vsts_id": None,
+            "private": True,
+            "tc_consent_accepted_at": "2020-03-20",
+            "marketing_consent_accepted": True,
+        }
+    else:
+        return {}
+
+    # print(request.session)
+    # for k, v in request.session.items():
+    #     print(k, v)
+
+    # if request.session.get("current_user"):
+    #     return {
+    #         "user_id": 2090,
+    #         "login": "gitential-user",
+    #         "github_id": 15088218,
+    #         "bitbucket_id": None,
+    #         "vsts_id": None,
+    #         "private": True,
+    #         "tc_consent_accepted_at": "2020-03-20",
+    #         "marketing_consent_accepted": True,
+    #     }
+    # return {}
 
 
 @router.get("/license-check")
@@ -58,7 +78,7 @@ def configuration(request: Request):
                 "login_text": settings.login_text or f"Login with {name}",
                 "signup_text": settings.signup_text or f"Sign up with {name}",
                 "type": settings.type_,
-                "url": request.url_for("auth", backend=name),
+                "url": request.url_for("login", backend=name),
             }
     return {
         "license": {
@@ -74,23 +94,23 @@ def configuration(request: Request):
     }
 
 
-"""
-{
-    "env": "prod",
-    "url": "https://gitential.com",
-    "backend": "https://api.gitential.com",
-    "socketUrl": "wss://api.gitential.com",
-    "debug": false,
-    "repo_size_limit": 1048576,
-    "stripe_key": "pk_live_G3a4sySJamlnyWYMgxwbTyI900QkPl8Poe",
+# """
+# {
+#     "env": "prod",
+#     "url": "https://gitential.com",
+#     "backend": "https://api.gitential.com",
+#     "socketUrl": "wss://api.gitential.com",
+#     "debug": false,
+#     "repo_size_limit": 1048576,
+#     "stripe_key": "pk_live_G3a4sySJamlnyWYMgxwbTyI900QkPl8Poe",
 
-    "demo_url": "https://app.gitential.com/demo/accounts/2155",
+#     "demo_url": "https://app.gitential.com/demo/accounts/2155",
 
-    "legal": {
-        "terms_date": "2020-03-20",
-        "cookies_date": "2020-03-20",
-        "eula_date": "2020-03-20",
-        "privacy_date": "2020-04-10"
-    }
-}
-"""
+#     "legal": {
+#         "terms_date": "2020-03-20",
+#         "cookies_date": "2020-03-20",
+#         "eula_date": "2020-03-20",
+#         "privacy_date": "2020-04-10"
+#     }
+# }
+# """

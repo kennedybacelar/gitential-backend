@@ -1,17 +1,18 @@
-from typing import ClassVar
+from typing import Callable
 from gitential2.settings import IntegrationType, GitentialSettings
 from .gitlab import GitlabIntegration
 from .github import GithubIntegration
 from .linkedin import LinkedinIntegration
 
 
-def integration_type_to_class(type_: IntegrationType) -> ClassVar:
+def integration_type_to_class(type_: IntegrationType) -> Callable:
     if type_ == IntegrationType.gitlab:
         return GitlabIntegration
     if type_ == IntegrationType.github:
         return GithubIntegration
     if type_ == IntegrationType.linkedin:
         return LinkedinIntegration
+    raise ValueError("Invalid integration")
 
 
 def init_integrations(settings: GitentialSettings):

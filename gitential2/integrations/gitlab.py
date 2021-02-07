@@ -1,14 +1,7 @@
+from typing import Optional
 from gitential2.datatypes import UserInfoCreate
 
 from .base import BaseIntegration, OAuthLoginMixin
-
-# from typing import List
-# from gitential2.datatypes.repositories import GitRepository
-# from .common import RepositorySource
-
-
-# class Credential:
-#     pass
 
 
 class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
@@ -26,7 +19,6 @@ class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
             "access_token_url": self.token_url,
             "authorize_url": self.authorize_url,
             "userinfo_endpoint": "user",
-            # "userinfo_compliance_fix": normalize_userinfo,
             "client_kwargs": {"scope": "api read_repository email read_user"},
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
@@ -53,10 +45,11 @@ class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
         )
 
     def list_available_private_repositories(self, token, update_token):
-        def _get_next_link(link_header):
+        def _get_next_link(link_header) -> Optional[str]:
             link, rel = link_header.split(";")
             if "next" in rel.lower():
                 return link.strip("<>")
+            return None
 
         def _keyset_pagination(client, starting_url, acc=None):
             acc = acc or []
@@ -86,53 +79,53 @@ class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
         return [_project_dict(p) for p in projects]
 
 
-"""
-example_result = {
-    "token": {
-        "access_token": "ada51140982179da9c24016cad52c69004eab4c762035a984fe9ce261a44d060",
-        "token_type": "Bearer",
-        "refresh_token": "ac57d2fe49691b823d2a38b074066bbefffecfa54ef08e0e5e755b5f05437ed9",
-        "scope": "read_user",
-        "created_at": 1611422247,
-    },
-    "user_info": {
-        "id": 2,
-        "name": "Laszlo Andrasi",
-        "username": "laco",
-        "state": "active",
-        "avatar_url": "https://secure.gravatar.com/avatar/9846a4a493c991ae8c71384192c804f4?s=80&d=identicon",
-        "web_url": "https://gitlab.ops.gitential.com/laco",
-        "created_at": "2021-01-09T15:00:07.133Z",
-        "bio": "",
-        "bio_html": "",
-        "location": null,
-        "public_email": "",
-        "skype": "",
-        "linkedin": "",
-        "twitter": "",
-        "website_url": "",
-        "organization": null,
-        "job_title": "",
-        "work_information": null,
-        "last_sign_in_at": "2021-01-19T17:07:38.429Z",
-        "confirmed_at": "2021-01-09T15:00:06.827Z",
-        "last_activity_on": "2021-01-23",
-        "email": "laszlo.andrasi@gitential.com",
-        "theme_id": 1,
-        "color_scheme_id": 1,
-        "projects_limit": 100000,
-        "current_sign_in_at": "2021-01-23T13:14:13.329Z",
-        "identities": [],
-        "can_create_group": true,
-        "can_create_project": true,
-        "two_factor_enabled": false,
-        "external": false,
-        "private_profile": false,
-        "shared_runners_minutes_limit": null,
-        "extra_shared_runners_minutes_limit": null,
-    },
-}
-"""
+# """
+# example_result = {
+#     "token": {
+#         "access_token": "ada51140982179da9c24016cad52c69004eab4c762035a984fe9ce261a44d060",
+#         "token_type": "Bearer",
+#         "refresh_token": "ac57d2fe49691b823d2a38b074066bbefffecfa54ef08e0e5e755b5f05437ed9",
+#         "scope": "read_user",
+#         "created_at": 1611422247,
+#     },
+#     "user_info": {
+#         "id": 2,
+#         "name": "Laszlo Andrasi",
+#         "username": "laco",
+#         "state": "active",
+#         "avatar_url": "https://secure.gravatar.com/avatar/9846a4a493c991ae8c71384192c804f4?s=80&d=identicon",
+#         "web_url": "https://gitlab.ops.gitential.com/laco",
+#         "created_at": "2021-01-09T15:00:07.133Z",
+#         "bio": "",
+#         "bio_html": "",
+#         "location": null,
+#         "public_email": "",
+#         "skype": "",
+#         "linkedin": "",
+#         "twitter": "",
+#         "website_url": "",
+#         "organization": null,
+#         "job_title": "",
+#         "work_information": null,
+#         "last_sign_in_at": "2021-01-19T17:07:38.429Z",
+#         "confirmed_at": "2021-01-09T15:00:06.827Z",
+#         "last_activity_on": "2021-01-23",
+#         "email": "laszlo.andrasi@gitential.com",
+#         "theme_id": 1,
+#         "color_scheme_id": 1,
+#         "projects_limit": 100000,
+#         "current_sign_in_at": "2021-01-23T13:14:13.329Z",
+#         "identities": [],
+#         "can_create_group": true,
+#         "can_create_project": true,
+#         "two_factor_enabled": false,
+#         "external": false,
+#         "private_profile": false,
+#         "shared_runners_minutes_limit": null,
+#         "extra_shared_runners_minutes_limit": null,
+#     },
+# }
+# """
 
 # class GitLabSource(RepositorySource):
 #     def authentication_url(self, frontend_url):

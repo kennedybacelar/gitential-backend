@@ -1,14 +1,17 @@
+# pylint: skip-file
 import datetime as dt
-from typing import List, Optional
+from uuid import UUID
+from asyncio import sleep
+from typing import List, Optional, Union
+
 from fastapi import APIRouter, Query, WebSocket
 from pydantic import BaseModel
-from asyncio import sleep
 
 router = APIRouter(tags=["projects"])
 
 
 @router.get("/workspaces/{workspace_id}/projects")
-async def workspace_projects(workspace_id: int):
+async def workspace_projects(workspace_id: Union[int, UUID]):
     return [
         {
             "id": 2496,
@@ -67,19 +70,19 @@ async def create_project(project: CreateProjectRequest):
 
 
 @router.put("/workspaces/{workspace_id}/projects/{project_id}")
-async def update_project(workspace_id: int, project_id: int, project: CreateProjectRequest):
+async def update_project(workspace_id: Union[int, UUID], project_id: int, project: CreateProjectRequest):
     data = project.dict()
     data["id"] = project_id
     return data
 
 
 @router.delete("/workspaces/{workspace_id}/projects/{project_id}")
-async def delete_project(workspace_id: int, project_id: int):
+async def delete_project(workspace_id: Union[int, UUID], project_id: int):
     return {}
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}")
-async def get_project(workspace_id: int, project_id: int):
+async def get_project(workspace_id: Union[int, UUID], project_id: int):
     return {
         "id": project_id,
         "name": "Project1 Example",
@@ -92,30 +95,31 @@ async def get_project(workspace_id: int, project_id: int):
 
 
 @router.websocket("/workspaces/{workspace_id}/projects/{project_id}/progress")
-async def websocket_endpoint(websocket: WebSocket, workspace_id: int, project_id: int):
-    data_template = {
-        "done": False,
-        "id": project_id,
-        "name": "Szia Balazs",
-        "status": "pending",
-        "repos": [
-            {
-                "clone": 0,
-                "done": False,
-                "error": None,
-                "extract": 0,
-                "id": 844,
-                "name": "react",
-                "persist": 0,
-                "phase": "pending",
-                "status": "pending",
-            }
-        ],
-    }
+async def websocket_endpoint(websocket: WebSocket, workspace_id: Union[int, UUID], project_id: int):
+    def _data_template():
+        return {
+            "done": False,
+            "id": project_id,
+            "name": "Szia Balazs",
+            "status": "pending",
+            "repos": [
+                {
+                    "clone": 0,
+                    "done": False,
+                    "error": None,
+                    "extract": 0,
+                    "id": 844,
+                    "name": "react",
+                    "persist": 0,
+                    "phase": "pending",
+                    "status": "pending",
+                }
+            ],
+        }
 
     await websocket.accept()
     if project_id in [2496, 2507, 2512]:
-        data = data_template
+        data = _data_template()
         data["done"] = True
         data["status"] = "finished"
         data["repos"][0]["done"] = True
@@ -127,14 +131,14 @@ async def websocket_endpoint(websocket: WebSocket, workspace_id: int, project_id
     else:
 
         for i in range(101):
-            data = data_template
+            data = _data_template()
             data["repos"][0]["clone"] = i * 0.01
             data["repos"][0]["phase"] = "clone"
             await websocket.send_json(data)
             await sleep(0.01)
 
         for i in range(101):
-            data = data_template
+            data = _data_template()
             data["repos"][0]["extract"] = i * 0.01
             data["repos"][0]["phase"] = "extract"
             await websocket.send_json(data)
@@ -142,13 +146,13 @@ async def websocket_endpoint(websocket: WebSocket, workspace_id: int, project_id
             await sleep(0.01)
 
         for i in range(101):
-            data = data_template
+            data = _data_template()
             data["repos"][0]["persist"] = i * 0.01
             data["repos"][0]["phase"] = "persist"
             await websocket.send_json(data)
             await sleep(0.01)
 
-        data = data_template
+        data = _data_template()
         data["done"] = True
         data["status"] = "finished"
         data["repos"][0]["phase"] = "done"

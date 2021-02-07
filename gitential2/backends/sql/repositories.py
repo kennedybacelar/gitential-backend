@@ -1,4 +1,4 @@
-from typing import Optional, List, Callable
+from typing import Optional, Callable
 import datetime as dt
 import sqlalchemy as sa
 from sqlalchemy.sql import and_
@@ -19,7 +19,6 @@ from gitential2.datatypes import (
 )
 
 from ..common import (
-    GitentialBackend,
     IdType,
     CreateType,
     UpdateType,

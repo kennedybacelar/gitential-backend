@@ -1,6 +1,6 @@
 from typing import List
-from pydantic.dataclasses import dataclass
 import pathspec
+from pydantic.dataclasses import dataclass
 
 
 @dataclass
@@ -10,6 +10,7 @@ class IgnoreSpec:
     @property
     def spec(self):
         if not hasattr(self, "_spec"):
+            # pylint: disable=attribute-defined-outside-init
             self._spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, self.patterns)
         return self._spec
 
@@ -17,4 +18,4 @@ class IgnoreSpec:
         return self.spec.match_file(filename)
 
 
-default_ignorespec = IgnoreSpec(["vendor/"])
+default_ignorespec = IgnoreSpec(patterns=["vendor/"])

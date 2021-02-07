@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel, constr
+from pydantic import Field
 
 from .common import IDModelMixin, CoreModel, DateTimeModelMixin
 from .repositories import RepositoryCreate, RepositoryPublic
@@ -12,7 +12,7 @@ class ProjectBase(CoreModel):
 
 
 class ProjectCreate(ProjectBase):
-    name: constr(min_length=2, max_length=128)
+    name: str = Field(..., min_length=2, max_length=128)
 
 
 class ProjectCreateWithRepositories(ProjectCreate):

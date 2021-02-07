@@ -61,70 +61,70 @@ class SQLGitentialBackend(GitentialBackend):
         return self._workspaces
 
 
-def get_workspace_metadata():
-    metadata = sa.MetaData()
-    # Extracted Commits
-    extracted_commits = sa.Table(
-        "extracted_commits",
-        metadata,
-        sa.Column("repo_id", sa.Integer()),
-        sa.Column("commit_id", sa.String(40)),
-        sa.Column("atime", sa.DateTime()),
-        sa.Column("aemail", sa.String(128)),
-        sa.Column("aname", sa.String(128)),
-        sa.Column("ctime", sa.DateTime()),
-        sa.Column("cemail", sa.String(128)),
-        sa.Column("cname", sa.String(128)),
-        sa.Column("message", sa.Text()),
-        sa.Column("nparents", sa.Integer()),
-        sa.Column("tree_id", sa.String(40)),
-    )
+# def get_workspace_metadata():
+#     metadata = sa.MetaData()
+#     # Extracted Commits
+#     extracted_commits = sa.Table(
+#         "extracted_commits",
+#         metadata,
+#         sa.Column("repo_id", sa.Integer()),
+#         sa.Column("commit_id", sa.String(40)),
+#         sa.Column("atime", sa.DateTime()),
+#         sa.Column("aemail", sa.String(128)),
+#         sa.Column("aname", sa.String(128)),
+#         sa.Column("ctime", sa.DateTime()),
+#         sa.Column("cemail", sa.String(128)),
+#         sa.Column("cname", sa.String(128)),
+#         sa.Column("message", sa.Text()),
+#         sa.Column("nparents", sa.Integer()),
+#         sa.Column("tree_id", sa.String(40)),
+#     )
 
-    # Extracted Patches
-    extracted_patches = sa.Table(
-        "extracted_patches",
-        metadata,
-        sa.Column("repo_id", sa.Integer()),
-        sa.Column("commit_id", sa.String(40)),
-        sa.Column("parent_commit_id", sa.String(40)),
-        sa.Column("status", sa.String(128)),
-        sa.Column("newpath", sa.String(256)),
-        sa.Column("oldpath", sa.String(256)),
-        sa.Column("newsize", sa.Integer()),
-        sa.Column("oldsize", sa.Integer()),
-        sa.Column("is_binary", sa.Boolean()),
-        sa.Column("lang", sa.String(32)),
-        sa.Column("langtype", sa.String(32)),
-        # Extracted plain metrics
-        sa.Column("loc_i", sa.Integer()),
-        sa.Column("loc_d", sa.Integer()),
-        sa.Column("comp_i", sa.Integer()),
-        sa.Column("comp_d", sa.Integer()),
-        sa.Column("loc_i_std", sa.Integer()),
-        sa.Column("loc_d_std", sa.Integer()),
-        sa.Column("comp_i_std", sa.Integer()),
-        sa.Column("comp_d_std", sa.Integer()),
-        sa.Column("nhunks", sa.Integer()),
-        sa.Column("nrewrites", sa.Integer()),
-        sa.Column("rewrites_loc", sa.Integer()),
-    )
+#     # Extracted Patches
+#     extracted_patches = sa.Table(
+#         "extracted_patches",
+#         metadata,
+#         sa.Column("repo_id", sa.Integer()),
+#         sa.Column("commit_id", sa.String(40)),
+#         sa.Column("parent_commit_id", sa.String(40)),
+#         sa.Column("status", sa.String(128)),
+#         sa.Column("newpath", sa.String(256)),
+#         sa.Column("oldpath", sa.String(256)),
+#         sa.Column("newsize", sa.Integer()),
+#         sa.Column("oldsize", sa.Integer()),
+#         sa.Column("is_binary", sa.Boolean()),
+#         sa.Column("lang", sa.String(32)),
+#         sa.Column("langtype", sa.String(32)),
+#         # Extracted plain metrics
+#         sa.Column("loc_i", sa.Integer()),
+#         sa.Column("loc_d", sa.Integer()),
+#         sa.Column("comp_i", sa.Integer()),
+#         sa.Column("comp_d", sa.Integer()),
+#         sa.Column("loc_i_std", sa.Integer()),
+#         sa.Column("loc_d_std", sa.Integer()),
+#         sa.Column("comp_i_std", sa.Integer()),
+#         sa.Column("comp_d_std", sa.Integer()),
+#         sa.Column("nhunks", sa.Integer()),
+#         sa.Column("nrewrites", sa.Integer()),
+#         sa.Column("rewrites_loc", sa.Integer()),
+#     )
 
-    # Extracted Patch Rewrites
-    extracted_patch_rewrites = sa.Table(
-        "extracted_patch_rewrites",
-        metadata,
-        sa.Column("repo_id", sa.Integer()),
-        sa.Column("commit_id", sa.String(40)),
-        sa.Column("atime", sa.DateTime()),
-        sa.Column("aemail", sa.String(128)),
-        sa.Column("newpath", sa.String(256)),
-        sa.Column("rewritten_atime", sa.DateTime()),
-        sa.Column("rewritten_aemail", sa.String(128)),
-        sa.Column("rewritten_commit_id", sa.String(40)),
-        sa.Column("loc_d", sa.Integer()),
-    )
+#     # Extracted Patch Rewrites
+#     extracted_patch_rewrites = sa.Table(
+#         "extracted_patch_rewrites",
+#         metadata,
+#         sa.Column("repo_id", sa.Integer()),
+#         sa.Column("commit_id", sa.String(40)),
+#         sa.Column("atime", sa.DateTime()),
+#         sa.Column("aemail", sa.String(128)),
+#         sa.Column("newpath", sa.String(256)),
+#         sa.Column("rewritten_atime", sa.DateTime()),
+#         sa.Column("rewritten_aemail", sa.String(128)),
+#         sa.Column("rewritten_commit_id", sa.String(40)),
+#         sa.Column("loc_d", sa.Integer()),
+#     )
 
-    # Calculated Patches
+#     # Calculated Patches
 
-    # Calculated Commits
-    return metadata
+#     # Calculated Commits
+#     return metadata

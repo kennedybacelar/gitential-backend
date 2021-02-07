@@ -5,7 +5,7 @@ from .in_memory import InMemGitentialBackend
 from .sql import SQLGitentialBackend
 
 
-def init_backend(settings: GitentialSettings) -> Optional[GitentialBackend]:
+def init_backend(settings: GitentialSettings) -> GitentialBackend:
     if settings.backend == BackendType.in_memory:
         print("Creating in memory backend")
         return InMemGitentialBackend(settings)
@@ -13,4 +13,4 @@ def init_backend(settings: GitentialSettings) -> Optional[GitentialBackend]:
         print("Creating SQL backend")
         return SQLGitentialBackend(settings)
     else:
-        return None
+        raise ValueError("Cannot initialize backend")

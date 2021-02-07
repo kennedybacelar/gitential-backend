@@ -1,6 +1,6 @@
 # pylint: disable=unsubscriptable-object
 from abc import ABC, abstractmethod
-from typing import Optional, TypeVar, Generic, List, Tuple
+from typing import Optional, TypeVar, Generic
 from pydantic import BaseModel
 from gitential2.settings import GitentialSettings
 from gitential2.datatypes import (

@@ -17,7 +17,7 @@ class Fernet:
 class FernetVault:
     def __init__(self, secret_key: bytes):
         self.f = CryptoFernet(secret_key)
-        self._vault = {}
+        self._vault: dict = {}
 
     def __getitem__(self, key):
         return self._vault.__getitem__(key)

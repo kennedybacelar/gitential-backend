@@ -638,17 +638,13 @@ category = "main"
 description = "Structured Logging for Python"
 name = "structlog"
 optional = false
-python-versions = "*"
-version = "20.1.0"
-
-[package.dependencies]
-six = "*"
+python-versions = ">=3.6"
+version = "20.2.0"
 
 [package.extras]
-azure-pipelines = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest (>=3.3.0)", "simplejson", "pytest-azurepipelines", "python-rapidjson", "pytest-asyncio"]
-dev = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest (>=3.3.0)", "simplejson", "sphinx", "twisted", "pre-commit", "python-rapidjson", "pytest-asyncio"]
-docs = ["sphinx", "twisted"]
-tests = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest (>=3.3.0)", "simplejson", "python-rapidjson", "pytest-asyncio"]
+dev = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest-asyncio", "pytest-randomly", "pytest (>=6.0)", "simplejson", "furo", "sphinx", "sphinx-toolbox", "twisted", "pre-commit"]
+docs = ["furo", "sphinx", "sphinx-toolbox", "twisted"]
+tests = ["coverage", "freezegun (>=0.2.8)", "pretend", "pytest-asyncio", "pytest-randomly", "pytest (>=6.0)", "simplejson"]
 
 [[package]]
 category = "dev"
@@ -1251,8 +1247,8 @@ starlette = [
     {file = "starlette-0.13.6.tar.gz", hash = "sha256:ebe8ee08d9be96a3c9f31b2cb2a24dbdf845247b745664bd8a3f9bd0c977fdbc"},
 ]
 structlog = [
-    {file = "structlog-20.1.0-py2.py3-none-any.whl", hash = "sha256:8a672be150547a93d90a7d74229a29e765be05bd156a35cdcc527ebf68e9af92"},
-    {file = "structlog-20.1.0.tar.gz", hash = "sha256:7a48375db6274ed1d0ae6123c486472aa1d0890b08d314d2b016f3aa7f35990b"},
+    {file = "structlog-20.2.0-py2.py3-none-any.whl", hash = "sha256:33dd6bd5f49355e52c1c61bb6a4f20d0b48ce0328cc4a45fe872d38b97a05ccd"},
+    {file = "structlog-20.2.0.tar.gz", hash = "sha256:af79dfa547d104af8d60f86eac12fb54825f54a46bc998e4504ef66177103174"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},

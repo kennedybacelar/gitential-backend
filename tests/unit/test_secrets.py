@@ -1,8 +1,8 @@
-import pytest
-from cryptography.fernet import Fernet
-from gitential2.secrets import FernetVault
+from cryptography.fernet import Fernet as CryptoFernet
+from gitential2.secrets import FernetVault, Fernet
+from gitential2.settings import GitentialSettings
 
-TEST_FERNET_KEY = Fernet.generate_key()
+TEST_FERNET_KEY = CryptoFernet.generate_key()
 
 
 def test_vault_encrypt_string():
@@ -28,3 +28,13 @@ def test_vault_save_and_load(tmp_path):
     new_vault.load(tmp_path / "vault.json")
     assert new_vault["foo"] == "bar"
     assert new_vault["baz"] == "bak"
+
+
+def test_fernet():
+    settings = GitentialSettings(secret="abcdefghabcdefghabcdefghabcdefgh", integrations={})
+    f = Fernet(settings)
+    sample_string = "árvíztűrő tükörfúrógép"
+    encrypted_sample_string = f.encrypt_string(sample_string)
+    assert encrypted_sample_string != sample_string
+    decrypted_sample_string = f.decrypt_string(encrypted_sample_string)
+    assert decrypted_sample_string == sample_string

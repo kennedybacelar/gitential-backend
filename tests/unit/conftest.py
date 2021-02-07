@@ -30,4 +30,4 @@ def secrets():
 
 @pytest.fixture
 def settings():
-    return GitentialSettings(executor="process_pool", show_progress=False, repository_sources={})
+    return GitentialSettings(executor="process_pool", show_progress=False, integrations={}, secret="test" * 8)

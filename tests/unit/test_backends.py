@@ -7,7 +7,7 @@ def test_sql_backend():
     settings = GitentialSettings(
         backend="sql",
         backend_connection="sqlite:///:memory:",
-        fernet_key="lhym9nQ8fSq2jr1Aydewq9_6G0aYSZtpQlngByj90rY=",
+        secret="test" * 8,
         integrations={},
     )
     backend = SQLGitentialBackend(settings)

@@ -1,4 +1,6 @@
-from typing import Optional, List
+import datetime as dt
+from threading import Lock
+from typing import Optional, Callable
 from gitential2.settings import GitentialSettings
 from gitential2.datatypes import (
     UserCreate,
@@ -10,7 +12,11 @@ from gitential2.datatypes import (
     UserInfoCreate,
     UserInfoUpdate,
     UserInfoInDB,
+    CredentialCreate,
+    CredentialUpdate,
+    CredentialInDB,
 )
+
 from .common import (
     BaseRepository,
     IdType,
@@ -20,44 +26,72 @@ from .common import (
     UserRepository,
     UserInfoRepository,
     GitentialBackend,
+    WorkspaceRepository,
+    CredentialRepository,
 )
 
 
 class InMemRepository(
     BaseRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
-    def __init__(self):
-        self._state = {}
+    def __init__(self, in_db_cls: Callable[..., InDBType]):
+        self._state: dict = {}
         self._counter = 1
+        self._in_db_cls = in_db_cls
+        self._counter_lock = Lock()
 
     def get(self, id_: IdType) -> Optional[InDBType]:
         return self._state.get(id_)
 
     def create(self, obj: CreateType) -> InDBType:
-        self._state[self._counter] = obj
-        return self._state[self._counter]
-
-    def create_or_update(self, obj: CreateType) -> InDBType:
-        self._state[self._counter] = obj
-        return self._state[self._counter]
+        values = obj.dict()
+        id_ = self._new_id()
+        values["id"] = id_
+        self._state[id_] = self._in_db_cls(**values)
+        return self._state[id_]
 
     def update(self, id_: IdType, obj: UpdateType) -> InDBType:
-        pass
+        update_dict = obj.dict(exclude_unset=True)
+        original_obj = self._state[id_]
+        if hasattr(original_obj, "updated_at") and "updated_at" not in update_dict:
+            update_dict["updated_at"] = dt.datetime.utcnow()
+
+        updated_obj = original_obj.copy(update=update_dict)
+        self._state[id_] = updated_obj
+        return self._state[id_]
 
     def delete(self, id_: IdType) -> int:
-        return 0
+        try:
+            del self._state[id_]
+            return 1
+        except KeyError:
+            return 0
 
-    def select(self, **filters) -> List[InDBType]:
-        return []
+    def _new_id(self):
+        with self._counter_lock:
+            ret = self._counter
+            self._counter += 1
+        return ret
 
 
-class InMemUserRepository(UserRepository, InMemRepository[IdType, UserCreate, UserUpdate, UserInDB]):
+class InMemUserRepository(UserRepository, InMemRepository[int, UserCreate, UserUpdate, UserInDB]):
     def get_by_email(self, email: str) -> Optional[UserInDB]:
         return None
 
 
-class InMemUserInfoRepository(
-    UserInfoRepository, InMemRepository[IdType, UserInfoCreate, UserInfoUpdate, UserInfoInDB]
+class InMemUserInfoRepository(UserInfoRepository, InMemRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
+    def get_by_sub_and_integration(self, sub: str, integration_name: str) -> Optional[UserInfoInDB]:
+        return None
+
+
+class InMemWorkspaceRepository(
+    WorkspaceRepository, InMemRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]
+):
+    pass
+
+
+class InMemCredentialRepository(
+    CredentialRepository, InMemRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
 ):
     pass
 
@@ -65,8 +99,10 @@ class InMemUserInfoRepository(
 class InMemGitentialBackend(GitentialBackend):
     def __init__(self, settings: GitentialSettings):
         super().__init__(settings)
-        self._users: UserRepository = InMemUserRepository()
-        self._user_infos: UserInfoRepository = InMemUserInfoRepository()
+        self._users: UserRepository = InMemUserRepository(in_db_cls=UserInDB)
+        self._user_infos: UserInfoRepository = InMemUserInfoRepository(in_db_cls=UserInfoInDB)
+        self._workspaces: WorkspaceRepository = InMemWorkspaceRepository(in_db_cls=WorkspaceInDB)
+        self._credentials: CredentialRepository = InMemCredentialRepository(in_db_cls=CredentialInDB)
 
     @property
     def users(self) -> UserRepository:
@@ -75,6 +111,14 @@ class InMemGitentialBackend(GitentialBackend):
     @property
     def user_infos(self) -> UserInfoRepository:
         return self._user_infos
+
+    @property
+    def workspaces(self) -> WorkspaceRepository:
+        return self._workspaces
+
+    @property
+    def credentials(self) -> CredentialRepository:
+        return self._credentials
 
 
 # from typing import Optional
