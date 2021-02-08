@@ -8,7 +8,7 @@ def test_handle_auth_empty_database_create_new_user(minimal_settings, inmem_back
     )
     result = gitential.handle_authorize(
         integration_name="dummy",
-        token={},
+        token={"access_token": "access_token"},
         user_info={"id": 12345, "name": "Mr User Example", "username": "user", "email": "user@example.com"},
     )
     assert result["user"].email == "user@example.com"

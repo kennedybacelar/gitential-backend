@@ -1,6 +1,6 @@
 import datetime as dt
 from threading import Lock
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, cast
 from gitential2.settings import GitentialSettings
 from gitential2.datatypes import (
     UserCreate,
@@ -106,7 +106,13 @@ class InMemWorkspacePermissionRepository(
 class InMemCredentialRepository(
     CredentialRepository, InMemRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
 ):
-    pass
+    def get_by_user_and_integration(self, owner_id: int, integration_name: str) -> Optional[CredentialInDB]:
+        found_credentials = [
+            cast(CredentialInDB, item)
+            for item in self._state.values()
+            if item.owner_id == owner_id and item.integration_name == integration_name
+        ]
+        return found_credentials[0] if found_credentials else None
 
 
 class InMemGitentialBackend(GitentialBackend):

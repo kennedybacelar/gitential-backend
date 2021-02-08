@@ -56,6 +56,7 @@ credentials_table = sa.Table(
     sa.Column("public_key", sa.LargeBinary, nullable=True),
     sa.Column("private_key", sa.LargeBinary, nullable=True),
     sa.Column("passphrase", sa.LargeBinary, nullable=True),
+    sa.Column("expires_at", sa.DateTime, nullable=True),
     sa.Column("extra", sa.JSON, nullable=True),
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),

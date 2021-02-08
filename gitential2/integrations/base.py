@@ -9,6 +9,7 @@ class BaseIntegration:
     def __init__(self, name, settings: IntegrationSettings):
         self.name = name
         self.settings = settings
+        self.integration_type = settings.type_
 
     @property
     def is_oauth(self) -> bool:

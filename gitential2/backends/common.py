@@ -60,7 +60,9 @@ class UserInfoRepository(BaseRepository[int, UserInfoCreate, UserInfoUpdate, Use
 
 
 class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]):
-    pass
+    @abstractmethod
+    def get_by_user_and_integration(self, owner_id: int, integration_name: str) -> Optional[CredentialInDB]:
+        pass
 
 
 class WorkspaceRepository(BaseRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):

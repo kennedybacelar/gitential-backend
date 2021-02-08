@@ -98,7 +98,13 @@ class SQLUserInfoRepository(UserInfoRepository, SQLRepository[int, UserInfoCreat
 class SQLCredentialRepository(
     CredentialRepository, SQLRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
 ):
-    pass
+    def get_by_user_and_integration(self, owner_id: int, integration_name: str) -> Optional[CredentialInDB]:
+        query = self.table.select().where(
+            and_(self.table.c.owner_id == owner_id, self.table.c.integration_name == integration_name)
+        )
+        result = self._execute_query(query)
+        row = result.fetchone()
+        return CredentialInDB(**row) if row else None
 
 
 class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):

@@ -15,6 +15,7 @@ from gitential2.datatypes import (
     UserInfoUpdate,
     UserInfoCreate,
     CredentialCreate,
+    CredentialUpdate,
     WorkspacePublic,
     WorkspacePermissionPublic,
     WorkspaceWithPermission,
@@ -40,16 +41,20 @@ class Gitential:
 
     def handle_authorize(self, integration_name: str, token, user_info: dict, current_user: Optional[UserInDB] = None):
         integration = self.integrations[integration_name]
+
         # normalize the userinfo
         normalized_userinfo: UserInfoCreate = integration.normalize_userinfo(user_info, token=token)
+
         # update or create a user and the proper user_info in backend
         user, user_info, is_new_user = self._create_or_update_user_and_user_info(normalized_userinfo, current_user)
-        # tbd: update or create credentials based on integration and user
+
+        # update or create credentials based on integration and user
+        self._create_or_update_credential_from(user, integration_name, integration.integration_type, token)
 
         # Create workspace if new_user
         if is_new_user:
             self._create_primary_workspace_for(user)
-        return {"ok": True, "user": user}
+        return {"ok": True, "user": user, "user_info": user_info, "is_new_user": is_new_user}
 
     def _create_or_update_user_and_user_info(
         self, normalized_userinfo: UserInfoCreate, current_user: Optional[UserInDB] = None
@@ -70,6 +75,25 @@ class Gitential:
             user_info_data.setdefault("user_id", user.id)
             user_info = self.backend.user_infos.create(normalized_userinfo.copy(update={"user_id": user.id}))
             return user, user_info, current_user is None
+
+    def _create_or_update_credential_from(
+        self, user: UserInDB, integration_name: str, integration_type: str, token: dict
+    ):
+        new_credential = CredentialCreate.from_token(
+            token=token,
+            fernet=self.fernet,
+            owner_id=user.id,
+            integration_name=integration_name,
+            integration_type=integration_type,
+        )
+
+        existing_credential = self.backend.credentials.get_by_user_and_integration(
+            owner_id=user.id, integration_name=integration_name
+        )
+        if existing_credential:
+            self.backend.credentials.update(id_=existing_credential.id, obj=CredentialUpdate(**new_credential.dict()))
+        else:
+            self.backend.credentials.create(new_credential)
 
     def _create_primary_workspace_for(self, user: UserInDB):
         workspace = WorkspaceCreate(name=f"{user.login}'s workspace")
