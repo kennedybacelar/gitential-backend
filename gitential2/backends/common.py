@@ -1,6 +1,6 @@
 # pylint: disable=unsubscriptable-object
 from abc import ABC, abstractmethod
-from typing import Optional, TypeVar, Generic
+from typing import Optional, TypeVar, Generic, List
 from pydantic import BaseModel
 from gitential2.settings import GitentialSettings
 from gitential2.datatypes import (
@@ -16,6 +16,10 @@ from gitential2.datatypes import (
     CredentialCreate,
     CredentialUpdate,
     CredentialInDB,
+    WorkspacePermissionCreate,
+    WorkspacePermissionUpdate,
+    WorkspacePermissionInDB,
+    WorkspaceWithPermission,
 )
 
 
@@ -63,6 +67,14 @@ class WorkspaceRepository(BaseRepository[int, WorkspaceCreate, WorkspaceUpdate, 
     pass
 
 
+class WorkspacePermissionRepository(
+    BaseRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB]
+):
+    @abstractmethod
+    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+        pass
+
+
 class GitentialBackend(ABC):
     def __init__(self, settings: GitentialSettings):
         self.settings = settings
@@ -85,4 +97,13 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def workspaces(self) -> WorkspaceRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def workspace_permissions(self) -> WorkspacePermissionRepository:
+        pass
+
+    @abstractmethod
+    def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
         pass

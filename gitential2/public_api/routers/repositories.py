@@ -7,7 +7,7 @@ router = APIRouter(tags=["repositories"])
 
 
 @router.get("/workspaces/{workspace_id}/available-repos")
-async def available_repos(workspace_id: Union[int, UUID]):
+async def available_repos(workspace_id: int):
     # már hozzáadott ssh repokat
     # gitlab, github, stb. api kéréséből származó repo-kat
     return available_repos_data

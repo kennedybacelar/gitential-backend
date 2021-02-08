@@ -2,7 +2,6 @@ from typing import Optional
 from structlog import get_logger
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 

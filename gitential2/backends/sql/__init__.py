@@ -2,7 +2,7 @@ import uuid
 import datetime as dt
 from typing import Optional, List, Type
 import sqlalchemy as sa
-from sqlalchemy.sql import and_
+from sqlalchemy.sql import and_, select
 from sqlalchemy_utils.types import UUIDType
 from gitential2.settings import GitentialSettings
 
@@ -11,6 +11,8 @@ from gitential2.datatypes import (
     UserInfoInDB,
     CredentialInDB,
     WorkspaceInDB,
+    WorkspacePermissionInDB,
+    WorkspaceWithPermission,
 )
 
 from ..common import (
@@ -24,10 +26,24 @@ from ..common import (
     UserInfoRepository,
     CredentialRepository,
     WorkspaceRepository,
+    WorkspacePermissionRepository,
 )
 
-from .tables import users_table, user_infos_table, credentials_table, workspaces_table, metadata
-from .repositories import SQLUserRepository, SQLUserInfoRepository, SQLCredentialRepository, SQLWorkspaceRepository
+from .tables import (
+    users_table,
+    user_infos_table,
+    credentials_table,
+    workspaces_table,
+    workspace_permissions_table,
+    metadata,
+)
+from .repositories import (
+    SQLUserRepository,
+    SQLUserInfoRepository,
+    SQLCredentialRepository,
+    SQLWorkspaceRepository,
+    SQLWorkspacePermissionRepository,
+)
 
 
 class SQLGitentialBackend(GitentialBackend):
@@ -43,6 +59,9 @@ class SQLGitentialBackend(GitentialBackend):
             table=credentials_table, engine=self._engine, in_db_cls=CredentialInDB
         )
         self._workspaces = SQLWorkspaceRepository(table=workspaces_table, engine=self._engine, in_db_cls=WorkspaceInDB)
+        self._workspace_permissions = SQLWorkspacePermissionRepository(
+            table=workspace_permissions_table, engine=self._engine, in_db_cls=WorkspacePermissionInDB
+        )
 
     @property
     def users(self) -> UserRepository:
@@ -59,6 +78,36 @@ class SQLGitentialBackend(GitentialBackend):
     @property
     def workspaces(self) -> WorkspaceRepository:
         return self._workspaces
+
+    @property
+    def workspace_permissions(self) -> WorkspacePermissionRepository:
+        return self._workspace_permissions
+
+    def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
+        query = (
+            select(
+                [
+                    workspaces_table.c.id,
+                    workspaces_table.c.name,
+                    workspace_permissions_table.c.role,
+                    workspace_permissions_table.c.primary,
+                    workspace_permissions_table.c.user_id,
+                ]
+            )
+            .select_from(
+                workspace_permissions_table.join(
+                    workspaces_table, workspace_permissions_table.c.workspace_id == workspaces_table.c.id
+                )
+            )
+            .where(workspace_permissions_table.c.user_id == user_id)
+        )
+        result = self._execute_query(query)
+        return [WorkspaceWithPermission(**row) for row in result.fetchall()]
+
+    def _execute_query(self, query):
+        with self._engine.connect() as connection:
+            result = connection.execute(query)
+            return result
 
 
 # def get_workspace_metadata():

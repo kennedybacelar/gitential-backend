@@ -1,4 +1,4 @@
-from typing import Optional, Callable
+from typing import Optional, Callable, List
 import datetime as dt
 import sqlalchemy as sa
 from sqlalchemy.sql import and_
@@ -16,6 +16,9 @@ from gitential2.datatypes import (
     WorkspaceCreate,
     WorkspaceUpdate,
     WorkspaceInDB,
+    WorkspacePermissionCreate,
+    WorkspacePermissionUpdate,
+    WorkspacePermissionInDB,
 )
 
 from ..common import (
@@ -28,6 +31,7 @@ from ..common import (
     UserInfoRepository,
     CredentialRepository,
     WorkspaceRepository,
+    WorkspacePermissionRepository,
 )
 
 
@@ -99,3 +103,13 @@ class SQLCredentialRepository(
 
 class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
     pass
+
+
+class SQLWorkspacePermissionRepository(
+    WorkspacePermissionRepository,
+    SQLRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB],
+):
+    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+        query = self.table.select().where(self.table.c.user_id == user_id)
+        result = self._execute_query(query)
+        return [WorkspacePermissionInDB(**row) for row in result.fetchall()]

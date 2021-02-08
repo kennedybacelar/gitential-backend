@@ -1,5 +1,6 @@
 import datetime as dt
 import sqlalchemy as sa
+from gitential2.datatypes import WorkspaceRole
 
 metadata = sa.MetaData()
 
@@ -71,11 +72,12 @@ workspaces_table = sa.Table(
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
 )
 
-workspace_roles = sa.Table(
-    "workspace_roles",
+workspace_permissions_table = sa.Table(
+    "workspace_permissions",
     metadata,
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
     sa.Column("workspace_id", sa.Integer, sa.ForeignKey("workspaces.id"), nullable=False),
-    sa.Column("role", sa.Integer, default=1),
+    sa.Column("role", sa.Enum(WorkspaceRole), default=WorkspaceRole.owner),
+    sa.Column("primary", sa.Boolean, default=False),
 )

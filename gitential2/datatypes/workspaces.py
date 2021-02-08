@@ -4,12 +4,11 @@ from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 class WorkspaceBase(ExtraFieldMixin, CoreModel):
     name: Optional[str] = None
-    owner_id: Optional[int] = None
+    created_by: Optional[int] = None
 
 
 class WorkspaceCreate(WorkspaceBase):
     name: str
-    owner_id: int
 
 
 class WorkspaceUpdate(WorkspaceBase):
@@ -17,7 +16,8 @@ class WorkspaceUpdate(WorkspaceBase):
 
 
 class WorkspaceInDB(IDModelMixin, DateTimeModelMixin, WorkspaceBase):
-    pass
+    name: str
+    created_by: int
 
 
 class WorkspacePublic(IDModelMixin, DateTimeModelMixin, WorkspaceBase):

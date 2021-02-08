@@ -18,6 +18,8 @@ from gitential2.datatypes import (
     WorkspacePublic,
     WorkspacePermissionPublic,
     WorkspaceWithPermission,
+    WorkspaceCreate,
+    WorkspacePermissionCreate,
     WorkspaceRole,
 )
 
@@ -41,8 +43,12 @@ class Gitential:
         # normalize the userinfo
         normalized_userinfo: UserInfoCreate = integration.normalize_userinfo(user_info, token=token)
         # update or create a user and the proper user_info in backend
-        user, user_info = self._create_or_update_user_and_user_info(normalized_userinfo, current_user)
-        # update or create credentials based on integration and user
+        user, user_info, is_new_user = self._create_or_update_user_and_user_info(normalized_userinfo, current_user)
+        # tbd: update or create credentials based on integration and user
+
+        # Create workspace if new_user
+        if is_new_user:
+            self._create_primary_workspace_for(user)
         return {"ok": True, "user": user}
 
     def _create_or_update_user_and_user_info(
@@ -57,13 +63,31 @@ class Gitential:
 
             user = self.backend.users.get(existing_userinfo.user_id)
             user_info = self.backend.user_infos.update(existing_userinfo.id, cast(UserInfoUpdate, normalized_userinfo))
-            return user, user_info
+            return user, user_info, False
         else:
             user = current_user or self.backend.users.create(UserCreate.from_user_info(normalized_userinfo))
             user_info_data = normalized_userinfo.dict(exclude_none=True)
             user_info_data.setdefault("user_id", user.id)
             user_info = self.backend.user_infos.create(normalized_userinfo.copy(update={"user_id": user.id}))
-            return user, user_info
+            return user, user_info, current_user is None
+
+    def _create_primary_workspace_for(self, user: UserInDB):
+        workspace = WorkspaceCreate(name=f"{user.login}'s workspace")
+        return self.create_workspace(workspace, current_user=user, primary=True)
+
+    def create_workspace(self, workspace: WorkspaceCreate, current_user: UserInDB, primary=False):
+        workspace.created_by = current_user.id
+
+        workspace_in_db = self.backend.workspaces.create(workspace)
+        self.backend.workspace_permissions.create(
+            WorkspacePermissionCreate(
+                workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
+            )
+        )
+        return workspace_in_db
+
+    def get_accessible_workspaces(self, current_user: UserInDB) -> List[WorkspaceWithPermission]:
+        return self.backend.get_accessible_workspaces(current_user.id)
 
 
 #         # def _get_or_create_user(current_user, normalize_userinfo):

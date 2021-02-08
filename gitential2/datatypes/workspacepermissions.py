@@ -25,7 +25,8 @@ class WorkspacePermissionUpdate(WorkspacePermissionBase):
 
 
 class WorkspacePermissionInDB(IDModelMixin, DateTimeModelMixin, WorkspacePermissionBase):
-    pass
+    user_id: int
+    workspace_id: int
 
 
 class WorkspacePermissionPublic(IDModelMixin, DateTimeModelMixin, WorkspacePermissionBase):

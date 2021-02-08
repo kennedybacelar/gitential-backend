@@ -1,6 +1,6 @@
 import datetime as dt
 from threading import Lock
-from typing import Optional, Callable
+from typing import Optional, Callable, List
 from gitential2.settings import GitentialSettings
 from gitential2.datatypes import (
     UserCreate,
@@ -15,6 +15,10 @@ from gitential2.datatypes import (
     CredentialCreate,
     CredentialUpdate,
     CredentialInDB,
+    WorkspacePermissionCreate,
+    WorkspacePermissionUpdate,
+    WorkspacePermissionInDB,
+    WorkspaceWithPermission,
 )
 
 from .common import (
@@ -27,6 +31,7 @@ from .common import (
     UserInfoRepository,
     GitentialBackend,
     WorkspaceRepository,
+    WorkspacePermissionRepository,
     CredentialRepository,
 )
 
@@ -90,6 +95,14 @@ class InMemWorkspaceRepository(
     pass
 
 
+class InMemWorkspacePermissionRepository(
+    WorkspacePermissionRepository,
+    InMemRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB],
+):
+    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+        return [item for item in self._state.values() if item.user_id == user_id]
+
+
 class InMemCredentialRepository(
     CredentialRepository, InMemRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
 ):
@@ -102,6 +115,9 @@ class InMemGitentialBackend(GitentialBackend):
         self._users: UserRepository = InMemUserRepository(in_db_cls=UserInDB)
         self._user_infos: UserInfoRepository = InMemUserInfoRepository(in_db_cls=UserInfoInDB)
         self._workspaces: WorkspaceRepository = InMemWorkspaceRepository(in_db_cls=WorkspaceInDB)
+        self._workspace_permissions: WorkspacePermissionRepository = InMemWorkspacePermissionRepository(
+            in_db_cls=WorkspacePermissionInDB
+        )
         self._credentials: CredentialRepository = InMemCredentialRepository(in_db_cls=CredentialInDB)
 
     @property
@@ -117,8 +133,30 @@ class InMemGitentialBackend(GitentialBackend):
         return self._workspaces
 
     @property
+    def workspace_permissions(self) -> WorkspacePermissionRepository:
+        return self._workspace_permissions
+
+    @property
     def credentials(self) -> CredentialRepository:
         return self._credentials
+
+    def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
+        ret = []
+        workspace_permissions = self.workspace_permissions.get_for_user(user_id)
+
+        for wp in workspace_permissions:
+            w = self.workspaces.get(wp.workspace_id)
+            if w:
+                ret.append(
+                    WorkspaceWithPermission(
+                        id=w.id,
+                        name=w.name,
+                        role=wp.role,
+                        primary=wp.primary,
+                        user_id=wp.user_id,
+                    )
+                )
+        return ret
 
 
 # from typing import Optional

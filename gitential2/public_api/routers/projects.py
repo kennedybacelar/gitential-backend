@@ -12,35 +12,36 @@ router = APIRouter(tags=["projects"])
 
 @router.get("/workspaces/{workspace_id}/projects")
 async def workspace_projects(workspace_id: Union[int, UUID]):
-    return [
-        {
-            "id": 2496,
-            "name": "Project1",
-            "account": 2155,
-            "shareable": True,
-            "pattern": "",
-            "created_at": 1593682789,
-            "updated_at": 1593682789,
-        },
-        {
-            "id": 2507,
-            "name": "Project2",
-            "account": 2155,
-            "shareable": True,
-            "pattern": "",
-            "created_at": 1593777102,
-            "updated_at": 1593777102,
-        },
-        {
-            "id": 2512,
-            "name": "Project3",
-            "account": 2155,
-            "shareable": True,
-            "pattern": "",
-            "created_at": 1593979149,
-            "updated_at": 1593979149,
-        },
-    ]
+    return []
+    # return [
+    #     {
+    #         "id": 2496,
+    #         "name": "Project1",
+    #         "account": 2155,
+    #         "shareable": True,
+    #         "pattern": "",
+    #         "created_at": 1593682789,
+    #         "updated_at": 1593682789,
+    #     },
+    #     {
+    #         "id": 2507,
+    #         "name": "Project2",
+    #         "account": 2155,
+    #         "shareable": True,
+    #         "pattern": "",
+    #         "created_at": 1593777102,
+    #         "updated_at": 1593777102,
+    #     },
+    #     {
+    #         "id": 2512,
+    #         "name": "Project3",
+    #         "account": 2155,
+    #         "shareable": True,
+    #         "pattern": "",
+    #         "created_at": 1593979149,
+    #         "updated_at": 1593979149,
+    #     },
+    # ]
 
 
 class Repo(BaseModel):
