@@ -64,6 +64,10 @@ class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdat
     def get_by_user_and_integration(self, owner_id: int, integration_name: str) -> Optional[CredentialInDB]:
         pass
 
+    @abstractmethod
+    def get_for_user(self, owner_id) -> List[CredentialInDB]:
+        pass
+
 
 class WorkspaceRepository(BaseRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
     pass
@@ -74,6 +78,12 @@ class WorkspacePermissionRepository(
 ):
     @abstractmethod
     def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+        pass
+
+
+class WorkspaceBackend(ABC):
+    @abstractmethod
+    def list_projects(self):
         pass
 
 
@@ -108,4 +118,7 @@ class GitentialBackend(ABC):
 
     @abstractmethod
     def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
+        pass
+
+    def initialize_workspace(self, workspace_id: int) -> WorkspaceBackend:
         pass

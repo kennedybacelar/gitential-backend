@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from ..dependencies import current_user, GitentialCore
+from ..dependencies import current_user, GitentialCore, workspace_ctrl
 
 router = APIRouter(tags=["workspaces"])
 
@@ -10,3 +10,8 @@ def workspaces(current_user=Depends(current_user), gitential: GitentialCore = De
     # return [
     #     {"id": 2155, "name": "gitential-user", "role": 1, "user_id": 2090, "primary": True, "created_at": 1593403466}
     # ]
+
+
+@router.get("/workspaces/{workspace_id}/repository-sources")
+def list_connected_repository_sources(workspace_ctrl=Depends(workspace_ctrl)):
+    return workspace_ctrl.list_connected_repository_sources()

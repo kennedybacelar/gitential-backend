@@ -29,7 +29,7 @@ def extract_git_metrics(ctx, repo_id, clone_url):
 
 @click.command()
 @click.option("--host", "-h", "host", default="127.0.0.1")
-@click.option("--port", "-p", "port", type=int, default=8080)
+@click.option("--port", "-p", "port", type=int, default=7999)
 @click.option("--reload/--no-reload", default=False)
 def public_api(host, port, reload):
     uvicorn.run("gitential2.public_api.main:app", host=host, port=port, log_level="info", reload=reload)

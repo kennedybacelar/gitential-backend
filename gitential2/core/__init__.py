@@ -1,8 +1,9 @@
 from typing import List, Optional, cast
+from abc import ABC, abstractmethod
 
 # from uuid import UUID
 from gitential2.settings import GitentialSettings
-from gitential2.integrations import init_integrations
+from gitential2.integrations import init_integrations, REPOSITORY_SOURCES
 
 
 from gitential2.backends import init_backend, GitentialBackend
@@ -16,13 +17,40 @@ from gitential2.datatypes import (
     UserInfoCreate,
     CredentialCreate,
     CredentialUpdate,
+    CredentialInDB,
     WorkspacePublic,
+    WorkspaceInDB,
     WorkspacePermissionPublic,
     WorkspaceWithPermission,
     WorkspaceCreate,
     WorkspacePermissionCreate,
     WorkspaceRole,
+    ProjectInDB,
+    ProjectCreateWithRepositories,
+    RepositoryCreate,
 )
+
+
+class WorkspaceCtrl(ABC):
+    @abstractmethod
+    def initialize(self):
+        pass
+
+    @abstractmethod
+    def list_projects(self) -> List[ProjectInDB]:
+        pass
+
+    @abstractmethod
+    def create_project(self, project_create: ProjectCreateWithRepositories) -> ProjectInDB:
+        pass
+
+    @abstractmethod
+    def list_connected_repository_sources(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    def list_available_repositories(self) -> List[RepositoryCreate]:
+        pass
 
 
 class Gitential:
@@ -108,75 +136,78 @@ class Gitential:
                 workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
             )
         )
+        self.get_workspace_ctrl(workspace_id=workspace_in_db.id).initialize()
         return workspace_in_db
 
     def get_accessible_workspaces(self, current_user: UserInDB) -> List[WorkspaceWithPermission]:
         return self.backend.get_accessible_workspaces(current_user.id)
 
+    def get_workspace_ctrl(self, workspace_id: int) -> WorkspaceCtrl:
+        return WorkspaceCtrlImpl(
+            id_=workspace_id,
+            backend=self.backend,
+            core=self,
+        )
 
-#         # def _get_or_create_user(current_user, normalize_userinfo):
-#         #     if current_user and existing_user and current_user.id != existing_user.id:
-#         #         raise ValueError("Authentication error...")
-#         #     elif
 
-#         if not current_user and not existing_user:
-#             # create new user
-#             user = self.backend.users.create_or_update(UserCreate.from_user_info(normalized_user_info))
-#             user_info = self.backend.user_infos.create_or_update(normalized_user_info)
+class WorkspaceCtrlImpl(WorkspaceCtrl):
+    def __init__(self, id_: int, backend: GitentialBackend, core: Gitential):
+        self._ws: Optional[WorkspaceInDB] = None
+        self._id = id_
+        self.backend = backend
+        self.core = core
+        self.ws_backend = backend.initialize_workspace(id_)
 
-#         # if current user and existing_user and current_user == existing user
-#         # update token, user, userinfo
-#         # elif current_user and existing_user and current_user != existoin user
-#         # authentication error
-#         # elif current_user and !existing_user:
-#         # add new credentials to current_user
-#         # elif !current_user and existing_user:
-#         # add new credentials to existing user and log in
-#         # elif !current_user and !existing_user
-#         # create new user and new
+    def initialize(self):
+        if hasattr(self.ws_backend, "initialize"):
+            self.ws_backend.initialize()
 
-#         is_new_user = False
-#         user = current_user or self.backend.get_user(user_info=normalized_user_info)
+    @property
+    def workspace(self) -> WorkspaceInDB:
+        if self._ws is None:
+            self._ws = self.backend.workspaces.get(id_=self._id)
+            if self._ws is None:
+                raise ValueError(f"Missing workspace: {self._id} ")
+        return self._ws
 
-#         if not user:
-#             user = self.backend.upsert_user(User.from_user_info(user_info=normalized_user_info))
-#             is_new_user = True
+    def get_credentials(self) -> List[CredentialInDB]:
+        return self.backend.credentials.get_for_user(self.workspace.created_by)
 
-#         normalized_user_info.user_id = user.id
-#         self.backend.upsert_user_info(normalized_user_info)
+    def list_projects(self) -> List[ProjectInDB]:
+        return []
 
-#         credential = Credential.from_token(token, integration_name=integration_name)
-#         credential.owner_id = user.id
-#         credential = self.backend.upsert_credential(credential)
+    def create_project(self, project_create: ProjectCreateWithRepositories) -> ProjectInDB:
+        pass
 
-#         if is_new_user:
-#             workspace = self.backend.upsert_workspace(Workspace(name=f"{user.login}", owner_id=user.id))
+    def list_connected_repository_sources(self) -> List[str]:
+        return [
+            credential.integration_name
+            for credential in self.get_credentials()
+            if (
+                credential.integration_name
+                and credential.integration_type in REPOSITORY_SOURCES
+                and credential.integration_name in self.core.integrations
+            )
+        ]
 
-#             self.backend.upsert_workspace_permission(
-#                 WorkspacePermission(user_id=user.id, workspace_id=workspace.id, role=WorkspaceRole.owner, primary=True)
-#             )
+    def list_available_repositories(self) -> List[RepositoryCreate]:
+        def _fixme(*args, **kwargs):
+            print("update token called", args, kwargs)
 
-#         # integration = self.integrations[integration_name]
-#         # if integration_name == "gitlab-internal":
+        results: List[RepositoryCreate] = []
+        for credential in self.get_credentials():
 
-#         #     repositories = integration.list_available_private_repositories(token=token, update_token=print)
-#         #     print("!!!", repositories)
-#         #     new_token = integration.refresh_token(token)
-#         #     normalized_user_info = integration.normalize_userinfo(user_info)
+            if (
+                credential.integration_type in REPOSITORY_SOURCES
+                and credential.integration_name in self.core.integrations
+            ):
 
-#         # return {
-#         #     "token": token,
-#         #     "user_info": user_info,
-#         #     "new_token": new_token,
-#         #     "normalized_user_info": normalized_user_info,
-#         # }
-#         return {"ok": True, "user": user}
+                integration = self.core.integrations[credential.integration_name]
+                token = credential.to_token_dict(fernet=self.core.fernet)
+                results += integration.list_available_private_repositories(token=token, update_token=_fixme)
 
-#     def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
-#         return self.backend.get_accessible_workspaces(user_id)
+        return results
 
-#     def create_workspace(self, workspace):
-#         pass
 
 #     def update_workspace(self, workspace):
 #         pass
@@ -192,30 +223,6 @@ class Gitential:
 
 #     def delete_user(self):
 #         pass
-
-
-# # class Workspace:
-# #     pass
-
-
-# # class WorkspaceBackend:
-# #     pass
-
-
-# # class Credential:
-# #     pass
-
-
-# # class Project:
-# #     pass
-
-
-# # class Repository:
-# #     pass
-
-
-# # class RepositorySource:
-# #     pass
 
 
 # # class WorkspaceManager:

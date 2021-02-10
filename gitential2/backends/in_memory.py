@@ -114,6 +114,9 @@ class InMemCredentialRepository(
         ]
         return found_credentials[0] if found_credentials else None
 
+    def get_for_user(self, owner_id: int) -> List[CredentialInDB]:
+        return [cast(CredentialInDB, item) for item in self._state.values() if item.owner_id == owner_id]
+
 
 class InMemGitentialBackend(GitentialBackend):
     def __init__(self, settings: GitentialSettings):

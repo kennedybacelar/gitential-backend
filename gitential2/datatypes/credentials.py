@@ -53,6 +53,15 @@ class CredentialBase(CredentialBasePublic, CredentialBaseSecret):
             expires_at=token.get("expires_at"),
         )
 
+    def to_token_dict(self, fernet: Fernet) -> Optional[dict]:
+        if self.token:
+            return {
+                "access_token": fernet.decrypt_string(self.token.decode()),
+                "refresh_token": fernet.decrypt_string(self.refresh_token.decode()) if self.refresh_token else None,
+            }
+        else:
+            return None
+
 
 class CredentialCreate(CredentialBase):
     owner_id: int

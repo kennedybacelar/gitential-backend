@@ -1,5 +1,5 @@
 from typing import Optional
-from gitential2.datatypes import UserInfoCreate
+from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol
 
 from .base import BaseIntegration, OAuthLoginMixin
 
@@ -62,21 +62,24 @@ class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
             else:
                 return acc
 
-        def _project_dict(project):
-            return {
-                "clone_url": project["http_url_to_repo"],
-                "id": project["id"],
-                "name": project["path"],
-                "source": project["namespace"]["full_path"],
-                "private": project["visibility"] == "private",
-            }
+        def _repo_create(project):
+            return RepositoryCreate(
+                clone_url=project["http_url_to_repo"],
+                protocol=GitProtocol.https,
+                name=project["path"],
+                namespace=project["namespace"]["full_path"],
+                private=project["visibility"] == "private",
+                integration_type="gitlab",
+                integration_name=self.name,
+                extra=project,
+            )
 
         client = self.get_oauth2_client(token=token, update_token=update_token)
         projects = _keyset_pagination(
             client, f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id"
         )
         client.close()
-        return [_project_dict(p) for p in projects]
+        return [_repo_create(p) for p in projects]
 
 
 # """

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from fastapi import Request
+from gitential2.integrations import IntegrationType
 
 # from gitential2.integrations import construct_login_configuration
 
@@ -20,6 +21,7 @@ async def session(request: Request):
             "private": True,
             "tc_consent_accepted_at": "2020-03-20",
             "marketing_consent_accepted": True,
+            "sources_connected": ["gitlab-internal"],
         }
     else:
         return {}
@@ -70,6 +72,7 @@ gitlab_application_secret = "9bcb53d633178a83b3e46849bcec95d3d2c15d817bc48c1a1e3
 def configuration(request: Request):
     # logins = construct_login_configuration(request.app.state.settings, frontend_url="http://example.com")
     logins = {}
+    sources = []
     integrations_settings = request.app.state.settings.integrations
     print(integrations_settings)
     for name, settings in integrations_settings.items():
@@ -80,6 +83,14 @@ def configuration(request: Request):
                 "type": settings.type_,
                 "url": request.url_for("login", backend=name),
             }
+        if settings.type_ not in [IntegrationType.linkedin, IntegrationType.dummy]:
+            sources.append(
+                {
+                    "name": name,
+                    "type": settings.type_,
+                    "url": request.url_for("login", backend=name),
+                }
+            )
     return {
         "license": {
             "valid_until": 1640908800,
@@ -88,6 +99,7 @@ def configuration(request: Request):
             "number_of_developers": 500,
         },
         "logins": logins,
+        "sources": sources,
         "contact": "info@gitential.com",
         "sentry": {"dsn": "https://dc5be4ac529146d68d723b5f5be5ae2d@sentry.io/1815669"},
         "debug": "False",

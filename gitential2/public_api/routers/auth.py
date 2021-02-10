@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends, Header
 from fastapi.responses import RedirectResponse
 from fastapi.encoders import jsonable_encoder
 
-from ..dependencies import GitentialCore, OAuth
+from ..dependencies import GitentialCore, OAuth, current_user
 
 
 async def handle_authorize(integration, token, user_info):
@@ -34,6 +34,7 @@ async def auth(
     oauth_verifier: str = None,
     gitential: GitentialCore = Depends(),
     oauth: OAuth = Depends(),
+    current_user=Depends(current_user),
 ):
     remote = oauth.create_client(backend)
     integration = gitential.integrations.get(backend)
@@ -60,7 +61,10 @@ async def auth(
     else:
         remote.token = token
         user_info = await remote.userinfo(token=token)
-    result = await loop.run_in_executor(None, gitential.handle_authorize, integration.name, token, user_info)
+
+    result = await loop.run_in_executor(
+        None, gitential.handle_authorize, integration.name, token, user_info, current_user
+    )
 
     # If no previous current_user found set this up
     if not request.session.get("current_user") and result.get("user"):
@@ -74,9 +78,16 @@ async def auth(
 
 
 @router.get("/login/{backend}")
-async def login(backend: str, request: Request, oauth: OAuth = Depends(), referer: Optional[str] = Header(None)):
+async def login(
+    backend: str,
+    request: Request,
+    oauth: OAuth = Depends(),
+    referer: Optional[str] = Header(None),
+    redirect_after: Optional[str] = None,
+):
     remote = oauth.create_client(backend)
-    request.session["redirect_uri"] = referer
+    request.session["redirect_uri"] = redirect_after or referer
+    print(request.headers.items())
     if remote is None:
         raise HTTPException(404)
 

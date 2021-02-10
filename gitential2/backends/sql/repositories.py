@@ -106,6 +106,11 @@ class SQLCredentialRepository(
         row = result.fetchone()
         return CredentialInDB(**row) if row else None
 
+    def get_for_user(self, owner_id) -> List[CredentialInDB]:
+        query = self.table.select().where(self.table.c.owner_id == owner_id)
+        result = self._execute_query(query)
+        return [CredentialInDB(**row) for row in result.fetchall()]
+
 
 class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
     pass

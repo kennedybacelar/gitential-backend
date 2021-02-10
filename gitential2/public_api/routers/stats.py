@@ -47,6 +47,7 @@ async def developers(orient: str, limit: int):
 #     to: str = Query(None, alias="to"),
 # ):
 #     return {}
+# https://gitlab.ops.gitential.com/oauth/authorize?response_type=code&client_id=9b7faac02a309e905637f2491d2151dec834398c9190d62478c13277283121a4&redirect_uri=https%3A%2F%2F2e9af89e042f.ngrok.io%2Fv2%2Fauth%2Fgitlab-second&scope=api+read_repository+email+read_user&state=V8OSsqBeWXTMB9gBorAMym9XI1zez5
 
 
 @router.get("/workspaces/{workspace_id}/project-summary")
@@ -56,6 +57,8 @@ async def project_summary(
     to: str = Query(None, alias="to"),
     orient: str = "records",
 ):
+    return []
+
     data = {
         "prevSum": [
             {

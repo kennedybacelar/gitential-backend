@@ -52,7 +52,7 @@ class BackendType(str, Enum):
 
 class GitentialSettings(BaseModel):
     secret: str
-    base_url: str = "http://localhost:8080"
+    base_url: str = "http://localhost:7999"
     log_level: LogLevel = LogLevel.info
     executor: Executor = Executor.process_pool
     process_pool_size: int = 8

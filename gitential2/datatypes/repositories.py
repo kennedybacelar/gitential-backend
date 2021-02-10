@@ -1,15 +1,24 @@
+from enum import Enum
 from typing import Optional, Union, Dict
 from pydantic import BaseModel, Field
 
 from .common import IDModelMixin, DateTimeModelMixin, CoreModel, ExtraFieldMixin
 
 
+class GitProtocol(str, Enum):
+    ssh = "ssh"
+    https = "https"
+
+
 class RepositoryBase(ExtraFieldMixin, CoreModel):
     clone_url: str
+    protocol: GitProtocol
     name: str = ""
     namespace: str = ""
     private: bool = False
-    source: str = ""
+    integration_type: Optional[str] = None
+    integration_name: Optional[str] = None
+    credential_id: Optional[int] = None
 
 
 class RepositoryCreate(RepositoryBase):

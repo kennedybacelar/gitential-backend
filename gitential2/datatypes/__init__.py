@@ -19,7 +19,15 @@ from .workspacepermissions import (
     WorkspaceRole,
 )
 from .credentials import CredentialCreate, CredentialUpdate, CredentialPublic, CredentialInDB, CredentialType
-from .projects import ProjectCreate, ProjectUpdate, ProjectInDB, ProjectPublic
+from .projects import (
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectInDB,
+    ProjectPublic,
+    ProjectCreateWithRepositories,
+    ProjectUpdateWithRepositories,
+    ProjectPublicWithRepositories,
+)
 from .repositories import (
     RepositoryCreate,
     RepositoryUpdate,
@@ -28,4 +36,5 @@ from .repositories import (
     GitRepository,
     GitRepositoryState,
     GitRepositoryStateChange,
+    GitProtocol,
 )

@@ -27,6 +27,7 @@ from ..common import (
     CredentialRepository,
     WorkspaceRepository,
     WorkspacePermissionRepository,
+    WorkspaceBackend,
 )
 
 from .tables import (
@@ -44,6 +45,15 @@ from .repositories import (
     SQLWorkspaceRepository,
     SQLWorkspacePermissionRepository,
 )
+
+
+class SQLWorkspaceBackend(WorkspaceBackend):
+    def __init__(self, backend, id_):
+        self._id = id_
+        self._backend = backend
+
+    def list_projects(self):
+        return []
 
 
 class SQLGitentialBackend(GitentialBackend):
@@ -108,6 +118,9 @@ class SQLGitentialBackend(GitentialBackend):
         with self._engine.connect() as connection:
             result = connection.execute(query)
             return result
+
+    def initialize_workspace(self, workspace_id: int) -> WorkspaceBackend:
+        return SQLWorkspaceBackend(self, workspace_id)
 
 
 # def get_workspace_metadata():

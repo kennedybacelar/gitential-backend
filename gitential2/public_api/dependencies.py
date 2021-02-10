@@ -1,5 +1,6 @@
-from fastapi import Request
+from fastapi import Request, Depends
 from gitential2.datatypes import UserInDB
+from gitential2.core import WorkspaceCtrl
 
 
 class GitentialCore:
@@ -22,3 +23,7 @@ def current_user(request: Request):
     if "current_user" in request.session:
         return UserInDB(**request.session["current_user"])
     return None
+
+
+def workspace_ctrl(workspace_id: int, gitential: GitentialCore = Depends()) -> WorkspaceCtrl:
+    return gitential.get_workspace_ctrl(workspace_id=workspace_id)

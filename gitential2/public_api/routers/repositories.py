@@ -1,20 +1,23 @@
 # pylint: skip-file
 from typing import Union
 from uuid import UUID
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
+from ..dependencies import workspace_ctrl
 
 router = APIRouter(tags=["repositories"])
 
 
 @router.get("/workspaces/{workspace_id}/available-repos")
-async def available_repos(workspace_id: int):
+async def available_repos(workspace_ctrl=Depends(workspace_ctrl)):
     # már hozzáadott ssh repokat
     # gitlab, github, stb. api kéréséből származó repo-kat
-    return available_repos_data
+    return workspace_ctrl.list_available_repositories()
+    # return available_repos_data
 
 
 @router.get("/workspaces/{workspace_id}/repos")
 async def workspace_repos(workspace_id: Union[int, UUID]):
+    return []
     return [
         {
             "id": 1072,

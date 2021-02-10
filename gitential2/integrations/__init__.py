@@ -4,6 +4,8 @@ from .gitlab import GitlabIntegration
 from .github import GithubIntegration
 from .linkedin import LinkedinIntegration
 
+REPOSITORY_SOURCES = [IntegrationType.github, IntegrationType.gitlab]
+
 
 def integration_type_to_class(type_: IntegrationType) -> Callable:
     if type_ == IntegrationType.gitlab:

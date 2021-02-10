@@ -4,15 +4,17 @@ from uuid import UUID
 from asyncio import sleep
 from typing import List, Optional, Union
 
-from fastapi import APIRouter, Query, WebSocket
+from fastapi import APIRouter, Query, WebSocket, Depends
 from pydantic import BaseModel
+from ..dependencies import workspace_ctrl
 
 router = APIRouter(tags=["projects"])
 
 
 @router.get("/workspaces/{workspace_id}/projects")
-async def workspace_projects(workspace_id: Union[int, UUID]):
-    return []
+def workspace_projects(workspace_ctrl=Depends(workspace_ctrl)):
+    return workspace_ctrl.list_projects()
+
     # return [
     #     {
     #         "id": 2496,
