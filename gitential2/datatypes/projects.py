@@ -1,11 +1,11 @@
 from typing import Optional, List
 from pydantic import Field
 
-from .common import IDModelMixin, CoreModel, DateTimeModelMixin
+from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
 from .repositories import RepositoryCreate, RepositoryPublic
 
 
-class ProjectBase(CoreModel):
+class ProjectBase(ExtraFieldMixin, CoreModel):
     name: Optional[str]
     shareable: bool = False
     pattern: Optional[str] = None
@@ -16,7 +16,7 @@ class ProjectCreate(ProjectBase):
 
 
 class ProjectCreateWithRepositories(ProjectCreate):
-    repositories: List[RepositoryCreate]
+    repos: List[RepositoryCreate]
 
 
 class ProjectUpdate(ProjectBase):
@@ -24,7 +24,7 @@ class ProjectUpdate(ProjectBase):
 
 
 class ProjectUpdateWithRepositories(ProjectUpdate):
-    repositories: List[RepositoryCreate]
+    repos: List[RepositoryCreate]
 
 
 class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase):
@@ -36,4 +36,4 @@ class ProjectPublic(IDModelMixin, DateTimeModelMixin, ProjectBase):
 
 
 class ProjectPublicWithRepositories(ProjectPublic):
-    repositories: List[RepositoryPublic]
+    repos: List[RepositoryPublic]

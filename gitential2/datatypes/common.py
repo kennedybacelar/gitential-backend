@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, validator
 
 
@@ -7,6 +7,14 @@ class CoreModel(BaseModel):
     """
     Any common logic to be shared by all models goes here
     """
+
+    @classmethod
+    def primary_key(cls) -> List[str]:
+        return []
+
+    @classmethod
+    def unique_fields(cls) -> List[str]:
+        return []
 
 
 class DateTimeModelMixin(BaseModel):

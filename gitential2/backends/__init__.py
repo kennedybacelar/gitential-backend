@@ -1,6 +1,6 @@
 from typing import Optional
 from gitential2.settings import GitentialSettings, BackendType
-from .common import GitentialBackend
+from .base import GitentialBackend
 from .in_memory import InMemGitentialBackend
 from .sql import SQLGitentialBackend
 

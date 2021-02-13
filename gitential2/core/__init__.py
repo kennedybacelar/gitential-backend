@@ -1,7 +1,9 @@
 from typing import List, Optional, cast
 from abc import ABC, abstractmethod
 
-# from uuid import UUID
+from gitential2.datatypes.projects import ProjectUpdateWithRepositories
+from gitential2.datatypes.repositories import RepositoryInDB
+
 from gitential2.settings import GitentialSettings
 from gitential2.integrations import init_integrations, REPOSITORY_SOURCES
 
@@ -9,24 +11,22 @@ from gitential2.integrations import init_integrations, REPOSITORY_SOURCES
 from gitential2.backends import init_backend, GitentialBackend
 from gitential2.secrets import Fernet
 from gitential2.datatypes import (
-    UserPublic,
     UserCreate,
     UserInDB,
-    UserInfoPublic,
     UserInfoUpdate,
     UserInfoCreate,
     CredentialCreate,
     CredentialUpdate,
     CredentialInDB,
-    WorkspacePublic,
     WorkspaceInDB,
-    WorkspacePermissionPublic,
     WorkspaceWithPermission,
     WorkspaceCreate,
     WorkspacePermissionCreate,
     WorkspaceRole,
     ProjectInDB,
     ProjectCreateWithRepositories,
+    ProjectCreate,
+    ProjectUpdate,
     RepositoryCreate,
 )
 
@@ -45,11 +45,23 @@ class WorkspaceCtrl(ABC):
         pass
 
     @abstractmethod
+    def get_project(self, project_id: int) -> ProjectInDB:
+        pass
+
+    @abstractmethod
+    def delete_project(self, project_id: int) -> bool:
+        pass
+
+    @abstractmethod
     def list_connected_repository_sources(self) -> List[str]:
         pass
 
     @abstractmethod
     def list_available_repositories(self) -> List[RepositoryCreate]:
+        pass
+
+    @abstractmethod
+    def list_project_repositories(self, project_id: int) -> List[RepositoryInDB]:
         pass
 
 
@@ -156,11 +168,9 @@ class WorkspaceCtrlImpl(WorkspaceCtrl):
         self._id = id_
         self.backend = backend
         self.core = core
-        self.ws_backend = backend.initialize_workspace(id_)
 
     def initialize(self):
-        if hasattr(self.ws_backend, "initialize"):
-            self.ws_backend.initialize()
+        self.backend.initialize_workspace(self._id)
 
     @property
     def workspace(self) -> WorkspaceInDB:
@@ -174,10 +184,31 @@ class WorkspaceCtrlImpl(WorkspaceCtrl):
         return self.backend.credentials.get_for_user(self.workspace.created_by)
 
     def list_projects(self) -> List[ProjectInDB]:
-        return []
+        return list(self.backend.projects.all(self._id))
 
     def create_project(self, project_create: ProjectCreateWithRepositories) -> ProjectInDB:
-        pass
+        project = self.backend.projects.create(self._id, ProjectCreate(**project_create.dict(exclude={"repos"})))
+        self._update_project_repos(project=project, repos=project_create.repos)
+        return project
+
+    def get_project(self, project_id: int) -> ProjectInDB:
+        return self.backend.projects.get_or_error(workspace_id=self._id, id_=project_id)
+
+    def delete_project(self, project_id: int) -> bool:
+        return False
+
+    def update_project(self, project_id: int, project_update: ProjectUpdateWithRepositories) -> ProjectInDB:
+        project = self.backend.projects.update(
+            workspace_id=self._id, id_=project_id, obj=ProjectUpdate(**project_update.dict(exclude={"repos"}))
+        )
+        self._update_project_repos(project=project, repos=project_update.repos)
+        return project
+
+    def _update_project_repos(self, project: ProjectInDB, repos=List[RepositoryCreate]):
+        repositories = [self.backend.repositories.create_or_update(workspace_id=self._id, obj=r) for r in repos]
+        return self.backend.project_repositories.update_project_repositories(
+            workspace_id=self._id, project_id=project.id, repo_ids=[r.id for r in repositories]
+        )
 
     def list_connected_repository_sources(self) -> List[str]:
         return [
@@ -208,51 +239,12 @@ class WorkspaceCtrlImpl(WorkspaceCtrl):
 
         return results
 
-
-#     def update_workspace(self, workspace):
-#         pass
-
-#     def delete_workspace(self, workspace):
-#         pass
-
-#     def list_workspaces(self):
-#         pass
-
-#     def list_users(self):
-#         pass
-
-#     def delete_user(self):
-#         pass
-
-
-# # class WorkspaceManager:
-# #     def __init__(self, workspace: Workspace, backend: WorkspaceBackend):
-# #         self.workspace = workspace
-# #         self.backend = backend
-
-# #     def list_repository_sources(self) -> List[RepositorySource]:
-# #         pass
-
-# #     def list_projects(self) -> List[Project]:
-# #         return []
-
-# #     def list_available_repositories(self) -> List[Repository]:
-# #         return []
-
-# #     def get_project(self, project_id: int) -> Project:
-# #         pass
-
-# #     def create_project(self, project: Project) -> Project:
-# #         pass
-
-# #     def update_project(self, project: Project) -> Project:
-# #         pass
-
-# #     def delete_project(self, project_id: int) -> bool:
-# #         return False
-
-# #     def list_project_repositories(self, project_id: int) -> List[Repository]:
-# #         return []
-
-# #     def analyze_project(self, project_id: int) -> bool:
-# #         return True
+    def list_project_repositories(self, project_id: int) -> List[RepositoryInDB]:
+        ret = []
+        for repo_id in self.backend.project_repositories.get_repo_ids_for_project(
+            workspace_id=self._id, project_id=project_id
+        ):
+            repository = self.backend.repositories.get(workspace_id=self._id, id_=repo_id)
+            if repository:
+                ret.append(repository)
+        return ret

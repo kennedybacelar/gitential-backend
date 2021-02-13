@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic.dataclasses import dataclass
 from pydantic import BaseModel, Field
-
+from .common import CoreModel
 from .userinfos import UserInfoCreate, UserInfoUpdate, UserInfoPublic, UserInfoInDB
 from .users import UserCreate, UserUpdate, UserPublic, UserInDB
 from .workspaces import WorkspaceCreate, WorkspaceUpdate, WorkspacePublic, WorkspaceInDB
@@ -38,3 +38,5 @@ from .repositories import (
     GitRepositoryStateChange,
     GitProtocol,
 )
+
+from .project_repositories import ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB

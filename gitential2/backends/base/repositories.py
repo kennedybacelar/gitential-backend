@@ -1,0 +1,174 @@
+# pylint: disable=unsubscriptable-object
+from abc import ABC, abstractmethod
+from typing import Iterable, Optional, TypeVar, Generic, List, Tuple
+from gitential2.datatypes import (
+    CoreModel,
+    UserCreate,
+    UserUpdate,
+    UserInDB,
+    WorkspaceCreate,
+    WorkspaceUpdate,
+    WorkspaceInDB,
+    UserInfoCreate,
+    UserInfoUpdate,
+    UserInfoInDB,
+    CredentialCreate,
+    CredentialUpdate,
+    CredentialInDB,
+    WorkspacePermissionCreate,
+    WorkspacePermissionUpdate,
+    WorkspacePermissionInDB,
+)
+from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
+from gitential2.datatypes.project_repositories import (
+    ProjectRepositoryCreate,
+    ProjectRepositoryInDB,
+    ProjectRepositoryUpdate,
+)
+
+IdType = TypeVar("IdType")
+CreateType = TypeVar("CreateType", bound=CoreModel)
+UpdateType = TypeVar("UpdateType", bound=CoreModel)
+InDBType = TypeVar("InDBType", bound=CoreModel)
+
+
+class NotFoundException(Exception):
+    pass
+
+
+class BaseRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):
+    @abstractmethod
+    def get(self, id_: IdType) -> Optional[InDBType]:
+        pass
+
+    def get_or_error(self, id_: IdType) -> InDBType:
+        obj = self.get(id_)
+        if obj:
+            return obj
+        else:
+            raise NotFoundException("Object not found.")
+
+    @abstractmethod
+    def create(self, obj: CreateType) -> InDBType:
+        pass
+
+    @abstractmethod
+    def update(self, id_: IdType, obj: UpdateType) -> InDBType:
+        pass
+
+    @abstractmethod
+    def delete(self, id_: IdType) -> int:
+        pass
+
+    def all(self) -> Iterable[InDBType]:
+        pass
+
+
+class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):
+    @abstractmethod
+    def get(self, workspace_id: int, id_: IdType) -> Optional[InDBType]:
+        pass
+
+    def get_or_error(self, workspace_id: int, id_: IdType) -> InDBType:
+        obj = self.get(workspace_id, id_)
+        if obj:
+            return obj
+        else:
+            raise NotFoundException("Object not found.")
+
+    @abstractmethod
+    def create(self, workspace_id: int, obj: CreateType) -> InDBType:
+        pass
+
+    @abstractmethod
+    def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
+        pass
+
+    @abstractmethod
+    def delete(self, workspace_id: int, id_: IdType) -> int:
+        pass
+
+    @abstractmethod
+    def all(self, workspace_id: int) -> Iterable[InDBType]:
+        pass
+
+
+class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
+    @abstractmethod
+    def get_by_email(self, email: str) -> Optional[UserInDB]:
+        pass
+
+
+class UserInfoRepository(BaseRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
+    @abstractmethod
+    def get_by_sub_and_integration(self, sub: str, integration_name: str) -> Optional[UserInfoInDB]:
+        pass
+
+
+class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]):
+    @abstractmethod
+    def get_by_user_and_integration(self, owner_id: int, integration_name: str) -> Optional[CredentialInDB]:
+        pass
+
+    @abstractmethod
+    def get_for_user(self, owner_id) -> List[CredentialInDB]:
+        pass
+
+
+class WorkspaceRepository(BaseRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
+    pass
+
+
+class WorkspacePermissionRepository(
+    BaseRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB]
+):
+    @abstractmethod
+    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+        pass
+
+
+class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]):
+    pass
+
+
+class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]):
+    @abstractmethod
+    def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
+        pass
+
+    def create_or_update(self, workspace_id: int, obj: RepositoryCreate) -> RepositoryInDB:
+        existing = self.get_by_clone_url(workspace_id, obj.clone_url)
+        if existing:
+            return self.update(workspace_id=workspace_id, id_=existing.id, obj=RepositoryUpdate(**obj.dict()))
+        else:
+            return self.create(workspace_id=workspace_id, obj=obj)
+
+
+class ProjectRepositoryRepository(
+    BaseWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB]
+):
+    @abstractmethod
+    def get_repo_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def add_repo_ids_to_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
+        pass
+
+    @abstractmethod
+    def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
+        pass
+
+    def update_project_repositories(
+        self, workspace_id: int, project_id: int, repo_ids: List[int]
+    ) -> Tuple[List[int], List[int], List[int]]:
+        current_ids = self.get_repo_ids_for_project(workspace_id=workspace_id, project_id=project_id)
+        ids_needs_addition = [r_id for r_id in repo_ids if r_id not in current_ids]
+        ids_needs_removal = [r_id for r_id in current_ids if r_id not in repo_ids]
+        ids_kept = [r_id for r_id in current_ids if r_id in repo_ids]
+        if ids_needs_addition:
+            self.add_repo_ids_to_project(workspace_id, project_id, ids_needs_addition)
+        if ids_needs_removal:
+            self.remove_repo_ids_from_project(workspace_id, project_id, ids_needs_removal)
+        return ids_needs_addition, ids_needs_removal, ids_kept
