@@ -36,7 +36,7 @@ integrations:
         assert settings.integrations["gitlab"].login
         assert settings.integrations["gitlab"].login_text is None
         assert settings.backend == "in_memory"
-        assert settings.backend_connection is None
+        assert settings.connections.database_url is None
 
 
 def test_load_settings_with_validation_error():

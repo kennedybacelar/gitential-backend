@@ -29,6 +29,8 @@ httpx = "^0.16.1"
 itsdangerous = "^1.1.0"
 loginpass = "^0.5"
 mypy = "^0.800"
+celery = "^5.0.5"
+redis = "^3.5.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

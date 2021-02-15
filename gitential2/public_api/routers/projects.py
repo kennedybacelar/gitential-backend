@@ -19,24 +19,24 @@ def workspace_projects(workspace_ctrl=Depends(workspace_ctrl)):
 
 
 @router.post("/workspaces/{workspace_id}/projects", response_model=ProjectPublic)
-async def create_project(project: ProjectCreateWithRepositories, workspace_ctrl=Depends(workspace_ctrl)):
+def create_project(project: ProjectCreateWithRepositories, workspace_ctrl=Depends(workspace_ctrl)):
     return workspace_ctrl.create_project(project)
 
 
 @router.put("/workspaces/{workspace_id}/projects/{project_id}", response_model=ProjectPublic)
-async def update_project(
+def update_project(
     project_update: ProjectUpdateWithRepositories, project_id: int, workspace_ctrl=Depends(workspace_ctrl)
 ):
     return workspace_ctrl.update_project(project_id=project_id, project_update=project_update)
 
 
 @router.delete("/workspaces/{workspace_id}/projects/{project_id}")
-async def delete_project(project_id: int, workspace_ctrl=Depends(workspace_ctrl)):
+def delete_project(project_id: int, workspace_ctrl=Depends(workspace_ctrl)):
     return workspace_ctrl.delete_project(project_id=project_id)
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}")
-async def get_project(project_id: int, workspace_ctrl=Depends(workspace_ctrl)):
+def get_project(project_id: int, workspace_ctrl=Depends(workspace_ctrl)):
     return workspace_ctrl.get_project(project_id=project_id)
 
 

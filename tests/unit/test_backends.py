@@ -1,12 +1,12 @@
 from gitential2.backends.sql import SQLGitentialBackend
-from gitential2.settings import GitentialSettings
+from gitential2.settings import GitentialSettings, ConnectionSettings
 from gitential2.datatypes import UserCreate, UserUpdate
 
 
 def test_sql_backend():
     settings = GitentialSettings(
         backend="sql",
-        backend_connection="sqlite:///:memory:",
+        connections=ConnectionSettings(database_url="sqlite:///:memory:"),
         secret="test" * 8,
         integrations={},
     )

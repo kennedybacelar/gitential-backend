@@ -3,7 +3,9 @@ executor: process_pool
 show_progress: true
 secret: abcdABCDabcdABCDabcdABCDabcdABCD
 backend: sql
-backend_connection: postgresql://gitential:secret123@localhost:5432/gitential
+connections:
+  database_url: postgresql://gitential:secret123@localhost:5432/gitential
+  redis_url: redis://localhost:6379/0
 integrations:
   gitlab-internal:
     type: gitlab
@@ -13,15 +15,6 @@ integrations:
       client_secret: "9bcb53d633178a83b3e46849bcec95d3d2c15d817bc48c1a1e35a84e8a4964c7"
     login: true
     login_text: "Login with internal Gitlab"
-  gitlab-second:
-    type: gitlab
-    base_url: https://gitlab.ops.gitential.com
-    oauth:
-      client_id: "9b7faac02a309e905637f2491d2151dec834398c9190d62478c13277283121a4"
-      client_secret: "740ad7773e903f44106c34e58e8c869823104af75d93fa9b72d2eb7a4b040e09"
-    login: true
-    login_text: "Login with Second Gitlab"
-
   gitlab-com:
     type: gitlab
     base_url: https://gitlab.com
@@ -30,7 +23,6 @@ integrations:
       client_secret: "e5825ffa36b8973b02c8a2c5650ab86663619f62f23d4c61a7e9f9eec5b7c3e9"
     login: true
     login_text: "Login with GitLab.com"
-
   github:
     type: github
     oauth:
@@ -38,7 +30,6 @@ integrations:
       client_secret: "2df3da7633b18e78b0b790a6538282f2051277c0"
     login: true
     login_text: "Login with GitHub"
-
   linkedin:
     type: linkedin
     oauth:

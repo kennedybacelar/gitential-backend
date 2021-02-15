@@ -33,7 +33,7 @@ class OAuthClientSettings(BaseModel):
 
 
 class IntegrationSettings(BaseModel):
-    type_: IntegrationType
+    type: IntegrationType
     base_url: Optional[str] = None
     oauth: Optional[OAuthClientSettings] = None
     login: bool = False
@@ -41,8 +41,9 @@ class IntegrationSettings(BaseModel):
     signup_text: Optional[str] = None
     options: Dict[str, Union[str, int, float, bool]] = {}
 
-    class Config:
-        fields = {"type_": "type"}
+    @property
+    def type_(self):
+        return self.type
 
 
 class BackendType(str, Enum):
@@ -50,16 +51,27 @@ class BackendType(str, Enum):
     sql = "sql"
 
 
+class CelerySettings(BaseModel):
+    broker_url: Optional[str] = None
+    result_backend_url: Optional[str] = None
+
+
+class ConnectionSettings(BaseModel):
+    database_url: Optional[str] = None
+    redis_url: Optional[str] = "redis://localhost:6379/0"
+
+
 class GitentialSettings(BaseModel):
     secret: str
+    connections: ConnectionSettings = ConnectionSettings()
+    integrations: Dict[str, IntegrationSettings]
     base_url: str = "http://localhost:7999"
+    backend: BackendType = BackendType.in_memory
+    celery: CelerySettings = CelerySettings()
     log_level: LogLevel = LogLevel.info
     executor: Executor = Executor.process_pool
     process_pool_size: int = 8
     show_progress: bool = False
-    integrations: Dict[str, IntegrationSettings]
-    backend: BackendType = BackendType.in_memory
-    backend_connection: Optional[str] = None
 
     @validator("secret")
     def secret_validation(cls, v):

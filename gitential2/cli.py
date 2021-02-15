@@ -6,7 +6,7 @@ from gitential2.extraction.output import DataCollector
 from gitential2.datatypes.repositories import GitRepository
 from gitential2.settings import load_settings
 from gitential2.logging import initialize_logging
-from gitential2.core import Gitential
+from gitential2.core import init_from_settings
 
 
 @click.group()
@@ -40,7 +40,7 @@ def public_api(host, port, reload):
 @click.command()
 @click.pass_context
 def initialize_database(ctx):
-    g = Gitential.from_config(ctx.obj["settings"])
+    g = init_from_settings(ctx.obj["settings"])
     workspaces = g.backend.workspaces.all()
     for w in workspaces:
         g.backend.initialize_workspace(w.id)

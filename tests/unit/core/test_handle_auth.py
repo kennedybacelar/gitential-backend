@@ -1,9 +1,9 @@
 import pytest
-from gitential2.core import Gitential
+from gitential2.core import GitentialImpl
 
 
 def test_handle_auth_empty_database_create_new_user(minimal_settings, inmem_backend, dummy_integration, dummy_fernet):
-    gitential = Gitential(
+    gitential = GitentialImpl(
         settings=minimal_settings, integrations={"dummy": dummy_integration}, backend=inmem_backend, fernet=dummy_fernet
     )
     result = gitential.handle_authorize(

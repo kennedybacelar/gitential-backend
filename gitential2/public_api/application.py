@@ -9,8 +9,8 @@ from authlib.integrations.starlette_client import OAuth
 
 from gitential2.settings import GitentialSettings, load_settings
 
-from gitential2.core import Gitential
-
+from gitential2.core import init_from_settings
+from gitential2.core.tasks import configure_celery
 from .routers import ping, configuration, workspaces, projects, teams, repositories, stats, auth
 
 logger = get_logger(__name__)
@@ -20,13 +20,19 @@ def create_app(settings: Optional[GitentialSettings] = None):
     app = FastAPI(title="Gitential REST API", version="2.0.0")
     settings = settings or load_settings()
     app.state.settings = settings
+    _configure_celery(settings)
     _configure_cors(app)
     _configure_routes(app)
     _configure_session(app, settings)
     _configure_gitential_core(app, settings)
     _configure_oauth_authentication(app)
     _configure_error_handling(app)
+
     return app
+
+
+def _configure_celery(settings: GitentialSettings):
+    configure_celery(settings)
 
 
 def _configure_cors(app: FastAPI):
@@ -55,7 +61,7 @@ def _configure_session(app: FastAPI, settings: GitentialSettings):
 
 
 def _configure_gitential_core(app: FastAPI, settings: GitentialSettings):
-    app.state.gitential = Gitential.from_config(settings)
+    app.state.gitential = init_from_settings(settings)
 
 
 def _configure_oauth_authentication(app: FastAPI):
