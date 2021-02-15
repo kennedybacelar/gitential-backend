@@ -1,9 +1,10 @@
 import os
-from typing import List, Optional, Dict
+from base64 import b64encode
+from typing import Optional, Dict, Union
 from enum import Enum
 
 import yaml
-from pydantic import BaseSettings
+from pydantic import BaseModel, validator
 
 
 class LogLevel(str, Enum):
@@ -14,19 +15,35 @@ class LogLevel(str, Enum):
     critical = "critical"
 
 
+class IntegrationType(str, Enum):
+    dummy = "dummy"
+    gitlab = "gitlab"
+    github = "github"
+    linkedin = "linkedin"
+
+
 class Executor(str, Enum):
     process_pool = "process_pool"
     single_tread = "single_thread"
 
 
-class RepositorySourceSettings(BaseSettings):
-    source_type: str
-    base_url: Optional[str] = None
+class OAuthClientSettings(BaseModel):
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
-    use_as_login: bool = False
+
+
+class IntegrationSettings(BaseModel):
+    type: IntegrationType
+    base_url: Optional[str] = None
+    oauth: Optional[OAuthClientSettings] = None
+    login: bool = False
     login_text: Optional[str] = None
     signup_text: Optional[str] = None
+    options: Dict[str, Union[str, int, float, bool]] = {}
+
+    @property
+    def type_(self):
+        return self.type
 
 
 class BackendType(str, Enum):
@@ -34,15 +51,38 @@ class BackendType(str, Enum):
     sql = "sql"
 
 
-class GitentialSettings(BaseSettings):
-    base_url: str = "http://localhost:8080"
+class CelerySettings(BaseModel):
+    broker_url: Optional[str] = None
+    result_backend_url: Optional[str] = None
+
+
+class ConnectionSettings(BaseModel):
+    database_url: Optional[str] = None
+    redis_url: Optional[str] = "redis://localhost:6379/0"
+
+
+class GitentialSettings(BaseModel):
+    secret: str
+    connections: ConnectionSettings = ConnectionSettings()
+    integrations: Dict[str, IntegrationSettings]
+    base_url: str = "http://localhost:7999"
+    backend: BackendType = BackendType.in_memory
+    celery: CelerySettings = CelerySettings()
     log_level: LogLevel = LogLevel.info
     executor: Executor = Executor.process_pool
     process_pool_size: int = 8
     show_progress: bool = False
-    repository_sources: Dict[str, RepositorySourceSettings]
-    backend: BackendType = "in_memory"
-    backend_connection: Optional[str] = None
+
+    @validator("secret")
+    def secret_validation(cls, v):
+        if len(v) < 32:
+            raise ValueError("Secret must be at least 32 bytes long")
+        return v
+
+    @property
+    def fernet_key(self) -> bytes:
+        s: str = self.secret[:32]
+        return b64encode(s.encode())
 
 
 def load_settings(settings_file=None):

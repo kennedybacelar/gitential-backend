@@ -1,12 +1,10 @@
-from typing import Optional, List
-from datetime import datetime
-from pydantic import BaseModel
+from typing import Optional
+from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
-class WorkspaceBase(BaseModel):
+class WorkspaceBase(ExtraFieldMixin, CoreModel):
     name: Optional[str] = None
-    owner_id: Optional[int] = None
-    created_at: Optional[datetime] = None
+    created_by: Optional[int] = None
 
 
 class WorkspaceCreate(WorkspaceBase):
@@ -17,19 +15,10 @@ class WorkspaceUpdate(WorkspaceBase):
     pass
 
 
-class WorkspaceInDbBase(WorkspaceBase):
-    id: int
+class WorkspaceInDB(IDModelMixin, DateTimeModelMixin, WorkspaceBase):
     name: str
-    owner_id: int
-    created_at: datetime = None
-
-    class Config:
-        orm_mode = True
+    created_by: int
 
 
-class Workspaces(WorkspaceInDbBase):
-    workspaces: List[WorkspaceInDbBase]
-
-
-class Workspace(WorkspaceInDbBase):
+class WorkspacePublic(IDModelMixin, DateTimeModelMixin, WorkspaceBase):
     pass

@@ -4,8 +4,8 @@ from gitential2.public_api.application import create_app
 
 
 @pytest.fixture
-def client():
-    return TestClient(create_app())
+def client(settings):
+    return TestClient(create_app(settings=settings))
 
 
 def test_read_ping(client):

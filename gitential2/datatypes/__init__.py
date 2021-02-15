@@ -3,34 +3,40 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional
 from pathlib import Path
+
 from pydantic.dataclasses import dataclass
+from pydantic import BaseModel, Field
+from .common import CoreModel
+from .userinfos import UserInfoCreate, UserInfoUpdate, UserInfoPublic, UserInfoInDB
+from .users import UserCreate, UserUpdate, UserPublic, UserInDB
+from .workspaces import WorkspaceCreate, WorkspaceUpdate, WorkspacePublic, WorkspaceInDB
+from .workspacepermissions import (
+    WorkspacePermissionCreate,
+    WorkspacePermissionUpdate,
+    WorkspacePermissionPublic,
+    WorkspacePermissionInDB,
+    WorkspaceWithPermission,
+    WorkspaceRole,
+)
+from .credentials import CredentialCreate, CredentialUpdate, CredentialPublic, CredentialInDB, CredentialType
+from .projects import (
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectInDB,
+    ProjectPublic,
+    ProjectCreateWithRepositories,
+    ProjectUpdateWithRepositories,
+    ProjectPublicWithRepositories,
+)
+from .repositories import (
+    RepositoryCreate,
+    RepositoryUpdate,
+    RepositoryPublic,
+    RepositoryInDB,
+    GitRepository,
+    GitRepositoryState,
+    GitRepositoryStateChange,
+    GitProtocol,
+)
 
-
-class Kind(Enum):
-    E_COMMIT = "e_commit"
-    E_PATCH = "e_patch"
-    E_PATCH_REWRITE = "e_patch_rewrite"
-
-
-class RepositoryCredentials(ABC):
-    pass
-
-
-@dataclass
-class KeypairCredentials(RepositoryCredentials):
-    username: str = "git"
-    pubkey: Optional[str] = None
-    privkey: Optional[str] = None
-    passphrase: Optional[str] = None
-
-
-@dataclass
-class UserPassCredential(RepositoryCredentials):
-    username: str
-    password: str
-
-
-@dataclass
-class LocalGitRepository:
-    repo_id: int
-    directory: Path
+from .project_repositories import ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB

@@ -1,11 +1,23 @@
 import json
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet as CryptoFernet
+from gitential2.settings import GitentialSettings
+
+
+class Fernet:
+    def __init__(self, settings: GitentialSettings):
+        self.f = CryptoFernet(settings.fernet_key)
+
+    def encrypt_string(self, s: str) -> str:
+        return self.f.encrypt(s.encode()).decode()
+
+    def decrypt_string(self, s: str) -> str:
+        return self.f.decrypt(s.encode()).decode()
 
 
 class FernetVault:
     def __init__(self, secret_key: bytes):
-        self.f = Fernet(secret_key)
-        self._vault = {}
+        self.f = CryptoFernet(secret_key)
+        self._vault: dict = {}
 
     def __getitem__(self, key):
         return self._vault.__getitem__(key)

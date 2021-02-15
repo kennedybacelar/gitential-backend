@@ -9,6 +9,7 @@ TESTS_DIR = "tests"
 def lint(ctx):
     ctx.run(f"black --check {PACKAGE_DIR} {TESTS_DIR}")
     ctx.run(f"pylint {PACKAGE_DIR}")
+    ctx.run(f"mypy {PACKAGE_DIR}")
 
 
 @task

@@ -1,5 +1,267 @@
-from .common import GitentialBackend
+import datetime as dt
+from threading import Lock
+from typing import Iterable, Optional, Callable, List, cast
+from collections import defaultdict
+from gitential2.settings import GitentialSettings
+from gitential2.datatypes import (
+    CoreModel,
+    UserCreate,
+    UserUpdate,
+    UserInDB,
+    WorkspaceCreate,
+    WorkspaceUpdate,
+    WorkspaceInDB,
+    UserInfoCreate,
+    UserInfoUpdate,
+    UserInfoInDB,
+    CredentialCreate,
+    CredentialUpdate,
+    CredentialInDB,
+    WorkspacePermissionCreate,
+    WorkspacePermissionUpdate,
+    WorkspacePermissionInDB,
+    WorkspaceWithPermission,
+)
+from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
+from gitential2.datatypes.project_repositories import (
+    ProjectRepositoryCreate,
+    ProjectRepositoryUpdate,
+    ProjectRepositoryInDB,
+)
+from .base import (
+    BaseRepository,
+    BaseWorkspaceScopedRepository,
+    IdType,
+    CreateType,
+    UpdateType,
+    InDBType,
+    UserRepository,
+    UserInfoRepository,
+    GitentialBackend,
+    WorkspaceRepository,
+    WorkspacePermissionRepository,
+    CredentialRepository,
+    ProjectRepository,
+    RepositoryRepository,
+    ProjectRepositoryRepository,
+)
+from .base.mixins import WithRepositoriesMixin
 
 
-class InMemoryBackend(GitentialBackend):
+class InMemRepository(
+    BaseRepository[IdType, CreateType, UpdateType, InDBType]
+):  # pylint: disable=unsubscriptable-object
+    def __init__(self, in_db_cls: Callable[..., InDBType]):
+        self._state: dict = {}
+        self._counter = 1
+        self._in_db_cls = in_db_cls
+        self._counter_lock = Lock()
+
+    def get(self, id_: IdType) -> Optional[InDBType]:
+        return self._state.get(id_)
+
+    def get_by(self, **kwargs) -> Optional[InDBType]:
+        unique_fields = cast(CoreModel, self._in_db_cls).unique_fields()
+        if not unique_fields:
+            return None
+        else:
+            for obj in self._state.values():
+                if all(getattr(obj, k) == v for k, v in kwargs.items()):
+                    return obj
+        return None
+
+    def create(self, obj: CreateType) -> InDBType:
+        values = obj.dict()
+        id_ = self._new_id()
+        values["id"] = id_
+        self._state[id_] = self._in_db_cls(**values)
+        return self._state[id_]
+
+    def update(self, id_: IdType, obj: UpdateType) -> InDBType:
+        update_dict = obj.dict(exclude_unset=True)
+        original_obj = self._state[id_]
+        if hasattr(original_obj, "updated_at") and "updated_at" not in update_dict:
+            update_dict["updated_at"] = dt.datetime.utcnow()
+
+        updated_obj = original_obj.copy(update=update_dict)
+        self._state[id_] = updated_obj
+        return self._state[id_]
+
+    def delete(self, id_: IdType) -> int:
+        try:
+            del self._state[id_]
+            return 1
+        except KeyError:
+            return 0
+
+    def all(self) -> Iterable[InDBType]:
+        return self._state.values()
+
+    def _new_id(self):
+        with self._counter_lock:
+            ret = self._counter
+            self._counter += 1
+        return ret
+
+
+def constant_factory(value):
+    return lambda: value
+
+
+class InMemWorkspaceScopedRepository(
+    BaseWorkspaceScopedRepository[IdType, CreateType, UpdateType, InDBType]
+):  # pylint: disable=unsubscriptable-object
+    def __init__(self, in_db_cls: Callable[..., InDBType]):
+        self._state: dict = defaultdict(dict)
+        self._counters: dict = defaultdict(constant_factory(1))
+        self._in_db_cls = in_db_cls
+        self._counter_lock = Lock()
+
+    def get(self, workspace_id: int, id_: IdType) -> Optional[InDBType]:
+        return self._state[workspace_id].get(id_)
+
+    def create(self, workspace_id: int, obj: CreateType) -> InDBType:
+        values = obj.dict()
+        id_ = self._new_id(workspace_id)
+        values["id"] = id_
+        self._state[workspace_id][id_] = self._in_db_cls(**values)
+        return self._state[id_]
+
+    def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
+        update_dict = obj.dict(exclude_unset=True)
+        original_obj = self._state[workspace_id][id_]
+        if hasattr(original_obj, "updated_at") and "updated_at" not in update_dict:
+            update_dict["updated_at"] = dt.datetime.utcnow()
+
+        updated_obj = original_obj.copy(update=update_dict)
+        self._state[workspace_id][id_] = updated_obj
+        return self._state[id_]
+
+    def delete(self, workspace_id: int, id_: IdType) -> int:
+        try:
+            del self._state[workspace_id][id_]
+            return 1
+        except KeyError:
+            return 0
+
+    def all(self, worskspace_id: int) -> Iterable[InDBType]:
+        return self._state[worskspace_id].values()
+
+    def _new_id(self, workspace_id):
+        with self._counter_lock:
+            ret = self._counters[workspace_id]
+            self._counters[workspace_id] += 1
+        return ret
+
+
+class InMemUserRepository(UserRepository, InMemRepository[int, UserCreate, UserUpdate, UserInDB]):
+    def get_by_email(self, email: str) -> Optional[UserInDB]:
+        return None
+
+
+class InMemUserInfoRepository(UserInfoRepository, InMemRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
+    def get_by_sub_and_integration(self, sub: str, integration_name: str) -> Optional[UserInfoInDB]:
+        return None
+
+
+class InMemWorkspaceRepository(
+    WorkspaceRepository, InMemRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]
+):
     pass
+
+
+class InMemWorkspacePermissionRepository(
+    WorkspacePermissionRepository,
+    InMemRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB],
+):
+    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+        return [item for item in self._state.values() if item.user_id == user_id]
+
+
+class InMemCredentialRepository(
+    CredentialRepository, InMemRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
+):
+    def get_by_user_and_integration(self, owner_id: int, integration_name: str) -> Optional[CredentialInDB]:
+        found_credentials = [
+            cast(CredentialInDB, item)
+            for item in self._state.values()
+            if item.owner_id == owner_id and item.integration_name == integration_name
+        ]
+        return found_credentials[0] if found_credentials else None
+
+    def get_for_user(self, owner_id: int) -> List[CredentialInDB]:
+        return [cast(CredentialInDB, item) for item in self._state.values() if item.owner_id == owner_id]
+
+
+class InMemProjectRepository(
+    ProjectRepository, InMemWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]
+):
+    pass
+
+
+class InMemRepositoryRepository(
+    RepositoryRepository, InMemWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
+):
+    def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
+        for o in self._state[workspace_id].values():
+            if o.clone_url == clone_url:
+                return o
+        return None
+
+
+class InMemProjectRepositoryRepository(
+    ProjectRepositoryRepository,
+    InMemWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB],
+):
+    def get_repo_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:
+        return [item.repository_id for item in self._state[workspace_id] if item.project_id == project_id]
+
+    def add_repo_ids_to_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
+        for repo_id in repo_ids:
+            self.create(workspace_id=workspace_id, obj=ProjectRepositoryCreate(project_id=project_id, repo_id=repo_id))
+
+    def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
+        needs_delete = [
+            item.id for item in self._state[workspace_id] if item.project_id == project_id and item.repo_id in repo_ids
+        ]
+        for d_id in needs_delete:
+            self.delete(workspace_id=workspace_id, id_=d_id)
+
+
+class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
+    def __init__(self, settings: GitentialSettings):
+        super().__init__(settings)
+        self._users: UserRepository = InMemUserRepository(in_db_cls=UserInDB)
+        self._user_infos: UserInfoRepository = InMemUserInfoRepository(in_db_cls=UserInfoInDB)
+        self._workspaces: WorkspaceRepository = InMemWorkspaceRepository(in_db_cls=WorkspaceInDB)
+        self._workspace_permissions: WorkspacePermissionRepository = InMemWorkspacePermissionRepository(
+            in_db_cls=WorkspacePermissionInDB
+        )
+        self._credentials: CredentialRepository = InMemCredentialRepository(in_db_cls=CredentialInDB)
+        self._projects: ProjectRepository = InMemProjectRepository(in_db_cls=ProjectInDB)
+        self._repositories: RepositoryRepository = InMemRepositoryRepository(in_db_cls=RepositoryInDB)
+        self._project_repositories: ProjectRepositoryRepository = InMemProjectRepositoryRepository(
+            in_db_cls=ProjectRepositoryInDB
+        )
+
+    def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
+        ret = []
+        workspace_permissions = self.workspace_permissions.get_for_user(user_id)
+
+        for wp in workspace_permissions:
+            w = self.workspaces.get(wp.workspace_id)
+            if w:
+                ret.append(
+                    WorkspaceWithPermission(
+                        id=w.id,
+                        name=w.name,
+                        role=wp.role,
+                        primary=wp.primary,
+                        user_id=wp.user_id,
+                    )
+                )
+        return ret
+
+    def initialize_workspace(self, workspace_id: int):
+        pass

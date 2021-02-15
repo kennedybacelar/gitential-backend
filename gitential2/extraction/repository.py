@@ -34,7 +34,7 @@ logger = get_logger(__name__)
 EMPTY_TREE_HASH = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 COMMIT_ID_RE = re.compile(r"^\w{40}")
 
-
+# pylint: disable=too-many-arguments
 def extract_incremental(
     repository: GitRepository,
     output: OutputHandler,
