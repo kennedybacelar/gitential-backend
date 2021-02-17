@@ -9,13 +9,18 @@ from gitential2.datatypes import (
     UserInDB,
     UserInfoUpdate,
     UserInfoCreate,
+    UserHeader,
     CredentialCreate,
     CredentialUpdate,
-    WorkspaceWithPermission,
     WorkspaceCreate,
-    WorkspacePermissionCreate,
+    WorkspaceInDB,
     WorkspaceRole,
+    WorkspacePublic,
+    WorkspaceMemberCreate,
 )
+
+from gitential2.datatypes.workspaces import WorkspaceUpdate
+from gitential2.datatypes.workspacemember import WorkspaceMemberInDB, WorkspaceMemberPublic
 
 from .abc import WorkspaceCtrl, Gitential
 from .workspace_ctrl import WorkspaceCtrlImpl
@@ -117,20 +122,90 @@ class GitentialImpl(Gitential):
         workspace = WorkspaceCreate(name=f"{user.login}'s workspace")
         return self.create_workspace(workspace, current_user=user, primary=True)
 
-    def create_workspace(self, workspace: WorkspaceCreate, current_user: UserInDB, primary=False):
+    def create_workspace(self, workspace: WorkspaceCreate, current_user: UserInDB, primary=False) -> WorkspaceInDB:
         workspace.created_by = current_user.id
 
         workspace_in_db = self.backend.workspaces.create(workspace)
-        self.backend.workspace_permissions.create(
-            WorkspacePermissionCreate(
+        self.backend.workspace_members.create(
+            WorkspaceMemberCreate(
                 workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
             )
         )
         self.get_workspace_ctrl(workspace_id=workspace_in_db.id).initialize()
         return workspace_in_db
 
-    def get_accessible_workspaces(self, current_user: UserInDB) -> List[WorkspaceWithPermission]:
-        return self.backend.get_accessible_workspaces(current_user.id)
+    def update_workspace(self, workspace_id: int, workspace: WorkspaceUpdate, current_user: UserInDB) -> WorkspaceInDB:
+        membership = self.backend.workspace_members.get_for_workspace_and_user(
+            workspace_id=workspace_id, user_id=current_user.id
+        )
+        if membership:
+            return self.backend.workspaces.update(workspace_id, workspace)
+        else:
+            raise Exception("Authentication error")
+
+    def delete_workspace(self, workspace_id: int, current_user: UserInDB) -> int:
+        membership = self.backend.workspace_members.get_for_workspace_and_user(
+            workspace_id=workspace_id, user_id=current_user.id
+        )
+        if membership:
+            return self.backend.workspaces.delete(workspace_id)
+        else:
+            raise Exception("Authentication error")
+
+    def get_accessible_workspaces(
+        self, current_user: UserInDB, include_members: bool = False, include_projects: bool = False
+    ) -> List[WorkspacePublic]:
+        workspace_memberships = self.backend.workspace_members.get_for_user(user_id=current_user.id)
+        return [
+            self.get_workspace(
+                workspace_id=membership.workspace_id,
+                current_user=current_user,
+                include_members=include_members,
+                include_projects=include_projects,
+                _membership=membership,
+            )
+            for membership in workspace_memberships
+        ]
+
+    def get_workspace(
+        self,
+        workspace_id: int,
+        current_user: UserInDB,
+        include_members: bool = False,
+        include_projects: bool = False,
+        _membership: Optional[WorkspaceMemberInDB] = None,
+    ) -> WorkspacePublic:
+
+        membership = _membership or self.backend.workspace_members.get_for_workspace_and_user(
+            workspace_id=workspace_id, user_id=current_user.id
+        )
+
+        if membership:
+            workspace = self.backend.workspaces.get_or_error(workspace_id)
+            workspace_data = workspace.dict()
+            workspace_data["membership"] = membership.dict()
+
+            if include_members:
+                workspace_data["members"] = self.get_members(workspace_id=workspace.id)
+
+            if include_projects:
+                workspace_data["projects"] = self.get_workspace_ctrl(workspace_id=workspace_id).list_projects()
+
+            return WorkspacePublic(**workspace_data)
+        else:
+            raise Exception("Access Denied")
+
+    def get_members(self, workspace_id: int, include_user_header=True) -> List[WorkspaceMemberPublic]:
+        def _process(member):
+            member_data = member.dict()
+            if include_user_header:
+                user = self.backend.users.get_or_error(member.user_id)
+                member_data["user"] = UserHeader(id=user.id, login=user.login)
+            return WorkspaceMemberPublic(**member_data)
+
+        return [
+            _process(member) for member in self.backend.workspace_members.get_for_workspace(workspace_id=workspace_id)
+        ]
 
     def get_workspace_ctrl(self, workspace_id: int) -> WorkspaceCtrl:
         return WorkspaceCtrlImpl(
@@ -138,3 +213,10 @@ class GitentialImpl(Gitential):
             backend=self.backend,
             core=self,
         )
+
+
+def find_first(predicate, iterable):
+    for i in iterable:
+        if predicate(i):
+            return i
+    return None

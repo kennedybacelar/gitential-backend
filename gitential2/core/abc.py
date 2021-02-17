@@ -10,11 +10,15 @@ from gitential2.datatypes.repositories import RepositoryInDB
 
 from gitential2.datatypes import (
     UserInDB,
-    WorkspaceWithPermission,
+    WorkspacePublic,
     WorkspaceCreate,
     ProjectInDB,
     ProjectCreateWithRepositories,
     RepositoryCreate,
+    WorkspaceMemberPublic,
+    WorkspaceMemberInDB,
+    WorkspaceUpdate,
+    WorkspaceInDB,
 )
 
 
@@ -90,13 +94,37 @@ class Gitential(ABC):
         pass
 
     @abstractmethod
-    def create_workspace(self, workspace: WorkspaceCreate, current_user: UserInDB, primary=False):
+    def create_workspace(self, workspace: WorkspaceCreate, current_user: UserInDB, primary=False) -> WorkspaceInDB:
         pass
 
     @abstractmethod
-    def get_accessible_workspaces(self, current_user: UserInDB) -> List[WorkspaceWithPermission]:
+    def update_workspace(self, workspace_id: int, workspace: WorkspaceUpdate, current_user: UserInDB) -> WorkspaceInDB:
+        pass
+
+    @abstractmethod
+    def delete_workspace(self, workspace_id: int, current_user: UserInDB) -> int:
+        pass
+
+    @abstractmethod
+    def get_accessible_workspaces(
+        self, current_user: UserInDB, include_members: bool = False, include_projects: bool = False
+    ) -> List[WorkspacePublic]:
+        pass
+
+    def get_workspace(
+        self,
+        workspace_id: int,
+        current_user: UserInDB,
+        include_members: bool = False,
+        include_projects: bool = False,
+        _membership: Optional[WorkspaceMemberInDB] = None,
+    ):
         pass
 
     @abstractmethod
     def get_workspace_ctrl(self, workspace_id: int) -> WorkspaceCtrl:
+        pass
+
+    @abstractmethod
+    def get_members(self, workspace_id: int, include_user_header=True) -> List[WorkspaceMemberPublic]:
         pass

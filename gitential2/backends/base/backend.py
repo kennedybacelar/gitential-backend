@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import List
 from gitential2.settings import GitentialSettings
-from gitential2.datatypes import (
-    WorkspaceWithPermission,
-)
+
 from .repositories import (
     UserRepository,
     UserInfoRepository,
     CredentialRepository,
     WorkspaceRepository,
-    WorkspacePermissionRepository,
+    WorkspaceMemberRepository,
     ProjectRepository,
     RepositoryRepository,
     ProjectRepositoryRepository,
@@ -42,7 +39,7 @@ class GitentialBackend(ABC):
 
     @property
     @abstractmethod
-    def workspace_permissions(self) -> WorkspacePermissionRepository:
+    def workspace_members(self) -> WorkspaceMemberRepository:
         pass
 
     @property
@@ -58,10 +55,6 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def project_repositories(self) -> ProjectRepositoryRepository:
-        pass
-
-    @abstractmethod
-    def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
         pass
 
     @abstractmethod

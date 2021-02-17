@@ -4,7 +4,7 @@ from .repositories import (
     UserRepository,
     UserInfoRepository,
     WorkspaceRepository,
-    WorkspacePermissionRepository,
+    WorkspaceMemberRepository,
     CredentialRepository,
     ProjectRepository,
 )
@@ -14,7 +14,7 @@ class WithRepositoriesMixin:
     _users: UserRepository
     _user_infos: UserInfoRepository
     _workspaces: WorkspaceRepository
-    _workspace_permissions: WorkspacePermissionRepository
+    _workspace_members: WorkspaceMemberRepository
     _credentials: CredentialRepository
     _projects: ProjectRepository
     _repositories: RepositoryRepository
@@ -33,8 +33,8 @@ class WithRepositoriesMixin:
         return self._workspaces
 
     @property
-    def workspace_permissions(self) -> WorkspacePermissionRepository:
-        return self._workspace_permissions
+    def workspace_members(self) -> WorkspaceMemberRepository:
+        return self._workspace_members
 
     @property
     def credentials(self) -> CredentialRepository:

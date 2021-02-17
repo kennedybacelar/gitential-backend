@@ -73,12 +73,14 @@ workspaces_table = sa.Table(
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
 )
 
-workspace_permissions_table = sa.Table(
-    "workspace_permissions",
+workspace_members_table = sa.Table(
+    "workspace_members",
     metadata,
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
     sa.Column("workspace_id", sa.Integer, sa.ForeignKey("workspaces.id"), nullable=False),
     sa.Column("role", sa.Enum(WorkspaceRole), default=WorkspaceRole.owner),
     sa.Column("primary", sa.Boolean, default=False),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
 )
