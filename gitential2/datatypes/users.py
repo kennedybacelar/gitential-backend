@@ -31,3 +31,7 @@ class UserInDB(IDModelMixin, DateTimeModelMixin, UserBase):
 
 class UserPublic(IDModelMixin, DateTimeModelMixin, UserBase):
     pass
+
+
+class UserHeader(IDModelMixin, CoreModel):
+    login: Optional[str] = Field(None, max_length=128)

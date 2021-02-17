@@ -1,4 +1,6 @@
-from typing import Optional
+from typing import Optional, List
+from gitential2.datatypes.workspacemember import WorkspaceMemberPublic
+
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
@@ -21,4 +23,5 @@ class WorkspaceInDB(IDModelMixin, DateTimeModelMixin, WorkspaceBase):
 
 
 class WorkspacePublic(IDModelMixin, DateTimeModelMixin, WorkspaceBase):
-    pass
+    membership: Optional[WorkspaceMemberPublic] = None
+    members: Optional[List[WorkspaceMemberPublic]] = None

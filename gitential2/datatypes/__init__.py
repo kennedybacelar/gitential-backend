@@ -8,14 +8,14 @@ from pydantic.dataclasses import dataclass
 from pydantic import BaseModel, Field
 from .common import CoreModel
 from .userinfos import UserInfoCreate, UserInfoUpdate, UserInfoPublic, UserInfoInDB
-from .users import UserCreate, UserUpdate, UserPublic, UserInDB
+from .users import UserCreate, UserUpdate, UserPublic, UserInDB, UserHeader
 from .workspaces import WorkspaceCreate, WorkspaceUpdate, WorkspacePublic, WorkspaceInDB
-from .workspacepermissions import (
-    WorkspacePermissionCreate,
-    WorkspacePermissionUpdate,
-    WorkspacePermissionPublic,
-    WorkspacePermissionInDB,
-    WorkspaceWithPermission,
+from .workspacemember import (
+    WorkspaceMemberCreate,
+    WorkspaceMemberUpdate,
+    WorkspaceMemberPublic,
+    WorkspaceMemberInDB,
+    # WorkspaceWithPermission,
     WorkspaceRole,
 )
 from .credentials import CredentialCreate, CredentialUpdate, CredentialPublic, CredentialInDB, CredentialType

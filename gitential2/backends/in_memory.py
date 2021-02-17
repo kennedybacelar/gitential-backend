@@ -17,11 +17,9 @@ from gitential2.datatypes import (
     CredentialCreate,
     CredentialUpdate,
     CredentialInDB,
-    WorkspacePermissionCreate,
-    WorkspacePermissionUpdate,
-    WorkspacePermissionInDB,
-    WorkspaceWithPermission,
+    # WorkspaceWithPermission,
 )
+from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
 from gitential2.datatypes.project_repositories import (
@@ -29,6 +27,7 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryUpdate,
     ProjectRepositoryInDB,
 )
+
 from .base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
@@ -40,7 +39,7 @@ from .base import (
     UserInfoRepository,
     GitentialBackend,
     WorkspaceRepository,
-    WorkspacePermissionRepository,
+    WorkspaceMemberRepository,
     CredentialRepository,
     ProjectRepository,
     RepositoryRepository,
@@ -168,15 +167,25 @@ class InMemUserInfoRepository(UserInfoRepository, InMemRepository[int, UserInfoC
 class InMemWorkspaceRepository(
     WorkspaceRepository, InMemRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]
 ):
-    pass
+    def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+        return [item for item in self._state.values() if item.id in workspace_ids]
 
 
-class InMemWorkspacePermissionRepository(
-    WorkspacePermissionRepository,
-    InMemRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB],
+class InMemWorkspaceMemberRepository(
+    WorkspaceMemberRepository,
+    InMemRepository[int, WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB],
 ):
-    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+    def get_for_user(self, user_id: int) -> List[WorkspaceMemberInDB]:
         return [item for item in self._state.values() if item.user_id == user_id]
+
+    def get_for_workspace(self, workspace_id: int) -> List[WorkspaceMemberInDB]:
+        return [item for item in self._state.values() if item.workspace_id == workspace_id]
+
+    def get_for_workspace_and_user(self, workspace_id: int, user_id: int) -> Optional[WorkspaceMemberInDB]:
+        for item in self._state.values():
+            if item.workspace_id == workspace_id and item.user_id == user_id:
+                return item
+        return None
 
 
 class InMemCredentialRepository(
@@ -235,8 +244,8 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._users: UserRepository = InMemUserRepository(in_db_cls=UserInDB)
         self._user_infos: UserInfoRepository = InMemUserInfoRepository(in_db_cls=UserInfoInDB)
         self._workspaces: WorkspaceRepository = InMemWorkspaceRepository(in_db_cls=WorkspaceInDB)
-        self._workspace_permissions: WorkspacePermissionRepository = InMemWorkspacePermissionRepository(
-            in_db_cls=WorkspacePermissionInDB
+        self._workspace_members: WorkspaceMemberRepository = InMemWorkspaceMemberRepository(
+            in_db_cls=WorkspaceMemberInDB
         )
         self._credentials: CredentialRepository = InMemCredentialRepository(in_db_cls=CredentialInDB)
         self._projects: ProjectRepository = InMemProjectRepository(in_db_cls=ProjectInDB)
@@ -245,23 +254,23 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=ProjectRepositoryInDB
         )
 
-    def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
-        ret = []
-        workspace_permissions = self.workspace_permissions.get_for_user(user_id)
+    # def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
+    #     ret = []
+    #     workspace_permissions = self.workspace_permissions.get_for_user(user_id)
 
-        for wp in workspace_permissions:
-            w = self.workspaces.get(wp.workspace_id)
-            if w:
-                ret.append(
-                    WorkspaceWithPermission(
-                        id=w.id,
-                        name=w.name,
-                        role=wp.role,
-                        primary=wp.primary,
-                        user_id=wp.user_id,
-                    )
-                )
-        return ret
+    #     for wp in workspace_permissions:
+    #         w = self.workspaces.get(wp.workspace_id)
+    #         if w:
+    #             ret.append(
+    #                 WorkspaceWithPermission(
+    #                     id=w.id,
+    #                     name=w.name,
+    #                     role=wp.role,
+    #                     primary=wp.primary,
+    #                     user_id=wp.user_id,
+    #                 )
+    #             )
+    #     return ret
 
     def initialize_workspace(self, workspace_id: int):
         pass

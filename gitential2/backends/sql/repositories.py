@@ -16,10 +16,8 @@ from gitential2.datatypes import (
     WorkspaceCreate,
     WorkspaceUpdate,
     WorkspaceInDB,
-    WorkspacePermissionCreate,
-    WorkspacePermissionUpdate,
-    WorkspacePermissionInDB,
 )
+from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
 from gitential2.datatypes.project_repositories import (
@@ -38,7 +36,7 @@ from ..base import (
     UserInfoRepository,
     CredentialRepository,
     WorkspaceRepository,
-    WorkspacePermissionRepository,
+    WorkspaceMemberRepository,
     ProjectRepository,
     RepositoryRepository,
     ProjectRepositoryRepository,
@@ -188,17 +186,33 @@ class SQLCredentialRepository(
 
 
 class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
-    pass
+    def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+        query = self.table.select().where(self.table.c.id.in_(workspace_ids))
+        result = self._execute_query(query)
+        return [WorkspaceInDB(**row) for row in result.fetchall()]
 
 
-class SQLWorkspacePermissionRepository(
-    WorkspacePermissionRepository,
-    SQLRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB],
+class SQLWorkspaceMemberRepository(
+    WorkspaceMemberRepository,
+    SQLRepository[int, WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB],
 ):
-    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+    def get_for_user(self, user_id: int) -> List[WorkspaceMemberInDB]:
         query = self.table.select().where(self.table.c.user_id == user_id)
         result = self._execute_query(query)
-        return [WorkspacePermissionInDB(**row) for row in result.fetchall()]
+        return [WorkspaceMemberInDB(**row) for row in result.fetchall()]
+
+    def get_for_workspace(self, workspace_id: int) -> List[WorkspaceMemberInDB]:
+        query = self.table.select().where(self.table.c.workspace_id == workspace_id)
+        result = self._execute_query(query)
+        return [WorkspaceMemberInDB(**row) for row in result.fetchall()]
+
+    def get_for_workspace_and_user(self, workspace_id: int, user_id: int) -> Optional[WorkspaceMemberInDB]:
+        query = self.table.select().where(
+            and_(self.table.c.workspace_id == workspace_id, self.table.c.user_id == user_id)
+        )
+        result = self._execute_query(query)
+        row = result.fetchone()
+        return WorkspaceMemberInDB(**row) if row else None
 
 
 class SQLProjectRepository(

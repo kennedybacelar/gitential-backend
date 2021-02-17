@@ -10,7 +10,7 @@ router = APIRouter(tags=["metrics"])
 
 class StatsRequest(BaseModel):
     metrics: List[str]
-    dimensions: List[str]
+    dimensions: Optional[List[str]] = None
     filters: Dict[str, Any]
     sort_by: Optional[List[str]] = None
     type: str = "aggregate"  # or "select"
@@ -19,19 +19,32 @@ class StatsRequest(BaseModel):
 @router.post("/stats")
 async def stats(stats_request: StatsRequest):
     print("!!!", stats_request)
-    keys = stats_request.metrics + stats_request.dimensions
+    dimensions = stats_request.dimensions or []
+    keys = stats_request.metrics + dimensions
     if stats_request.sort_by:
         keys = keys + stats_request.sort_by
     return {key: [] for key in keys}
 
 
 @router.post("/workspaces/{workspace_id}/stats")
-async def workspace_stats(stats_request: StatsRequest):
-    print("!!!", stats_request)
-    keys = stats_request.metrics + stats_request.dimensions
-    if stats_request.sort_by:
-        keys = keys + stats_request.sort_by
+async def workspace_stats(val: StatsRequest):
+    print("!!!", val)
+    keys = val.metrics + (val.dimensions or [])
+    if val.sort_by:
+        keys = keys + val.sort_by
     return {key: [] for key in keys}
+
+
+@router.post("/workspaces/{workspace_id}/multi-stats")
+async def workspace_multi_stats(stats_request: Dict[str, StatsRequest]):
+    ret: dict = {}
+    for name, val in stats_request.items():
+        print("!!!", val)
+        keys = val.metrics + (val.dimensions or [])
+        if val.sort_by:
+            keys = keys + val.sort_by
+        ret[name] = {key: [] for key in keys}
+    return ret
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}/developers")

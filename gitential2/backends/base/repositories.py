@@ -15,9 +15,6 @@ from gitential2.datatypes import (
     CredentialCreate,
     CredentialUpdate,
     CredentialInDB,
-    WorkspacePermissionCreate,
-    WorkspacePermissionUpdate,
-    WorkspacePermissionInDB,
 )
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
@@ -26,6 +23,7 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryInDB,
     ProjectRepositoryUpdate,
 )
+from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 
 IdType = TypeVar("IdType")
 CreateType = TypeVar("CreateType", bound=CoreModel)
@@ -117,14 +115,22 @@ class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdat
 
 
 class WorkspaceRepository(BaseRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
-    pass
-
-
-class WorkspacePermissionRepository(
-    BaseRepository[int, WorkspacePermissionCreate, WorkspacePermissionUpdate, WorkspacePermissionInDB]
-):
     @abstractmethod
-    def get_for_user(self, user_id: int) -> List[WorkspacePermissionInDB]:
+    def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+        pass
+
+
+class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB]):
+    @abstractmethod
+    def get_for_user(self, user_id: int) -> List[WorkspaceMemberInDB]:
+        pass
+
+    @abstractmethod
+    def get_for_workspace(self, workspace_id: int) -> List[WorkspaceMemberInDB]:
+        pass
+
+    @abstractmethod
+    def get_for_workspace_and_user(self, workspace_id: int, user_id: int) -> Optional[WorkspaceMemberInDB]:
         pass
 
 
