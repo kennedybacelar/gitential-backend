@@ -2,7 +2,7 @@ from typing import Optional, List
 from pydantic import Field
 
 from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
-from .repositories import RepositoryCreate, RepositoryPublic
+from .repositories import RepositoryCreate, RepositoryPublic, RepositoryStatus
 
 
 class ProjectBase(ExtraFieldMixin, CoreModel):
@@ -37,3 +37,11 @@ class ProjectPublic(IDModelMixin, DateTimeModelMixin, ProjectBase):
 
 class ProjectPublicWithRepositories(ProjectPublic):
     repos: List[RepositoryPublic]
+
+
+class ProjectStatus(CoreModel):
+    id: int
+    name: str
+    status: str
+    done: bool
+    repos: List[RepositoryStatus]

@@ -1,10 +1,9 @@
-from abc import ABC
 from enum import Enum
+from gitential2.datatypes.common import CoreModel
 from typing import Optional
 from pathlib import Path
 from datetime import datetime
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
 
 
 class LocalGitRepository(BaseModel):
@@ -12,31 +11,15 @@ class LocalGitRepository(BaseModel):
     directory: Path
 
 
-class RepositoryCredentials(ABC):
-    pass
-
-
-@dataclass
-class KeypairCredentials(RepositoryCredentials):
-    username: str = "git"
-    pubkey: Optional[str] = None
-    privkey: Optional[str] = None
-    passphrase: Optional[str] = None
-
-
-@dataclass
-class UserPassCredential(RepositoryCredentials):
-    username: str
-    password: str
-
-
 class ExtractedKind(str, Enum):
     EXTRACTED_COMMIT = "extracted_commit"
     EXTRACTED_PATCH = "extracted_patch"
     EXTRACTED_PATCH_REWRITE = "extracted_patch_rewrite"
+    PULL_REQUEST = "pull_request"
 
 
-class ExtractedCommit(BaseModel):
+class ExtractedCommit(CoreModel):
+    repo_id: int
     commit_id: str
     atime: datetime
     aemail: str
@@ -48,6 +31,9 @@ class ExtractedCommit(BaseModel):
     nparents: int
     tree_id: str
 
+    def get_id(self):
+        return (self.repo_id, self.commit_id)
+
 
 class Langtype(Enum):
     UNKNOWN = 0
@@ -58,6 +44,7 @@ class Langtype(Enum):
 
 
 class ExtractedPatch(BaseModel):
+    repo_id: int
     commit_id: str
     parent_commit_id: str
     status: str
@@ -84,6 +71,7 @@ class ExtractedPatch(BaseModel):
 
 
 class ExtractedPatchRewrite(BaseModel):
+    repo_id: int
     commit_id: str
     atime: datetime
     aemail: str
