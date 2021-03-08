@@ -4,8 +4,9 @@ import pytest
 
 
 from gitential2.extraction.output import DataCollector
-from gitential2.datatypes.repositories import GitRepository, GitRepositoryState
-from gitential2.datatypes.extraction import LocalGitRepository, UserPassCredential, KeypairCredentials, Langtype
+from gitential2.datatypes.repositories import RepositoryInDB, GitRepositoryState, GitProtocol
+from gitential2.datatypes.extraction import LocalGitRepository, Langtype
+from gitential2.datatypes.credentials import UserPassCredential, KeypairCredential
 from gitential2.extraction.repository import (
     clone_repository,
     get_repository_state,
@@ -23,14 +24,16 @@ TEST_HTTPS_PRIVATE_REPOSITORY = "https://gitlab.com/gitential-com/test-repositor
 
 @pytest.mark.slow
 def test_clone_repository_without_credential(tmp_path):
-    ret = clone_repository(GitRepository(repo_id=1, clone_url=TEST_PUBLIC_REPOSITORY), destination_path=tmp_path)
+    ret = clone_repository(
+        RepositoryInDB(id=1, clone_url=TEST_PUBLIC_REPOSITORY, protocol=GitProtocol.https), destination_path=tmp_path
+    )
     assert isinstance(ret, LocalGitRepository)
 
 
 @pytest.mark.slow
 def test_clone_repository_with_userpass(tmp_path, secrets):
     ret = clone_repository(
-        repository=GitRepository(repo_id=1, clone_url=TEST_HTTPS_PRIVATE_REPOSITORY),
+        repository=RepositoryInDB(id=1, clone_url=TEST_HTTPS_PRIVATE_REPOSITORY, protocol=GitProtocol.https),
         destination_path=tmp_path,
         credentials=UserPassCredential(
             secrets["TEST_HTTPS_PRIVATE_REPOSITORY_USERNAME"], secrets["TEST_HTTPS_PRIVATE_REPOSITORY_PASSWORD"]
@@ -43,9 +46,9 @@ def test_clone_repository_with_userpass(tmp_path, secrets):
 @pytest.mark.slow
 def test_clone_repository_ssh_with_keypair(tmp_path, secrets):
     ret = clone_repository(
-        repository=GitRepository(repo_id=1, clone_url=TEST_SSH_PRIVATE_REPOSITORY),
+        repository=RepositoryInDB(id=1, clone_url=TEST_SSH_PRIVATE_REPOSITORY, protocol=GitProtocol.ssh),
         destination_path=tmp_path,
-        credentials=KeypairCredentials(
+        credentials=KeypairCredential(
             username="git",
             pubkey=secrets["TEST_SSH_PRIVATE_REPOSITORY_PUBLIC_KEY"],
             privkey=secrets["TEST_SSH_PRIVATE_REPOSITORY_PRIVATE_KEY"],
@@ -173,7 +176,9 @@ def test_blame_porcelain(test_repositories):
 @pytest.mark.slow
 def test_extract_incremental(settings, test_repositories):
     output = DataCollector()
-    repository = GitRepository(id=1, clone_url=str(test_repositories["hostname"].directory))
+    repository = RepositoryInDB(
+        id=1, clone_url=str(test_repositories["hostname"].directory), protocol=GitProtocol.https
+    )
     result = extract_incremental(
         repository=repository,
         output=output,
