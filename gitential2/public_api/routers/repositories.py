@@ -1,432 +1,72 @@
 # pylint: skip-file
-from typing import Union
+from gitential2.datatypes.repositories import RepositoryCreate
+from typing import List
 from uuid import UUID
-from fastapi import APIRouter, Query, Depends
-from ..dependencies import workspace_ctrl
+from fastapi import APIRouter, Depends
+
+from gitential2.datatypes.permissions import Entity, Action
+from gitential2.core import (
+    GitentialContext,
+    check_permission,
+    list_available_repositories,
+    search_public_repositories,
+    list_repositories,
+    create_repositories,
+    list_project_repositories,
+)
+from ..dependencies import current_user, gitential_context
 
 router = APIRouter(tags=["repositories"])
 
 
 @router.get("/workspaces/{workspace_id}/available-repos")
-async def available_repos(workspace_ctrl=Depends(workspace_ctrl)):
-    return workspace_ctrl.list_available_repositories()
+def available_repos(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return list_available_repositories(g, workspace_id)
+
+
+@router.get("/workspaces/{workspace_id}/search-public-repos")
+def search_public_repos(
+    workspace_id: int,
+    search: str,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return search_public_repositories(g, workspace_id, search=search)
 
 
 @router.get("/workspaces/{workspace_id}/repos")
-async def workspace_repos(workspace_id: Union[int, UUID]):
-    return []
-    return [
-        {
-            "id": 1072,
-            "name": "php-src",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/php\/php-src.git",
-            "github_id": 1903522,
-            "source": "php",
-        },
-        {
-            "id": 16048,
-            "name": "confidant",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/lyft\/confidant.git",
-            "github_id": 42324225,
-            "source": "lyft",
-        },
-        {
-            "id": 16049,
-            "name": "cartography",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/lyft\/cartography.git",
-            "github_id": 172811550,
-            "source": "lyft",
-        },
-        {
-            "id": 16050,
-            "name": "mapper",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/lyft\/mapper.git",
-            "github_id": 44777644,
-            "source": "lyft",
-        },
-        {
-            "id": 16051,
-            "name": "flyte",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/lyft\/flyte.git",
-            "github_id": 216628419,
-            "source": "lyft",
-        },
-        {
-            "id": 16052,
-            "name": "amundsen",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/lyft\/amundsen.git",
-            "github_id": 186647681,
-            "source": "lyft",
-        },
-        {
-            "id": 16071,
-            "name": "hyperscan",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/intel\/hyperscan.git",
-            "github_id": 42895929,
-            "source": "intel",
-        },
-        {
-            "id": 16077,
-            "name": "terraform-provider-restapi",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/Mastercard\/terraform-provider-restapi.git",
-            "github_id": 131317436,
-            "source": "Mastercard",
-        },
-        {
-            "id": 16078,
-            "name": "oauth1-signer-nodejs",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/Mastercard\/oauth1-signer-nodejs.git",
-            "github_id": 132767011,
-            "source": "Mastercard",
-        },
-        {
-            "id": 16243,
-            "name": "fork",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/shazam\/fork.git",
-            "github_id": 25603410,
-            "source": "shazam",
-        },
-        {
-            "id": 16244,
-            "name": "shazamcrest",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/shazam\/shazamcrest.git",
-            "github_id": 8851918,
-            "source": "shazam",
-        },
-        {
-            "id": 16245,
-            "name": "app-store-reviews-and-translations",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/shazam\/app-store-reviews-and-translations.git",
-            "github_id": 87566936,
-            "source": "shazam",
-        },
-        {
-            "id": 16246,
-            "name": "jenkins-nodes-auto-scaler",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/shazam\/jenkins-nodes-auto-scaler.git",
-            "github_id": 91446275,
-            "source": "shazam",
-        },
-        {
-            "id": 16247,
-            "name": "scala-datapipeline-dsl",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/shazam\/scala-datapipeline-dsl.git",
-            "github_id": 130351052,
-            "source": "shazam",
-        },
-        {
-            "id": 16248,
-            "name": "rapidminer-studio",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/rapidminer\/rapidminer-studio.git",
-            "github_id": 41420773,
-            "source": "rapidminer",
-        },
-        {
-            "id": 16249,
-            "name": "rapidminer-5",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/rapidminer\/rapidminer-5.git",
-            "github_id": 11948968,
-            "source": "rapidminer",
-        },
-        {
-            "id": 16250,
-            "name": "eventbrite-client-py",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/eventbrite\/eventbrite-client-py.git",
-            "github_id": 2194433,
-            "source": "eventbrite",
-        },
-        {
-            "id": 16251,
-            "name": "javascript",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/eventbrite\/javascript.git",
-            "github_id": 59158617,
-            "source": "eventbrite",
-        },
-        {
-            "id": 16252,
-            "name": "entando-cms",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/entando\/entando-cms.git",
-            "github_id": 195347425,
-            "source": "entando",
-        },
-        {
-            "id": 16253,
-            "name": "entando-ux-packages",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/entando\/entando-ux-packages.git",
-            "github_id": 23320007,
-            "source": "entando",
-        },
-        {
-            "id": 16258,
-            "name": "insomnia-plugin-mastercard-auth",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/Mastercard\/insomnia-plugin-mastercard-auth.git",
-            "github_id": 127004734,
-            "source": "Mastercard",
-        },
-        {
-            "id": 16259,
-            "name": "fido2-rp-spring",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/Mastercard\/fido2-rp-spring.git",
-            "github_id": 135557268,
-            "source": "Mastercard",
-        },
-        {
-            "id": 16260,
-            "name": "facebook-android-sdk",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/facebook\/facebook-android-sdk.git",
-            "github_id": 659341,
-            "source": "facebook",
-        },
-        {
-            "id": 16261,
-            "name": "facebook-ios-sdk",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/facebook\/facebook-ios-sdk.git",
-            "github_id": 738491,
-            "source": "facebook",
-        },
-        {
-            "id": 16262,
-            "name": "flux",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/facebook\/flux.git",
-            "github_id": 22046023,
-            "source": "facebook",
-        },
-        {
-            "id": 16263,
-            "name": "PayPal-PHP-SDK",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/paypal\/PayPal-PHP-SDK.git",
-            "github_id": 8595323,
-            "source": "paypal",
-        },
-        {
-            "id": 16264,
-            "name": "PayPal-Java-SDK",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/paypal\/PayPal-Java-SDK.git",
-            "github_id": 8595333,
-            "source": "paypal",
-        },
-        {
-            "id": 16265,
-            "name": "ph-css",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/phax\/ph-css.git",
-            "github_id": 23304527,
-            "source": "phax",
-        },
-        {
-            "id": 16266,
-            "name": "phase4",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/phax\/phase4.git",
-            "github_id": 62138020,
-            "source": "phax",
-        },
-        {
-            "id": 16267,
-            "name": "ph-ubl",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/phax\/ph-ubl.git",
-            "github_id": 23310687,
-            "source": "phax",
-        },
-        {
-            "id": 16268,
-            "name": "as2-peppol-server",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/phax\/as2-peppol-server.git",
-            "github_id": 26581813,
-            "source": "phax",
-        },
-        {
-            "id": 16269,
-            "name": "phoss-smp",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/phax\/phoss-smp.git",
-            "github_id": 32790911,
-            "source": "phax",
-        },
-        {
-            "id": 16270,
-            "name": "phaser",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/photonstorm\/phaser.git",
-            "github_id": 9393759,
-            "source": "photonstorm",
-        },
-        {
-            "id": 16271,
-            "name": "InputSystem",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/Unity-Technologies\/InputSystem.git",
-            "github_id": 105615454,
-            "source": "Unity-Technologies",
-        },
-        {
-            "id": 16272,
-            "name": "arfoundation-samples",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/Unity-Technologies\/arfoundation-samples.git",
-            "github_id": 137433882,
-            "source": "Unity-Technologies",
-        },
-        {
-            "id": 16273,
-            "name": "xing-android-sdk",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/xing\/xing-android-sdk.git",
-            "github_id": 39831872,
-            "source": "xing",
-        },
-        {
-            "id": 16274,
-            "name": "beetle",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/xing\/beetle.git",
-            "github_id": 472219,
-            "source": "xing",
-        },
-        {
-            "id": 16275,
-            "name": "xing_api",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/xing\/xing_api.git",
-            "github_id": 14297694,
-            "source": "xing",
-        },
-        {
-            "id": 16276,
-            "name": "xing_nlp",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/shixing\/xing_nlp.git",
-            "github_id": 90913752,
-            "source": "shixing",
-        },
-        {
-            "id": 16277,
-            "name": "xing-api-samples",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/xing\/xing-api-samples.git",
-            "github_id": 14494694,
-            "source": "xing",
-        },
-        {
-            "id": 16278,
-            "name": "XNGMarkdownParser",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/xing\/XNGMarkdownParser.git",
-            "github_id": 23104196,
-            "source": "xing",
-        },
-        {
-            "id": 16279,
-            "name": "swift-style-guide",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/linkedin\/swift-style-guide.git",
-            "github_id": 61673934,
-            "source": "linkedin",
-        },
-        {
-            "id": 16280,
-            "name": "databus",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/linkedin\/databus.git",
-            "github_id": 7209229,
-            "source": "linkedin",
-        },
-        {
-            "id": 16281,
-            "name": "player-api",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/vimeo\/player-api.git",
-            "github_id": 1527472,
-            "source": "vimeo",
-        },
-        {
-            "id": 16282,
-            "name": "vimeo.py",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/vimeo\/vimeo.py.git",
-            "github_id": 15173209,
-            "source": "vimeo",
-        },
-        {
-            "id": 16283,
-            "name": "vimeo-php-lib",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/vimeo\/vimeo-php-lib.git",
-            "github_id": 747652,
-            "source": "vimeo",
-        },
-        {
-            "id": 16284,
-            "name": "vimeo-oembed-examples",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/vimeo\/vimeo-oembed-examples.git",
-            "github_id": 769357,
-            "source": "vimeo",
-        },
-        {
-            "id": 16285,
-            "name": "bootstrap",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/twbs\/bootstrap.git",
-            "github_id": 2126244,
-            "source": "twbs",
-        },
-        {
-            "id": 16286,
-            "name": "icons",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/twbs\/icons.git",
-            "github_id": 198878888,
-            "source": "twbs",
-        },
-        {
-            "id": 16287,
-            "name": "rfs",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/twbs\/rfs.git",
-            "github_id": 93316445,
-            "source": "twbs",
-        },
-        {
-            "id": 16288,
-            "name": "bootlint",
-            "secret_id": 2410,
-            "clone_url": "https:\/\/github.com\/twbs\/bootlint.git",
-            "github_id": 21428312,
-            "source": "twbs",
-        },
-    ]
+def workspace_repos(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return list_repositories(g, workspace_id)
+
+
+@router.post("/workspaces/{workspace_id}/repos")
+def add_repos(
+    workspace_id: int,
+    repository_creates: List[RepositoryCreate],
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.repository, Action.create, workspace_id=workspace_id)
+    return create_repositories(g, workspace_id, repository_creates)
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}/repos")
-async def project_repos(project_id: int, workspace_ctrl=Depends(workspace_ctrl)):
-    return workspace_ctrl.list_project_repositories(project_id=project_id)
+def project_repos(
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return list_project_repositories(g, workspace_id, project_id=project_id)

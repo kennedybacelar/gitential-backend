@@ -1,9 +1,15 @@
+from typing import Tuple
 from abc import ABC, abstractmethod
+from gitential2 import datatypes
+import pandas as pd
+from gitential2.extraction.output import OutputHandler
 from gitential2.settings import GitentialSettings
 
 from .repositories import (
+    AuthorRepository,
     UserRepository,
     UserInfoRepository,
+    SubscriptionRepository,
     CredentialRepository,
     WorkspaceRepository,
     WorkspaceMemberRepository,
@@ -20,6 +26,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def users(self) -> UserRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def subscriptions(self) -> SubscriptionRepository:
         pass
 
     @property
@@ -57,6 +68,31 @@ class GitentialBackend(ABC):
     def project_repositories(self) -> ProjectRepositoryRepository:
         pass
 
+    @property
+    @abstractmethod
+    def authors(self) -> AuthorRepository:
+        pass
+
     @abstractmethod
     def initialize_workspace(self, workspace_id: int):
+        pass
+
+    @abstractmethod
+    def output_handler(self, workspace_id: int) -> OutputHandler:
+        pass
+
+    @abstractmethod
+    def get_extracted_dataframes(
+        self, workspace_id: int, repository_id: int
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        pass
+
+    @abstractmethod
+    def save_calculated_dataframes(
+        self,
+        workspace_id: int,
+        repository_id: int,
+        calculated_commits_df: pd.DataFrame,
+        calculated_patches_df: pd.DataFrame,
+    ):
         pass

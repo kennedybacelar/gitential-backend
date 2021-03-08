@@ -9,9 +9,9 @@ from authlib.integrations.starlette_client import OAuth
 
 from gitential2.settings import GitentialSettings, load_settings
 
-from gitential2.core import init_from_settings
+from gitential2.core.context import init_context_from_settings
 from gitential2.core.tasks import configure_celery
-from .routers import ping, configuration, workspaces, projects, teams, repositories, stats, auth
+from .routers import ping, configuration, workspaces, projects, teams, repositories, stats, auth, users
 
 logger = get_logger(__name__)
 
@@ -54,6 +54,7 @@ def _configure_routes(app: FastAPI):
     app.include_router(repositories.router, prefix="/v2")
     app.include_router(stats.router, prefix="/v2")
     app.include_router(auth.router, prefix="/v2")
+    app.include_router(users.router, prefix="/v2")
 
 
 def _configure_session(app: FastAPI, settings: GitentialSettings):
@@ -61,7 +62,7 @@ def _configure_session(app: FastAPI, settings: GitentialSettings):
 
 
 def _configure_gitential_core(app: FastAPI, settings: GitentialSettings):
-    app.state.gitential = init_from_settings(settings)
+    app.state.gitential = init_context_from_settings(settings)
 
 
 def _configure_oauth_authentication(app: FastAPI):
@@ -69,7 +70,7 @@ def _configure_oauth_authentication(app: FastAPI):
     for integration in app.state.gitential.integrations.values():
         if integration.is_oauth:
             oauth.register(name=integration.name, **integration.oauth_register())
-            print("registering", integration.name)
+            print("registering", integration.name, integration.oauth_register())
     app.state.oauth = oauth
 
 

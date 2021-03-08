@@ -16,6 +16,7 @@ from gitential2.datatypes import (
     CredentialUpdate,
     CredentialInDB,
 )
+from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
 from gitential2.datatypes.project_repositories import (
@@ -23,7 +24,10 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryInDB,
     ProjectRepositoryUpdate,
 )
+from gitential2.datatypes.authors import AuthorAlias, AuthorCreate, AuthorUpdate, AuthorInDB
+
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
+from gitential2.datatypes.extraction import ExtractedCommit
 
 IdType = TypeVar("IdType")
 CreateType = TypeVar("CreateType", bound=CoreModel)
@@ -96,6 +100,10 @@ class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
     def get_by_email(self, email: str) -> Optional[UserInDB]:
         pass
+
+
+class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB]):
+    pass
 
 
 class UserInfoRepository(BaseRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
@@ -178,3 +186,15 @@ class ProjectRepositoryRepository(
         if ids_needs_removal:
             self.remove_repo_ids_from_project(workspace_id, project_id, ids_needs_removal)
         return ids_needs_addition, ids_needs_removal, ids_kept
+
+
+class ExtractedCommitRepository(
+    BaseWorkspaceScopedRepository[Tuple[int, str], ExtractedCommit, ExtractedCommit, ExtractedCommit]
+):
+    pass
+
+
+class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
+    @abstractmethod
+    def get_or_create_author_for_alias(self, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
+        pass

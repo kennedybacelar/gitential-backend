@@ -1,8 +1,9 @@
 import datetime as dt
 from threading import Lock
-from typing import Iterable, Optional, Callable, List, cast
+from typing import Iterable, Optional, Callable, List, cast, Dict
 from collections import defaultdict
 from gitential2.settings import GitentialSettings
+from gitential2.extraction.output import DataCollector, OutputHandler
 from gitential2.datatypes import (
     CoreModel,
     UserCreate,
@@ -253,6 +254,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._project_repositories: ProjectRepositoryRepository = InMemProjectRepositoryRepository(
             in_db_cls=ProjectRepositoryInDB
         )
+        self._output_handlers: Dict[int, OutputHandler] = defaultdict(DataCollector)
 
     # def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
     #     ret = []
@@ -274,3 +276,6 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def initialize_workspace(self, workspace_id: int):
         pass
+
+    def output_handler(self, workspace_id: int) -> OutputHandler:
+        return self._output_handlers[workspace_id]

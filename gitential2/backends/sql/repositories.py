@@ -1,7 +1,8 @@
-from typing import Iterable, Optional, Callable, List
+from typing import Iterable, Optional, Callable, List, cast
 import datetime as dt
 import sqlalchemy as sa
 from sqlalchemy.sql import and_, select
+from sqlalchemy.sql.selectable import Alias
 
 from gitential2.datatypes import (
     UserCreate,
@@ -17,6 +18,9 @@ from gitential2.datatypes import (
     WorkspaceUpdate,
     WorkspaceInDB,
 )
+from gitential2.datatypes import authors
+from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorAlias
+from gitential2.backends.base.repositories import AuthorRepository, NotFoundException
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
@@ -25,6 +29,7 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryUpdate,
     ProjectRepositoryInDB,
 )
+from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from ..base import (
     IdType,
     CreateType,
@@ -33,6 +38,7 @@ from ..base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
     UserRepository,
+    SubscriptionRepository,
     UserInfoRepository,
     CredentialRepository,
     WorkspaceRepository,
@@ -96,9 +102,12 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
 class SQLWorkspaceScopedRepository(
     BaseWorkspaceScopedRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
-    def __init__(self, table: sa.Table, engine: sa.engine.Engine, in_db_cls: Callable[..., InDBType]):
+    def __init__(
+        self, table: sa.Table, metadata: sa.MetaData, engine: sa.engine.Engine, in_db_cls: Callable[..., InDBType]
+    ):
         self.table = table
         self.engine = engine
+        self.metadata = metadata
         self.in_db_cls = in_db_cls
         self.identity = lambda id_: (self.table.c.id == id_)
 
@@ -155,7 +164,14 @@ class SQLWorkspaceScopedRepository(
 
 class SQLUserRepository(UserRepository, SQLRepository[int, UserCreate, UserUpdate, UserInDB]):
     def get_by_email(self, email: str) -> Optional[UserInDB]:
-        return None
+        query = self.table.select().where(self.table.c.email == email)
+        result = self._execute_query(query)
+        row = result.fetchone()
+        return UserInDB(**row) if row else None
+
+
+class SQLSubscriptionRepository(SubscriptionRepository, SQLRepository[int, UserCreate, UserUpdate, UserInDB]):
+    pass
 
 
 class SQLUserInfoRepository(UserInfoRepository, SQLRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
@@ -252,3 +268,63 @@ class SQLProjectRepositoryRepository(
     def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
         query = self.table.delete().where(self.table.c.repo_id.in_(repo_ids))
         self._execute_query(query, workspace_id=workspace_id)
+
+
+class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
+    def get_or_create_author_for_alias(self, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
+        query = self.metadata.tables["author_aliases"].select(
+            self.metadata.tables["author_aliases"].c.email == alias.email
+        )
+        result = self._execute_query(query, workspace_id=workspace_id)
+        row = result.fetchone()
+        if row:
+            author_id = row.author_id
+            return self.get_or_error(workspace_id=workspace_id, id_=cast(int, author_id))
+        else:
+            return self.create(workspace_id=workspace_id, obj=AuthorCreate(active=True, aliases=[alias]))
+
+    def get(self, workspace_id: int, id_: IdType) -> Optional[AuthorInDB]:
+        alias_table = self.metadata.tables["author_aliases"]
+        query = self.table.select().where(self.identity(id_)).limit(1)
+        result = self._execute_query(query, workspace_id=workspace_id)
+        row = result.fetchone()
+        if row["id"]:
+            alias_query = alias_table.select(alias_table.c.author_id == row["id"])
+            alias_result = self._execute_query(alias_query, workspace_id=workspace_id)
+            alias_rows = alias_result.fetchall()
+            aliases = [AuthorAlias(name=row["name"], email=row["email"]) for row in alias_rows]
+            return AuthorInDB(active=row["active"], id=row["id"], aliases=aliases)
+        else:
+            return None
+
+    def get_or_error(self, workspace_id: int, id_: IdType) -> AuthorInDB:
+        author = self.get(workspace_id, id_)
+        if not author:
+            raise NotFoundException
+        else:
+            return author
+
+    def create(self, workspace_id: int, obj: CreateType) -> AuthorInDB:
+        alias_table = self.metadata.tables["author_aliases"]
+
+        values = obj.dict()
+        aliases = values.pop("aliases")
+        print("values:", values, "aliases:", aliases, self.table)
+        query = self.table.insert().values(values)
+        result = self._execute_query(query, workspace_id=workspace_id)
+        id_ = result.inserted_primary_key[0]
+        # dealing with the aliases
+        alias_values = [{"name": alias["name"], "email": alias["email"], "author_id": id_} for alias in aliases]
+        alias_query = alias_table.insert(alias_values)
+        self._execute_query(alias_query, workspace_id=workspace_id)
+        # returning with get
+        return self.get_or_error(workspace_id, id_)
+
+    # def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
+    #     update_dict = obj.dict(exclude_unset=True)
+    #     if "updated_at" in self.table.columns.keys() and "updated_at" not in update_dict:
+    #         update_dict["updated_at"] = dt.datetime.utcnow()
+
+    #     query = self.table.update().where(self.identity(id_)).values(**update_dict)
+    #     self._execute_query(query, workspace_id=workspace_id)
+    #     return self.get_or_error(workspace_id, id_)

@@ -1,7 +1,9 @@
 from .repositories import (
+    AuthorRepository,
     ProjectRepositoryRepository,
     RepositoryRepository,
     UserRepository,
+    SubscriptionRepository,
     UserInfoRepository,
     WorkspaceRepository,
     WorkspaceMemberRepository,
@@ -19,10 +21,16 @@ class WithRepositoriesMixin:
     _projects: ProjectRepository
     _repositories: RepositoryRepository
     _project_repositories: ProjectRepositoryRepository
+    _authors: AuthorRepository
+    _subscriptions: SubscriptionRepository
 
     @property
     def users(self) -> UserRepository:
         return self._users
+
+    @property
+    def subscriptions(self) -> SubscriptionRepository:
+        return self._subscriptions
 
     @property
     def user_infos(self) -> UserInfoRepository:
@@ -51,3 +59,7 @@ class WithRepositoriesMixin:
     @property
     def project_repositories(self) -> ProjectRepositoryRepository:
         return self._project_repositories
+
+    @property
+    def authors(self) -> AuthorRepository:
+        return self._authors
