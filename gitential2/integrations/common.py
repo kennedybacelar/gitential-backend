@@ -1,27 +1,23 @@
-# from abc import ABC, abstractmethod
-# from typing import List
-# from gitential2.settings import GitentialSettings, RepositorySourceSettings
-# from gitential2.datatypes.repositories import GitRepository
-
-# # from gitential2.datatypes.credentials import Credential
-# class Credential:
-#     pass
+from typing import Optional
+from requests.utils import parse_header_links
 
 
-# class RepositorySource(ABC):
-#     def __init__(self, name: str, app_settings: GitentialSettings):
-#         self.name = name
-#         self._settings = app_settings.repository_sources[name]
-#         self._app_settings = app_settings
+def walk_next_link(client, starting_url, acc=None):
+    def _get_next_link(link_header) -> Optional[str]:
+        if link_header:
+            header_links = parse_header_links(link_header)
+            for link in header_links:
+                if link["rel"] == "next":
+                    return link["url"]
+        return None
 
-#     @abstractmethod
-#     def authentication_url(self, frontend_url) -> str:
-#         pass
-
-#     @abstractmethod
-#     def get_available_private_repositories(self, credentials: Credential) -> List[GitRepository]:
-#         pass
-
-#     @abstractmethod
-#     def get_available_public_repositories(self, query: str, credentials: Credential) -> List[GitRepository]:
-#         pass
+    print(f"WALKING: {starting_url}")
+    acc = acc or []
+    response = client.request("GET", starting_url)
+    items, headers = response.json(), response.headers
+    acc = acc + items
+    next_url = _get_next_link(headers.get("Link"))
+    if next_url:
+        return walk_next_link(client, next_url, acc)
+    else:
+        return acc
