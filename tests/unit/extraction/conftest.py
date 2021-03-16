@@ -17,7 +17,7 @@ def test_repositories():
     for name, repo_id, clone_url, protocol in repositories:
         local_path = os.path.join("/tmp", name)
         if os.path.isdir(local_path):
-            ret[name] = LocalGitRepository(id=repo_id, directory=pathlib.PosixPath(local_path))
+            ret[name] = LocalGitRepository(repo_id=repo_id, directory=pathlib.PosixPath(local_path))
         else:
             repo = RepositoryInDB(id=repo_id, clone_url=clone_url, protocol=protocol)
             ret[name] = clone_repository(repository=repo, destination_path=local_path)

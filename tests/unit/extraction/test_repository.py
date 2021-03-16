@@ -28,6 +28,7 @@ def test_clone_repository_without_credential(tmp_path):
         RepositoryInDB(id=1, clone_url=TEST_PUBLIC_REPOSITORY, protocol=GitProtocol.https), destination_path=tmp_path
     )
     assert isinstance(ret, LocalGitRepository)
+    assert ret.repo_id == 1
 
 
 @pytest.mark.slow

@@ -52,6 +52,14 @@ unknown_customer = License(
 
 _LICENSE = None
 
+dummy_license = License(
+    license_id=-2,
+    customer_name="DUMMY",
+    end_date=date(2099, 12, 31),
+    is_on_premises=True,
+    number_of_developers=100,
+)
+
 
 def check_license(license_file_path: Optional[str] = None) -> License:
     global _LICENSE  # pylint: disable=global-statement

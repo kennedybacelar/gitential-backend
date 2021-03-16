@@ -43,7 +43,7 @@ def extract_incremental(
 ):
     with TemporaryDirectory() as workdir:
         local_repo = clone_repository(repository, destination_path=workdir.path, credentials=credentials)
-        extract_incremental_local(local_repo, output, settings, previous_state, ignore_spec)
+        return extract_incremental_local(local_repo, output, settings, previous_state, ignore_spec)
 
 
 def extract_incremental_local(
