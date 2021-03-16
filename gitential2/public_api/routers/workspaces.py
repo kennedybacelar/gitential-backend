@@ -18,6 +18,7 @@ from gitential2.core import (
     list_credentials_for_workspace,
     create_credential_for_workspace,
     list_connected_repository_sources,
+    delete_credential_from_workspace,
 )
 from ..dependencies import current_user, gitential_context
 
@@ -146,6 +147,17 @@ def list_workspace_credentials(
     return [_decrypt_credential(credential, g) for credential in credentials]
 
 
+@router.delete("/workspaces/{workspace_id}/credentials/{credential_id}")
+def delete_workspace_credential(
+    workspace_id: int,
+    credential_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.credential, Action.delete, workspace_id=workspace_id)
+    return delete_credential_from_workspace(g, workspace_id, credential_id)
+
+
 @router.post("/workspaces/{workspace_id}/credentials")
 def create_workspace_credential(
     credential_create: CredentialCreate,
@@ -166,3 +178,16 @@ def _decrypt_credential(credential: CredentialInDB, g: GitentialContext):
             g.fernet.decrypt_string(credential.private_key.decode()).encode() if credential.private_key else None
         )
     return credential
+
+
+@router.get("/workspaces/{workspace_id}/search/{entity_type}")
+def search(
+    q: str,
+    workspace_id: int,
+    entity_type: str,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    print(f"searching for {q} in {entity_type}")
+    return []

@@ -1,6 +1,6 @@
 import os
 import zipfile
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional, cast
 import json
 import rsa

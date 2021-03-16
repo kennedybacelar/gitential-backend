@@ -12,6 +12,7 @@ from gitential2.core import (
     search_public_repositories,
     list_repositories,
     create_repositories,
+    delete_repositories,
     list_project_repositories,
 )
 from ..dependencies import current_user, gitential_context
@@ -59,6 +60,17 @@ def add_repos(
 ):
     check_permission(g, current_user, Entity.repository, Action.create, workspace_id=workspace_id)
     return create_repositories(g, workspace_id, repository_creates)
+
+
+@router.delete("/workspaces/{workspace_id}/repos")
+def delete_repos(
+    workspace_id: int,
+    repository_ids: List[int],
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.repository, Action.delete, workspace_id=workspace_id)
+    return delete_repositories(g, workspace_id, repository_ids)
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}/repos")

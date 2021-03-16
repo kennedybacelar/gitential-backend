@@ -6,11 +6,6 @@ from gitential2.license import check_license
 router = APIRouter()
 
 
-@router.get("/users/is-admin")
-async def is_admin():
-    return {"is_admin": False}
-
-
 @router.get("/configuration")
 def configuration(request: Request):
     license_ = check_license()

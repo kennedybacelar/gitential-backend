@@ -42,15 +42,23 @@ def update_project(
 
 
 def delete_project(g: GitentialContext, workspace_id: int, project_id: int) -> bool:
-    return False  # FIXME
+    g.backend.project_repositories.update_project_repositories(workspace_id, project_id, [])
+    g.backend.projects.delete(workspace_id, project_id)
+    return True
 
 
-def schedule_project_refresh(g: GitentialContext, workspace_id: int, project_id: int):
+def schedule_project_refresh(g: GitentialContext, workspace_id: int, project_id: int, force_rebuild: bool = False):
     for repo_id in g.backend.project_repositories.get_repo_ids_for_project(
         workspace_id=workspace_id, project_id=project_id
     ):
-        # schedule_repository_refresh(g, workspace_id=workspace_id, repo_id=repo_id) FIXME
-        pass
+        schedule_repository_refresh(g, workspace_id=workspace_id, repository_id=repo_id)
+
+
+def schedule_repository_refresh(g: GitentialContext, workspace_id: int, repository_id: int):
+    # pylint: disable=import-outside-toplevel,cyclic-import
+    from .tasks import refresh_repository_task
+
+    refresh_repository_task.delay(g.settings.dict(), workspace_id, repository_id)
 
 
 def _update_project_repos(g: GitentialContext, workspace_id: int, project: ProjectInDB, repos=List[RepositoryCreate]):

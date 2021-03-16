@@ -50,16 +50,53 @@ def register_user(
 
 
 def get_user(g: GitentialContext, user_id: int) -> Optional[UserInDB]:
-    return g.backend.users.get(user_id)
+    user = g.backend.users.get(user_id)
+    if user and user.is_active:
+        return user
+    return None
+
+
+def update_user(g: GitentialContext, user_id: int, user_update: UserUpdate):
+    return g.backend.users.update(user_id, user_update)
+
+
+def delete_user(g: GitentialContext, user_id: int):
+    user = g.backend.users.get_or_error(user_id)
+    user_update = UserUpdate(**user.dict())
+    user_update.is_active = False
+    g.backend.users.update(user_id, user_update)
+    return True
 
 
 def get_current_subscription(g: GitentialContext, user_id: int) -> SubscriptionInDB:
-    return SubscriptionInDB(
-        id=0,
-        user_id=user_id,
-        subscription_type=SubscriptionType.trial,
-        subscription_start=datetime.utcnow(),
-    )
+    current_time = datetime.utcnow()
+
+    def _is_subscription_valid(s: SubscriptionInDB):
+        return s.subscription_start < current_time and (s.subscription_end is None or s.subscription_end > current_time)
+
+    subscriptions = g.backend.subscriptions.get_subscriptions_for_user(user_id)
+
+    valid_subscriptions = [s for s in subscriptions if _is_subscription_valid(s)]
+    if valid_subscriptions:
+        return valid_subscriptions[0]
+    else:
+        return SubscriptionInDB(
+            id=0,
+            user_id=user_id,
+            subscription_type=SubscriptionType.free,
+            subscription_start=datetime.utcnow(),
+        )
+
+
+def get_profile_picture(g: GitentialContext, user: UserInDB) -> Optional[str]:
+    user_infos = [
+        user_info for user_info in g.backend.user_infos.get_for_user(user.id) if user_info.picture is not None
+    ]
+    if user_infos:
+        user_infos_sorted = sorted(user_infos, key=lambda ui: ui.updated_at or datetime.utcnow())
+        return user_infos_sorted[-1].picture
+    else:
+        return None
 
 
 def _create_or_update_user_and_user_info(
@@ -72,7 +109,13 @@ def _create_or_update_user_and_user_info(
         if current_user and existing_userinfo.user_id != current_user.id:
             raise ValueError("Authentication error...")
 
-        user = g.backend.users.get(existing_userinfo.user_id)
+        user = g.backend.users.get_or_error(existing_userinfo.user_id)
+
+        user_update = user.copy()
+        user_update.login_ready = True
+        user_update.is_active = True
+        user = g.backend.users.update(user.id, cast(UserUpdate, user_update))
+
         user_info = g.backend.user_infos.update(existing_userinfo.id, cast(UserInfoUpdate, normalized_userinfo))
         return user, user_info, False
     else:
@@ -82,6 +125,7 @@ def _create_or_update_user_and_user_info(
         if existing_user:
             user_update = existing_user.copy()
             user_update.login_ready = True
+            user_update.is_active = True
             user = g.backend.users.update(existing_user.id, cast(UserUpdate, user_update))
             is_new_user = False
         else:

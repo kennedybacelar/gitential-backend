@@ -40,9 +40,9 @@ async def workspace_multi_stats(
     return ret
 
 
-# @router.get("/workspaces/{workspace_id}/projects/{project_id}/developers")
-# async def developers(orient: str, limit: int):
-#     return [{"name": "Béla", "email": "test@test.hu"}, {"name": "Józsi", "email": "test2@test.hu"}]
+@router.get("/workspaces/{workspace_id}/projects/{project_id}/developers")
+async def developers(orient: str, limit: int):
+    return [{"name": "Béla", "email": "test@test.hu"}, {"name": "Józsi", "email": "test2@test.hu"}]
 
 
 # @router.get("/workspaces/{workspace_id}/projects/{project_id}/outlier")

@@ -1,12 +1,16 @@
 from typing import Tuple
 from abc import ABC, abstractmethod
-from gitential2 import datatypes
 import pandas as pd
 from gitential2.extraction.output import OutputHandler
 from gitential2.settings import GitentialSettings
 
 from .repositories import (
     AuthorRepository,
+    TeamMemberRepository,
+    TeamRepository,
+    ExtractedCommitRepository,
+    ExtractedPatchRepository,
+    ExtractedPatchRewriteRepository,
     UserRepository,
     UserInfoRepository,
     SubscriptionRepository,
@@ -16,6 +20,7 @@ from .repositories import (
     ProjectRepository,
     RepositoryRepository,
     ProjectRepositoryRepository,
+    PullRequestRepository,
 )
 
 
@@ -71,6 +76,36 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def authors(self) -> AuthorRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def teams(self) -> TeamRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def team_members(self) -> TeamMemberRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def extracted_commits(self) -> ExtractedCommitRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def extracted_patches(self) -> ExtractedPatchRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def extracted_patch_rewrites(self) -> ExtractedPatchRewriteRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def pull_requests(self) -> PullRequestRepository:
         pass
 
     @abstractmethod

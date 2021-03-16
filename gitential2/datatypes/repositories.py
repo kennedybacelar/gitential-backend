@@ -79,3 +79,56 @@ class RepositoryStatus(CoreModel):
     clone: float = 0.0
     extract: float = 0.0
     persist: float = 0.0
+
+    def reset(self):
+        self.status = RepositoryStatusStatus.pending
+        self.phase = RepositoryStatusPhase.pending
+        self.clone = 0.0
+        self.extract = 0.0
+        self.persist = 0.0
+        self.error = None
+        self.done = False
+        return self
+
+    def cloning_started(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.clone
+        self.clone = 0.1
+        self.done = False
+
+        return self
+
+    def cloning_finished(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.clone
+        self.clone = 1.0
+        self.done = False
+        return self
+
+    def extract_started(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.extract
+        self.extract = 0.1
+        self.done = False
+        return self
+
+    def extract_finished(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.extract
+        self.extract = 1.0
+        self.done = False
+        return self
+
+    def persist_started(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.persist
+        self.persist = 0.1
+        self.done = False
+        return self
+
+    def persist_finished(self):
+        self.status = RepositoryStatusStatus.finished
+        self.phase = RepositoryStatusPhase.done
+        self.persist = 1.0
+        self.done = True
+        return self

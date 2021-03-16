@@ -43,13 +43,23 @@ def extract_incremental(
 ):
     with TemporaryDirectory() as workdir:
         local_repo = clone_repository(repository, destination_path=workdir.path, credentials=credentials)
-        current_state = get_repository_state(local_repo)
-        commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
-        executor = create_executor(
-            settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
-        )
-        executor.map(fn=_extract_single_commit, items=commits)
-        return current_state
+        extract_incremental_local(local_repo, output, settings, previous_state, ignore_spec)
+
+
+def extract_incremental_local(
+    local_repo: LocalGitRepository,
+    output: OutputHandler,
+    settings: GitentialSettings,
+    previous_state: Optional[GitRepositoryState] = None,
+    ignore_spec: IgnoreSpec = default_ignorespec,
+):
+    current_state = get_repository_state(local_repo)
+    commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
+    executor = create_executor(
+        settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
+    )
+    executor.map(fn=_extract_single_commit, items=commits)
+    return current_state
 
 
 def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler, ignore_spec: IgnoreSpec):

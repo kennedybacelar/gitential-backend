@@ -7,7 +7,13 @@ from gitential2.extraction.output import DataCollector
 from gitential2.datatypes.repositories import RepositoryInDB, GitProtocol
 from gitential2.settings import load_settings
 from gitential2.logging import initialize_logging
-from gitential2.core import init_context_from_settings, get_workspace_ctrl
+from gitential2.core import (
+    init_context_from_settings,
+    refresh_repository,
+    recalculate_repository_values,
+    refresh_repository_pull_requests,
+    collect_stats,
+)
 from gitential2.license import check_license as check_license_
 
 
@@ -55,36 +61,43 @@ def initialize_database(ctx):
         g.backend.initialize_workspace(w.id)
 
 
-@click.command()
+@click.command(name="refresh-repository")
 @click.option("--workspace", "-w", "workspace_id", type=int)
 @click.option("--repository", "-r", "repository_id", type=int)
 @click.pass_context
-def refresh_repository(ctx, workspace_id, repository_id):
+def refresh_repository_(ctx, workspace_id, repository_id):
     g = init_context_from_settings(ctx.obj["settings"])
-    workspace_ctrl = get_workspace_ctrl(g, workspace_id=workspace_id)
-    workspace_ctrl.initialize()
-    workspace_ctrl.refresh_repository(repository_id=repository_id)
-
-
-@click.command()
-@click.option("--workspace", "-w", "workspace_id", type=int)
-@click.option("--repository", "-r", "repository_id", type=int)
-@click.pass_context
-def recalculate_repository_values(ctx, workspace_id, repository_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    workspace_ctrl = get_workspace_ctrl(g, workspace_id=workspace_id)
-    workspace_ctrl.initialize()
-    workspace_ctrl.recalculate_repository_values(repository_id=repository_id)
+    g.backend.initialize_workspace(workspace_id)
+    refresh_repository(g, workspace_id, repository_id=repository_id)
 
 
 @click.command()
 @click.option("--workspace", "-w", "workspace_id", type=int)
 @click.option("--repository", "-r", "repository_id", type=int)
 @click.pass_context
-def refresh_repository_pull_requests(ctx, workspace_id, repository_id):
+def wip(ctx, workspace_id, repository_id):
     g = init_context_from_settings(ctx.obj["settings"])
-    workspace_ctrl = get_workspace_ctrl(g, workspace_id=workspace_id)
-    workspace_ctrl.refresh_repository_pull_requests(repository_id=repository_id)
+    g.backend.initialize_workspace(workspace_id)
+    df = g.backend.extracted_patches.get_repo_df(workspace_id, repository_id)
+    print(df, df.dtypes)
+
+
+@click.command(name="recalculate-repository-values")
+@click.option("--workspace", "-w", "workspace_id", type=int)
+@click.option("--repository", "-r", "repository_id", type=int)
+@click.pass_context
+def recalculate_repository_values_(ctx, workspace_id, repository_id):
+    g = init_context_from_settings(ctx.obj["settings"])
+    recalculate_repository_values(g, workspace_id=workspace_id, repository_id=repository_id)
+
+
+@click.command(name="refresh-repository-pull-requests")
+@click.option("--workspace", "-w", "workspace_id", type=int)
+@click.option("--repository", "-r", "repository_id", type=int)
+@click.pass_context
+def refresh_repository_pull_requests_(ctx, workspace_id, repository_id):
+    g = init_context_from_settings(ctx.obj["settings"])
+    refresh_repository_pull_requests(g, workspace_id=workspace_id, repository_id=repository_id)
 
 
 @click.command()
@@ -94,8 +107,7 @@ def get_stats(ctx, workspace_id):
     stdin_text = click.get_text_stream("stdin").read()
     stats_request = StatsRequest.parse_raw(stdin_text)
     g = init_context_from_settings(ctx.obj["settings"])
-    workspace_ctrl = get_workspace_ctrl(g, workspace_id=workspace_id)
-    result = workspace_ctrl.calculate_stats(stats_request)
+    result = collect_stats(g, workspace_id, stats_request)
     print(result)
 
 
@@ -113,8 +125,9 @@ def check_license(ctx, license_file_path):
 cli.add_command(extract_git_metrics)
 cli.add_command(public_api)
 cli.add_command(initialize_database)
-cli.add_command(refresh_repository)
-cli.add_command(refresh_repository_pull_requests)
+cli.add_command(refresh_repository_)
+cli.add_command(refresh_repository_pull_requests_)
 cli.add_command(get_stats)
-cli.add_command(recalculate_repository_values)
+cli.add_command(recalculate_repository_values_)
 cli.add_command(check_license)
+cli.add_command(wip)

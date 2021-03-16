@@ -1,12 +1,12 @@
 import datetime as dt
+import json
+
 from typing import Optional, Tuple
-import sqlalchemy as sa
 import pandas as pd
-from sqlalchemy.sql import select
-from sqlalchemy.sql.schema import Column, UniqueConstraint
+import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql.sqltypes import Boolean
 from gitential2.settings import GitentialSettings
+from fastapi.encoders import jsonable_encoder
 from gitential2.datatypes import (
     UserInDB,
     UserInfoInDB,
@@ -19,9 +19,18 @@ from gitential2.datatypes import (
     WorkspaceMemberInDB,
     AuthorInDB,
 )
-from gitential2.datatypes.extraction import ExtractedKind, Langtype
+from gitential2.datatypes.extraction import (
+    ExtractedCommit,
+    ExtractedKind,
+    ExtractedPatch,
+    Langtype,
+    ExtractedPatchRewrite,
+)
 from gitential2.datatypes.subscriptions import SubscriptionInDB
+from gitential2.datatypes.pull_requests import PullRequest
 from gitential2.extraction.output import OutputHandler
+from gitential2.datatypes.teammembers import TeamMemberInDB
+from gitential2.datatypes.teams import TeamInDB
 
 from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin
@@ -39,7 +48,10 @@ from .tables import (
 from .repositories import (
     SQLAuthorRepository,
     SQLProjectRepositoryRepository,
+    SQLPullRequestRepository,
     SQLRepositoryRepository,
+    SQLTeamMemberRepository,
+    SQLTeamRepository,
     SQLUserRepository,
     SQLSubscriptionRepository,
     SQLUserInfoRepository,
@@ -47,13 +59,21 @@ from .repositories import (
     SQLWorkspaceRepository,
     SQLWorkspaceMemberRepository,
     SQLProjectRepository,
+    SQLExtractedCommitRepository,
+    SQLExtractedPatchRepository,
+    SQLExtractedPatchRewriteRepository,
 )
+
+
+def json_dumps(obj):
+    return json.dumps(jsonable_encoder(obj))
 
 
 class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def __init__(self, settings: GitentialSettings):
         super().__init__(settings)
-        self._engine = sa.create_engine(settings.connections.database_url)
+
+        self._engine = sa.create_engine(settings.connections.database_url, json_serializer=json_dumps)
         self._metadata = metadata
         self._metadata.create_all(self._engine)
 
@@ -98,26 +118,45 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=AuthorInDB,
         )
 
-    # def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
-    #     query = (
-    #         select(
-    #             [
-    #                 workspaces_table.c.id,
-    #                 workspaces_table.c.name,
-    #                 workspace_permissions_table.c.role,
-    #                 workspace_permissions_table.c.primary,
-    #                 workspace_permissions_table.c.user_id,
-    #             ]
-    #         )
-    #         .select_from(
-    #             workspace_permissions_table.join(
-    #                 workspaces_table, workspace_permissions_table.c.workspace_id == workspaces_table.c.id
-    #             )
-    #         )
-    #         .where(workspace_permissions_table.c.user_id == user_id)
-    #     )
-    #     result = self._execute_query(query)
-    #     return [WorkspaceWithPermission(**row) for row in result.fetchall()]
+        self._teams = SQLTeamRepository(
+            table=self._workspace_tables.tables["teams"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=TeamInDB,
+        )
+        self._team_members = SQLTeamMemberRepository(
+            table=self._workspace_tables.tables["team_members"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=TeamMemberInDB,
+        )
+        self._extracted_commits = SQLExtractedCommitRepository(
+            table=self._workspace_tables.tables["extracted_commits"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ExtractedCommit,
+        )
+
+        self._extracted_patches = SQLExtractedPatchRepository(
+            table=self._workspace_tables.tables["extracted_patches"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ExtractedPatch,
+        )
+
+        self._extracted_patch_rewrites = SQLExtractedPatchRewriteRepository(
+            table=self._workspace_tables.tables["extracted_patch_rewrites"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ExtractedPatchRewrite,
+        )
+
+        self._pull_requests = SQLPullRequestRepository(
+            table=self._workspace_tables.tables["pull_requests"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=PullRequest,
+        )
 
     def _execute_query(self, query):
         with self._engine.connect() as connection:
@@ -201,10 +240,9 @@ class SQLOutputHandler(OutputHandler):
 
         try:
             query = table.insert().values(**value.dict())
-            result = self._execute_query(query)
+            self._execute_query(query)
         except IntegrityError as e:
-            # print(e)
-            pass
+            print(e)
 
     def _execute_query(self, query):
         with self.engine.connect().execution_options(schema_translate_map={None: self.schema_name}) as connection:
@@ -405,17 +443,24 @@ def get_workspace_metadata(schema: Optional[str] = None):
     )
 
     authors = sa.Table(
-        "authors", metadata, sa.Column("id", sa.Integer, primary_key=True), sa.Column("active", sa.Boolean)
-    )
-
-    author_aliases = sa.Table(
-        "author_aliases",
+        "authors",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("active", sa.Boolean),
         sa.Column("name", sa.String(256), nullable=True),
         sa.Column("email", sa.String(256), nullable=True),
-        sa.Column("author_id", sa.Integer, sa.ForeignKey("authors.id"), nullable=True),
+        sa.Column("aliases", sa.JSON, nullable=True),
+        sa.Column("extra", sa.JSON, nullable=True),
     )
+
+    # author_aliases = sa.Table(
+    #     "author_aliases",
+    #     metadata,
+    #     sa.Column("id", sa.Integer, primary_key=True),
+    #     sa.Column("name", sa.String(256), nullable=True),
+    #     sa.Column("email", sa.String(256), nullable=True),
+    #     sa.Column("author_id", sa.Integer, sa.ForeignKey("authors.id"), nullable=True),
+    # )
 
     teams = sa.Table(
         "teams",
@@ -423,12 +468,13 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("name", sa.String(256), nullable=True),
         sa.Column("sprints_enabled", sa.Boolean, default=False),
+        sa.Column("sprint", sa.JSON, nullable=True),
         sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
         sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     )
 
-    teams_authors = sa.Table(
-        "teams_authors",
+    team_members = sa.Table(
+        "team_members",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("team_id", sa.Integer, sa.ForeignKey("teams.id"), nullable=False),

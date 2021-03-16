@@ -9,6 +9,7 @@ class Entity(str, Enum):
     membership = "membership"
     credential = "credential"
     repository = "repository"
+    author = "author"
 
 
 class Action(str, Enum):

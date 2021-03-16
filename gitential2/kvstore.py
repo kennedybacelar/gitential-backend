@@ -66,7 +66,7 @@ class InMemKeyValueStore(KeyValueStore):
         def is_match_pattern(pattern, k):
             return k.startswith(pattern)
 
-        return [is_match_pattern(pattern, k) for k in self._storage.keys()]
+        return [is_match_pattern(pattern, k) for k in self._storage]
 
 
 class RedisKeyValueStore(KeyValueStore):

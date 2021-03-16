@@ -63,7 +63,7 @@ def _fix_day_filter(q):
 
 
 def collect_stats(g: GitentialContext, workspace_id: int, request: StatsRequest):
-    return None
+    return calculate_stats(request, workspace_id, g.settings)
 
 
 def calculate_stats(request: StatsRequest, workspace_id: int, settings: GitentialSettings):
@@ -81,6 +81,7 @@ def calculate_stats(request: StatsRequest, workspace_id: int, settings: Gitentia
         "pr_merge_ratio",
         "sum_pr_closed",
         "sum_pr_merged",
+        "sum_pr_open",
         "sum_review_comment_count",
         "avg_pr_review_comment_count",
         "sum_pr_count",
@@ -216,6 +217,19 @@ def _calculate_pr_metrics(metric_names, request, settings, workspace_id):
         if needs_sorting:
             query = query.sort_by("date")
         result = query.execute()
+
+        if "sum_pr_open" in metrics_missed:
+            sum_pr_open_query = (
+                prs.filter(prs["state"] == "open")
+                .filter(filters)
+                .aggregate(metrics=[prs.count().name("sum_pr_open")], by=dimensions_)
+            )
+            if needs_sorting:
+                sum_pr_open_query = sum_pr_open_query.sort_by("date")
+
+            sum_pr_open_df = sum_pr_open_query.execute()
+            sum_pr_open_df = sum_pr_open_df.fillna(0)
+            result["sum_pr_open"] = sum_pr_open_df["sum_pr_open"]
 
         if "sum_pr_closed" in metrics_missed:
             sum_pr_closed_query = (

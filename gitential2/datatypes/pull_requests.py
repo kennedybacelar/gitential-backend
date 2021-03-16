@@ -24,13 +24,17 @@ class PullRequestState(str, Enum):
     def from_github(cls, state, merged_at):
         if merged_at and state == "closed":
             return cls.merged
+        elif state in ["opened", "locked"]:
+            return cls.open
+        elif state == "closed":
+            return cls.closed
         else:
-            if state in ["opened", "locked"]:
-                return cls.open
-            elif state == "closed":
-                return cls.closed
-            else:
-                raise ValueError("invalid state for Github PR")
+            raise ValueError("invalid state for Github PR")
+
+
+class PullRequestId(CoreModel):
+    repo_id: int
+    number: int
 
 
 class PullRequest(ExtraFieldMixin, CoreModel):
@@ -55,6 +59,9 @@ class PullRequest(ExtraFieldMixin, CoreModel):
     merged_by: Optional[str] = None
     first_reaction_at: Optional[datetime] = None
     first_commit_authored_at: Optional[datetime] = None
+
+    def get_id(self):
+        return PullRequestId(repo_id=self.repo_id, number=self.number)
 
 
 class PullRequestCommit(ExtraFieldMixin, CoreModel):

@@ -2,8 +2,16 @@ import asyncio
 from typing import Optional
 from fastapi import APIRouter, Request, HTTPException, Depends, Header
 from fastapi.responses import RedirectResponse
-from gitential2.core import GitentialContext, handle_authorize, register_user, get_user, get_current_subscription
+from gitential2.core import (
+    GitentialContext,
+    handle_authorize,
+    register_user,
+    get_user,
+    get_current_subscription,
+    get_profile_picture,
+)
 from gitential2.datatypes.users import UserCreate
+from gitential2.datatypes.subscriptions import SubscriptionType
 
 from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token
 
@@ -20,29 +28,8 @@ async def handle_failed_authorize(integration, token, user_info):
 
 router = APIRouter()
 
-# pylint: disable=too-many-arguments
-@router.get("/auth/{backend}")
-async def auth(
-    backend: str,
-    request: Request,
-    id_token: str = None,
-    code: str = None,
-    oauth_verifier: str = None,
-    g: GitentialContext = Depends(gitential_context),
-    oauth: OAuth = Depends(),
-    current_user=Depends(current_user),
-):
-    remote = oauth.create_client(backend)
-    # print("!!!!!!!", remote.api_base_url)
-    integration = g.integrations.get(backend)
-    if not integration:
-        raise HTTPException(404)
 
-    loop = asyncio.get_running_loop()
-
-    if remote is None:
-        raise HTTPException(404)
-
+async def _get_token(request, remote, integration, code, id_token, oauth_verifier):
     if code:
         token = await remote.authorize_access_token(request)
         # print("van code", token)
@@ -56,9 +43,11 @@ async def auth(
     else:
         # handle failed
         return await handle_failed_authorize(integration, None, None)
+    return token
 
+
+async def _get_user_info(request, remote, token):
     if "id_token" in token:
-        # print("van id_token")
         user_info = await remote.parse_id_token(request, token)
     else:
         remote.token = token
@@ -67,7 +56,31 @@ async def auth(
         except Exception as e:
             print(remote, token)
             raise e
+    return user_info
 
+
+# pylint: disable=too-many-arguments
+@router.get("/auth/{backend}")
+async def auth(
+    backend: str,
+    request: Request,
+    id_token: str = None,
+    code: str = None,
+    oauth_verifier: str = None,
+    g: GitentialContext = Depends(gitential_context),
+    oauth: OAuth = Depends(),
+    current_user=Depends(current_user),
+):
+    remote = oauth.create_client(backend)
+    integration = g.integrations.get(backend)
+
+    if remote is None or integration is None:
+        raise HTTPException(404)
+
+    token = await _get_token(request, remote, integration, code, id_token, oauth_verifier)
+    user_info = await _get_user_info(request, remote, token)
+
+    loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, handle_authorize, g, integration.name, token, user_info, current_user)
 
     request.session["current_user_id"] = result["user"].id
@@ -120,13 +133,16 @@ def session(
             return {
                 "user_id": user_in_db.id,
                 "login": user_in_db.login,
-                "marketing_consent_accepted": True,
-                "subscription": "professional",
+                "marketing_consent_accepted": user_in_db.marketing_consent_accepted,
+                "subscription_details": subscription,
+                "subscription": SubscriptionType.professional
+                if subscription.subscription_type in [SubscriptionType.trial, SubscriptionType.professional]
+                else subscription.subscription_type,
                 "registration_ready": user_in_db.registration_ready,
                 "login_ready": user_in_db.login_ready,
+                "profile_picture": get_profile_picture(g, user_in_db),
             }
-    else:
-        return {}
+    return {}
 
 
 @router.post("/registration")

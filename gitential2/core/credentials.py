@@ -1,11 +1,11 @@
-from gitential2.datatypes import workspaces
-from gitential2.datatypes.repositories import RepositoryInDB
 from typing import List, Optional
 from gitential2.datatypes.credentials import CredentialInDB, CredentialCreate, CredentialType
+from gitential2.datatypes.repositories import RepositoryInDB
+
 from gitential2.utils.ssh import create_ssh_keypair
 from gitential2.integrations import REPOSITORY_SOURCES
 from .context import GitentialContext
-from ..exceptions import NotImplementedException
+from ..exceptions import NotImplementedException, NotFoundException
 
 
 def list_credentials_for_user(g: GitentialContext, user_id: int) -> List[CredentialInDB]:
@@ -27,6 +27,32 @@ def create_credential(g: GitentialContext, credential_create: CredentialCreate, 
         return g.backend.credentials.create(credential_create)
     else:
         raise NotImplementedException("Only ssh keypair credential creation supported.")
+
+
+def delete_credential_from_workspace(g: GitentialContext, workspace_id: int, credential_id: int):
+    credential = g.backend.credentials.get(credential_id)
+    if credential:
+        if credential.type == CredentialType.keypair:
+
+            repo_ids_to_remove = [
+                repository.id
+                for repository in g.backend.repositories.all(workspace_id)
+                if repository.credential_id == credential.id
+            ]
+            for project in g.backend.projects.all(workspace_id):
+                g.backend.project_repositories.remove_repo_ids_from_project(
+                    workspace_id, project.id, repo_ids_to_remove
+                )
+            for repo_id in repo_ids_to_remove:
+                g.backend.repositories.delete(workspace_id, repo_id)
+
+            return g.backend.credentials.delete(credential_id)
+        else:
+            raise NotImplementedException("Only ssh keypair credential delete supported.")
+    else:
+        raise NotFoundException("Credential not found.")
+
+    # remove repositories
 
 
 def create_credential_for_workspace(

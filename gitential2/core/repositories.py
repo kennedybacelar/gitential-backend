@@ -83,8 +83,20 @@ def search_public_repositories(g: GitentialContext, workspace_id: int, search: s
     return sorted(results, key=lambda i: levenshtein(search, i.name))
 
 
-def create_repositories(g, workspace_id: int, repository_creates: List[RepositoryCreate]) -> List[RepositoryInDB]:
+def create_repositories(
+    g: GitentialContext, workspace_id: int, repository_creates: List[RepositoryCreate]
+) -> List[RepositoryInDB]:
     return [
         g.backend.repositories.create_or_update(workspace_id, repository_create)
         for repository_create in repository_creates
     ]
+
+
+def delete_repositories(g: GitentialContext, workspace_id: int, repository_ids: List[int]):
+    for project in g.backend.projects.all(workspace_id):
+        g.backend.project_repositories.remove_repo_ids_from_project(workspace_id, project.id, repository_ids)
+
+    for repo_id in repository_ids:
+        g.backend.repositories.delete(workspace_id, repo_id)
+
+    return True

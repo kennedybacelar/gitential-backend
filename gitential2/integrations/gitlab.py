@@ -1,5 +1,5 @@
 from typing import Optional, Callable, List
-
+from pydantic.datetime_parse import parse_datetime
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
@@ -136,7 +136,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 if (
                     prs_we_already_have
                     and mr["iid"] in prs_we_already_have
-                    and prs_we_already_have[iid] == mr["updated_at"]
+                    and parse_datetime(prs_we_already_have[iid]) == parse_datetime(mr["updated_at"])
                 ):
                     continue
 

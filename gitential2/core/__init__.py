@@ -1,5 +1,13 @@
 from .context import GitentialContext, init_context_from_settings
-from .users import handle_authorize, register_user, get_user, get_current_subscription
+from .users import (
+    handle_authorize,
+    register_user,
+    get_user,
+    get_current_subscription,
+    update_user,
+    delete_user,
+    get_profile_picture,
+)
 from .workspaces import (
     get_accessible_workspaces,
     get_workspace,
@@ -25,6 +33,7 @@ from .repositories import (
     list_project_repositories,
     search_public_repositories,
     create_repositories,
+    delete_repositories,
 )
 from .credentials import (
     list_credentials_for_user,
@@ -32,8 +41,28 @@ from .credentials import (
     create_credential,
     create_credential_for_workspace,
     list_connected_repository_sources,
+    delete_credential_from_workspace,
 )
 from .permissions import check_permission
 
-from .statuses import get_project_status, get_repo_status, update_repository_status
+from .statuses import get_project_status, get_repository_status, update_repository_status
 from .stats import collect_stats
+from .refresh import refresh_repository, refresh_repository_pull_requests
+from .calculations import recalculate_repository_values
+from .authors import (
+    list_authors,
+    get_or_create_author_for_alias,
+    update_author,
+    deduplicate_authors,
+    delete_author,
+    create_author,
+)
+from .teams import (
+    create_team,
+    update_team,
+    delete_team,
+    list_teams,
+    get_team_with_authors,
+    add_authors_to_team,
+    remove_authors_from_team,
+)

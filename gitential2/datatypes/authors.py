@@ -1,5 +1,5 @@
-from typing import List
-from .common import CoreModel, IDModelMixin, DateTimeModelMixin
+from typing import List, Optional
+from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
 class AuthorAlias(CoreModel):
@@ -7,8 +7,10 @@ class AuthorAlias(CoreModel):
     email: str
 
 
-class AuthorBase(CoreModel):
+class AuthorBase(ExtraFieldMixin, CoreModel):
     active: bool
+    name: Optional[str]
+    email: Optional[str]
     aliases: List[AuthorAlias]
 
 
@@ -21,4 +23,8 @@ class AuthorUpdate(AuthorBase):
 
 
 class AuthorInDB(IDModelMixin, DateTimeModelMixin, AuthorBase):
+    pass
+
+
+class AuthorPublic(AuthorInDB):
     pass
