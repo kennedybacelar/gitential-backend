@@ -1,8 +1,10 @@
-import json
-import urllib
-import os
+# type: ignore
 
-import requests
+# import json
+# import urllib
+# import os
+
+# import requests
 import ibis
 import pandas as pd
 from ibis.backends.postgres import connect
@@ -111,33 +113,34 @@ def calculate_stats(request: StatsRequest, workspace_id: int, settings: Gitentia
     _fix_day_filter(q)
 
     if q["metrics"]:
-        # checking the legacy API
-        q_str = urllib.parse.quote(json.dumps(q))
-        q_filename = "/tmp/" + "".join(
-            ch
-            for ch in json.dumps(q).replace("metrics", "M").replace("dimensions", "D").replace("filters", "F")
-            if ch.isalnum()
-        )
-        if os.path.isfile(q_filename):
-            result = json.loads(open(q_filename, "r").read())
-        else:
-            # print(request.metrics)
-            # # print(conn.table("pull_requests", schema=_ws_schema(workspace_id)).count())
-            # # print(conn.list_tables(), conn.list_schemas())
-            response = requests.get(
-                f"https://api.gitential.com/stats?q={q_str}&type={request.type}",
-                headers={
-                    "Cookie": "_ga=GA1.2.105986898.1602805349; _hjid=8997894d-bc95-4851-a752-8744f9579c7d; hubspotutk=e34a7503d436ed4c0f69c63166ca3446; session=16f7e898a6d948fbb8101fa3eaa227f3; tk_or=%22https%3A%2F%2Fapp.gitential.com%2F%22; messagesUtk=c640caba32cb4fe6b9179c5db94a871b; tk_ai=iSQvbSnYk4qtM4pBneNTKPao; __stripe_mid=405c7f91-11de-4827-98b2-34cb56df398d308f6f; _fbp=fb.1.1607691142497.649903801; tk_lr=%22%22; tk_r3d=%22%22; _gid=GA1.2.1510749756.1613610571; _hjTLDTest=1; _hjAbsoluteSessionInProgress=0; __hstc=80255432.e34a7503d436ed4c0f69c63166ca3446.1602805352108.1613490270197.1613610575135.141; __hssrc=1; fs_uid=rs.fullstory.com#9VVTJ#5410472100347904:5633306881933312#aeb65a60#/1645147082; _gat_UA-85999832-1=1; __hssc=80255432.9.1613610575135"
-                },
-                verify=False,
-            )
-            if response.status_code == 500:
-                print(response.text)
-                result = {}
-            else:
-                result = response.json()
-                with open(q_filename, "w") as f:
-                    f.write(json.dumps(result))
+        # # checking the legacy API
+        # q_str = urllib.parse.quote(json.dumps(q))
+        # q_filename = "/tmp/" + "".join(
+        #     ch
+        #     for ch in json.dumps(q).replace("metrics", "M").replace("dimensions", "D").replace("filters", "F")
+        #     if ch.isalnum()
+        # )
+        # if os.path.isfile(q_filename):
+        #     result = json.loads(open(q_filename, "r").read())
+        # else:
+        #     # print(request.metrics)
+        #     # # print(conn.table("pull_requests", schema=_ws_schema(workspace_id)).count())
+        #     # # print(conn.list_tables(), conn.list_schemas())
+        #     response = requests.get(
+        #         f"https://api.gitential.com/stats?q={q_str}&type={request.type}",
+        #         headers={
+        #             "Cookie": "_ga=GA1.2.105986898.1602805349; _hjid=8997894d-bc95-4851-a752-8744f9579c7d; hubspotutk=e34a7503d436ed4c0f69c63166ca3446; session=16f7e898a6d948fbb8101fa3eaa227f3; tk_or=%22https%3A%2F%2Fapp.gitential.com%2F%22; messagesUtk=c640caba32cb4fe6b9179c5db94a871b; tk_ai=iSQvbSnYk4qtM4pBneNTKPao; __stripe_mid=405c7f91-11de-4827-98b2-34cb56df398d308f6f; _fbp=fb.1.1607691142497.649903801; tk_lr=%22%22; tk_r3d=%22%22; _gid=GA1.2.1510749756.1613610571; _hjTLDTest=1; _hjAbsoluteSessionInProgress=0; __hstc=80255432.e34a7503d436ed4c0f69c63166ca3446.1602805352108.1613490270197.1613610575135.141; __hssrc=1; fs_uid=rs.fullstory.com#9VVTJ#5410472100347904:5633306881933312#aeb65a60#/1645147082; _gat_UA-85999832-1=1; __hssc=80255432.9.1613610575135"
+        #         },
+        #         verify=False,
+        #     )
+        #     if response.status_code == 500:
+        #         print(response.text)
+        #         result = {}
+        #     else:
+        #         result = response.json()
+        #         with open(q_filename, "w") as f:
+        #             f.write(json.dumps(result))
+        result = {}
         return result
 
     else:
@@ -151,7 +154,9 @@ def calculate_stats(request: StatsRequest, workspace_id: int, settings: Gitentia
         # return {key: [] for key in keys}
 
 
-def _calculate_pr_metrics(metric_names, request, settings, workspace_id):
+def _calculate_pr_metrics(
+    metric_names, request, settings, workspace_id
+):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-complex
     conn = connect(url=settings.connections.database_url)
     prs = conn.schema(_ws_schema(workspace_id)).pull_requests
     day_filter_ = request.filters.get("day", ["2019-01-01", "2021-02-18"])

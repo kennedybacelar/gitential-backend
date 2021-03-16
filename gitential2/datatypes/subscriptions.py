@@ -1,7 +1,7 @@
 import datetime
 from typing import Optional
 from enum import Enum
-from .common import CoreModel, ExtraFieldMixin, IDModelMixin, DateTimeModelMixin
+from .common import CoreModel, IDModelMixin, DateTimeModelMixin
 
 
 class SubscriptionType(str, Enum):

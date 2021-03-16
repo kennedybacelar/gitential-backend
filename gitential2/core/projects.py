@@ -51,14 +51,16 @@ def schedule_project_refresh(g: GitentialContext, workspace_id: int, project_id:
     for repo_id in g.backend.project_repositories.get_repo_ids_for_project(
         workspace_id=workspace_id, project_id=project_id
     ):
-        schedule_repository_refresh(g, workspace_id=workspace_id, repository_id=repo_id)
+        schedule_repository_refresh(g, workspace_id=workspace_id, repository_id=repo_id, force_rebuild=force_rebuild)
 
 
-def schedule_repository_refresh(g: GitentialContext, workspace_id: int, repository_id: int):
+def schedule_repository_refresh(
+    g: GitentialContext, workspace_id: int, repository_id: int, force_rebuild: bool = False
+):
     # pylint: disable=import-outside-toplevel,cyclic-import
     from .tasks import refresh_repository_task
 
-    refresh_repository_task.delay(g.settings.dict(), workspace_id, repository_id)
+    refresh_repository_task.delay(g.settings.dict(), workspace_id, repository_id, force_rebuild)
 
 
 def _update_project_repos(g: GitentialContext, workspace_id: int, project: ProjectInDB, repos=List[RepositoryCreate]):

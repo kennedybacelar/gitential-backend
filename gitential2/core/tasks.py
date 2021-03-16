@@ -26,7 +26,7 @@ def ping(settings_dict: dict):
 
 
 @celery_app.task
-def refresh_repository_task(settings_dict: dict, workspace_id: int, repository_id: int):
+def refresh_repository_task(settings_dict: dict, workspace_id: int, repository_id: int, force_rebuild: bool):
     # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.core import (
         init_context_from_settings,
@@ -36,7 +36,7 @@ def refresh_repository_task(settings_dict: dict, workspace_id: int, repository_i
     settings = GitentialSettings(**settings_dict)
     g = init_context_from_settings(settings)
 
-    refresh_repository(g, workspace_id, repository_id)
+    refresh_repository(g, workspace_id, repository_id, force_rebuild)
     print(f"refreshing repository {repository_id} in workspace {workspace_id}")
 
 

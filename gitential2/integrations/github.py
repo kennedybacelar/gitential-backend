@@ -65,7 +65,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 print("-----------------------------------------------------------------------------------------------")
                 # print(pull_request.number, pull_request.title, pull_request.state)
                 output.write(ExtractedKind.PULL_REQUEST, pull_request)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 print(e, raw_data)
 
     def _collect_single_pr_data_raw(self, client, pr):

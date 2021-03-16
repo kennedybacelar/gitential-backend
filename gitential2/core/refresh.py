@@ -12,7 +12,9 @@ from .statuses import get_repository_status, persist_repository_status
 from .calculations import recalculate_repository_values
 
 
-def refresh_repository(g: GitentialContext, workspace_id: int, repository_id: int):
+def refresh_repository(g: GitentialContext, workspace_id: int, repository_id: int, force_rebuild: bool):
+    if force_rebuild:
+        print("force-rebuild should remove from database")
     repo_status = get_repository_status(g, workspace_id, repository_id)
     persist_repository_status(g, workspace_id, repository_id, repo_status.reset())
 

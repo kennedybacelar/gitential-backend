@@ -29,6 +29,13 @@ def handle_authorize(
     return {"ok": True, "user": user, "user_info": user_info, "is_new_user": is_new_user}
 
 
+def _calc_user_login(user_create: UserCreate):
+    if user_create.first_name and user_create.last_name:
+        return " ".join([user_create.first_name, user_create.last_name])
+    else:
+        return user_create.email.split("@")[0]
+
+
 def register_user(
     g: GitentialContext, user: UserCreate, current_user: Optional[UserInDB] = None
 ) -> Tuple[UserInDB, SubscriptionInDB]:
@@ -37,13 +44,13 @@ def register_user(
         if existing_user:
             raise ValueError("Email already used.")
         user.registration_ready = True
-        user.login = " ".join([user.first_name, user.last_name])
+        user.login = _calc_user_login(user)
         user_in_db = g.backend.users.create(user)
         subscription = _create_default_subscription(g, user_in_db)
         _create_primary_workspace_if_missing(g, user_in_db)
     else:
         user.registration_ready = True
-        user.login = " ".join([user.first_name, user.last_name])
+        user.login = _calc_user_login(user)
         user_in_db = g.backend.users.update(current_user.id, cast(UserUpdate, user))
         subscription = _create_default_subscription(g, user_in_db)
     return user_in_db, subscription

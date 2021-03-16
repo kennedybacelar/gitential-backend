@@ -145,7 +145,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                     pull_request = self._transform_to_pr(raw_data, repository=repository)
                     print(pull_request.number, pull_request.title, pull_request.state)
                     output.write(ExtractedKind.PULL_REQUEST, pull_request)
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     print(e, raw_data["mr"])
 
     def _transform_to_pr(self, raw_data: dict, repository: RepositoryInDB) -> PullRequest:

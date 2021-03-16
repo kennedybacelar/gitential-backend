@@ -9,7 +9,7 @@ def list_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
 
 
 def deduplicate_authors(g: GitentialContext, workspace_id: int):
-    pass
+    print(g, workspace_id)
 
 
 def update_author(g: GitentialContext, workspace_id: int, author_id: int, author_update: AuthorUpdate):

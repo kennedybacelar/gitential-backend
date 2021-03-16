@@ -1,24 +1,12 @@
 import datetime as dt
 import json
-
 from typing import Optional, Tuple
+
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
-from gitential2.settings import GitentialSettings
 from fastapi.encoders import jsonable_encoder
-from gitential2.datatypes import (
-    UserInDB,
-    UserInfoInDB,
-    CredentialInDB,
-    WorkspaceInDB,
-    ProjectInDB,
-    RepositoryInDB,
-    ProjectRepositoryInDB,
-    GitProtocol,
-    WorkspaceMemberInDB,
-    AuthorInDB,
-)
+
 from gitential2.datatypes.extraction import (
     ExtractedCommit,
     ExtractedKind,
@@ -31,6 +19,20 @@ from gitential2.datatypes.pull_requests import PullRequest
 from gitential2.extraction.output import OutputHandler
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
+
+from gitential2.datatypes import (
+    UserInDB,
+    UserInfoInDB,
+    CredentialInDB,
+    WorkspaceInDB,
+    ProjectInDB,
+    RepositoryInDB,
+    ProjectRepositoryInDB,
+    GitProtocol,
+    WorkspaceMemberInDB,
+    AuthorInDB,
+)
+from gitential2.settings import GitentialSettings
 
 from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin

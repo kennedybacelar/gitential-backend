@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Optional, Callable, List, cast, Dict
+from typing import Iterable, Optional, Callable, List, Dict
 import datetime as dt
 import typing
 import sqlalchemy as sa
@@ -32,14 +32,6 @@ from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
 from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate
 from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
 
-from gitential2.backends.base.repositories import (
-    AuthorRepository,
-    ExtractedCommitRepository,
-    ExtractedPatchRepository,
-    ExtractedPatchRewriteRepository,
-    PullRequestRepository,
-    TeamMemberRepository,
-)
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
@@ -51,6 +43,16 @@ from gitential2.datatypes.project_repositories import (
 from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
 
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
+
+from gitential2.backends.base.repositories import (
+    AuthorRepository,
+    ExtractedCommitRepository,
+    ExtractedPatchRepository,
+    ExtractedPatchRewriteRepository,
+    PullRequestRepository,
+    TeamMemberRepository,
+)
+
 from ..base import (
     IdType,
     CreateType,
@@ -377,9 +379,11 @@ class SQLTeamMemberRepository(
     TeamMemberRepository, SQLWorkspaceScopedRepository[int, TeamMemberCreate, TeamMemberUpdate, TeamMemberInDB]
 ):
     def add_members_to_team(self, workspace_id: int, team_id: int, author_ids: List[int]) -> List[TeamMemberInDB]:
-        query = self.table.insert([{"team_id": team_id, "author_id": author_id} for author_id in author_ids])
+        query = self.table.insert([{"team_id": team_id, "author_id": author_id} for author_id in author_ids]).returning(
+            self.table.c.id, self.table.c.team_id, self.table.c.author_id
+        )
         result = self._execute_query(query, workspace_id=workspace_id)
-        return []
+        return [TeamMemberInDB(**row) for row in result.fetchall()]
 
     def remove_members_from_team(self, workspace_id: int, team_id: int, author_ids: List[int]) -> int:
         query = self.table.delete().where(and_(self.table.c.team_id == team_id, self.table.c.author_id.in_(author_ids)))

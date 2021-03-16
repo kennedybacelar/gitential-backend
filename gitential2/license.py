@@ -69,7 +69,7 @@ def load_license(license_file_path: Optional[str] = None, bits=2048) -> License:
 
     with zipfile.ZipFile(cast(str, license_file_path), "r", compression=zipfile.ZIP_DEFLATED) as _zip:
         name_list = _zip.namelist()
-        print(name_list)
+        # print(name_list)
         if len(name_list) > 4:
             raise LicenseError("001")
         lic_file = find_first(lambda name: name.endswith(".lic"), name_list)

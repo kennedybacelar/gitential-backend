@@ -68,7 +68,7 @@ def initialize_database(ctx):
 def refresh_repository_(ctx, workspace_id, repository_id):
     g = init_context_from_settings(ctx.obj["settings"])
     g.backend.initialize_workspace(workspace_id)
-    refresh_repository(g, workspace_id, repository_id=repository_id)
+    refresh_repository(g, workspace_id, repository_id=repository_id, force_rebuild=False)
 
 
 @click.command()
@@ -113,8 +113,7 @@ def get_stats(ctx, workspace_id):
 
 @click.command()
 @click.option("--license-file-path", "-l", "license_file_path", type=str)
-@click.pass_context
-def check_license(ctx, license_file_path):
+def check_license(license_file_path):
     license_, is_valid = check_license_(license_file_path)
     if is_valid:
         print("License is valid", license_)

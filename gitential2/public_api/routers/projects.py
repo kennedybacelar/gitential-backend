@@ -94,7 +94,7 @@ def get_project_status_(
 
 
 def _get_project_status_hack(workspace_id, project_id) -> ProjectStatus:
-    from gitential2.public_api.main import app
+    from gitential2.public_api.main import app  # pylint: disable=import-outside-toplevel,cyclic-import
 
     # app.state.gitential.check_permission(
     #     current_user, Entity.project, Action.read, workspace_id=workspace_id, project_id=project_id

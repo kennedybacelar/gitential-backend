@@ -1,7 +1,8 @@
 import datetime as dt
 from threading import Lock
-from typing import Iterable, Optional, Callable, List, cast, Dict
+from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple
 from collections import defaultdict
+import pandas as pd
 from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import DataCollector, OutputHandler
 from gitential2.datatypes import (
@@ -164,6 +165,9 @@ class InMemUserInfoRepository(UserInfoRepository, InMemRepository[int, UserInfoC
     def get_by_sub_and_integration(self, sub: str, integration_name: str) -> Optional[UserInfoInDB]:
         return None
 
+    def get_for_user(self, user_id: int) -> List[UserInfoInDB]:
+        return []
+
 
 class InMemWorkspaceRepository(
     WorkspaceRepository, InMemRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]
@@ -279,3 +283,17 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return self._output_handlers[workspace_id]
+
+    def get_extracted_dataframes(
+        self, workspace_id: int, repository_id: int
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    def save_calculated_dataframes(
+        self,
+        workspace_id: int,
+        repository_id: int,
+        calculated_commits_df: pd.DataFrame,
+        calculated_patches_df: pd.DataFrame,
+    ):
+        return

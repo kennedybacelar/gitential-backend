@@ -9,7 +9,7 @@ def recalculate_repository_values(g: GitentialContext, workspace_id: int, reposi
     extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df = g.backend.get_extracted_dataframes(
         workspace_id=workspace_id, repository_id=repository_id
     )
-    # print(extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df)
+    print(extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df)
 
     email_author_map = _get_or_create_authors_from_commits(g, workspace_id, extracted_commits_df)
 
