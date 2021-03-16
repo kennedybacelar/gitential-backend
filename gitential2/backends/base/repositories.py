@@ -1,6 +1,10 @@
 # pylint: disable=unsubscriptable-object
+from datetime import datetime
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, TypeVar, Generic, List, Tuple
+
+from typing import Iterable, Optional, TypeVar, Generic, List, Tuple, Dict
+
+import pandas
 from gitential2.datatypes import (
     CoreModel,
     UserCreate,
@@ -16,6 +20,8 @@ from gitential2.datatypes import (
     CredentialUpdate,
     CredentialInDB,
 )
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
+from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
 from gitential2.datatypes.project_repositories import (
@@ -23,7 +29,19 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryInDB,
     ProjectRepositoryUpdate,
 )
+from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB
+from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
+from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
+
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
+from gitential2.datatypes.extraction import (
+    ExtractedCommit,
+    ExtractedCommitId,
+    ExtractedPatch,
+    ExtractedPatchId,
+    ExtractedPatchRewrite,
+    ExtractedPatchRewriteId,
+)
 
 IdType = TypeVar("IdType")
 CreateType = TypeVar("CreateType", bound=CoreModel)
@@ -98,9 +116,19 @@ class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
         pass
 
 
+class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB]):
+    @abstractmethod
+    def get_subscriptions_for_user(self, user_id: int) -> List[SubscriptionInDB]:
+        pass
+
+
 class UserInfoRepository(BaseRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
     @abstractmethod
     def get_by_sub_and_integration(self, sub: str, integration_name: str) -> Optional[UserInfoInDB]:
+        pass
+
+    @abstractmethod
+    def get_for_user(self, user_id: int) -> List[UserInfoInDB]:
         pass
 
 
@@ -178,3 +206,57 @@ class ProjectRepositoryRepository(
         if ids_needs_removal:
             self.remove_repo_ids_from_project(workspace_id, project_id, ids_needs_removal)
         return ids_needs_addition, ids_needs_removal, ids_kept
+
+
+class RepoDFMixin(ABC):
+    @abstractmethod
+    def get_repo_df(self, workspace_id: int, repo_id: int) -> pandas.DataFrame:
+        pass
+
+
+class ExtractedCommitRepository(
+    RepoDFMixin, BaseWorkspaceScopedRepository[ExtractedCommitId, ExtractedCommit, ExtractedCommit, ExtractedCommit]
+):
+    pass
+
+
+class ExtractedPatchRepository(
+    RepoDFMixin, BaseWorkspaceScopedRepository[ExtractedPatchId, ExtractedPatch, ExtractedPatch, ExtractedPatch]
+):
+    pass
+
+
+class ExtractedPatchRewriteRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[
+        ExtractedPatchRewriteId, ExtractedPatchRewrite, ExtractedPatchRewrite, ExtractedPatchRewrite
+    ],
+):
+    pass
+
+
+class PullRequestRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[PullRequestId, PullRequest, PullRequest, PullRequest],
+):
+    @abstractmethod
+    def get_prs_updated_at(self, workspace_id: int, repository_id: int) -> Dict[int, datetime]:
+        pass
+
+
+class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
+    pass
+
+
+class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
+    pass
+
+
+class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, TeamMemberUpdate, TeamMemberInDB]):
+    @abstractmethod
+    def add_members_to_team(self, workspace_id: int, team_id: int, author_ids: List[int]) -> List[TeamMemberInDB]:
+        pass
+
+    @abstractmethod
+    def remove_members_from_team(self, workspace_id: int, team_id: int, author_ids: List[int]) -> int:
+        pass

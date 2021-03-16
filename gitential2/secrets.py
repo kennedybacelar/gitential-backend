@@ -13,6 +13,12 @@ class Fernet:
     def decrypt_string(self, s: str) -> str:
         return self.f.decrypt(s.encode()).decode()
 
+    def encrypt_bytes(self, b: bytes) -> bytes:
+        return self.f.encrypt(b)
+
+    def decrypt_bytes(self, b: bytes) -> bytes:
+        return self.f.decrypt(b)
+
 
 class FernetVault:
     def __init__(self, secret_key: bytes):

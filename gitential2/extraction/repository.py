@@ -8,17 +8,15 @@ import numpy as np
 import pygit2
 from structlog import get_logger
 
-from gitential2.datatypes.repositories import GitRepository, GitRepositoryState
+from gitential2.datatypes.repositories import RepositoryInDB, GitRepositoryState
 from gitential2.datatypes.extraction import (
-    RepositoryCredentials,
     LocalGitRepository,
     ExtractedCommit,
     ExtractedPatch,
     ExtractedPatchRewrite,
     ExtractedKind,
-    UserPassCredential,
-    KeypairCredentials,
 )
+from gitential2.datatypes.credentials import UserPassCredential, KeypairCredential, RepositoryCredential
 from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import OutputHandler
 from gitential2.extraction.langdetection import detect_lang
@@ -36,22 +34,32 @@ COMMIT_ID_RE = re.compile(r"^\w{40}")
 
 # pylint: disable=too-many-arguments
 def extract_incremental(
-    repository: GitRepository,
+    repository: RepositoryInDB,
     output: OutputHandler,
     settings: GitentialSettings,
-    credentials: Optional[RepositoryCredentials] = None,
+    credentials: Optional[RepositoryCredential] = None,
     previous_state: Optional[GitRepositoryState] = None,
     ignore_spec: IgnoreSpec = default_ignorespec,
 ):
     with TemporaryDirectory() as workdir:
         local_repo = clone_repository(repository, destination_path=workdir.path, credentials=credentials)
-        current_state = get_repository_state(local_repo)
-        commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
-        executor = create_executor(
-            settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
-        )
-        executor.map(fn=_extract_single_commit, items=commits)
-        return current_state
+        return extract_incremental_local(local_repo, output, settings, previous_state, ignore_spec)
+
+
+def extract_incremental_local(
+    local_repo: LocalGitRepository,
+    output: OutputHandler,
+    settings: GitentialSettings,
+    previous_state: Optional[GitRepositoryState] = None,
+    ignore_spec: IgnoreSpec = default_ignorespec,
+):
+    current_state = get_repository_state(local_repo)
+    commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
+    executor = create_executor(
+        settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
+    )
+    executor.map(fn=_extract_single_commit, items=commits)
+    return current_state
 
 
 def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler, ignore_spec: IgnoreSpec):
@@ -61,7 +69,7 @@ def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: Ou
 
 
 def clone_repository(
-    repository: GitRepository, destination_path: Path, credentials: Optional[RepositoryCredentials] = None
+    repository: RepositoryInDB, destination_path: Path, credentials: Optional[RepositoryCredential] = None
 ) -> LocalGitRepository:
     with TemporaryDirectory() as workdir:
 
@@ -69,7 +77,7 @@ def clone_repository(
             if isinstance(credentials, UserPassCredential):
                 userpass = pygit2.UserPass(username=credentials.username, password=credentials.password)
                 return pygit2.RemoteCallbacks(credentials=userpass)
-            elif isinstance(credentials, KeypairCredentials):
+            elif isinstance(credentials, KeypairCredential):
                 keypair = pygit2.Keypair(
                     username=credentials.username,
                     pubkey=workdir.new_file(credentials.pubkey),
@@ -82,7 +90,7 @@ def clone_repository(
         pygit2.clone_repository(
             url=repository.clone_url, path=str(destination_path), callbacks=_construct_callbacks(credentials)
         )
-        return LocalGitRepository(id=repository.id, directory=destination_path)
+        return LocalGitRepository(repo_id=repository.id, directory=destination_path)
 
 
 def _git2_repo(repository: LocalGitRepository) -> pygit2.Repository:
@@ -148,6 +156,7 @@ def extract_commit(repository: LocalGitRepository, commit_id: str, output: Outpu
     output.write(
         ExtractedKind.EXTRACTED_COMMIT.value,
         ExtractedCommit(
+            repo_id=repository.repo_id,
             commit_id=commit.id.hex,
             atime=atime,
             aemail=commit.author.email,
@@ -188,19 +197,20 @@ def extract_commit_patches(
     for parent, diff in zip(parents, diffs):
         for patch in diff:
             if not ignore_spec.should_ignore(patch.delta.new_file.path):
-                _extract_patch(commit, parent, patch, g2_repo, output)
+                _extract_patch(commit, parent, patch, g2_repo, output, repo_id=repository.repo_id)
             patch_count += 1
     # logger.debug("patch count", patch_count=patch_count, repository=repository, commit_id=commit_id)
     return patch_count
 
 
-def _extract_patch(commit, parent, patch, g2_repo, output):
+def _extract_patch(commit, parent, patch, g2_repo, output, repo_id):
     patch_stats = _get_patch_stats(patch)
-    nrewrites, rewrites_loc = _extract_patch_rewrites(commit, parent, patch, g2_repo, output)
+    nrewrites, rewrites_loc = _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id=repo_id)
     lang, langtype = _get_patch_lang_and_langtype(commit, patch, g2_repo)
     output.write(
         ExtractedKind.EXTRACTED_PATCH.value,
         ExtractedPatch(
+            repo_id=repo_id,
             commit_id=commit.id.hex,
             parent_commit_id=parent.id.hex,
             status=patch.delta.status_char(),
@@ -276,7 +286,7 @@ def _indentation(s, tabsize=4):
     return 0
 
 
-def _extract_patch_rewrites(commit, parent, patch, g2_repo, output):  # pylint: disable=too-complex
+def _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id):  # pylint: disable=too-complex
     def _is_addition():
         return patch.delta.status_char() == "A"
 
@@ -314,6 +324,7 @@ def _extract_patch_rewrites(commit, parent, patch, g2_repo, output):  # pylint: 
             output.write(
                 ExtractedKind.EXTRACTED_PATCH_REWRITE.value,
                 ExtractedPatchRewrite(
+                    repo_id=repo_id,
                     commit_id=commit.id.hex,
                     atime=_utc_timestamp_for(commit.author),
                     aemail=commit.author.email,

@@ -1,112 +1,166 @@
-# pylint: skip-file
-import datetime as dt
-from gitential2.datatypes.projects import ProjectPublic
-from uuid import UUID
-from asyncio import sleep
-from typing import List, Optional, Union
+import io
+import asyncio
+from typing import List
 
-from fastapi import APIRouter, Query, WebSocket, Depends
-from pydantic import BaseModel
-from ..dependencies import workspace_ctrl
-from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories
+from fastapi import APIRouter, WebSocket, Depends
+from fastapi.responses import StreamingResponse
+import pandas as pd
+
+from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories, ProjectStatus
+from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype
+from gitential2.datatypes.permissions import Entity, Action
+from gitential2.core.projects import schedule_project_refresh
+
+from gitential2.core import (
+    check_permission,
+    GitentialContext,
+    list_projects,
+    create_project,
+    update_project,
+    delete_project,
+    get_project,
+    get_project_status,
+)
+
+from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["projects"])
 
 
 @router.get("/workspaces/{workspace_id}/projects", response_model=List[ProjectPublic])
-def workspace_projects(workspace_ctrl=Depends(workspace_ctrl)):
-    return workspace_ctrl.list_projects()
+def workspace_projects(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.read, workspace_id=workspace_id)
+    return list_projects(g, workspace_id=workspace_id)
 
 
 @router.post("/workspaces/{workspace_id}/projects", response_model=ProjectPublic)
-def create_project(project: ProjectCreateWithRepositories, workspace_ctrl=Depends(workspace_ctrl)):
-    return workspace_ctrl.create_project(project)
+def create_project_(
+    project_create: ProjectCreateWithRepositories,
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.create, workspace_id=workspace_id)
+    return create_project(g, workspace_id, project_create)
 
 
 @router.put("/workspaces/{workspace_id}/projects/{project_id}", response_model=ProjectPublic)
-def update_project(
-    project_update: ProjectUpdateWithRepositories, project_id: int, workspace_ctrl=Depends(workspace_ctrl)
+def update_project_(
+    project_update: ProjectUpdateWithRepositories,
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
 ):
-    return workspace_ctrl.update_project(project_id=project_id, project_update=project_update)
+    check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
+    return update_project(g, workspace_id, project_id=project_id, project_update=project_update)
 
 
 @router.delete("/workspaces/{workspace_id}/projects/{project_id}")
-def delete_project(project_id: int, workspace_ctrl=Depends(workspace_ctrl)):
-    return workspace_ctrl.delete_project(project_id=project_id)
+def delete_project_(
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.delete, workspace_id=workspace_id, project_id=project_id)
+    return delete_project(g, workspace_id, project_id=project_id)
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}")
-def get_project(project_id: int, workspace_ctrl=Depends(workspace_ctrl)):
-    return workspace_ctrl.get_project(project_id=project_id)
+def get_project_(
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.read, workspace_id=workspace_id, project_id=project_id)
+    return get_project(g, workspace_id, project_id=project_id)
+
+
+@router.get("/workspaces/{workspace_id}/projects/{project_id}/status", response_model=ProjectStatus)
+def get_project_status_(
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.read, workspace_id=workspace_id, project_id=project_id)
+    return get_project_status(g, workspace_id, project_id=project_id)
+
+
+def _get_project_status_hack(workspace_id, project_id) -> ProjectStatus:
+    from gitential2.public_api.main import app  # pylint: disable=import-outside-toplevel,cyclic-import
+
+    # app.state.gitential.check_permission(
+    #     current_user, Entity.project, Action.read, workspace_id=workspace_id, project_id=project_id
+    # )
+    return get_project_status(g=app.state.gitential, workspace_id=workspace_id, project_id=project_id)
+
+
+@router.post("/workspaces/{workspace_id}/projects/{project_id}/process", response_model=ProjectStatus)
+def refresh_project(
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
+    schedule_project_refresh(g, workspace_id, project_id)
+    return get_project_status(g, workspace_id, project_id=project_id)
+
+
+@router.post("/workspaces/{workspace_id}/projects/{project_id}/rebuild", response_model=ProjectStatus)
+def refresh_project_rebuild(
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
+    schedule_project_refresh(g, workspace_id, project_id, force_rebuild=True)
+    return get_project_status(g, workspace_id, project_id=project_id)
 
 
 @router.websocket("/workspaces/{workspace_id}/projects/{project_id}/progress")
-async def websocket_endpoint(websocket: WebSocket, workspace_id: Union[int, UUID], project_id: int):
-    def _data_template():
-        return {
-            "done": False,
-            "id": project_id,
-            "name": "Szia Balazs",
-            "status": "pending",
-            "repos": [
-                {
-                    "clone": 0,
-                    "done": False,
-                    "error": None,
-                    "extract": 0,
-                    "id": 844,
-                    "name": "react",
-                    "persist": 0,
-                    "phase": "pending",
-                    "status": "pending",
-                }
-            ],
-        }
-
+async def websocket_endpoint(
+    websocket: WebSocket,
+    project_id: int,
+    workspace_id: int,
+):
+    loop = asyncio.get_running_loop()
     await websocket.accept()
-    if project_id in [2496, 2507, 2512]:
-        data = _data_template()
-        data["done"] = True
-        data["status"] = "finished"
-        data["repos"][0]["done"] = True
-        data["repos"][0]["phase"] = "done"
-        data["repos"][0]["status"] = "finished"
-        data["repos"][0]["pocessed_at"] = int(dt.datetime.now().timestamp())
+    project_status = await loop.run_in_executor(None, _get_project_status_hack, workspace_id, project_id)
+    await websocket.send_json(project_status.dict())
+    while True:
+        await asyncio.sleep(0.05)
+        project_status = await loop.run_in_executor(None, _get_project_status_hack, workspace_id, project_id)
+        await websocket.send_json(project_status.dict())
+        if project_status.done:
+            break
 
-        await websocket.send_json(data)
-    else:
 
-        for i in range(101):
-            data = _data_template()
-            data["repos"][0]["clone"] = i * 0.01
-            data["repos"][0]["phase"] = "clone"
-            await websocket.send_json(data)
-            await sleep(0.01)
+@router.get("/workspaces/{workspace_id}/projects/{project_id}/export/{datatype}")
+def export_project_data(
+    workspace_id: int,
+    project_id: int,
+    datatype: ProjectExportDatatype,
+):
+    print("Export called:", workspace_id, project_id, datatype)
 
-        for i in range(101):
-            data = _data_template()
-            data["repos"][0]["extract"] = i * 0.01
-            data["repos"][0]["phase"] = "extract"
-            await websocket.send_json(data)
+    df = pd.DataFrame(
+        {"num_legs": [2, 4, 8, 0], "num_wings": [2, 0, 0, 0], "num_specimen_seen": [10, 2, 1, 8]},
+        index=["falcon", "dog", "spider", "fish"],
+    )
+    stream = io.StringIO()
+    df.to_csv(stream, index=False)
 
-            await sleep(0.01)
+    response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
 
-        for i in range(101):
-            data = _data_template()
-            data["repos"][0]["persist"] = i * 0.01
-            data["repos"][0]["phase"] = "persist"
-            await websocket.send_json(data)
-            await sleep(0.01)
-
-        data = _data_template()
-        data["done"] = True
-        data["status"] = "finished"
-        data["repos"][0]["phase"] = "done"
-        data["repos"][0]["done"] = True
-        data["repos"][0]["status"] = "finished"
-        data["repos"][0]["processed_at"] = int(dt.datetime.now().timestamp())
-        await websocket.send_json(data)
-
-    # while True:
-    #     data = await websocket.receive_text()
-    #     await websocket.send_text(f"Message text was: {data}")
+    filename = f"gitential-{workspace_id}-{project_id}-{datatype}.csv"
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response

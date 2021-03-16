@@ -1,12 +1,20 @@
 import pytest
-from gitential2.core import GitentialImpl
+from gitential2.core import GitentialContext, handle_authorize
+from gitential2.kvstore import InMemKeyValueStore
+from gitential2.license import dummy_license
 
 
 def test_handle_auth_empty_database_create_new_user(minimal_settings, inmem_backend, dummy_integration, dummy_fernet):
-    gitential = GitentialImpl(
-        settings=minimal_settings, integrations={"dummy": dummy_integration}, backend=inmem_backend, fernet=dummy_fernet
+    gitential = GitentialContext(
+        settings=minimal_settings,
+        integrations={"dummy": dummy_integration},
+        backend=inmem_backend,
+        fernet=dummy_fernet,
+        kvstore=InMemKeyValueStore(minimal_settings),
+        license_=dummy_license,
     )
-    result = gitential.handle_authorize(
+    result = handle_authorize(
+        gitential,
         integration_name="dummy",
         token={"access_token": "access_token"},
         user_info={"id": 12345, "name": "Mr User Example", "username": "user", "email": "user@example.com"},

@@ -1,6 +1,6 @@
 import os
 from base64 import b64encode
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, List
 from enum import Enum
 
 import yaml
@@ -39,6 +39,7 @@ class IntegrationSettings(BaseModel):
     login: bool = False
     login_text: Optional[str] = None
     signup_text: Optional[str] = None
+    login_top_text: Optional[str] = None
     options: Dict[str, Union[str, int, float, bool]] = {}
 
     @property
@@ -51,6 +52,11 @@ class BackendType(str, Enum):
     sql = "sql"
 
 
+class KeyValueStoreType(str, Enum):
+    in_memory = "in_memory"
+    redis = "redis"
+
+
 class CelerySettings(BaseModel):
     broker_url: Optional[str] = None
     result_backend_url: Optional[str] = None
@@ -61,17 +67,44 @@ class ConnectionSettings(BaseModel):
     redis_url: Optional[str] = "redis://localhost:6379/0"
 
 
+class HTMLElementPosition(str, Enum):
+    beforebegin = "beforebegin"
+    afterbegin = "afterbegin"
+    beforeend = "beforeend"
+    afterend = "afterend"
+
+
+class HTMLInjection(BaseModel):
+    parent: str = "head"
+    tag: str = ""
+    content: str = ""
+    position: HTMLElementPosition = HTMLElementPosition.beforeend
+    attributes: Dict[str, Union[int, bool, str]] = {}
+
+
+class RecaptchaSettings(BaseModel):
+    site_key: str = ""
+    secret_key: str = ""
+
+
+class FrontendSettings(BaseModel):
+    inject_html: List[HTMLInjection] = []
+
+
 class GitentialSettings(BaseModel):
     secret: str
     connections: ConnectionSettings = ConnectionSettings()
+    recaptcha: RecaptchaSettings = RecaptchaSettings()
     integrations: Dict[str, IntegrationSettings]
     base_url: str = "http://localhost:7999"
     backend: BackendType = BackendType.in_memory
+    kvstore: KeyValueStoreType = KeyValueStoreType.redis
     celery: CelerySettings = CelerySettings()
     log_level: LogLevel = LogLevel.info
     executor: Executor = Executor.process_pool
     process_pool_size: int = 8
     show_progress: bool = False
+    frontend: FrontendSettings = FrontendSettings()
 
     @validator("secret")
     def secret_validation(cls, v):

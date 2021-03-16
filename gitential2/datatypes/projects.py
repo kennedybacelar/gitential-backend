@@ -1,8 +1,15 @@
+from enum import Enum
 from typing import Optional, List
 from pydantic import Field
 
 from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
-from .repositories import RepositoryCreate, RepositoryPublic
+from .repositories import RepositoryCreate, RepositoryPublic, RepositoryStatus
+
+
+class ProjectExportDatatype(str, Enum):
+    commits = "commits"
+    patches = "patches"
+    pull_requests = "pull-requests"
 
 
 class ProjectBase(ExtraFieldMixin, CoreModel):
@@ -37,3 +44,11 @@ class ProjectPublic(IDModelMixin, DateTimeModelMixin, ProjectBase):
 
 class ProjectPublicWithRepositories(ProjectPublic):
     repos: List[RepositoryPublic]
+
+
+class ProjectStatus(CoreModel):
+    id: int
+    name: str
+    status: str
+    done: bool
+    repos: List[RepositoryStatus]

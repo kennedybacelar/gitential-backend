@@ -1,7 +1,15 @@
 from .repositories import (
+    AuthorRepository,
+    TeamMemberRepository,
+    TeamRepository,
+    ExtractedCommitRepository,
+    ExtractedPatchRepository,
+    ExtractedPatchRewriteRepository,
     ProjectRepositoryRepository,
+    PullRequestRepository,
     RepositoryRepository,
     UserRepository,
+    SubscriptionRepository,
     UserInfoRepository,
     WorkspaceRepository,
     WorkspaceMemberRepository,
@@ -19,10 +27,22 @@ class WithRepositoriesMixin:
     _projects: ProjectRepository
     _repositories: RepositoryRepository
     _project_repositories: ProjectRepositoryRepository
+    _authors: AuthorRepository
+    _teams: TeamRepository
+    _team_members: TeamMemberRepository
+    _subscriptions: SubscriptionRepository
+    _extracted_commits: ExtractedCommitRepository
+    _extracted_patches: ExtractedPatchRepository
+    _extracted_patch_rewrites: ExtractedPatchRewriteRepository
+    _pull_requests: PullRequestRepository
 
     @property
     def users(self) -> UserRepository:
         return self._users
+
+    @property
+    def subscriptions(self) -> SubscriptionRepository:
+        return self._subscriptions
 
     @property
     def user_infos(self) -> UserInfoRepository:
@@ -51,3 +71,31 @@ class WithRepositoriesMixin:
     @property
     def project_repositories(self) -> ProjectRepositoryRepository:
         return self._project_repositories
+
+    @property
+    def authors(self) -> AuthorRepository:
+        return self._authors
+
+    @property
+    def extracted_commits(self) -> ExtractedCommitRepository:
+        return self._extracted_commits
+
+    @property
+    def extracted_patches(self) -> ExtractedPatchRepository:
+        return self._extracted_patches
+
+    @property
+    def extracted_patch_rewrites(self) -> ExtractedPatchRewriteRepository:
+        return self._extracted_patch_rewrites
+
+    @property
+    def pull_requests(self) -> PullRequestRepository:
+        return self._pull_requests
+
+    @property
+    def teams(self) -> TeamRepository:
+        return self._teams
+
+    @property
+    def team_members(self) -> TeamMemberRepository:
+        return self._team_members

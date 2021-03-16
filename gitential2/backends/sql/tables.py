@@ -1,6 +1,7 @@
 import datetime as dt
 import sqlalchemy as sa
 from gitential2.datatypes import WorkspaceRole
+from gitential2.datatypes.subscriptions import SubscriptionType
 
 metadata = sa.MetaData()
 
@@ -13,9 +14,34 @@ users_table = sa.Table(
     sa.Column("is_admin", sa.Boolean, default=False, nullable=False),
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
-    sa.Column("tc_consent_accepted_at", sa.String(32), nullable=True),
     sa.Column("marketing_consent_accepted", sa.Boolean, nullable=False, default=False),
+    sa.Column("first_name", sa.String(256), nullable=True),
+    sa.Column("last_name", sa.String(256), nullable=True),
+    sa.Column("company_name", sa.String(256), nullable=True),
+    sa.Column("position", sa.String(256), nullable=True),
+    sa.Column("development_team_size", sa.String(256), nullable=True),
+    sa.Column("registration_ready", sa.Boolean, default=False, nullable=False),
+    sa.Column("login_ready", sa.Boolean, default=False, nullable=False),
+    sa.Column("is_active", sa.Boolean, default=False, nullable=False),
     sa.Column("extra", sa.JSON, nullable=True),
+)
+
+subscriptions_table = sa.Table(
+    "subscriptions",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column(
+        "user_id",
+        sa.Integer,
+        sa.ForeignKey("users.id"),
+        nullable=False,
+    ),
+    sa.Column("subscription_start", sa.DateTime, nullable=False),
+    sa.Column("subscription_end", sa.DateTime, nullable=True),
+    sa.Column("subscription_type", sa.Enum(SubscriptionType), default=SubscriptionType.trial),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("number_of_developers", sa.Integer(), nullable=False, default=5),
 )
 
 user_infos_table = sa.Table(

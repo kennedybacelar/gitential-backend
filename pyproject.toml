@@ -31,6 +31,8 @@ loginpass = "^0.5"
 mypy = "^0.800"
 celery = "^5.0.5"
 redis = "^3.5.3"
+ibis-framework = "^1.4.0"
+rsa = "^4.7.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

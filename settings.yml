@@ -3,6 +3,66 @@ executor: process_pool
 show_progress: true
 secret: abcdABCDabcdABCDabcdABCDabcdABCD
 backend: sql
+recaptcha:
+  site_key: 6LftqHEaAAAAANgRbGA6Ew6nToApMx3TysEMYa-y
+  secret_key: 6LftqHEaAAAAABt-WU7zTL9WHbv49GzWGuAjJiH8
+
+# frontend:
+#   inject_html:
+#     - tag: script
+#       attributes:
+#         async: true
+#         src: "https://www.googletagmanager.com/gtag/js?id=UA-168824170-2"
+#     - tag: script
+#       content: |
+#         /* Hotjar Tracking Code for https://app.gitential.com/ */
+#         if (document.location.hostname === 'app.gitential.com') {
+#             (function (h, o, t, j, a, r) {
+#                 h.hj = h.hj || function () {
+#                     (h.hj.q = h.hj.q || []).push(arguments)
+#                 };
+#                 h._hjSettings = { hjid: 1974992, hjsv: 6 };
+#                 a = o.getElementsByTagName('head')[0];
+#                 r = o.createElement('script');
+#                 r.async = 1;
+#                 r.src = t + h._hjSettings.hjid + j + h._hjSettings.hjsv;
+#                 a.appendChild(r);
+#             })(window, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
+#         }
+
+#     - tag: script
+#       content: |
+#         /* google analytics tracking code */
+#         if (document.location.hostname === 'app.gitential.com') {
+#             window.dataLayer = window.dataLayer || [];
+#             function gtag() {
+#                 dataLayer.push(arguments);
+#             }
+#             gtag('js', new Date());
+#             gtag('config', 'UA-168824170-2');
+#         }
+
+#     - tag: script
+#       parent: body
+#       position: afterbegin
+#       content: |
+#         (function() {
+#           var s = document.getElementsByTagName("script")[0];
+#           var b = document.createElement("script");
+#           b.type = "text/javascript";
+#           b.async = true;
+#           b.src = "https://snap.licdn.com/li.lms-analytics/insight.min.js";
+#           s.parentNode.insertBefore(b, s);
+#         })();
+
+#     - tag: script
+#       parent: body
+#       position: afterbegin
+#       content: |
+#         _linkedin_partner_id = "2061993";
+#         window._linkedin_data_partner_ids = window._linkedin_data_partner_ids || [];
+#         window._linkedin_data_partner_ids.push(_linkedin_partner_id);
+
 connections:
   database_url: postgresql://gitential:secret123@localhost:5432/gitential
   redis_url: redis://localhost:6379/0
@@ -32,6 +92,8 @@ integrations:
     login_text: "Login with GitHub"
   linkedin:
     type: linkedin
+    login: true
+    login_top_text: "You don't have a git account?"
     oauth:
       client_id: 78niu9tfn4fufa
       client_secret: 1LH59EYaQQnxGAHn

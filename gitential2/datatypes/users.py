@@ -8,8 +8,15 @@ class UserBase(ExtraFieldMixin, CoreModel):
     login: Optional[str] = Field(None, max_length=128)
     email: Optional[str] = Field(None, max_length=256)
     is_admin: bool = False
-    tc_consent_accepted_at: Optional[str] = None
     marketing_consent_accepted: bool = False
+    first_name: Optional[str] = Field(None, max_length=256)
+    last_name: Optional[str] = Field(None, max_length=256)
+    company_name: Optional[str] = Field(None, max_length=256)
+    position: Optional[str] = Field(None, max_length=256)
+    development_team_size: Optional[str] = Field(None, max_length=32)
+    registration_ready: bool = False
+    login_ready: bool = False
+    is_active: bool = True
 
     @classmethod
     def from_user_info(cls, user_info: UserInfoBase):
@@ -17,7 +24,6 @@ class UserBase(ExtraFieldMixin, CoreModel):
 
 
 class UserCreate(UserBase):
-    login: str
     email: str
 
 

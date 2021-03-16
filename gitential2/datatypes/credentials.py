@@ -1,6 +1,10 @@
+from abc import ABC
 from enum import Enum
 from typing import Optional, cast
 from datetime import datetime
+
+from pydantic.dataclasses import dataclass
+
 from gitential2.secrets import Fernet
 from .common import IDModelMixin, DateTimeModelMixin, CoreModel, ExtraFieldMixin
 
@@ -9,6 +13,24 @@ class CredentialType(str, Enum):
     token = "token"
     keypair = "keypair"
     passphrase = "passphrase"
+
+
+class RepositoryCredential(ABC):
+    pass
+
+
+@dataclass
+class KeypairCredential(RepositoryCredential):
+    username: str = "git"
+    pubkey: Optional[str] = None
+    privkey: Optional[str] = None
+    passphrase: Optional[str] = None
+
+
+@dataclass
+class UserPassCredential(RepositoryCredential):
+    username: str
+    password: str
 
 
 class CredentialBasePublic(ExtraFieldMixin, CoreModel):
@@ -30,6 +52,24 @@ class CredentialBaseSecret(CoreModel):
 
 
 class CredentialBase(CredentialBasePublic, CredentialBaseSecret):
+    def to_repository_credential(self, fernet: Fernet) -> RepositoryCredential:
+        if self.type == CredentialType.keypair:
+            return KeypairCredential(
+                username="git",
+                pubkey=fernet.decrypt_string(self.public_key.decode()) if self.public_key else None,
+                privkey=fernet.decrypt_string(self.private_key.decode()) if self.private_key else None,
+                passphrase=fernet.decrypt_string(self.passphrase.decode()) if self.passphrase else None,
+            )
+        elif self.type == CredentialType.token:
+            token = fernet.decrypt_string(self.token.decode()) if self.token else ""
+            if self.integration_type == "gitlab":
+                return UserPassCredential(username="oauth2", password=token)
+            elif self.integration_type in {"github", "vsts"}:
+                return UserPassCredential(username=token, password="x-oauth-basic")
+            elif self.integration_type == "bitbucket":
+                return UserPassCredential(username="x-token-auth", password=token)
+        raise ValueError(f"Don't know how to convert credential {self}")
+
     # pylint: disable=too-many-arguments
     @classmethod
     def from_token(
@@ -64,7 +104,7 @@ class CredentialBase(CredentialBasePublic, CredentialBaseSecret):
 
 
 class CredentialCreate(CredentialBase):
-    owner_id: int
+    # owner_id: int
     type: CredentialType
     name: str
 

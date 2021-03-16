@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import Optional, Union, Dict
-from pydantic import BaseModel, Field
+from typing import Optional, Dict
+from pydantic import BaseModel
 
 from .common import IDModelMixin, DateTimeModelMixin, CoreModel, ExtraFieldMixin
 
@@ -37,20 +37,6 @@ class RepositoryPublic(IDModelMixin, DateTimeModelMixin, RepositoryBase):
     pass
 
 
-class GitRepository(BaseModel):
-    id: Optional[int] = None
-    clone_url: str
-    name: str = ""
-    namespace: str = ""
-    private: bool = False
-    source: str = ""
-    extra: Dict[str, Union[str, int, float]] = Field(default_factory=dict)
-
-    @property
-    def repo_id(self):
-        return self.id
-
-
 class GitRepositoryState(BaseModel):
     branches: Dict[str, str]
     tags: Dict[str, str]
@@ -67,3 +53,82 @@ class GitRepositoryStateChange(BaseModel):
     @property
     def new_branches(self):
         return {b: cid for b, cid in self.new_state.branches.items() if b not in self.old_state.branches}
+
+
+class RepositoryStatusPhase(str, Enum):
+    pending = "pending"
+    clone = "clone"
+    extract = "extract"
+    persist = "persist"
+    done = "done"
+
+
+class RepositoryStatusStatus(str, Enum):
+    pending = "pending"
+    in_progress = "in_progress"
+    finished = "finished"
+
+
+class RepositoryStatus(CoreModel):
+    id: int
+    name: str
+    done: bool = False
+    status: RepositoryStatusStatus = RepositoryStatusStatus.pending
+    error: Optional[str] = None
+    phase: RepositoryStatusPhase = RepositoryStatusPhase.pending
+    clone: float = 0.0
+    extract: float = 0.0
+    persist: float = 0.0
+
+    def reset(self):
+        self.status = RepositoryStatusStatus.pending
+        self.phase = RepositoryStatusPhase.pending
+        self.clone = 0.0
+        self.extract = 0.0
+        self.persist = 0.0
+        self.error = None
+        self.done = False
+        return self
+
+    def cloning_started(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.clone
+        self.clone = 0.1
+        self.done = False
+
+        return self
+
+    def cloning_finished(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.clone
+        self.clone = 1.0
+        self.done = False
+        return self
+
+    def extract_started(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.extract
+        self.extract = 0.1
+        self.done = False
+        return self
+
+    def extract_finished(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.extract
+        self.extract = 1.0
+        self.done = False
+        return self
+
+    def persist_started(self):
+        self.status = RepositoryStatusStatus.in_progress
+        self.phase = RepositoryStatusPhase.persist
+        self.persist = 0.1
+        self.done = False
+        return self
+
+    def persist_finished(self):
+        self.status = RepositoryStatusStatus.finished
+        self.phase = RepositoryStatusPhase.done
+        self.persist = 1.0
+        self.done = True
+        return self

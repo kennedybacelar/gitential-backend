@@ -2,6 +2,11 @@ from gitential2.datatypes import UserInfoCreate
 from .base import BaseIntegration, OAuthLoginMixin
 
 
+def get_localized_value(name):
+    key = "{}_{}".format(name["preferredLocale"]["language"], name["preferredLocale"]["country"])
+    return name["localized"].get(key, "")
+
+
 class LinkedinIntegration(OAuthLoginMixin, BaseIntegration):
     def oauth_register(self):
         return {
@@ -12,13 +17,39 @@ class LinkedinIntegration(OAuthLoginMixin, BaseIntegration):
                 "scope": "r_liteprofile r_emailaddress",
                 "token_endpoint_auth_method": "client_secret_post",
             },
-            "userinfo_endpoint": "me?projection=(id,firstName,lastName)",
+            "userinfo_endpoint": "me?projection=(id,firstName,lastName,profilePicture)",
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
         }
 
     def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
-        pass
+        print(data)
+        given_name = get_localized_value(data["firstName"])
+        family_name = get_localized_value(data["lastName"])
+        params = {
+            "integration_name": self.name,
+            "integration_type": "linkedin",
+            "sub": str(data["id"]),
+            "name": " ".join([given_name, family_name]),
+            "preferred_username": " ".join([given_name, family_name]),
+            "extra": data,
+        }
+
+        url = "emailAddress?q=members&projection=(elements*(handle~))"
+        client = self.get_oauth2_client(token=token)
+        api_base_url = self.oauth_register()["api_base_url"]
+        resp = client.get(api_base_url + url)
+        email_data = resp.json()
+
+        elements = email_data.get("elements")
+        if elements:
+            handle = elements[0].get("handle~")
+            if handle:
+                email = handle.get("emailAddress")
+                if email:
+                    params["email"] = email
+
+        return UserInfoCreate(**params)
 
 
 example_result = {

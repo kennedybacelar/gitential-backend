@@ -1,14 +1,18 @@
-from typing import Optional
-from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol
+from typing import Optional, Callable, List
+from pydantic.datetime_parse import parse_datetime
+from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
+from gitential2.datatypes.extraction import ExtractedKind
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
+from gitential2.extraction.output import OutputHandler
+from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
+from .common import walk_next_link
 
-from .base import BaseIntegration, OAuthLoginMixin
 
-
-class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
+class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def __init__(self, name, settings):
         super().__init__(name, settings)
         self.base_url = self.settings.base_url or "https://gitlab.com"
-        self.api_base_url = "{}/api/v4/".format(self.base_url)
+        self.api_base_url = "{}/api/v4".format(self.base_url)
         self.authorize_url = "{}/oauth/authorize".format(self.base_url)
         self.token_url = "{}/oauth/token".format(self.base_url)
 
@@ -18,8 +22,8 @@ class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
             "api_base_url": self.api_base_url,
             "access_token_url": self.token_url,
             "authorize_url": self.authorize_url,
-            "userinfo_endpoint": "user",
-            "client_kwargs": {"scope": "api read_repository email read_user"},
+            "userinfo_endpoint": self.api_base_url + "/user",
+            "client_kwargs": {"scope": "api read_repository email read_user profile"},
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
         }
@@ -44,7 +48,7 @@ class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
             extra=data,
         )
 
-    def list_available_private_repositories(self, token, update_token):
+    def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
         def _get_next_link(link_header) -> Optional[str]:
             link, rel = link_header.split(";")
             if "next" in rel.lower():
@@ -62,93 +66,136 @@ class GitlabIntegration(OAuthLoginMixin, BaseIntegration):
             else:
                 return acc
 
-        def _repo_create(project):
-            return RepositoryCreate(
-                clone_url=project["http_url_to_repo"],
-                protocol=GitProtocol.https,
-                name=project["path"],
-                namespace=project["namespace"]["full_path"],
-                private=project["visibility"] == "private",
-                integration_type="gitlab",
-                integration_name=self.name,
-                extra=project,
-            )
-
         client = self.get_oauth2_client(token=token, update_token=update_token)
         projects = _keyset_pagination(
             client, f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id"
         )
         client.close()
-        return [_repo_create(p) for p in projects]
+        return [self._project_to_repo_create(p) for p in projects]
 
+    def search_public_repositories(self, query: str, token, update_token) -> List[RepositoryCreate]:
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        projects = client.get(f"{self.api_base_url}/search?scope=projects&search={query}").json()
+        client.close()
+        return [self._project_to_repo_create(p) for p in projects]
 
-# """
-# example_result = {
-#     "token": {
-#         "access_token": "ada51140982179da9c24016cad52c69004eab4c762035a984fe9ce261a44d060",
-#         "token_type": "Bearer",
-#         "refresh_token": "ac57d2fe49691b823d2a38b074066bbefffecfa54ef08e0e5e755b5f05437ed9",
-#         "scope": "read_user",
-#         "created_at": 1611422247,
-#     },
-#     "user_info": {
-#         "id": 2,
-#         "name": "Laszlo Andrasi",
-#         "username": "laco",
-#         "state": "active",
-#         "avatar_url": "https://secure.gravatar.com/avatar/9846a4a493c991ae8c71384192c804f4?s=80&d=identicon",
-#         "web_url": "https://gitlab.ops.gitential.com/laco",
-#         "created_at": "2021-01-09T15:00:07.133Z",
-#         "bio": "",
-#         "bio_html": "",
-#         "location": null,
-#         "public_email": "",
-#         "skype": "",
-#         "linkedin": "",
-#         "twitter": "",
-#         "website_url": "",
-#         "organization": null,
-#         "job_title": "",
-#         "work_information": null,
-#         "last_sign_in_at": "2021-01-19T17:07:38.429Z",
-#         "confirmed_at": "2021-01-09T15:00:06.827Z",
-#         "last_activity_on": "2021-01-23",
-#         "email": "laszlo.andrasi@gitential.com",
-#         "theme_id": 1,
-#         "color_scheme_id": 1,
-#         "projects_limit": 100000,
-#         "current_sign_in_at": "2021-01-23T13:14:13.329Z",
-#         "identities": [],
-#         "can_create_group": true,
-#         "can_create_project": true,
-#         "two_factor_enabled": false,
-#         "external": false,
-#         "private_profile": false,
-#         "shared_runners_minutes_limit": null,
-#         "extra_shared_runners_minutes_limit": null,
-#     },
-# }
-# """
+    def _project_to_repo_create(self, project):
+        return RepositoryCreate(
+            clone_url=project["http_url_to_repo"],
+            protocol=GitProtocol.https,
+            name=project["path"],
+            namespace=project["namespace"]["full_path"],
+            private=project.get("visibility") == "private",
+            integration_type="gitlab",
+            integration_name=self.name,
+            extra=project,
+        )
 
-# class GitLabSource(RepositorySource):
-#     def authentication_url(self, frontend_url):
-#         return "".join(
-#             [
-#                 self._settings.base_url,
-#                 "/oauth/authorize?",
-#                 f"client_id={self._settings.client_id}",
-#                 "&scope=openid",
-#                 "&response_type=code",
-#                 "&state=FIXME_PUT_SOMETHING_USEFUL_HERE",
-#                 f"&redirect_uri={self._app_settings.base_url}/v2/login/{self.name}/",
-#             ]
-#         )
+    def _collect_single_pr_data_raw(self, client, project_id, iid):
+        merge_request = client.get(f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}").json()
+        merge_request_changes = client.get(
+            f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}/changes?access_raw_diffs=yes"
+        ).json()
+        merge_request_commits = walk_next_link(
+            client,
+            f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}/commits",
+        )
+        merge_request_notes = walk_next_link(
+            client,
+            f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}/notes",
+        )
+        return {
+            "project_id": project_id,
+            "iid": iid,
+            "mr": merge_request,
+            "mr_changes": merge_request_changes,
+            "mr_commits": merge_request_commits,
+            "mr_notes": merge_request_notes,
+        }
 
-#     def get_available_private_repositories(self, credentials: Credential) -> List[GitRepository]:
-#         pass
+    def collect_pull_requests(
+        self,
+        repository: RepositoryInDB,
+        token: dict,
+        update_token: Callable,
+        output: OutputHandler,
+        prs_we_already_have: Optional[dict] = None,
+    ):
+        client = self.get_oauth2_client(token=token, update_token=update_token)
 
-#     def get_available_public_repositories(self, query: str, credentials: Credential) -> List[GitRepository]:
-#         pass
+        if repository.extra and "id" in repository.extra:
+            project_id = repository.extra["id"]
+            print("we have project id!!!", project_id)
 
+            merge_requests = walk_next_link(
+                client, f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple"
+            )
+            for mr in merge_requests:
+                iid = mr["iid"]
 
-# # http://localhost:8080/v2/login/gitlab?code=c3351ad52fe85c44125b43243525685cc59e7e1e15f2d66b3cc4b13efb199d86&state=FIXME_PUT_SOMETHING_USEFUL_HERE
+                if (
+                    prs_we_already_have
+                    and mr["iid"] in prs_we_already_have
+                    and parse_datetime(prs_we_already_have[iid]) == parse_datetime(mr["updated_at"])
+                ):
+                    continue
+
+                raw_data = self._collect_single_pr_data_raw(client, project_id, iid)
+                try:
+                    pull_request = self._transform_to_pr(raw_data, repository=repository)
+                    print(pull_request.number, pull_request.title, pull_request.state)
+                    output.write(ExtractedKind.PULL_REQUEST, pull_request)
+                except Exception as e:  # pylint: disable=broad-except
+                    print(e, raw_data["mr"])
+
+    def _transform_to_pr(self, raw_data: dict, repository: RepositoryInDB) -> PullRequest:
+        def _calc_first_reaction_at(raw_notes):
+            human_note_creation_times = [note["created_at"] for note in raw_notes if not note["system"]]
+            human_note_creation_times.sort()
+            return human_note_creation_times[0] if human_note_creation_times else None
+
+        def _calc_first_commit_authored_at(raw_commits):
+            author_times = [c["created_at"] for c in raw_commits]
+            author_times.sort()
+            return author_times[0] if author_times else None
+
+        def _calc_addition_and_deletion_changed_files(raw_changes):
+            additions, deletions, changed_files = 0, 0, 0
+            for change in raw_changes["changes"]:
+                changed_files += 1
+                for line in change["diff"].split("\n"):
+                    if line.startswith(("---", "@@")):
+                        continue
+                    if line.startswith("+"):
+                        additions += 1
+                    elif line.startswith("-"):
+                        deletions += 1
+
+            return additions, deletions, changed_files
+
+        additions, deletions, changed_files = _calc_addition_and_deletion_changed_files(raw_data["mr_changes"])
+
+        return PullRequest(
+            repo_id=repository.id,
+            number=raw_data["iid"],
+            title=raw_data["mr"].get("title", "<missing title>"),
+            platform="gitlab",
+            id_platform=raw_data["mr"]["id"],
+            api_resource_uri=f"{self.api_base_url}/projects/{raw_data['project_id']}/merge_requests/{raw_data['iid']}",
+            state_platform=raw_data["mr"]["state"],
+            state=PullRequestState.from_gitlab(raw_data["mr"]["state"]),
+            created_at=raw_data["mr"]["created_at"],
+            closed_at=raw_data["mr"]["created_at"],
+            updated_at=raw_data["mr"]["updated_at"],
+            merged_at=raw_data["mr"]["merged_at"],
+            additions=additions,
+            deletions=deletions,
+            changed_files=changed_files,
+            draft=raw_data["mr"]["work_in_progress"],
+            user=raw_data["mr"]["author"]["username"],
+            commits=len(raw_data["mr_commits"]),
+            merged_by=raw_data["mr"]["merged_by"]["username"] if raw_data["mr"]["merged_by"] else None,
+            first_reaction_at=_calc_first_reaction_at(raw_data["mr_notes"]) or raw_data["mr"]["merged_at"],
+            first_commit_authored_at=_calc_first_commit_authored_at(raw_data["mr_commits"]),
+            extra=raw_data,
+        )

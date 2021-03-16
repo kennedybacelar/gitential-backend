@@ -1,7 +1,17 @@
 from enum import Enum
 from typing import Optional
 from .common import IDModelMixin, DateTimeModelMixin, CoreModel
-from .users import UserHeader
+from .users import UserHeader, UserCreate
+
+
+class MemberInvite(CoreModel):
+    email: str
+
+    def user_create(self) -> UserCreate:
+        return UserCreate(
+            login=self.email.split("@")[0],
+            email=self.email,
+        )
 
 
 class WorkspaceRole(Enum):
