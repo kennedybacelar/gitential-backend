@@ -1,9 +1,9 @@
 import inspect
 import functools
 from typing import Iterable, Callable
-from multiprocessing import Pool
 import abc
 from tqdm import tqdm
+from billiard import Pool  # pylint: disable=no-name-in-module
 from gitential2.settings import GitentialSettings, Executor as ExecutorSettings
 from gitential2.extraction.output import DataCollector
 
