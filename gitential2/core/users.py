@@ -76,6 +76,14 @@ def delete_user(g: GitentialContext, user_id: int):
 
 
 def get_current_subscription(g: GitentialContext, user_id: int) -> SubscriptionInDB:
+    if g.license.is_on_premises:
+        return SubscriptionInDB(
+            id=0,
+            user_id=user_id,
+            subscription_type=SubscriptionType.professional,
+            subscription_start=datetime(1970, 1, 1),
+            subscription_end=datetime(2099, 12, 31),
+        )
     current_time = datetime.utcnow()
 
     def _is_subscription_valid(s: SubscriptionInDB):
