@@ -91,9 +91,18 @@ class FrontendSettings(BaseModel):
     inject_html: List[HTMLInjection] = []
 
 
+class EmailSettings(BaseModel):
+    sender: str = "gitential@gitential.com"
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+
+
 class GitentialSettings(BaseModel):
     secret: str
     connections: ConnectionSettings = ConnectionSettings()
+    email: EmailSettings = EmailSettings()
     recaptcha: RecaptchaSettings = RecaptchaSettings()
     integrations: Dict[str, IntegrationSettings]
     base_url: str = "http://localhost:7999"

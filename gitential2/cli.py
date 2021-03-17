@@ -13,7 +13,9 @@ from gitential2.core import (
     recalculate_repository_values,
     refresh_repository_pull_requests,
     collect_stats,
+    get_user,
 )
+from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
 
 
@@ -121,6 +123,16 @@ def check_license(license_file_path):
         print("License is invalid or expired", license_)
 
 
+@click.command(name="send-email-to-user")
+@click.option("--template-name", "-t", "template_name", type=str)
+@click.option("--user-id", "-u", "user_id", type=int)
+@click.pass_context
+def send_email_to_user_(ctx, template_name, user_id):
+    g = init_context_from_settings(ctx.obj["settings"])
+    user = get_user(g, user_id=user_id)
+    send_email_to_user(g, user, template_name)
+
+
 cli.add_command(extract_git_metrics)
 cli.add_command(public_api)
 cli.add_command(initialize_database)
@@ -130,3 +142,4 @@ cli.add_command(get_stats)
 cli.add_command(recalculate_repository_values_)
 cli.add_command(check_license)
 cli.add_command(wip)
+cli.add_command(send_email_to_user_)

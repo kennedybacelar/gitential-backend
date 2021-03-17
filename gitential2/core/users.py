@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from typing import Optional, Tuple, cast
 from gitential2.datatypes.users import UserCreate, UserUpdate, UserInDB
 from gitential2.datatypes.subscriptions import SubscriptionInDB, SubscriptionCreate, SubscriptionType
@@ -8,6 +9,7 @@ from gitential2.datatypes.workspaces import WorkspaceCreate
 from gitential2.datatypes.workspacemember import WorkspaceRole
 from .context import GitentialContext
 from .workspaces import create_workspace
+from .emails import send_email_to_user
 
 
 def handle_authorize(
@@ -53,6 +55,8 @@ def register_user(
         user.login = _calc_user_login(user)
         user_in_db = g.backend.users.update(current_user.id, cast(UserUpdate, user))
         subscription = _create_default_subscription(g, user_in_db)
+    if g.license.is_cloud:
+        send_email_to_user(g, user_in_db, template_name="welcome")
     return user_in_db, subscription
 
 

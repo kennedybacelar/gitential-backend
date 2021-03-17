@@ -26,6 +26,7 @@ class License(BaseModel):
     def is_valid(self):
         return self.end_date >= date.today()
 
+    @property
     def is_cloud(self):
         return not self.is_on_premises
 

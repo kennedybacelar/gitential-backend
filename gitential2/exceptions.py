@@ -12,3 +12,7 @@ class NotFoundException(GitentialException):
 
 class SettingsException(GitentialException):
     pass
+
+
+class InvalidStateException(GitentialException):
+    pass

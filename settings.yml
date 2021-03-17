@@ -3,6 +3,12 @@ executor: process_pool
 show_progress: true
 secret: abcdABCDabcdABCDabcdABCDabcdABCD
 backend: sql
+email:
+  sender: laszlo.andrasi@gitential.com
+  smtp_host: email-smtp.us-east-1.amazonaws.com
+  smtp_port: 587
+  smtp_username: AKIA4G3GM7INBOETB3XG
+  smtp_password: BKWXqc4jofWzDrbS0ZgYuhrAngjlAq/5NvWjJJCLdZkh
 recaptcha:
   site_key: 6LftqHEaAAAAANgRbGA6Ew6nToApMx3TysEMYa-y
   secret_key: 6LftqHEaAAAAABt-WU7zTL9WHbv49GzWGuAjJiH8
