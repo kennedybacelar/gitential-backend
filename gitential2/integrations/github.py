@@ -9,13 +9,21 @@ from .common import walk_next_link
 
 class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
+        if not data.get("email"):
+            print("GitHub: Getting all emails because of private email setting.")
+            client = self.get_oauth2_client(token=token)
+            response = client.get(self.oauth_register()["api_base_url"] + "user/emails")
+            response.raise_for_status()
+            emails = response.json()
+            data["email"] = next(email["email"] for email in emails if email["primary"])
+
         print("user info data:", data)
         return UserInfoCreate(
             integration_name=self.name,
             integration_type="github",
             sub=str(data["id"]),
             name=data["name"],
-            email=data.get("email"),
+            email=data["email"],
             preferred_username=data["login"],
             profile=data["html_url"],
             picture=data["avatar_url"],
