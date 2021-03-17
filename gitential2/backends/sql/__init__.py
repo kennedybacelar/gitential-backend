@@ -75,7 +75,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def __init__(self, settings: GitentialSettings):
         super().__init__(settings)
 
-        self._engine = sa.create_engine(settings.connections.database_url, json_serializer=json_dumps)
+        self._engine = sa.create_engine(
+            settings.connections.database_url, json_serializer=json_dumps, pool_pre_ping=True
+        )
         self._metadata = metadata
         self._metadata.create_all(self._engine)
 
