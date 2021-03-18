@@ -99,20 +99,32 @@ class EmailSettings(BaseModel):
     smtp_port: Optional[int] = None
 
 
-class GitentialSettings(BaseModel):
-    secret: str
-    connections: ConnectionSettings = ConnectionSettings()
-    email: EmailSettings = EmailSettings()
-    recaptcha: RecaptchaSettings = RecaptchaSettings()
-    integrations: Dict[str, IntegrationSettings]
+class WebSettings(BaseModel):
     base_url: str = "http://localhost:7999"
-    backend: BackendType = BackendType.in_memory
-    kvstore: KeyValueStoreType = KeyValueStoreType.redis
-    celery: CelerySettings = CelerySettings()
-    log_level: LogLevel = LogLevel.info
+    session_cookie: str = "gitential"
+    session_same_site: str = "None"
+    session_https_only: bool = True
+    session_max_age: int = 14 * 24 * 60 * 60  # 14 days, in seconds
+
+
+class ExtractionSettings(BaseModel):
     executor: Executor = Executor.process_pool
     process_pool_size: int = 8
     show_progress: bool = False
+
+
+class GitentialSettings(BaseModel):
+    secret: str
+    log_level: LogLevel = LogLevel.info
+    connections: ConnectionSettings = ConnectionSettings()
+    email: EmailSettings = EmailSettings()
+    web: WebSettings = WebSettings()
+    extraction: ExtractionSettings = ExtractionSettings()
+    recaptcha: RecaptchaSettings = RecaptchaSettings()
+    integrations: Dict[str, IntegrationSettings]
+    backend: BackendType = BackendType.in_memory
+    kvstore: KeyValueStoreType = KeyValueStoreType.redis
+    celery: CelerySettings = CelerySettings()
     frontend: FrontendSettings = FrontendSettings()
 
     @validator("secret")

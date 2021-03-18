@@ -1,7 +1,7 @@
 import os
 import pytest
 from gitential2.secrets import FernetVault
-from gitential2.settings import GitentialSettings, BackendType
+from gitential2.settings import GitentialSettings, BackendType, ExtractionSettings
 
 
 @pytest.fixture(scope="session")
@@ -27,8 +27,10 @@ def secrets():
 def settings():
     return GitentialSettings(
         backend=BackendType.in_memory,
-        executor="process_pool",
-        show_progress=False,
+        extraction=ExtractionSettings(
+            executor="process_pool",
+            show_progress=False,
+        ),
         integrations={},
         secret="test" * 8,
     )

@@ -1,6 +1,11 @@
 log_level: info
-executor: process_pool
-show_progress: true
+extraction:
+  show_progress: true
+  executor: process_pool
+web:
+  session_https_only: false
+  session_max_age: 86400
+
 secret: abcdABCDabcdABCDabcdABCDabcdABCD
 backend: sql
 email:

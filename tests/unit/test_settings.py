@@ -8,8 +8,9 @@ def test_load_settings():
     read_data = """
 secret: "abcdefghabcdefghabcdefghabcdefgh"
 log_level: debug
-executor: process_pool
-show_progress: true
+extraction:
+  executor: process_pool
+  show_progress: true
 integrations:
   gitlab:
     type: gitlab
@@ -27,7 +28,7 @@ integrations:
         assert isinstance(settings, GitentialSettings)
         assert settings.secret == "abcdefghabcdefghabcdefghabcdefgh"
         assert settings.log_level == "debug"
-        assert settings.executor == "process_pool"
+        assert settings.extraction.executor == "process_pool"
         assert "gitlab" in settings.integrations
         assert settings.integrations["gitlab"].base_url == "https://gitlab.ops.gitential.com"
         assert settings.integrations["gitlab"].oauth.client_id == "client_id"

@@ -65,11 +65,11 @@ class ProcessPoolExecutor(Executor):
 
 
 def create_executor(settings: GitentialSettings, **kwargs) -> Executor:
-    kwargs.setdefault("show_progress", settings.show_progress)
-    if settings.executor == ExecutorSettings.process_pool:
-        kwargs.setdefault("pool_size", settings.process_pool_size)
+    kwargs.setdefault("show_progress", settings.extraction.show_progress)
+    if settings.extraction.executor == ExecutorSettings.process_pool:
+        kwargs.setdefault("pool_size", settings.extraction.process_pool_size)
         return ProcessPoolExecutor(**kwargs)
-    elif settings.executor == ExecutorSettings.single_tread:
+    elif settings.extraction.executor == ExecutorSettings.single_tread:
         return SingleThreadExecutor(**kwargs)
     else:
         raise ValueError("Invalid executor settings")
