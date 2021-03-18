@@ -59,7 +59,14 @@ def _configure_routes(app: FastAPI):
 
 
 def _configure_session(app: FastAPI, settings: GitentialSettings):
-    app.add_middleware(SessionMiddleware, secret_key=settings.secret, same_site="None")
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.secret,
+        session_cookie=settings.web.session_cookie,
+        same_site=settings.web.session_same_site,
+        https_only=settings.web.session_https_only,
+        max_age=settings.web.session_max_age,
+    )
 
 
 def _configure_gitential_core(app: FastAPI, settings: GitentialSettings):
