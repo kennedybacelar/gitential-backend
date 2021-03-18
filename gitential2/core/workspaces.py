@@ -10,7 +10,9 @@ from gitential2.datatypes.workspacemember import (
 )
 from gitential2.datatypes.users import UserInDB, UserHeader
 from .context import GitentialContext
+from .users_common import get_user_by_email
 from .projects import list_projects
+from .emails import send_email_to_user
 
 
 def get_accessible_workspaces(
@@ -96,37 +98,44 @@ def delete_workspace(g: GitentialContext, workspace_id: int, current_user: UserI
         raise Exception("Authentication error")
 
 
-def get_members(self, workspace_id: int, include_user_header=True) -> List[WorkspaceMemberPublic]:
+def get_members(g: GitentialContext, workspace_id: int, include_user_header=True) -> List[WorkspaceMemberPublic]:
     def _process(member):
         member_data = member.dict()
         if include_user_header:
-            user = self.backend.users.get_or_error(member.user_id)
+            user = g.backend.users.get_or_error(member.user_id)
             member_data["user"] = UserHeader(id=user.id, login=user.login)
         return WorkspaceMemberPublic(**member_data)
 
-    return [_process(member) for member in self.backend.workspace_members.get_for_workspace(workspace_id=workspace_id)]
+    return [_process(member) for member in g.backend.workspace_members.get_for_workspace(workspace_id=workspace_id)]
 
 
-def invite_members(self, workspace_id: int, invitations: List[MemberInvite]) -> int:
+def invite_members(
+    g: GitentialContext, current_user: UserInDB, workspace_id: int, invitations: List[MemberInvite]
+) -> int:
+    workspace = g.backend.workspaces.get_or_error(workspace_id)
     for invitation in invitations:
-        existing_user = self.backend.users.get_by_email(invitation.email)
+        existing_user = get_user_by_email(g, invitation.email)
         if existing_user:
-            user_id = existing_user.id
+            user = existing_user
         else:
-            new_user = self.backend.users.create(invitation.user_create())
-            user_id = new_user.id
-        self.backend.workspace_members.create(
+            user = g.backend.users.create(invitation.user_create())
+
+        g.backend.workspace_members.create(
             WorkspaceMemberCreate(
                 workspace_id=workspace_id,
-                user_id=user_id,
+                user_id=user.id,
                 role=WorkspaceRole.collaborator,
                 primary=False,
             )
         )
+        if g.license.is_cloud:
+            send_email_to_user(
+                g, user=user, template_name="invite_member", invitation_sender=current_user, workspace=workspace
+            )
     return len(invitations)
 
 
-def remove_member(g, workspace_id: int, workspace_member_id: int) -> int:
+def remove_member(g: GitentialContext, workspace_id: int, workspace_member_id: int) -> int:
     workspace_member = g.backend.workspace_members.get(workspace_member_id)
     if workspace_member and workspace_member.workspace_id == workspace_id:
         g.backend.workspace_members.delete(workspace_member_id)

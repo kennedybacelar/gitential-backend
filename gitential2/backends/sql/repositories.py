@@ -222,6 +222,12 @@ class SQLUserInfoRepository(UserInfoRepository, SQLRepository[int, UserInfoCreat
         result = self._execute_query(query)
         return [UserInfoInDB(**row) for row in result.fetchall()]
 
+    def get_by_email(self, email: str) -> Optional[UserInfoInDB]:
+        query = self.table.select().where(self.table.c.email == email)
+        result = self._execute_query(query)
+        row = result.fetchone()
+        return UserInfoInDB(**row) if row else None
+
 
 class SQLCredentialRepository(
     CredentialRepository, SQLRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]

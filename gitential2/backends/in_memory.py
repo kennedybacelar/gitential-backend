@@ -168,6 +168,9 @@ class InMemUserInfoRepository(UserInfoRepository, InMemRepository[int, UserInfoC
     def get_for_user(self, user_id: int) -> List[UserInfoInDB]:
         return []
 
+    def get_by_email(self, email: str) -> Optional[UserInfoInDB]:
+        return None
+
 
 class InMemWorkspaceRepository(
     WorkspaceRepository, InMemRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]

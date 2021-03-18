@@ -22,6 +22,17 @@ class UserBase(ExtraFieldMixin, CoreModel):
     def from_user_info(cls, user_info: UserInfoBase):
         return cls(login=user_info.preferred_username or user_info.sub, email=user_info.email)
 
+    @property
+    def full_name(self) -> str:
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.login:
+            return self.login
+        elif self.email:
+            return self.email.split("@")[0]  # pylint: disable=no-member
+        else:
+            return "[Anonymous]"
+
 
 class UserCreate(UserBase):
     email: str

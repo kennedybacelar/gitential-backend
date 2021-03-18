@@ -61,7 +61,7 @@ def smtp_send(g: GitentialContext, email: RenderedEmail):
 def _render_email_template(g: GitentialContext, template: EmailTemplate, user: UserInDB, **kwargs) -> RenderedEmail:
     def _render_template(s: str) -> str:
         t = Template(s)
-        return t.render(user=user, **kwargs)
+        return t.render(user=user, settings=g.settings, **kwargs)
 
     return RenderedEmail(
         sender=g.settings.email.sender,

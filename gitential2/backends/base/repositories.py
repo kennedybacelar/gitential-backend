@@ -131,6 +131,10 @@ class UserInfoRepository(BaseRepository[int, UserInfoCreate, UserInfoUpdate, Use
     def get_for_user(self, user_id: int) -> List[UserInfoInDB]:
         pass
 
+    @abstractmethod
+    def get_by_email(self, email: str) -> Optional[UserInfoInDB]:
+        pass
+
 
 class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]):
     @abstractmethod

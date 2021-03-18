@@ -115,7 +115,7 @@ def invite_workspace_members(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.membership, Action.create, workspace_id=workspace_id)
-    return invite_members(g, workspace_id=workspace_id, invitations=invitations)
+    return invite_members(g, workspace_id=workspace_id, current_user=current_user, invitations=invitations)
 
 
 @router.delete("/workspaces/{workspace_id}/members/{workspace_member_id}")
