@@ -13,6 +13,7 @@ variables:
 stages:
   - test
   - build
+  - deploy
 
 .poetry_common: &poetry_common
   before_script:
@@ -68,3 +69,21 @@ unit_tests:
 build_and_publish_image:
   extends: .kaniko
   stage: build
+
+deploy_to_testing_environment:
+  stage: deploy
+  image:
+    name: nexus-docker.ops.gitential.com/helm-helper:e38017f9
+    entrypoint: [""]
+  before_script:
+    - "which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )"
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$GIT_SSH_PRIV_KEY")
+    - git config --global user.email "apps@gitential.com"
+    - git config --global user.name "CI Robot"
+    - mkdir -p ~/.ssh
+    - ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+  script:
+    - git clone git@gitlab.com:gitential-com/environments.git
+    - cd environments
+    - inv update-testing-versions
