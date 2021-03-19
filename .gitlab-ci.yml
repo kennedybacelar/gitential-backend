@@ -87,3 +87,5 @@ deploy_to_testing_environment:
     - git clone git@gitlab.com:gitential-com/environments.git
     - cd environments
     - inv update-testing-versions
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
