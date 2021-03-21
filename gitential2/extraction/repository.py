@@ -134,7 +134,14 @@ def get_commits(
 
         # Ignore the tails and ancestors
         for tail in tails:
-            walker.hide(tail)
+            try:
+                walker.hide(tail)
+            except KeyError:
+                logger.warning(
+                    "A previously seen commit hash is missing from the repository",
+                    repo_id=repository.repo_id,
+                    commit_id=tail,
+                )
 
         # Collect all commits
         for commit in walker:
