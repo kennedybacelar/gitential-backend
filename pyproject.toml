@@ -42,6 +42,7 @@ black = {version = "^20.8b1", allow-prereleases = true}
 pylint = "^2.6.0"
 mypy = "^0.800"
 sqlalchemy-stubs = "^0.4"
+flower = {git = "https://github.com/avikam/flower.git"}
 
 [tool.black]
 line-length = 120
