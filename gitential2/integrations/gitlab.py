@@ -1,11 +1,14 @@
 from typing import Optional, Callable, List
 from pydantic.datetime_parse import parse_datetime
+from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
 from gitential2.extraction.output import OutputHandler
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 from .common import walk_next_link
+
+logger = get_logger(__name__)
 
 
 class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
@@ -125,7 +128,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
         if repository.extra and "id" in repository.extra:
             project_id = repository.extra["id"]
-            print("we have project id!!!", project_id)
+            # print("we have project id!!!", project_id)
 
             merge_requests = walk_next_link(
                 client, f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple"
@@ -143,10 +146,12 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 raw_data = self._collect_single_pr_data_raw(client, project_id, iid)
                 try:
                     pull_request = self._transform_to_pr(raw_data, repository=repository)
-                    print(pull_request.number, pull_request.title, pull_request.state)
+                    # print(pull_request.number, pull_request.title, pull_request.state)
                     output.write(ExtractedKind.PULL_REQUEST, pull_request)
-                except Exception as e:  # pylint: disable=broad-except
-                    print(e, raw_data["mr"])
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception(
+                        "Failed to extract pull requests", repository=repository, raw_data_mr=raw_data["mr"]
+                    )
 
     def _transform_to_pr(self, raw_data: dict, repository: RepositoryInDB) -> PullRequest:
         def _calc_first_reaction_at(raw_notes):
