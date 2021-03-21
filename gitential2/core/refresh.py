@@ -23,7 +23,7 @@ def refresh_repository(g: GitentialContext, workspace_id: int, repository_id: in
         print("force-rebuild should remove from database too")
     repo_status = get_repository_status(g, workspace_id, repository_id)
 
-    if repo_status.done or repo_status.status == RepositoryStatusStatus.pending or force_rebuild:
+    if repo_status.status == RepositoryStatusStatus.pending or force_rebuild:
         # Start a new refresh
         persist_repository_status(g, workspace_id, repository_id, repo_status.reset())
 
