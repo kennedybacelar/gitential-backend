@@ -3,7 +3,7 @@ from typing import Optional
 from functools import partial
 from structlog import get_logger
 from gitential2.datatypes.credentials import CredentialInDB
-from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
+from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB, RepositoryStatusStatus
 
 from gitential2.extraction.repository import extract_incremental_local, clone_repository
 from gitential2.utils.tempdir import TemporaryDirectory
@@ -23,7 +23,7 @@ def refresh_repository(g: GitentialContext, workspace_id: int, repository_id: in
         print("force-rebuild should remove from database too")
     repo_status = get_repository_status(g, workspace_id, repository_id)
 
-    if repo_status.done or force_rebuild:
+    if repo_status.done or repo_status.status == RepositoryStatusStatus.pending or force_rebuild:
         # Start a new refresh
         persist_repository_status(g, workspace_id, repository_id, repo_status.reset())
 
@@ -58,7 +58,7 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
     repository = g.backend.repositories.get_or_error(workspace_id, repository_id)
     credential = get_credential_for_repository(g, workspace_id, repository)
     prs_we_already_have = g.backend.pull_requests.get_prs_updated_at(workspace_id, repository_id)
-    print(prs_we_already_have)
+    # print(prs_we_already_have)
     if not credential:
         # log ...
         return
