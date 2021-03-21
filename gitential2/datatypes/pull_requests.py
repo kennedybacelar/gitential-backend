@@ -24,12 +24,12 @@ class PullRequestState(str, Enum):
     def from_github(cls, state, merged_at):
         if merged_at and state == "closed":
             return cls.merged
-        elif state in ["opened", "locked"]:
+        elif state in ["opened", "locked", "open"]:
             return cls.open
         elif state == "closed":
             return cls.closed
         else:
-            raise ValueError("invalid state for Github PR")
+            raise ValueError(f'invalid state for Github PR "{state}"')
 
 
 class PullRequestId(CoreModel):
