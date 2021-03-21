@@ -1,23 +1,27 @@
 from typing import Callable, Optional, List
+from pydantic.datetime_parse import parse_datetime
+from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB, RepositoryCreate, GitProtocol
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
 from gitential2.extraction.output import OutputHandler
 from .base import OAuthLoginMixin, BaseIntegration, GitProviderMixin
-from .common import walk_next_link
+from .common import log_api_error, walk_next_link
+
+logger = get_logger(__name__)
 
 
 class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
         if not data.get("email"):
-            print("GitHub: Getting all emails because of private email setting.")
+            logger.warning("GitHub: Getting all emails because of private email setting.", userinfo=data)
             client = self.get_oauth2_client(token=token)
             response = client.get(self.oauth_register()["api_base_url"] + "user/emails")
             response.raise_for_status()
             emails = response.json()
             data["email"] = next(email["email"] for email in emails if email["primary"])
 
-        print("user info data:", data)
+        logger.info("user info data:", data)
         return UserInfoCreate(
             integration_name=self.name,
             integration_type="github",
@@ -62,19 +66,17 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             if (
                 prs_we_already_have
                 and pr_number in prs_we_already_have
-                and prs_we_already_have[pr_number] == pr["updated_at"]
+                and parse_datetime(prs_we_already_have[pr_number]) == parse_datetime(pr["updated_at"])
             ):
+                logger.debug("Skipping PR, not updated.", pr_number=pr_number, repository=repository.name)
                 continue
 
             raw_data = self._collect_single_pr_data_raw(client, pr)
             try:
                 pull_request = self._transform_to_pr(raw_data, repository=repository)
-                print(pull_request)
-                print("-----------------------------------------------------------------------------------------------")
-                # print(pull_request.number, pull_request.title, pull_request.state)
                 output.write(ExtractedKind.PULL_REQUEST, pull_request)
-            except Exception as e:  # pylint: disable=broad-except
-                print(e, raw_data)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("Failed to extract PR", pr_number=pr_number, raw_data=raw_data)
 
     def _collect_single_pr_data_raw(self, client, pr):
         resp = client.get(pr["url"])
@@ -133,13 +135,11 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
-        response = client.get(f"{api_base_url}user/repos")
-        client.close()
-        if response.status_code == 200:
-            repository_list = response.json()
-            return [self._repo_to_create_repo(repo) for repo in repository_list]
 
-        return []
+        repository_list = walk_next_link(client, f"{api_base_url}user/repos")
+
+        client.close()
+        return [self._repo_to_create_repo(repo) for repo in repository_list]
 
     def _repo_to_create_repo(self, repo_dict) -> RepositoryCreate:
 
@@ -163,9 +163,10 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
         response = client.get(f"{api_base_url}search/repositories?q={query}")
-        print(response.request.url)
-        print(response)
+
         if response.status_code == 200:
             repository_list = response.json().get("items", [])
             return [self._repo_to_create_repo(repo) for repo in repository_list]
-        return []
+        else:
+            log_api_error(response)
+            return []

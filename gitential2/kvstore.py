@@ -1,6 +1,7 @@
 import json
+import threading
 from abc import ABC, abstractmethod
-from typing import Optional, Union, List
+from typing import Optional, Union, List, ContextManager
 from redis import Redis
 from fastapi.encoders import jsonable_encoder
 from gitential2.settings import GitentialSettings, KeyValueStoreType
@@ -40,11 +41,16 @@ class KeyValueStore(ABC):
         else:
             return self.set_value(name, default_value, ex)
 
+    @abstractmethod
+    def lock(self, name: str, blocking_timeout: Optional[int] = None) -> ContextManager:
+        pass
+
 
 class InMemKeyValueStore(KeyValueStore):
     def __init__(self, settings: GitentialSettings):
         super().__init__(settings)
         self._storage: dict = {}
+        self._locks: dict = {}
 
     def get_value(self, name: str) -> Optional[JsonableType]:
         return self._storage.get(name)
@@ -67,6 +73,12 @@ class InMemKeyValueStore(KeyValueStore):
             return k.startswith(pattern)
 
         return [is_match_pattern(pattern, k) for k in self._storage]
+
+    def lock(
+        self, name: str, blocking_timeout: Optional[int] = None
+    ) -> ContextManager:  # pylint: disable=unused-argument
+        lock_ = self._locks.setdefault(name, threading.Lock())
+        return lock_
 
 
 class RedisKeyValueStore(KeyValueStore):
@@ -106,6 +118,9 @@ class RedisKeyValueStore(KeyValueStore):
     @staticmethod
     def _decode_value(encoded_value: bytes) -> JsonableType:
         return json.loads(encoded_value)
+
+    def lock(self, name: str, blocking_timeout: Optional[int] = None) -> ContextManager:
+        return self.redis.lock(name, blocking_timeout=blocking_timeout)
 
 
 def init_key_value_store(settings: GitentialSettings) -> KeyValueStore:

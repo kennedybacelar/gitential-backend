@@ -1,11 +1,14 @@
 from typing import Optional, Callable, List
 from pydantic.datetime_parse import parse_datetime
+from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
 from gitential2.extraction.output import OutputHandler
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
-from .common import walk_next_link
+from .common import log_api_error, walk_next_link
+
+logger = get_logger(__name__)
 
 
 class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
@@ -49,35 +52,23 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         )
 
     def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
-        def _get_next_link(link_header) -> Optional[str]:
-            link, rel = link_header.split(";")
-            if "next" in rel.lower():
-                return link.strip("<>")
-            return None
-
-        def _keyset_pagination(client, starting_url, acc=None):
-            acc = acc or []
-            response = client.request("GET", starting_url)
-            items, headers = response.json(), response.headers
-            acc = acc + items
-            if headers.get("Link"):
-                next_url = _get_next_link(headers.get("Link"))
-                return _keyset_pagination(client, next_url, acc)
-            else:
-                return acc
 
         client = self.get_oauth2_client(token=token, update_token=update_token)
-        projects = _keyset_pagination(
-            client, f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id"
-        )
+        projects = walk_next_link(client, f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id")
         client.close()
         return [self._project_to_repo_create(p) for p in projects]
 
     def search_public_repositories(self, query: str, token, update_token) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
-        projects = client.get(f"{self.api_base_url}/search?scope=projects&search={query}").json()
+        response = client.get(f"{self.api_base_url}/search?scope=projects&search={query}")
         client.close()
-        return [self._project_to_repo_create(p) for p in projects]
+
+        if response.status_code == 200:
+            projects = response.json()
+            return [self._project_to_repo_create(p) for p in projects]
+        else:
+            log_api_error(response)
+            return []
 
     def _project_to_repo_create(self, project):
         return RepositoryCreate(
@@ -125,7 +116,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
         if repository.extra and "id" in repository.extra:
             project_id = repository.extra["id"]
-            print("we have project id!!!", project_id)
+            # print("we have project id!!!", project_id)
 
             merge_requests = walk_next_link(
                 client, f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple"
@@ -143,10 +134,12 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 raw_data = self._collect_single_pr_data_raw(client, project_id, iid)
                 try:
                     pull_request = self._transform_to_pr(raw_data, repository=repository)
-                    print(pull_request.number, pull_request.title, pull_request.state)
+                    # print(pull_request.number, pull_request.title, pull_request.state)
                     output.write(ExtractedKind.PULL_REQUEST, pull_request)
-                except Exception as e:  # pylint: disable=broad-except
-                    print(e, raw_data["mr"])
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception(
+                        "Failed to extract pull requests", repository=repository, raw_data_mr=raw_data["mr"]
+                    )
 
     def _transform_to_pr(self, raw_data: dict, repository: RepositoryInDB) -> PullRequest:
         def _calc_first_reaction_at(raw_notes):

@@ -1,31 +1,51 @@
+import traceback
 from typing import Optional
 from functools import partial
+from structlog import get_logger
 from gitential2.datatypes.credentials import CredentialInDB
-from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
+from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB, RepositoryStatusStatus
 
 from gitential2.extraction.repository import extract_incremental_local, clone_repository
 from gitential2.utils.tempdir import TemporaryDirectory
 
 from .context import GitentialContext
 from .credentials import get_credential_for_repository
-from .statuses import get_repository_status, persist_repository_status
+from .statuses import get_repository_status, persist_repository_status, delete_repository_status
 from .calculations import recalculate_repository_values
+
+
+logger = get_logger(__name__)
 
 
 def refresh_repository(g: GitentialContext, workspace_id: int, repository_id: int, force_rebuild: bool):
     if force_rebuild:
-        print("force-rebuild should remove from database")
+        delete_repository_status(g, workspace_id, repository_id)
+        print("force-rebuild should remove from database too")
     repo_status = get_repository_status(g, workspace_id, repository_id)
-    persist_repository_status(g, workspace_id, repository_id, repo_status.reset())
 
-    refresh_repository_commits(g, workspace_id, repository_id)
-    refresh_repository_pull_requests(g, workspace_id, repository_id)
+    if repo_status.status == RepositoryStatusStatus.pending or force_rebuild:
+        # Start a new refresh
+        persist_repository_status(g, workspace_id, repository_id, repo_status.reset())
 
-    repo_status = get_repository_status(g, workspace_id, repository_id)
-    persist_repository_status(g, workspace_id, repository_id, repo_status.persist_started())
-    recalculate_repository_values(g, workspace_id, repository_id)
+        try:
+            refresh_repository_commits(g, workspace_id, repository_id)
+            refresh_repository_pull_requests(g, workspace_id, repository_id)
 
-    persist_repository_status(g, workspace_id, repository_id, repo_status.persist_finished())
+            repo_status = get_repository_status(g, workspace_id, repository_id)
+            persist_repository_status(g, workspace_id, repository_id, repo_status.persist_started())
+            recalculate_repository_values(g, workspace_id, repository_id)
+
+            persist_repository_status(g, workspace_id, repository_id, repo_status.persist_finished())
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Failed to refresh repository", workspace_id=workspace_id, repository_id=repository_id)
+            repo_status = get_repository_status(g, workspace_id, repository_id)
+            persist_repository_status(
+                g, workspace_id, repository_id, repo_status.finished_with_error(traceback.format_exc(limit=1))
+            )
+    else:
+        logger.info(
+            "Repository refresh already in-progress. Skipping.", workspace_id=workspace_id, repository_id=repository_id
+        )
 
 
 def refresh_repository_commits(g: GitentialContext, workspace_id: int, repository_id: int):
@@ -38,7 +58,7 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
     repository = g.backend.repositories.get_or_error(workspace_id, repository_id)
     credential = get_credential_for_repository(g, workspace_id, repository)
     prs_we_already_have = g.backend.pull_requests.get_prs_updated_at(workspace_id, repository_id)
-    print(prs_we_already_have)
+    # print(prs_we_already_have)
     if not credential:
         # log ...
         return

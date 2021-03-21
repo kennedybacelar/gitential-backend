@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Union
 from pydantic import BaseModel
 
 from .common import IDModelMixin, DateTimeModelMixin, CoreModel, ExtraFieldMixin
@@ -74,7 +74,7 @@ class RepositoryStatus(CoreModel):
     name: str
     done: bool = False
     status: RepositoryStatusStatus = RepositoryStatusStatus.pending
-    error: Optional[str] = None
+    error: Optional[List[Union[bool, str]]] = None
     phase: RepositoryStatusPhase = RepositoryStatusPhase.pending
     clone: float = 0.0
     extract: float = 0.0
@@ -131,4 +131,10 @@ class RepositoryStatus(CoreModel):
         self.phase = RepositoryStatusPhase.done
         self.persist = 1.0
         self.done = True
+        return self
+
+    def finished_with_error(self, error_msg: str):
+        self.status = RepositoryStatusStatus.finished
+        self.done = True
+        self.error = [True, error_msg]
         return self

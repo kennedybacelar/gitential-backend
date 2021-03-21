@@ -1,4 +1,5 @@
 from typing import List
+from structlog import get_logger
 from gitential2.datatypes.projects import (
     ProjectInDB,
     ProjectCreate,
@@ -10,6 +11,9 @@ from gitential2.datatypes.repositories import RepositoryCreate
 
 
 from .context import GitentialContext
+from .statuses import get_repository_status, persist_repository_status, has_repository_status
+
+logger = get_logger(__name__)
 
 
 def list_projects(g: GitentialContext, workspace_id: int) -> List[ProjectInDB]:
@@ -57,10 +61,23 @@ def schedule_project_refresh(g: GitentialContext, workspace_id: int, project_id:
 def schedule_repository_refresh(
     g: GitentialContext, workspace_id: int, repository_id: int, force_rebuild: bool = False
 ):
-    # pylint: disable=import-outside-toplevel,cyclic-import
-    from .tasks import refresh_repository_task
 
-    refresh_repository_task.delay(g.settings.dict(), workspace_id, repository_id, force_rebuild)
+    if (
+        force_rebuild
+        or not has_repository_status(g, workspace_id, repository_id)
+        or get_repository_status(g, workspace_id, repository_id).done
+    ):
+        repo_status = get_repository_status(g, workspace_id, repository_id)
+        persist_repository_status(g, workspace_id, repository_id, repo_status.reset())
+
+        # pylint: disable=import-outside-toplevel,cyclic-import
+        from .tasks import refresh_repository_task
+
+        refresh_repository_task.delay(g.settings.dict(), workspace_id, repository_id, force_rebuild)
+    else:
+        logger.info(
+            "Skipping repo refresh task, already scheduled", workspace_id=workspace_id, repository_id=repository_id
+        )
 
 
 def _update_project_repos(g: GitentialContext, workspace_id: int, project: ProjectInDB, repos=List[RepositoryCreate]):

@@ -4,7 +4,6 @@ from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, 
 from gitential2.utils import levenshtein
 from .context import GitentialContext
 from .credentials import list_credentials_for_workspace
-from .projects import list_projects
 
 
 def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryCreate]:
@@ -25,7 +24,7 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
 
 
 def list_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryInDB]:
-    all_projects = list_projects(g, workspace_id)
+    all_projects = g.backend.projects.all(workspace_id)
     project_ids = [project.id for project in all_projects]
 
     repos = {}

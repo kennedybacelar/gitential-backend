@@ -1,7 +1,10 @@
+from typing import Optional
 import datetime as dt
 import sqlalchemy as sa
 from gitential2.datatypes import WorkspaceRole
 from gitential2.datatypes.subscriptions import SubscriptionType
+from gitential2.datatypes.repositories import GitProtocol
+from gitential2.datatypes.extraction import Langtype
 
 metadata = sa.MetaData()
 
@@ -110,3 +113,270 @@ workspace_members_table = sa.Table(
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
 )
+
+
+def get_workspace_metadata(schema: Optional[str] = None):
+    metadata = sa.MetaData(schema=schema)
+
+    # pylint: disable=unused-variable
+
+    projects = sa.Table(
+        "projects",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("name", sa.String(128), nullable=True),
+        sa.Column("pattern", sa.String(256), nullable=True),
+        sa.Column("shareable", sa.Boolean, default=False, nullable=False),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
+    repositories = sa.Table(
+        "repositories",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("clone_url", sa.String(256), nullable=False, unique=True),
+        sa.Column("protocol", sa.Enum(GitProtocol), default=GitProtocol.https),
+        sa.Column("name", sa.String(128)),
+        sa.Column("namespace", sa.String(128)),
+        sa.Column("private", sa.Boolean, nullable=False, default=True),
+        sa.Column("integration_type", sa.String(64), nullable=True),
+        sa.Column("integration_name", sa.String(64), nullable=True),
+        sa.Column("credential_id", sa.Integer, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
+    project_repositories = sa.Table(
+        "project_repositories",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("project_id", sa.Integer, sa.ForeignKey("projects.id"), nullable=False),
+        sa.Column("repo_id", sa.Integer, sa.ForeignKey("repositories.id"), nullable=False),
+    )
+
+    # Extracted Commits
+    extracted_commits = sa.Table(
+        "extracted_commits",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("commit_id", sa.String(40)),
+        sa.Column("atime", sa.DateTime()),
+        sa.Column("aemail", sa.String(128)),
+        sa.Column("aname", sa.String(128)),
+        sa.Column("ctime", sa.DateTime()),
+        sa.Column("cemail", sa.String(128)),
+        sa.Column("cname", sa.String(128)),
+        sa.Column("message", sa.Text()),
+        sa.Column("nparents", sa.Integer()),
+        sa.Column("tree_id", sa.String(40)),
+        sa.PrimaryKeyConstraint("repo_id", "commit_id"),
+    )
+
+    calculated_commits = sa.Table(
+        "calculated_commits",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("commit_id", sa.String(40)),
+        sa.Column("date", sa.DateTime()),
+        sa.Column("atime", sa.DateTime()),
+        sa.Column("aid", sa.Integer()),
+        sa.Column("aemail", sa.String(128)),
+        sa.Column("aname", sa.String(128)),
+        sa.Column("ctime", sa.DateTime()),
+        sa.Column("cid", sa.Integer()),
+        sa.Column("cemail", sa.String(128)),
+        sa.Column("cname", sa.String(128)),
+        sa.Column("message", sa.Text()),
+        sa.Column("nparents", sa.Integer()),
+        sa.Column("tree_id", sa.String(40)),
+        sa.Column("ismerge", sa.Boolean),
+        sa.Column("loc_i", sa.Integer(), nullable=True),
+        sa.Column("loc_i_inlier", sa.Integer(), nullable=True),
+        sa.Column("loc_i_outlier", sa.Integer(), nullable=True),
+        sa.Column("loc_d", sa.Integer(), nullable=True),
+        sa.Column("loc_d_inlier", sa.Integer(), nullable=True),
+        sa.Column("loc_d_outlier", sa.Integer(), nullable=True),
+        sa.Column("comp_i", sa.Integer(), nullable=True),
+        sa.Column("comp_i_inlier", sa.Integer(), nullable=True),
+        sa.Column("comp_i_outlier", sa.Integer(), nullable=True),
+        sa.Column("comp_d", sa.Integer(), nullable=True),
+        sa.Column("comp_d_inlier", sa.Integer(), nullable=True),
+        sa.Column("comp_d_outlier", sa.Integer(), nullable=True),
+        sa.Column("nfiles", sa.Integer(), nullable=True),
+        sa.Column("loc_effort", sa.Integer(), nullable=True),
+        sa.Column("hours_measured", sa.Float(), nullable=True),
+        sa.Column("hours_estimated", sa.Float(), nullable=True),
+        sa.Column("hours", sa.Float(), nullable=True),
+        sa.Column("velocity", sa.Float(), nullable=True),
+        sa.Column("loc_churn", sa.Integer(), default=0),
+        sa.PrimaryKeyConstraint("repo_id", "commit_id"),
+    )
+
+    # Extracted Patches
+    extracted_patches = sa.Table(
+        "extracted_patches",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("commit_id", sa.String(40)),
+        sa.Column("parent_commit_id", sa.String(40)),
+        sa.Column("status", sa.String(128)),
+        sa.Column("newpath", sa.String(256)),
+        sa.Column("oldpath", sa.String(256)),
+        sa.Column("newsize", sa.Integer()),
+        sa.Column("oldsize", sa.Integer()),
+        sa.Column("is_binary", sa.Boolean()),
+        sa.Column("lang", sa.String(32)),
+        sa.Column("langtype", sa.Enum(Langtype)),
+        # Extracted plain metrics
+        sa.Column("loc_i", sa.Integer()),
+        sa.Column("loc_d", sa.Integer()),
+        sa.Column("comp_i", sa.Integer()),
+        sa.Column("comp_d", sa.Integer()),
+        sa.Column("loc_i_std", sa.Integer()),
+        sa.Column("loc_d_std", sa.Integer()),
+        sa.Column("comp_i_std", sa.Integer()),
+        sa.Column("comp_d_std", sa.Integer()),
+        sa.Column("nhunks", sa.Integer()),
+        sa.Column("nrewrites", sa.Integer()),
+        sa.Column("rewrites_loc", sa.Integer()),
+        sa.PrimaryKeyConstraint("repo_id", "commit_id", "parent_commit_id", "newpath"),
+    )
+
+    calculated_patches = sa.Table(
+        "calculated_patches",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("commit_id", sa.String(40)),
+        sa.Column("date", sa.DateTime()),
+        sa.Column("parent_commit_id", sa.String(40)),
+        sa.Column("status", sa.String(128)),
+        sa.Column("newpath", sa.String(256)),
+        sa.Column("oldpath", sa.String(256)),
+        sa.Column("newsize", sa.Integer()),
+        sa.Column("oldsize", sa.Integer()),
+        sa.Column("is_binary", sa.Boolean()),
+        sa.Column("lang", sa.String(32)),
+        sa.Column("langtype", sa.Enum(Langtype)),
+        sa.Column("loc_i", sa.Integer()),
+        sa.Column("loc_d", sa.Integer()),
+        sa.Column("comp_i", sa.Integer()),
+        sa.Column("comp_d", sa.Integer()),
+        sa.Column("loc_i_std", sa.Integer()),
+        sa.Column("loc_d_std", sa.Integer()),
+        sa.Column("comp_i_std", sa.Integer()),
+        sa.Column("comp_d_std", sa.Integer()),
+        sa.Column("nhunks", sa.Integer()),
+        sa.Column("nrewrites", sa.Integer()),
+        sa.Column("rewrites_loc", sa.Integer()),
+        sa.Column("ismerge", sa.Boolean()),
+        sa.Column("istest", sa.Boolean()),
+        sa.Column("churn_loc_d", sa.Boolean()),
+        sa.Column("outlier", sa.Boolean),
+        sa.Column("anomaly", sa.Boolean),
+        sa.PrimaryKeyConstraint("repo_id", "commit_id", "parent_commit_id", "newpath"),
+    )
+
+    # Extracted Patch Rewrites
+    extracted_patch_rewrites = sa.Table(
+        "extracted_patch_rewrites",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("commit_id", sa.String(40)),
+        sa.Column("atime", sa.DateTime()),
+        sa.Column("aemail", sa.String(128)),
+        sa.Column("newpath", sa.String(256)),
+        sa.Column("rewritten_atime", sa.DateTime()),
+        sa.Column("rewritten_aemail", sa.String(128)),
+        sa.Column("rewritten_commit_id", sa.String(40)),
+        sa.Column("loc_d", sa.Integer()),
+        sa.PrimaryKeyConstraint("repo_id", "commit_id", "rewritten_commit_id", "newpath"),
+    )
+
+    authors = sa.Table(
+        "authors",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("active", sa.Boolean),
+        sa.Column("name", sa.String(256), nullable=True),
+        sa.Column("email", sa.String(256), nullable=True),
+        sa.Column("aliases", sa.JSON, nullable=True),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
+    teams = sa.Table(
+        "teams",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("name", sa.String(256), nullable=True),
+        sa.Column("sprints_enabled", sa.Boolean, default=False),
+        sa.Column("sprint", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    )
+
+    team_members = sa.Table(
+        "team_members",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("team_id", sa.Integer, sa.ForeignKey("teams.id"), nullable=False),
+        sa.Column("author_id", sa.Integer, sa.ForeignKey("authors.id"), nullable=False),
+    )
+
+    # sprints = sa.Table(
+    #     "sprints",
+    #     metadata,
+    #     sa.Column("id", sa.Integer, primary_key=True),
+    #     sa.Column("team_id", sa.Integer, sa.ForeignKey("teams.id"), nullable=False),
+    #     sa.Column("date", sa.DateTime, nullable=False),
+    #     sa.Column("weeks", sa.Integer, default=1),
+    #     sa.Column("pattern", sa.String(64)),
+    #     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    #     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    # )
+
+    # Pull Requests
+    pull_requests = sa.Table(
+        "pull_requests",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("number", sa.Integer()),
+        sa.Column("title", sa.String(256)),
+        sa.Column("platform", sa.String(32)),
+        sa.Column("id_platform", sa.Integer()),
+        sa.Column("api_resource_uri", sa.String(256)),
+        sa.Column("state_platform", sa.String(16)),
+        sa.Column("state", sa.String(16)),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("closed_at", sa.DateTime, nullable=True),
+        sa.Column("updated_at", sa.DateTime, nullable=True),
+        sa.Column("merged_at", sa.DateTime, nullable=True),
+        sa.Column("additions", sa.Integer(), nullable=True),
+        sa.Column("deletions", sa.Integer(), nullable=True),
+        sa.Column("changed_files", sa.Integer(), nullable=True),
+        sa.Column("draft", sa.Boolean, default=False, nullable=False),
+        sa.Column("user", sa.String(64)),
+        sa.Column("commits", sa.Integer(), nullable=True),
+        sa.Column("merged_by", sa.String(64), nullable=True),
+        sa.Column("first_reaction_at", sa.DateTime, nullable=True),
+        sa.Column("first_commit_authored_at", sa.DateTime, nullable=True),
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.UniqueConstraint("repo_id", "number", name="uix__repo_id__number"),
+    )
+
+    return metadata, {
+        "projects": projects,
+        "repositories": repositories,
+        "project_repositories": project_repositories,
+        "extracted_commits": extracted_commits,
+        "calculated_commits": calculated_commits,
+        "extracted_patches": extracted_patches,
+        "calculated_patches": calculated_patches,
+        "extracted_patch_rewrites": extracted_patch_rewrites,
+        "authors": authors,
+        "teams": teams,
+        "team_members": team_members,
+        "pull_requests": pull_requests,
+    }

@@ -1,5 +1,9 @@
 from typing import Optional
 from requests.utils import parse_header_links
+from requests import Response
+from structlog import get_logger
+
+logger = get_logger(__name__)
 
 
 def walk_next_link(client, starting_url, acc=None):
@@ -11,13 +15,28 @@ def walk_next_link(client, starting_url, acc=None):
                     return link["url"]
         return None
 
-    print(f"WALKING: {starting_url}")
+    logger.debug("Walking next link", url=starting_url)
+
     acc = acc or []
     response = client.request("GET", starting_url)
-    items, headers = response.json(), response.headers
-    acc = acc + items
-    next_url = _get_next_link(headers.get("Link"))
-    if next_url:
-        return walk_next_link(client, next_url, acc)
+    if response.status_code == 200:
+        items, headers = response.json(), response.headers
+        acc = acc + items
+        next_url = _get_next_link(headers.get("Link"))
+        if next_url:
+            return walk_next_link(client, next_url, acc)
+        else:
+            return acc
     else:
+        log_api_error(response)
         return acc
+
+
+def log_api_error(response: Response):
+    logger.error(
+        "Failed to get API resource",
+        url=response.request.url,
+        status_code=response.status_code,
+        response_text=response.text,
+        response_headers=response.headers,
+    )
