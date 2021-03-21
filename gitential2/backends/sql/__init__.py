@@ -11,7 +11,6 @@ from gitential2.datatypes.extraction import (
     ExtractedCommit,
     ExtractedKind,
     ExtractedPatch,
-    Langtype,
     ExtractedPatchRewrite,
 )
 from gitential2.datatypes.subscriptions import SubscriptionInDB
@@ -28,7 +27,6 @@ from gitential2.datatypes import (
     ProjectInDB,
     RepositoryInDB,
     ProjectRepositoryInDB,
-    GitProtocol,
     WorkspaceMemberInDB,
     AuthorInDB,
 )
