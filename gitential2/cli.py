@@ -66,11 +66,12 @@ def initialize_database(ctx):
 @click.command(name="refresh-repository")
 @click.option("--workspace", "-w", "workspace_id", type=int)
 @click.option("--repository", "-r", "repository_id", type=int)
+@click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
 @click.pass_context
-def refresh_repository_(ctx, workspace_id, repository_id):
+def refresh_repository_(ctx, workspace_id, repository_id, force_rebuild):
     g = init_context_from_settings(ctx.obj["settings"])
     g.backend.initialize_workspace(workspace_id)
-    refresh_repository(g, workspace_id, repository_id=repository_id, force_rebuild=False)
+    refresh_repository(g, workspace_id, repository_id=repository_id, force_rebuild=force_rebuild)
 
 
 @click.command()

@@ -52,3 +52,7 @@ def update_repository_status(g: GitentialContext, workspace_id: int, repository_
     status_dict.update(**kwargs)
     g.kvstore.set_value(_repo_status_key(workspace_id, repository_id), status_dict)
     return RepositoryStatus(**status_dict)
+
+
+def delete_repository_status(g: GitentialContext, workspace_id: int, repository_id: int):
+    g.kvstore.delete_value(_repo_status_key(workspace_id, repository_id))
