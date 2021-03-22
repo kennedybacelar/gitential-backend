@@ -23,3 +23,11 @@ def find_first(predicate, iterable):
         if predicate(i):
             return i
     return None
+
+
+def rchop(s, sub):
+    return s[: -len(sub)] if s.endswith(sub) else s
+
+
+def lchop(s, sub):
+    return s[len(sub) :] if s.startswith(sub) else s
