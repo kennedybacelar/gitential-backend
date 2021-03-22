@@ -10,7 +10,7 @@ import pandas as pd
 from ibis.backends.postgres import connect
 
 from gitential2.settings import GitentialSettings
-from gitential2.datatypes.stats import StatsRequest
+from gitential2.datatypes.stats import Query, StatsRequest
 
 from .context import GitentialContext
 
@@ -66,6 +66,10 @@ def _fix_day_filter(q):
 
 def collect_stats(g: GitentialContext, workspace_id: int, request: StatsRequest):
     return calculate_stats(request, workspace_id, g.settings)
+
+
+def _request_to_query(request: StatsRequest) -> Query:
+    return Query(**request.dict())
 
 
 def calculate_stats(request: StatsRequest, workspace_id: int, settings: GitentialSettings):

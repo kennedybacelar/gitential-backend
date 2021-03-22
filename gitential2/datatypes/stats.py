@@ -65,6 +65,30 @@ class StatsRequest(BaseModel):
     type: str = "aggregate"  # or "select"
 
 
+class QueryType(str, Enum):
+    aggregate = "aggregate"
+    select = "select"
+
+
+class TableName(str, Enum):
+    commits = "commits"
+    patches = "patches"
+    pull_requests = "pull_requests"
+
+
+class Query(BaseModel):
+    metrics: List[MetricName]
+    dimensions: Optional[List[DimensionName]] = None
+    filters: Dict[FilterName, Any]
+    sort_by: Optional[List[Union[str, int]]] = None
+    type: QueryType
+
+
+class QueryResult(BaseModel):
+    query: Query
+    results: Any
+
+
 # class StatsRequest(BaseModel):
 #     metrics: List[MetricName]
 #     dimensions: Optional[List[DimensionName]] = None
