@@ -7,7 +7,7 @@ from gitential2.datatypes.projects import (
     ProjectCreateWithRepositories,
     ProjectUpdateWithRepositories,
 )
-from gitential2.datatypes.repositories import RepositoryCreate
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryStatus
 
 
 from .context import GitentialContext
@@ -61,11 +61,13 @@ def schedule_project_refresh(g: GitentialContext, workspace_id: int, project_id:
 def schedule_repository_refresh(
     g: GitentialContext, workspace_id: int, repository_id: int, force_rebuild: bool = False
 ):
+    def _done_or_stuck(repo_status: RepositoryStatus):
+        return repo_status.done or repo_status.is_stuck()
 
     if (
         force_rebuild
         or not has_repository_status(g, workspace_id, repository_id)
-        or get_repository_status(g, workspace_id, repository_id).done
+        or _done_or_stuck(get_repository_status(g, workspace_id, repository_id))
     ):
         repo_status = get_repository_status(g, workspace_id, repository_id)
         persist_repository_status(g, workspace_id, repository_id, repo_status.reset())

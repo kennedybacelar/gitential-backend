@@ -1,4 +1,5 @@
 from enum import Enum
+from datetime import timedelta, datetime
 from typing import Optional, Dict, List, Union
 from pydantic import BaseModel
 
@@ -79,6 +80,18 @@ class RepositoryStatus(CoreModel):
     clone: float = 0.0
     extract: float = 0.0
     persist: float = 0.0
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    def is_stuck(self) -> bool:
+        if not self.done:
+            if self.started_at:
+                return (datetime.utcnow() - self.started_at) > timedelta(hours=6)
+            else:
+                return self.status != RepositoryStatusStatus.pending
+        else:
+            return False
 
     def reset(self):
         self.status = RepositoryStatusStatus.pending
@@ -88,13 +101,18 @@ class RepositoryStatus(CoreModel):
         self.persist = 0.0
         self.error = None
         self.done = False
+        self.started_at = None
+        self.finished_at = None
+        self.updated_at = datetime.utcnow()
         return self
 
     def cloning_started(self):
+        self.started_at = datetime.utcnow()
         self.status = RepositoryStatusStatus.in_progress
         self.phase = RepositoryStatusPhase.clone
         self.clone = 0.1
         self.done = False
+        self.updated_at = datetime.utcnow()
 
         return self
 
@@ -103,6 +121,7 @@ class RepositoryStatus(CoreModel):
         self.phase = RepositoryStatusPhase.clone
         self.clone = 1.0
         self.done = False
+        self.updated_at = datetime.utcnow()
         return self
 
     def extract_started(self):
@@ -110,6 +129,7 @@ class RepositoryStatus(CoreModel):
         self.phase = RepositoryStatusPhase.extract
         self.extract = 0.1
         self.done = False
+        self.updated_at = datetime.utcnow()
         return self
 
     def extract_finished(self):
@@ -117,6 +137,7 @@ class RepositoryStatus(CoreModel):
         self.phase = RepositoryStatusPhase.extract
         self.extract = 1.0
         self.done = False
+        self.updated_at = datetime.utcnow()
         return self
 
     def persist_started(self):
@@ -124,6 +145,7 @@ class RepositoryStatus(CoreModel):
         self.phase = RepositoryStatusPhase.persist
         self.persist = 0.1
         self.done = False
+        self.updated_at = datetime.utcnow()
         return self
 
     def persist_finished(self):
@@ -131,10 +153,14 @@ class RepositoryStatus(CoreModel):
         self.phase = RepositoryStatusPhase.done
         self.persist = 1.0
         self.done = True
+        self.finished_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
         return self
 
     def finished_with_error(self, error_msg: str):
         self.status = RepositoryStatusStatus.finished
         self.done = True
         self.error = [True, error_msg]
+        self.finished_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
         return self

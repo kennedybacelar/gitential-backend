@@ -4,6 +4,7 @@ from typing import List
 
 from fastapi import APIRouter, WebSocket, Depends
 from fastapi.responses import StreamingResponse
+from fastapi.encoders import jsonable_encoder
 import pandas as pd
 
 from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories, ProjectStatus
@@ -135,11 +136,11 @@ async def websocket_endpoint(
     loop = asyncio.get_running_loop()
     await websocket.accept()
     project_status = await loop.run_in_executor(None, _get_project_status_hack, workspace_id, project_id)
-    await websocket.send_json(project_status.dict())
+    await websocket.send_json(jsonable_encoder(project_status.dict()))
     while True:
         await asyncio.sleep(0.05)
         project_status = await loop.run_in_executor(None, _get_project_status_hack, workspace_id, project_id)
-        await websocket.send_json(project_status.dict())
+        await websocket.send_json(jsonable_encoder(project_status.dict()))
         if project_status.done:
             break
 

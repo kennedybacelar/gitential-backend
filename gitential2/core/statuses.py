@@ -13,7 +13,7 @@ def get_project_status(g: GitentialContext, workspace_id: int, project_id: int) 
     return ProjectStatus(
         id=project_id,
         name=project.name,
-        status="FIXME",
+        status="...",
         done=all(rs.done for rs in repo_statuses),
         repos=repo_statuses,
     )
