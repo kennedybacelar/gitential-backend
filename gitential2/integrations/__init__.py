@@ -3,8 +3,9 @@ from gitential2.settings import IntegrationType, GitentialSettings
 from .gitlab import GitlabIntegration
 from .github import GithubIntegration
 from .linkedin import LinkedinIntegration
+from .bitbucket import BitBucketIntegration
 
-REPOSITORY_SOURCES = [IntegrationType.github, IntegrationType.gitlab]
+REPOSITORY_SOURCES = [IntegrationType.github, IntegrationType.gitlab, IntegrationType.bitbucket]
 
 
 def integration_type_to_class(type_: IntegrationType) -> Callable:
@@ -14,6 +15,8 @@ def integration_type_to_class(type_: IntegrationType) -> Callable:
         return GithubIntegration
     if type_ == IntegrationType.linkedin:
         return LinkedinIntegration
+    if type_ == IntegrationType.bitbucket:
+        return BitBucketIntegration
     raise ValueError("Invalid integration")
 
 

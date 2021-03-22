@@ -20,6 +20,7 @@ class IntegrationType(str, Enum):
     gitlab = "gitlab"
     github = "github"
     linkedin = "linkedin"
+    bitbucket = "bitbucket"
 
 
 class Executor(str, Enum):

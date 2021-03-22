@@ -101,6 +101,15 @@ integrations:
       client_secret: "2df3da7633b18e78b0b790a6538282f2051277c0"
     login: true
     login_text: "Login with GitHub"
+
+  bitbucket:
+    type: bitbucket
+    oauth:
+      client_id: "SHgqHHRXqeg3xeGguJ"
+      client_secret: "Dw5HSd6EGD7MY7q3YeXpWPKGTh4JDJgA"
+    login: true
+    login_text: "Login with BitBucket"
+
   linkedin:
     type: linkedin
     login: true
