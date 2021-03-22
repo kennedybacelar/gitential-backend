@@ -21,7 +21,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             emails = response.json()
             data["email"] = next(email["email"] for email in emails if email["primary"])
 
-        logger.info("user info data:", data)
+        logger.info("user info data:", data=data)
         return UserInfoCreate(
             integration_name=self.name,
             integration_type="github",
