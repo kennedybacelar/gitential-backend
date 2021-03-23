@@ -1,6 +1,6 @@
 import datetime as dt
 from threading import Lock
-from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple
+from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union
 from collections import defaultdict
 import pandas as pd
 from gitential2.settings import GitentialSettings
@@ -72,12 +72,24 @@ class InMemRepository(
                     return obj
         return None
 
+    def insert(self, id_: IdType, obj: InDBType) -> InDBType:
+        values = obj.dict()
+        self._state[id_] = self._in_db_cls(**values)
+        return self._state[id_]
+
     def create(self, obj: CreateType) -> InDBType:
         values = obj.dict()
         id_ = self._new_id()
         values["id"] = id_
         self._state[id_] = self._in_db_cls(**values)
         return self._state[id_]
+
+    def create_or_update(self, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
+        id_ = getattr(obj, "id_", None)
+        if not id_:
+            return self.create(cast(CreateType, obj))
+        else:
+            return self.update(id_, cast(UpdateType, obj))
 
     def update(self, id_: IdType, obj: UpdateType) -> InDBType:
         update_dict = obj.dict(exclude_unset=True)
@@ -98,6 +110,9 @@ class InMemRepository(
 
     def all(self) -> Iterable[InDBType]:
         return self._state.values()
+
+    def truncate(self):
+        self._state = {}
 
     def _new_id(self):
         with self._counter_lock:
@@ -129,6 +144,18 @@ class InMemWorkspaceScopedRepository(
         self._state[workspace_id][id_] = self._in_db_cls(**values)
         return self._state[id_]
 
+    def create_or_update(self, workspace_id: int, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
+        id_ = getattr(obj, "id_", None)
+        if not id_:
+            return self.create(workspace_id, cast(CreateType, obj))
+        else:
+            return self.update(workspace_id, id_, cast(UpdateType, obj))
+
+    def insert(self, workspace_id: int, id_: IdType, obj: InDBType) -> InDBType:
+        values = obj.dict()
+        self._state[workspace_id][id_] = self._in_db_cls(**values)
+        return self._state[id_]
+
     def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
         update_dict = obj.dict(exclude_unset=True)
         original_obj = self._state[workspace_id][id_]
@@ -138,6 +165,9 @@ class InMemWorkspaceScopedRepository(
         updated_obj = original_obj.copy(update=update_dict)
         self._state[workspace_id][id_] = updated_obj
         return self._state[id_]
+
+    def truncate(self, workspace_id: int):
+        self._state[workspace_id] = {}
 
     def delete(self, workspace_id: int, id_: IdType) -> int:
         try:

@@ -1,10 +1,10 @@
-from typing import Iterable, Optional, Callable, List, Dict
+from typing import Iterable, Optional, Callable, List, Dict, Union, cast
 import datetime as dt
 import typing
 import sqlalchemy as sa
 import pandas as pd
 from sqlalchemy.sql import and_, select
-
+from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes import (
     UserCreate,
     UserUpdate,
@@ -100,6 +100,32 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         id_ = result.inserted_primary_key[0]
         return self.get_or_error(id_)
 
+    def create_or_update(self, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
+        id_ = getattr(obj, "id_", None)
+        if not id_:
+            return self.create(cast(CreateType, obj))
+        else:
+            values_dict = obj.dict(exclude_unset=True)
+            if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
+                values_dict["updated_at"] = dt.datetime.utcnow()
+            query = (
+                insert(self.table)
+                .values(**values_dict)
+                .on_conflict_do_update(constraint=f"{self.table.name}_pkey", set_=values_dict)
+            )
+            self._execute_query(query)
+            return self.get_or_error(id_)
+
+    def insert(self, id_: IdType, obj: InDBType) -> InDBType:
+        values_dict = obj.dict(exclude_unset=True)
+        values_dict["id"] = id_
+        if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
+            values_dict["updated_at"] = dt.datetime.utcnow()
+
+        query = self.table.insert().values(**values_dict)
+        self._execute_query(query)
+        return self.get_or_error(id_)
+
     def update(self, id_: IdType, obj: UpdateType) -> InDBType:
         update_dict = obj.dict(exclude_unset=True)
         if "updated_at" in self.table.columns.keys() and "updated_at" not in update_dict:
@@ -123,6 +149,10 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         with self.engine.connect() as connection:
             result = connection.execute(query)
             return result
+
+    def truncate(self):
+        query = f"TRUNCATE TABLE {self.table.name} CASCADE;"
+        self._execute_query(query)
 
 
 class SQLWorkspaceScopedRepository(
@@ -157,6 +187,32 @@ class SQLWorkspaceScopedRepository(
         id_ = result.inserted_primary_key[0]
         return self.get_or_error(workspace_id, id_)
 
+    def create_or_update(self, workspace_id: int, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
+        id_ = getattr(obj, "id_", None)
+        if not id_:
+            return self.create(workspace_id, cast(CreateType, obj))
+        else:
+            values_dict = obj.dict(exclude_unset=True)
+            if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
+                values_dict["updated_at"] = dt.datetime.utcnow()
+            query = (
+                insert(self.table)
+                .values(**values_dict)
+                .on_conflict_do_update(constraint=f"{self.table.name}_pkey", set_=values_dict)
+            )
+            self._execute_query(query, workspace_id=workspace_id)
+            return self.get_or_error(workspace_id, id_)
+
+    def insert(self, workspace_id: int, id_: IdType, obj: InDBType) -> InDBType:
+        values_dict = obj.dict(exclude_unset=True)
+        values_dict["id"] = id_
+        if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
+            values_dict["updated_at"] = dt.datetime.utcnow()
+
+        query = self.table.insert().values(**values_dict)
+        self._execute_query(query, workspace_id=workspace_id)
+        return self.get_or_error(workspace_id, id_)
+
     def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
         update_dict = obj.dict(exclude_unset=True)
         if "updated_at" in self.table.columns.keys() and "updated_at" not in update_dict:
@@ -175,6 +231,11 @@ class SQLWorkspaceScopedRepository(
         query = self.table.select()
         result = self._execute_query(query, workspace_id=workspace_id)
         return (self.in_db_cls(**row) for row in result.fetchall())
+
+    def truncate(self, workspace_id: int):
+        schema_name = self._schema_name(workspace_id)
+        query = f"TRUNCATE TABLE `{schema_name}`.`{self.table.name}`;"
+        self._execute_query(query, workspace_id=workspace_id)
 
     def _execute_query(self, query, workspace_id, values: Optional[List[dict]] = None):
         with self._connection_with_schema(workspace_id) as connection:

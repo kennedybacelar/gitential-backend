@@ -83,7 +83,9 @@ def schedule_repository_refresh(
 
 
 def _update_project_repos(g: GitentialContext, workspace_id: int, project: ProjectInDB, repos=List[RepositoryCreate]):
-    repositories = [g.backend.repositories.create_or_update(workspace_id=workspace_id, obj=r) for r in repos]
+    repositories = [
+        g.backend.repositories.create_or_update_by_clone_url(workspace_id=workspace_id, obj=r) for r in repos
+    ]
     return g.backend.project_repositories.update_project_repositories(
         workspace_id=workspace_id, project_id=project.id, repo_ids=[r.id for r in repositories]
     )

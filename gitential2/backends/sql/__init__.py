@@ -176,7 +176,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         workspace_metadata.create_all(self._engine)
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
-        return SQLOutputHandler(engine=self._engine, workspace_id=workspace_id)
+        return SQLOutputHandler(workspace_id=workspace_id, backend=self)
 
     def get_extracted_dataframes(
         self, workspace_id: int, repository_id: int
@@ -228,38 +228,22 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
 
 class SQLOutputHandler(OutputHandler):
-    def __init__(self, engine, workspace_id):
+    def __init__(self, workspace_id: int, backend: GitentialBackend):
         self.workspace_id = workspace_id
-        self.engine = engine
-        self.schema_name = f"ws_{workspace_id}"
-
-        _workspace_metadata, _ = get_workspace_metadata(self.schema_name)
-        _workspace_metadata.create_all(self.engine)
-
-        self.metadata, _ = get_workspace_metadata()
+        self.backend = backend
 
     def write(self, kind, value):
-        table = self._get_table_for_kind(kind)
+        repository = self._get_repository(kind)
+        return repository.create_or_update(self.workspace_id, value)
 
-        try:
-            query = table.insert().values(**value.dict())
-            self._execute_query(query)
-        except IntegrityError as e:
-            print(e)
-
-    def _execute_query(self, query):
-        with self.engine.connect().execution_options(schema_translate_map={None: self.schema_name}) as connection:
-            result = connection.execute(query)
-            return result
-
-    def _get_table_for_kind(self, kind):
+    def _get_repository(self, kind):
         if kind == ExtractedKind.PULL_REQUEST:
-            return self.metadata.tables["pull_requests"]
+            return self.backend.pull_requests
         elif kind == ExtractedKind.EXTRACTED_COMMIT:
-            return self.metadata.tables["extracted_commits"]
+            return self.backend.extracted_commits
         elif kind == ExtractedKind.EXTRACTED_PATCH:
-            return self.metadata.tables["extracted_patches"]
+            return self.backend.extracted_patches
         elif kind == ExtractedKind.EXTRACTED_PATCH_REWRITE:
-            return self.metadata.tables["extracted_patch_rewrites"]
+            return self.backend.extracted_patch_rewrites
         else:
             raise ValueError("invalid kind")

@@ -2,7 +2,7 @@
 from datetime import datetime
 from abc import ABC, abstractmethod
 
-from typing import Iterable, Optional, TypeVar, Generic, List, Tuple, Dict
+from typing import Iterable, Optional, TypeVar, Generic, List, Tuple, Dict, Union, cast
 
 import pandas
 from gitential2.datatypes import (
@@ -70,6 +70,14 @@ class BaseRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):
         pass
 
     @abstractmethod
+    def create_or_update(self, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
+        pass
+
+    @abstractmethod
+    def insert(self, id_: IdType, obj: InDBType) -> InDBType:
+        pass
+
+    @abstractmethod
     def update(self, id_: IdType, obj: UpdateType) -> InDBType:
         pass
 
@@ -77,7 +85,12 @@ class BaseRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):
     def delete(self, id_: IdType) -> int:
         pass
 
+    @abstractmethod
     def all(self) -> Iterable[InDBType]:
+        pass
+
+    @abstractmethod
+    def truncate(self):
         pass
 
 
@@ -98,6 +111,14 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
         pass
 
     @abstractmethod
+    def create_or_update(self, workspace_id: int, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
+        pass
+
+    @abstractmethod
+    def insert(self, workspace_id: int, id_: IdType, obj: InDBType) -> InDBType:
+        pass
+
+    @abstractmethod
     def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
         pass
 
@@ -107,6 +128,10 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
 
     @abstractmethod
     def all(self, workspace_id: int) -> Iterable[InDBType]:
+        pass
+
+    @abstractmethod
+    def truncate(self, workspace_id: int):
         pass
 
 
@@ -175,12 +200,14 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
     def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
         pass
 
-    def create_or_update(self, workspace_id: int, obj: RepositoryCreate) -> RepositoryInDB:
+    def create_or_update_by_clone_url(
+        self, workspace_id: int, obj: Union[RepositoryCreate, RepositoryUpdate, RepositoryInDB]
+    ) -> RepositoryInDB:
         existing = self.get_by_clone_url(workspace_id, obj.clone_url)
         if existing:
             return self.update(workspace_id=workspace_id, id_=existing.id, obj=RepositoryUpdate(**obj.dict()))
         else:
-            return self.create(workspace_id=workspace_id, obj=obj)
+            return self.create(workspace_id=workspace_id, obj=cast(RepositoryCreate, obj))
 
 
 class ProjectRepositoryRepository(
@@ -219,7 +246,8 @@ class RepoDFMixin(ABC):
 
 
 class ExtractedCommitRepository(
-    RepoDFMixin, BaseWorkspaceScopedRepository[ExtractedCommitId, ExtractedCommit, ExtractedCommit, ExtractedCommit]
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[ExtractedCommitId, ExtractedCommit, ExtractedCommit, ExtractedCommit],
 ):
     pass
 

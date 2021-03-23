@@ -60,7 +60,8 @@ class PullRequest(ExtraFieldMixin, CoreModel):
     first_reaction_at: Optional[datetime] = None
     first_commit_authored_at: Optional[datetime] = None
 
-    def get_id(self):
+    @property
+    def id_(self):
         return PullRequestId(repo_id=self.repo_id, number=self.number)
 
 

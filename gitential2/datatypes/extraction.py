@@ -36,7 +36,8 @@ class ExtractedCommit(CoreModel):
     nparents: int
     tree_id: str
 
-    def get_id(self):
+    @property
+    def id_(self):
         return ExtractedCommitId(repo_id=self.repo_id, commit_id=self.commit_id)
 
 
@@ -81,7 +82,8 @@ class ExtractedPatch(CoreModel):
     nrewrites: int
     rewrites_loc: int
 
-    def get_id(self):
+    @property
+    def id_(self):
         return ExtractedPatchId(
             repo_id=self.repo_id, commit_id=self.commit_id, parent_commit_id=self.parent_commit_id, newpath=self.newpath
         )
@@ -105,7 +107,8 @@ class ExtractedPatchRewrite(CoreModel):
     rewritten_aemail: str
     loc_d: int
 
-    def get_id(self):
+    @property
+    def id_(self):
         return ExtractedPatchRewriteId(
             repo_id=self.repo_id,
             commit_id=self.commit_id,

@@ -86,7 +86,7 @@ def create_repositories(
     g: GitentialContext, workspace_id: int, repository_creates: List[RepositoryCreate]
 ) -> List[RepositoryInDB]:
     return [
-        g.backend.repositories.create_or_update(workspace_id, repository_create)
+        g.backend.repositories.create_or_update_by_clone_url(workspace_id, repository_create)
         for repository_create in repository_creates
     ]
 
