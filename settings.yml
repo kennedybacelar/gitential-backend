@@ -1,8 +1,11 @@
+maintenance:
+  enabled: true
 log_level: info
 extraction:
   show_progress: true
   executor: process_pool
 web:
+  legacy_login: true
   session_https_only: false
   session_max_age: 86400
 
@@ -80,22 +83,24 @@ connections:
 integrations:
   gitlab-internal:
     type: gitlab
+    display_name: GitLab self-hosted
     base_url: https://gitlab.ops.gitential.com
     oauth:
       client_id: "d043df035355fe747d2a62d35b0f6089cff4c8c45fb8ca0066459792e388230d"
       client_secret: "9bcb53d633178a83b3e46849bcec95d3d2c15d817bc48c1a1e35a84e8a4964c7"
     login: true
-    login_text: "Login with internal Gitlab"
   gitlab-com:
     type: gitlab
+    display_name: GitLab.COM
     base_url: https://gitlab.com
     oauth:
       client_id: "9ec1b46773e985147690b173c1bafd3d423ef2c7d1d5f19809483e92f000c770"
       client_secret: "e5825ffa36b8973b02c8a2c5650ab86663619f62f23d4c61a7e9f9eec5b7c3e9"
     login: true
-    login_text: "Login with GitLab.com"
+    login_order: -100
   github:
     type: github
+    display_name: GitHub
     oauth:
       client_id: "51bcf9e28ac872d75f2b"
       client_secret: "2df3da7633b18e78b0b790a6538282f2051277c0"
@@ -110,10 +115,19 @@ integrations:
     login: true
     login_text: "Login with BitBucket"
 
+  vsts:
+    type: vsts
+    oauth:
+      client_id: 0EF66907-4C55-4774-8BF2-8AEDD8627F6F
+      client_secret: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Im9PdmN6NU1fN3AtSGpJS2xGWHo5M3VfVjBabyJ9.eyJjaWQiOiIwZWY2NjkwNy00YzU1LTQ3NzQtOGJmMi04YWVkZDg2MjdmNmYiLCJjc2kiOiIyNzhkZTZiYS00ZDcxLTQ1N2ItOWEyMi1lYmM0YjA3YjQ4NjgiLCJuYW1laWQiOiI4ZjdjZjliOS01NzdmLTZiMmQtOTk4YS0wYTA3Yjk4MzVmMjEiLCJpc3MiOiJhcHAudnN0b2tlbi52aXN1YWxzdHVkaW8uY29tIiwiYXVkIjoiYXBwLnZzdG9rZW4udmlzdWFsc3R1ZGlvLmNvbSIsIm5iZiI6MTYxNjQ1OTk3MSwiZXhwIjoxNzc0MjI2MzcxfQ.1HYZtXYGa40IhKQuzAhDLtGpic9A8pXeBpHieJ-GNTJ-XUFnv1CWofVsvBNkA0CaKKtba2iYLvakkwP5NUpODgBjDb9YVgU5XndVlYT60gzhtz6RBtBO2THIs8gwyGGXs4N6541XjLS86aIRUGFCtcd4Pjf1y4yCweM42i-JV7-e53BwX__1UlfRh3XU3ZTm2BD2kchTVMwNIdhc0VlPd4kNho7yIqeiiVx79fxvHdW-aUFqUYVg37x_3ySzB_PwLQQN-_jOEHizV3uBisq9gUd6ctbiUMWHM7y-SSQBCQdBIXdqPACe9uJArYYx8PYK26qmq04ewhgynfOPF6ENSw
+    login: true
+    login_text: "Login with Azure Devops"
+
   linkedin:
     type: linkedin
     login: true
     login_top_text: "You don't have a git account?"
+    login_order: 100
     oauth:
       client_id: 78niu9tfn4fufa
       client_secret: 1LH59EYaQQnxGAHn

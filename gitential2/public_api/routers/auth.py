@@ -102,11 +102,13 @@ async def login(
 ):
     remote = oauth.create_client(backend)
     request.session["redirect_uri"] = redirect_after or referer
-    # print(request.headers.items())
+
     if remote is None:
         raise HTTPException(404)
-
-    redirect_uri = request.url_for("auth", backend=backend)
+    if request.app.state.settings.web.legacy_login:
+        redirect_uri = request.url_for("legacy_login") + f"?source={backend}"
+    else:
+        redirect_uri = request.url_for("auth", backend=backend)
 
     return await remote.authorize_redirect(request, redirect_uri)
 

@@ -11,7 +11,19 @@ from gitential2.settings import GitentialSettings, load_settings
 
 from gitential2.core.context import init_context_from_settings
 from gitential2.core.tasks import configure_celery
-from .routers import ping, configuration, workspaces, projects, teams, repositories, stats, auth, users, authors
+from .routers import (
+    ping,
+    configuration,
+    workspaces,
+    projects,
+    teams,
+    repositories,
+    stats,
+    auth,
+    users,
+    authors,
+    legacy,
+)
 
 logger = get_logger(__name__)
 
@@ -46,6 +58,10 @@ def _configure_cors(app: FastAPI):
 
 
 def _configure_routes(app: FastAPI):
+    app.include_router(
+        legacy.router,
+    )
+
     app.include_router(ping.router, prefix="/v2")
     app.include_router(configuration.router, prefix="/v2")
     app.include_router(workspaces.router, prefix="/v2")

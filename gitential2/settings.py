@@ -21,6 +21,7 @@ class IntegrationType(str, Enum):
     github = "github"
     linkedin = "linkedin"
     bitbucket = "bitbucket"
+    vsts = "vsts"
 
 
 class Executor(str, Enum):
@@ -38,9 +39,12 @@ class IntegrationSettings(BaseModel):
     base_url: Optional[str] = None
     oauth: Optional[OAuthClientSettings] = None
     login: bool = False
+    login_order: int = 0
     login_text: Optional[str] = None
-    signup_text: Optional[str] = None
     login_top_text: Optional[str] = None
+    signup_text: Optional[str] = None
+    display_name: Optional[str] = None
+
     options: Dict[str, Union[str, int, float, bool]] = {}
 
     @property
@@ -106,6 +110,7 @@ class WebSettings(BaseModel):
     session_same_site: str = "None"
     session_https_only: bool = True
     session_max_age: int = 14 * 24 * 60 * 60  # 14 days, in seconds
+    legacy_login: bool = False
 
 
 class ExtractionSettings(BaseModel):
@@ -114,7 +119,13 @@ class ExtractionSettings(BaseModel):
     show_progress: bool = False
 
 
+class MaintenanceSettings(BaseModel):
+    enabled: bool = False
+    message: str = ""
+
+
 class GitentialSettings(BaseModel):
+    maintenance: MaintenanceSettings = MaintenanceSettings()
     secret: str
     log_level: LogLevel = LogLevel.info
     connections: ConnectionSettings = ConnectionSettings()
