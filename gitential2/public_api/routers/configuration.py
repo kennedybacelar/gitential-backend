@@ -9,17 +9,19 @@ router = APIRouter()
 @router.get("/configuration")
 def configuration(request: Request):
     license_ = check_license()
-
+    gitential_settings = request.app.state.settings
     logins = {}
     sources = []
-    frontend_settings = request.app.state.settings.frontend
-    recaptcha_settings = request.app.state.settings.recaptcha
+    frontend_settings = gitential_settings.frontend
+    recaptcha_settings = gitential_settings.recaptcha
     integrations_settings = request.app.state.settings.integrations
-    for name, settings in integrations_settings.items():
+    sorted_integration_settings = sorted(integrations_settings.items(), key=lambda x: x[1].login_order)
+    for name, settings in sorted_integration_settings:
         if settings.login:
+            display_name = settings.display_name or name
             logins[name] = {
-                "login_text": settings.login_text or f"Login with {name}",
-                "signup_text": settings.signup_text or f"Sign up with {name}",
+                "login_text": settings.login_text or f"Login with {display_name}",
+                "signup_text": settings.signup_text or f"Sign up with {display_name}",
                 "login_top_text": settings.login_top_text or None,
                 "type": settings.type_,
                 "url": request.url_for("login", backend=name),
@@ -33,6 +35,7 @@ def configuration(request: Request):
                 }
             )
     return {
+        "maintenance": gitential_settings.maintenance,
         "license": license_.as_config(),
         "frontend": frontend_settings,
         "logins": logins,

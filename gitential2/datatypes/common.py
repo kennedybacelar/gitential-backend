@@ -32,3 +32,7 @@ class ExtraFieldMixin(BaseModel):
 
 class IDModelMixin(BaseModel):
     id: int
+
+    @property
+    def id_(self) -> int:
+        return self.id
