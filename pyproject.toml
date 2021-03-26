@@ -43,6 +43,8 @@ pylint = "^2.6.0"
 mypy = "^0.800"
 sqlalchemy-stubs = "^0.4"
 flower = {git = "https://github.com/avikam/flower.git"}
+jupyter = "^1.0.0"
+notebook = "^6.3.0"
 
 [tool.black]
 line-length = 120
