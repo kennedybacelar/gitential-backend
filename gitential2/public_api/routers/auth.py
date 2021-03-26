@@ -1,5 +1,6 @@
 import asyncio
 from typing import Optional
+from structlog import get_logger
 from fastapi import APIRouter, Request, HTTPException, Depends, Header
 from fastapi.responses import RedirectResponse
 from gitential2.core import (
@@ -14,6 +15,8 @@ from gitential2.datatypes.users import UserCreate
 from gitential2.datatypes.subscriptions import SubscriptionType
 
 from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token
+
+logger = get_logger(__name__)
 
 
 async def handle_failed_authorize(integration, token, user_info):
@@ -32,7 +35,7 @@ router = APIRouter()
 async def _get_token(request, remote, integration, code, id_token, oauth_verifier):
     if code:
         token = await remote.authorize_access_token(request)
-        # print("van code", token)
+        print("van code", token)
         if id_token:
             token["id_token"] = id_token
     elif id_token:
@@ -52,9 +55,12 @@ async def _get_user_info(request, remote, token):
     else:
         remote.token = token
         try:
+            if token["token_type"] == "jwt-bearer":  # VSTS fix
+                token["token_type"] = "bearer"
             user_info = await remote.userinfo(token=token)
         except Exception as e:
-            print(remote, token)
+            logger.exception("error getting user_info", remote=remote, token=token)
+            # print(remote, token)
             raise e
     return user_info
 
@@ -106,7 +112,10 @@ async def login(
     if remote is None:
         raise HTTPException(404)
     if request.app.state.settings.web.legacy_login:
-        redirect_uri = request.url_for("legacy_login") + f"?source={backend}"
+        if backend == "vsts":
+            redirect_uri = request.url_for("legacy_login")
+        else:
+            redirect_uri = request.url_for("legacy_login") + f"?source={backend}"
     else:
         redirect_uri = request.url_for("auth", backend=backend)
 

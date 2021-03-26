@@ -22,8 +22,8 @@ router = APIRouter()
 # pylint: disable=too-many-arguments
 @router.get("/login", name="legacy_login")
 async def legacy_login(
-    source: str,
     request: Request,
+    source: str = "vsts",
     id_token: str = None,
     code: str = None,
     oauth_verifier: str = None,

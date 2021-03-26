@@ -1,5 +1,5 @@
 maintenance:
-  enabled: true
+  enabled: false
 log_level: info
 extraction:
   show_progress: true
@@ -114,14 +114,15 @@ integrations:
       client_secret: "Dw5HSd6EGD7MY7q3YeXpWPKGTh4JDJgA"
     login: true
     login_text: "Login with BitBucket"
+    display_name: "BitBucket"
 
   vsts:
     type: vsts
     oauth:
-      client_id: 0EF66907-4C55-4774-8BF2-8AEDD8627F6F
-      client_secret: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Im9PdmN6NU1fN3AtSGpJS2xGWHo5M3VfVjBabyJ9.eyJjaWQiOiIwZWY2NjkwNy00YzU1LTQ3NzQtOGJmMi04YWVkZDg2MjdmNmYiLCJjc2kiOiIyNzhkZTZiYS00ZDcxLTQ1N2ItOWEyMi1lYmM0YjA3YjQ4NjgiLCJuYW1laWQiOiI4ZjdjZjliOS01NzdmLTZiMmQtOTk4YS0wYTA3Yjk4MzVmMjEiLCJpc3MiOiJhcHAudnN0b2tlbi52aXN1YWxzdHVkaW8uY29tIiwiYXVkIjoiYXBwLnZzdG9rZW4udmlzdWFsc3R1ZGlvLmNvbSIsIm5iZiI6MTYxNjQ1OTk3MSwiZXhwIjoxNzc0MjI2MzcxfQ.1HYZtXYGa40IhKQuzAhDLtGpic9A8pXeBpHieJ-GNTJ-XUFnv1CWofVsvBNkA0CaKKtba2iYLvakkwP5NUpODgBjDb9YVgU5XndVlYT60gzhtz6RBtBO2THIs8gwyGGXs4N6541XjLS86aIRUGFCtcd4Pjf1y4yCweM42i-JV7-e53BwX__1UlfRh3XU3ZTm2BD2kchTVMwNIdhc0VlPd4kNho7yIqeiiVx79fxvHdW-aUFqUYVg37x_3ySzB_PwLQQN-_jOEHizV3uBisq9gUd6ctbiUMWHM7y-SSQBCQdBIXdqPACe9uJArYYx8PYK26qmq04ewhgynfOPF6ENSw
+      client_id: C195AA32-A678-41FD-B946-199D94DD8B4F
+      client_secret: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Im9PdmN6NU1fN3AtSGpJS2xGWHo5M3VfVjBabyJ9.eyJjaWQiOiJjMTk1YWEzMi1hNjc4LTQxZmQtYjk0Ni0xOTlkOTRkZDhiNGYiLCJjc2kiOiJmZDNkNTc0Yy00MWUyLTQzZjctOTkxOS1lNjFkM2MzMzI3N2UiLCJuYW1laWQiOiI4ZjdjZjliOS01NzdmLTZiMmQtOTk4YS0wYTA3Yjk4MzVmMjEiLCJpc3MiOiJhcHAudnN0b2tlbi52aXN1YWxzdHVkaW8uY29tIiwiYXVkIjoiYXBwLnZzdG9rZW4udmlzdWFsc3R1ZGlvLmNvbSIsIm5iZiI6MTYxNjQ1OTI2OCwiZXhwIjoxNzc0MjI1NjY4fQ.jhp3udifEIXf964WhxtG9oN9oUWlfCfglmCOHiysKXGP0Gtc5gWLv_HJz2UBqtxfx68gpIrxj_CZuON4f4uUdYlJsYNvdECq1YrZKYD5Y-a3aOh0TRzZbW03aZkduxm0iuLNjpdG6ZPbiAwlgIDnst5ad_bpcTaas4yNFp_5N6r1Q8LIHekJf_1oC-AUK_1SNYG46HCGijOEMIjiPuSCu6n3-gJNsxAHGtaipY2a1UZ5NTqH5wktgfrPw6UcVlJYvTiFfCsMZFQBf6quGF0KLWV7IlVNgNgT36CsAZmMKNtFbUmDGZDjzlRoht4AQ1871h3o1AcQGQbXdnJG_gOZoQ
     login: true
-    login_text: "Login with Azure Devops"
+    display_name: "Azure DevOps"
 
   linkedin:
     type: linkedin

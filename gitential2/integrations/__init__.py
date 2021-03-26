@@ -4,8 +4,9 @@ from .gitlab import GitlabIntegration
 from .github import GithubIntegration
 from .linkedin import LinkedinIntegration
 from .bitbucket import BitBucketIntegration
+from .vsts import VSTSIntegration
 
-REPOSITORY_SOURCES = [IntegrationType.github, IntegrationType.gitlab, IntegrationType.bitbucket]
+REPOSITORY_SOURCES = [IntegrationType.github, IntegrationType.gitlab, IntegrationType.bitbucket, IntegrationType.vsts]
 
 
 def integration_type_to_class(type_: IntegrationType) -> Callable:
@@ -17,6 +18,8 @@ def integration_type_to_class(type_: IntegrationType) -> Callable:
         return LinkedinIntegration
     if type_ == IntegrationType.bitbucket:
         return BitBucketIntegration
+    if type_ == IntegrationType.vsts:
+        return VSTSIntegration
     raise ValueError("Invalid integration")
 
 
