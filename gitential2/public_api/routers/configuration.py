@@ -30,6 +30,7 @@ def configuration(request: Request):
             sources.append(
                 {
                     "name": name,
+                    "display_name": settings.display_name or name,
                     "type": settings.type_,
                     "url": request.url_for("login", backend=name),
                 }
