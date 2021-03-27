@@ -58,7 +58,9 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     ):
         pass
 
-    def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
+    def list_available_private_repositories(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
         repository_list = _walk_paginated_results(client, f"{api_base_url}repositories?role=member&pagelen=100")
@@ -66,10 +68,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return [self._repo_to_create_repo(repo) for repo in repository_list]
 
     def search_public_repositories(
-        self,
-        query: str,
-        token,
-        update_token,
+        self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         # Not API for this on BitBucket :(
         return []

@@ -52,14 +52,13 @@ class GitProviderMixin(ABC):
         pass
 
     @abstractmethod
-    def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
+    def list_available_private_repositories(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[RepositoryCreate]:
         pass
 
     @abstractmethod
     def search_public_repositories(
-        self,
-        query: str,
-        token,
-        update_token,
+        self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         pass

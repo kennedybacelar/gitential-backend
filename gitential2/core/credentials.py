@@ -1,11 +1,39 @@
-from typing import List, Optional
-from gitential2.datatypes.credentials import CredentialInDB, CredentialCreate, CredentialType
+from typing import List, Optional, cast
+from structlog import get_logger
+from gitential2.datatypes.credentials import CredentialInDB, CredentialCreate, CredentialType, CredentialUpdate
 from gitential2.datatypes.repositories import RepositoryInDB
 
 from gitential2.utils.ssh import create_ssh_keypair
 from gitential2.integrations import REPOSITORY_SOURCES
 from .context import GitentialContext
 from ..exceptions import NotImplementedException, NotFoundException
+
+
+logger = get_logger(__name__)
+
+
+def get_update_token_callback(g: GitentialContext, credential: CredentialInDB):
+    # pylint: disable=unused-argument
+    def callback(token: dict, refresh_token=None, access_token=None) -> Optional[CredentialInDB]:
+
+        logger.info("updating acces_token", user_id=credential.owner_id, integration_name=credential.integration_name)
+
+        if "access_token" in token:
+            return g.backend.credentials.update(
+                credential.id,
+                CredentialUpdate.from_token(
+                    token,
+                    g.fernet,
+                    owner_id=cast(int, credential.owner_id),
+                    integration_name=credential.integration_name,
+                    integration_type=credential.integration_type,
+                ),
+            )
+        else:
+            logger.error("update_token error", token=token, credential=credential)
+            return None
+
+    return callback
 
 
 def list_credentials_for_user(g: GitentialContext, user_id: int) -> List[CredentialInDB]:

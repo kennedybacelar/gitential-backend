@@ -51,14 +51,18 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             extra=data,
         )
 
-    def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
+    def list_available_private_repositories(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[RepositoryCreate]:
 
         client = self.get_oauth2_client(token=token, update_token=update_token)
         projects = walk_next_link(client, f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id")
         client.close()
         return [self._project_to_repo_create(p) for p in projects]
 
-    def search_public_repositories(self, query: str, token, update_token) -> List[RepositoryCreate]:
+    def search_public_repositories(
+        self, query: str, token, update_token, provider_user_id: Optional[str]
+    ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         response = client.get(f"{self.api_base_url}/search?scope=projects&search={query}")
         client.close()

@@ -132,7 +132,9 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             extra=raw_data,
         )
 
-    def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
+    def list_available_private_repositories(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
 
@@ -155,10 +157,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         )
 
     def search_public_repositories(
-        self,
-        query: str,
-        token,
-        update_token,
+        self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]

@@ -95,10 +95,15 @@ class CredentialBase(CredentialBasePublic, CredentialBaseSecret):
 
     def to_token_dict(self, fernet: Fernet) -> Optional[dict]:
         if self.token:
-            return {
+            ret: dict = {
                 "access_token": fernet.decrypt_string(self.token.decode()),
                 "refresh_token": fernet.decrypt_string(self.refresh_token.decode()) if self.refresh_token else None,
             }
+            if self.expires_at:
+                ret["expires_at"] = int(self.expires_at.timestamp())
+
+            print(ret)
+            return ret
         else:
             return None
 

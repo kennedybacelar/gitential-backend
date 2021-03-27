@@ -1,14 +1,18 @@
 from typing import List
+from structlog import get_logger
 from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, GitProtocol
-from gitential2.utils import levenshtein
+from gitential2.datatypes.userinfos import UserInfoInDB
+
+from gitential2.utils import levenshtein, find_first
 from .context import GitentialContext
-from .credentials import list_credentials_for_workspace
+from .credentials import list_credentials_for_workspace, get_update_token_callback
+
+
+logger = get_logger(__name__)
 
 
 def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryCreate]:
-    def _fixme(*args, **kwargs):
-        print("update token called", args, kwargs)
 
     results: List[RepositoryCreate] = []
     for credential in list_credentials_for_workspace(g, workspace_id):
@@ -17,7 +21,15 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
 
             integration = g.integrations[credential.integration_name]
             token = credential.to_token_dict(fernet=g.fernet)
-            results += integration.list_available_private_repositories(token=token, update_token=_fixme)
+            userinfo: UserInfoInDB = find_first(
+                lambda ui: ui.integration_name == credential.integration_name,  # pylint: disable=cell-var-from-loop
+                g.backend.user_infos.get_for_user(credential.owner_id),
+            )
+            results += integration.list_available_private_repositories(
+                token=token,
+                update_token=get_update_token_callback(g, credential),
+                provider_user_id=userinfo.sub if userinfo else None,
+            )
 
     results += list_ssh_repositories(g, workspace_id)
     return results
@@ -68,16 +80,15 @@ def list_project_repositories(g: GitentialContext, workspace_id: int, project_id
 def search_public_repositories(g: GitentialContext, workspace_id: int, search: str) -> List[RepositoryCreate]:
     results: List[RepositoryCreate] = []
 
-    def _fixme(*args, **kwargs):
-        print("update token called", args, kwargs)
-
     for credential in list_credentials_for_workspace(g, workspace_id):
 
         if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
 
             integration = g.integrations[credential.integration_name]
             token = credential.to_token_dict(fernet=g.fernet)
-            results += integration.search_public_repositories(query=search, token=token, update_token=_fixme)
+            results += integration.search_public_repositories(
+                query=search, token=token, update_token=get_update_token_callback(g, credential)
+            )
 
     return sorted(results, key=lambda i: levenshtein(search, i.name))
 

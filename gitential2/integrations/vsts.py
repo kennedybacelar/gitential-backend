@@ -5,7 +5,7 @@ from urllib.parse import parse_qs
 from structlog import get_logger
 
 
-from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB
+from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
 
 # from gitential2.datatypes.extraction import ExtractedKind
 # from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
@@ -13,42 +13,34 @@ from gitential2.extraction.output import OutputHandler
 
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 
-# from .common import log_api_error
+from .common import log_api_error
 
 logger = get_logger(__name__)
 
-# https://app.vssps.visualstudio.com/oauth2/authorize
-# ?response_type=code
-# &client_id=C195AA32-A678-41FD-B946-199D94DD8B4F
-# &redirect_uri=https%3A%2F%2Flaco.ngrok.io%2Flogin%3Fsource%3Dvsts
-# &scope=vso.code
-# &state=eLz5CopZ1EP7TND5ETbPZjz4AEOnMT
-
-# https://app.vssps.visualstudio.com/oauth2/authorize
-# ?client_id=046A49EA-B74F-4E1D-90E2-328C699E8875
-# &response_type=Assertion
-# &state=wrae&scope=vso.code+vso.project
-# &redirect_uri=https%3A%2F%2Fapi.gitential.com%2Flogin
-
-# https://laco.ngrok.io/login
-# ?code=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Im9PdmN6NU1fN3AtSGpJS2xGWHo5M3VfVjBabyJ9.eyJhdWkiOiIxN2NiODM0OS0wZTI1LTQ2NWQtOTZiNS01ZmJhNjYwMGMwNjQiLCJuYW1laWQiOiI4ZjdjZjliOS01NzdmLTZiMmQtOTk4YS0wYTA3Yjk4MzVmMjEiLCJzY3AiOiJ2c28uY29kZSB2c28uaWRlbnRpdHkgdnNvLmF1dGhvcml6YXRpb25fZ3JhbnQiLCJpc3MiOiJhcHAudnN0b2tlbi52aXN1YWxzdHVkaW8uY29tIiwiYXVkIjoiYXBwLnZzdG9rZW4udmlzdWFsc3R1ZGlvLmNvbSIsIm5iZiI6MTYxNjc5MDYzMywiZXhwIjoxNjE2NzkxNTMzfQ.JOzsdIgGBXvsVtyzNtmTSiMnZn55Mu63w8d5s4GppcOhsyt16i9ueRl0lsNRcAj45QIh66I2FiaY6N19zJzlnq9ahtOykrwajzZEnCrJs_KsSDBlwz-HVtaohOsADgxWw6A3Njr5d5BTfsU373nbQmyBBkofucG-69Nw6AwqL6cjPqFu81lcCFU6ZeOpLFjmW8xmrwYMJbGulCcn5EQUbn79zu5o9sa_bnqQzpUmRpoVTrhLCsnFpChEzq0bTghs1zVUxuGEB4lBkBnvhjhR_MdS8GKnQcBbTekMH7ToUq2yT-KVzTRFmcM49ZsJ-6_Jf_vFO6lSqrXjO-Lfgvsymg
-# &state=yvl1BPMeWu7dQwTJwExH3pX00buds6
-
 
 class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
+    base_url = "https://app.vssps.visualstudio.com"
+
     def _auth_client_secret_uri(self, client, method, uri, headers, body):
         logger.debug(
             "vsts._auth_client_secret_uri inputs", client=client, method=method, uri=uri, headers=headers, body=body
         )
-        body_original = parse_qs(body)
+        body_original = parse_qs(body, encoding="utf8")
 
         body_ = {
             "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
             "client_assertion": self.settings.oauth.client_secret,
-            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-            "assertion": body_original[b"code"][0].decode(),
-            "redirect_uri": body_original[b"redirect_uri"][0].decode(),
+            "redirect_uri": self.settings.options.get("redirect_url"),
         }
+
+        if b"code" in body_original:
+            body_["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+            body_["assertion"] = body_original[b"code"][0].decode()
+
+        elif "refresh_token" in body_original:
+            body_["grant_type"] = "refresh_token"
+            body_["assertion"] = body_original["refresh_token"][0]
+
         body_str = "&".join([f"{k}={v}" for (k, v) in body_.items()])
 
         headers["content-length"] = str(len(body_str))
@@ -56,12 +48,11 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return uri, headers, body_str
 
     def oauth_register(self):
-        base_url = "https://app.vssps.visualstudio.com"
         return {
-            "api_base_url": base_url,
-            "access_token_url": f"{base_url}/oauth2/token",
-            "authorize_url": f"{base_url}/oauth2/authorize",
-            "userinfo_endpoint": f"{base_url}/_apis/profile/profiles/me?api-version=4.1",
+            "api_base_url": self.base_url,
+            "access_token_url": f"{self.base_url}/oauth2/token",
+            "authorize_url": f"{self.base_url}/oauth2/authorize",
+            "userinfo_endpoint": f"{self.base_url}/_apis/profile/profiles/me?api-version=4.1",
             "client_kwargs": {
                 "scope": "vso.code vso.identity",
                 "response_type": "Assertion",
@@ -91,13 +82,62 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     ):
         pass
 
-    def list_available_private_repositories(self, token, update_token) -> List[RepositoryCreate]:
-        return []
+    def refresh_token(self, token, update_token):
+        client = self.get_oauth2_client(
+            token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
+        token = client.refresh_token(self.oauth_register()["access_token_url"], refresh_token=token["refresh_token"])
+        client.close()
+        return {f: token[f] for f in ["access_token", "refresh_token", "expires_at"]}
+
+    def list_available_private_repositories(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[RepositoryCreate]:
+
+        if not provider_user_id:
+            logger.warn("Cannot list vsts repositories, provider_user_id is missing", token=token)
+            return []
+        token = self.refresh_token(token, update_token)
+
+        client = self.get_oauth2_client(
+            token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
+
+        api_base_url = self.oauth_register()["api_base_url"]
+
+        accounts_resp = client.get(f"{api_base_url}/_apis/accounts?memberId={provider_user_id}&api-version=6.0")
+        if accounts_resp.status_code != 200:
+            log_api_error(accounts_resp)
+            return []
+
+        accounts = accounts_resp.json().get("value", [])
+        repos = []
+        for account in accounts:
+            account_repo_url = f"https://{account['accountName']}.visualstudio.com/DefaultCollection/_apis/git/repositories?api-version=1.0"
+            repo_resp = client.get(account_repo_url)
+
+            if repo_resp.status_code != 200:
+                log_api_error(repo_resp)
+                continue
+
+            response_json = repo_resp.json()
+            if "value" in response_json:
+                repos += [self._repo_to_create_repo(repo, account) for repo in response_json["value"]]
+        return repos
+
+    def _repo_to_create_repo(self, repo_dict, account_dict):
+        return RepositoryCreate(
+            clone_url=repo_dict["webUrl"],
+            protocol=GitProtocol.https,
+            name=repo_dict["name"],
+            namespace=account_dict["accountName"],
+            private=repo_dict["project"]["visibility"] == "private",
+            integration_type="vsts",
+            integration_name=self.name,
+            extra=repo_dict,
+        )
 
     def search_public_repositories(
-        self,
-        query: str,
-        token,
-        update_token,
+        self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         return []
