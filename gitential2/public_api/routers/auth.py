@@ -55,7 +55,7 @@ async def _get_user_info(request, remote, token):
     else:
         remote.token = token
         try:
-            if token["token_type"] == "jwt-bearer":  # VSTS fix
+            if "token_type" in token and token["token_type"] == "jwt-bearer":  # VSTS fix
                 token["token_type"] = "bearer"
             user_info = await remote.userinfo(token=token)
         except Exception as e:
