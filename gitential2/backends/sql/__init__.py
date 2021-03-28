@@ -211,6 +211,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         calculated_patches_table = workspace_metadata.tables[f"{schema_name}.calculated_patches"]
         # print(calculated_commits_table.delete().where(calculated_commits_table.c.repo_id == repository_id))
         # print("itt vagyunk")
+        calculated_commits_df = calculated_commits_df.reset_index().drop(["median_velocity_measured"], axis=1)
+        calculated_patches_df = calculated_patches_df.reset_index()
         with self._engine.connect() as connection:
             with connection.begin():
                 connection.execute(

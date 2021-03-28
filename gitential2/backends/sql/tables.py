@@ -178,21 +178,30 @@ def get_workspace_metadata(schema: Optional[str] = None):
     calculated_commits = sa.Table(
         "calculated_commits",
         metadata,
+        # same columns from extracted_commits
         sa.Column("repo_id", sa.Integer()),
         sa.Column("commit_id", sa.String(40)),
-        sa.Column("date", sa.DateTime()),
         sa.Column("atime", sa.DateTime()),
-        sa.Column("aid", sa.Integer()),
         sa.Column("aemail", sa.String(128)),
         sa.Column("aname", sa.String(128)),
         sa.Column("ctime", sa.DateTime()),
-        sa.Column("cid", sa.Integer()),
         sa.Column("cemail", sa.String(128)),
         sa.Column("cname", sa.String(128)),
         sa.Column("message", sa.Text()),
         sa.Column("nparents", sa.Integer()),
         sa.Column("tree_id", sa.String(40)),
-        sa.Column("ismerge", sa.Boolean),
+        # additional column - date
+        sa.Column("date", sa.DateTime()),
+        sa.Column("age", sa.Integer(), nullable=True),
+        # author ids
+        sa.Column("aid", sa.Integer()),
+        sa.Column("cid", sa.Integer()),
+        # is_merge, is_test
+        sa.Column("is_merge", sa.Boolean),
+        sa.Column("is_test", sa.Boolean),
+        # number of patches
+        sa.Column("nfiles", sa.Integer(), nullable=True),
+        # calculated from patch, outlier
         sa.Column("loc_i", sa.Integer(), nullable=True),
         sa.Column("loc_i_inlier", sa.Integer(), nullable=True),
         sa.Column("loc_i_outlier", sa.Integer(), nullable=True),
@@ -205,13 +214,15 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("comp_d", sa.Integer(), nullable=True),
         sa.Column("comp_d_inlier", sa.Integer(), nullable=True),
         sa.Column("comp_d_outlier", sa.Integer(), nullable=True),
-        sa.Column("nfiles", sa.Integer(), nullable=True),
         sa.Column("loc_effort", sa.Integer(), nullable=True),
+        sa.Column("uploc", sa.Integer(), default=0),  # unproductive line of code
+        # work hour estimation
         sa.Column("hours_measured", sa.Float(), nullable=True),
         sa.Column("hours_estimated", sa.Float(), nullable=True),
         sa.Column("hours", sa.Float(), nullable=True),
+        sa.Column("velocity_measured", sa.Float(), nullable=True),
         sa.Column("velocity", sa.Float(), nullable=True),
-        sa.Column("loc_churn", sa.Integer(), default=0),
+        # primary key
         sa.PrimaryKeyConstraint("repo_id", "commit_id"),
     )
 
@@ -250,8 +261,12 @@ def get_workspace_metadata(schema: Optional[str] = None):
         metadata,
         sa.Column("repo_id", sa.Integer()),
         sa.Column("commit_id", sa.String(40)),
+        sa.Column("parent_commit_id", sa.String(40), nullable=True),
+        # author ids
+        sa.Column("aid", sa.Integer()),
+        sa.Column("cid", sa.Integer()),
+        # atime -> date
         sa.Column("date", sa.DateTime()),
-        sa.Column("parent_commit_id", sa.String(40)),
         sa.Column("status", sa.String(128)),
         sa.Column("newpath", sa.String(256)),
         sa.Column("oldpath", sa.String(256)),
@@ -264,18 +279,15 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("loc_d", sa.Integer()),
         sa.Column("comp_i", sa.Integer()),
         sa.Column("comp_d", sa.Integer()),
-        sa.Column("loc_i_std", sa.Integer()),
-        sa.Column("loc_d_std", sa.Integer()),
-        sa.Column("comp_i_std", sa.Integer()),
-        sa.Column("comp_d_std", sa.Integer()),
         sa.Column("nhunks", sa.Integer()),
         sa.Column("nrewrites", sa.Integer()),
         sa.Column("rewrites_loc", sa.Integer()),
-        sa.Column("ismerge", sa.Boolean()),
-        sa.Column("istest", sa.Boolean()),
-        sa.Column("churn_loc_d", sa.Boolean()),
-        sa.Column("outlier", sa.Boolean),
-        sa.Column("anomaly", sa.Boolean),
+        # calculated
+        sa.Column("is_merge", sa.Boolean()),
+        sa.Column("is_test", sa.Boolean()),
+        sa.Column("uploc", sa.Integer()),
+        sa.Column("outlier", sa.Integer()),
+        sa.Column("anomaly", sa.Integer()),
         sa.PrimaryKeyConstraint("repo_id", "commit_id", "parent_commit_id", "newpath"),
     )
 
