@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from gitential2.extraction.output import OutputHandler
 from gitential2.settings import GitentialSettings
+from gitential2.datatypes.stats import IbisTables
 
 from .repositories import (
     AuthorRepository,
@@ -130,4 +131,8 @@ class GitentialBackend(ABC):
         calculated_commits_df: pd.DataFrame,
         calculated_patches_df: pd.DataFrame,
     ):
+        pass
+
+    @abstractmethod
+    def get_ibis_tables(self, workspace_id: int) -> IbisTables:
         pass

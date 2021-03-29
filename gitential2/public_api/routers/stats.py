@@ -6,14 +6,14 @@ from fastapi import APIRouter, Depends
 
 from gitential2.datatypes.stats import StatsRequest
 from gitential2.datatypes.permissions import Entity, Action
-from gitential2.core import collect_stats, GitentialContext, check_permission
+from gitential2.core import collect_stats_v2, GitentialContext, check_permission
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["metrics"])
 
 
 @router.post("/workspaces/{workspace_id}/stats")
-async def workspace_stats(
+def workspace_stats(
     val: StatsRequest,
     workspace_id: int,
     current_user=Depends(current_user),
@@ -21,11 +21,11 @@ async def workspace_stats(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
 
-    return collect_stats(g, workspace_id, val)
+    return collect_stats_v2(g, workspace_id, val)
 
 
 @router.post("/workspaces/{workspace_id}/multi-stats")
-async def workspace_multi_stats(
+def workspace_multi_stats(
     stats_request: Dict[str, StatsRequest],
     workspace_id: int,
     current_user=Depends(current_user),
@@ -35,14 +35,14 @@ async def workspace_multi_stats(
 
     ret: dict = {}
     for name, val in stats_request.items():
-        result = collect_stats(g, workspace_id, val)
+        result = collect_stats_v2(g, workspace_id, val)
         ret[name] = result
     return ret
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}/developers")
 async def developers(orient: str, limit: int):
-    return [{"name": "Béla", "email": "test@test.hu"}, {"name": "Józsi", "email": "test2@test.hu"}]
+    return []
 
 
 # @router.get("/workspaces/{workspace_id}/projects/{project_id}/outlier")

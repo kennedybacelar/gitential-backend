@@ -47,6 +47,7 @@ from .permissions import check_permission
 
 from .statuses import get_project_status, get_repository_status, update_repository_status
 from .stats import collect_stats  # type: ignore
+from .stats_v2 import collect_stats_v2
 from .refresh import refresh_repository, refresh_repository_pull_requests
 from .calculations import recalculate_repository_values
 from .authors import (

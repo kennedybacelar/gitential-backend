@@ -1,9 +1,9 @@
-import datetime as dt
 import json
-from typing import Optional, Tuple
+from typing import Any, Tuple
 
 import pandas as pd
 import sqlalchemy as sa
+from ibis.backends.postgres import connect
 from sqlalchemy.exc import IntegrityError
 from fastapi.encoders import jsonable_encoder
 
@@ -18,7 +18,7 @@ from gitential2.datatypes.pull_requests import PullRequest
 from gitential2.extraction.output import OutputHandler
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
-
+from gitential2.datatypes.stats import IbisTables
 from gitential2.datatypes import (
     UserInDB,
     UserInfoInDB,
@@ -73,6 +73,7 @@ def json_dumps(obj):
 class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def __init__(self, settings: GitentialSettings):
         super().__init__(settings)
+        self._ibis_conn = None
 
         self._engine = sa.create_engine(
             settings.connections.database_url, json_serializer=json_dumps, pool_pre_ping=True
@@ -197,6 +198,21 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         # print("megy a select", extracted_commits_df)
 
         return extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df
+
+    def get_ibis_tables(self, workspace_id: int) -> Any:
+        ibis_conn = self._get_ibis_conn()
+        ibis_schema = ibis_conn.schema(self._workspace_schema_name(workspace_id))
+        ret = IbisTables()
+        ret.conn = ibis_conn
+        ret.pull_requests = ibis_schema.pull_requests
+        ret.commits = ibis_schema.calculated_commits
+        ret.patches = ibis_schema.calculated_patches
+        return ret
+
+    def _get_ibis_conn(self):
+        if not self._ibis_conn:
+            self._ibis_conn = connect(url=self.settings.connections.database_url)
+        return self._ibis_conn
 
     def save_calculated_dataframes(
         self,

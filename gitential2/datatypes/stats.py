@@ -10,9 +10,7 @@ class MetricName(str, Enum):
     sum_hours = "sum_hours"
     sum_ploc = "sum_ploc"
     efficiency = "efficiency"
-
     nunique_contributors = "nunique_contributors"
-
     # PR metrics
     avg_pr_commit_count = "avg_pr_commit_count"
     avg_pr_code_volume = "avg_pr_code_volume"
@@ -22,6 +20,7 @@ class MetricName(str, Enum):
     pr_merge_ratio = "pr_merge_ratio"
     sum_pr_closed = "sum_pr_closed"
     sum_pr_merged = "sum_pr_merged"
+    sum_pr_open = "sum_pr_open"
     sum_review_comment_count = "sum_review_comment_count"
     avg_pr_review_comment_count = "avg_pr_review_comment_count"
     sum_pr_count = "sum_pr_count"
@@ -34,6 +33,7 @@ class FilterName(str, Enum):
     name = "name"
     day = "day"
     ismerge = "ismerge"
+    is_merge = "is_merge"
     keyword = "keyword"
     outlier = "outlier"
     commit_msg = "commit_msg"
@@ -56,11 +56,14 @@ class DimensionName(str, Enum):
     commit_id = "commit_id"
     keyword = "keyword"
 
+    # pr dimensions
+    pr_state = "pr_state"
+
 
 class StatsRequest(BaseModel):
-    metrics: List[str]
-    dimensions: Optional[List[str]] = None
-    filters: Dict[str, Any]
+    metrics: List[MetricName]
+    dimensions: Optional[List[DimensionName]] = None
+    filters: Dict[FilterName, Any]
     sort_by: Optional[List[Union[str, int]]] = None
     type: str = "aggregate"  # or "select"
 
@@ -71,8 +74,8 @@ class QueryType(str, Enum):
 
 
 class TableName(str, Enum):
-    commits = "commits"
-    patches = "patches"
+    calculated_commits = "calculated_commits"
+    calculated_patches = "calculated_patches"
     pull_requests = "pull_requests"
 
 
@@ -95,3 +98,20 @@ class QueryResult(BaseModel):
 #     filters: Dict[FilterName, Any]
 #     sort_by: Optional[List[Union[str, int]]] = None
 #     type  = "aggregate"  # or "select"
+
+
+class IbisTables:
+    conn: Any
+    pull_requests: Any
+    commits: Any
+    patches: Any
+
+    def get_table(self, name: TableName) -> Any:
+        if name == TableName.pull_requests:
+            return self.pull_requests
+        elif name == TableName.calculated_commits:
+            return self.commits
+        elif name == TableName.calculated_patches:
+            return self.patches
+        else:
+            raise ValueError(f"Unknown ibis table {name}")

@@ -1,4 +1,5 @@
 import datetime as dt
+
 from threading import Lock
 from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union
 from collections import defaultdict
@@ -29,7 +30,7 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryUpdate,
     ProjectRepositoryInDB,
 )
-
+from gitential2.datatypes.stats import IbisTables
 from .base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
@@ -330,3 +331,6 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         calculated_patches_df: pd.DataFrame,
     ):
         return
+
+    def get_ibis_tables(self, workspace_id: int) -> IbisTables:
+        return IbisTables()
