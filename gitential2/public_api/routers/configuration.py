@@ -42,7 +42,7 @@ def configuration(request: Request):
         "logins": logins,
         "recaptcha": {"site_key": recaptcha_settings.site_key},
         "sources": sources,
-        "contact": "info@gitential.com",
+        "contacts": gitential_settings.contacts,
         "sentry": {"dsn": "https://dc5be4ac529146d68d723b5f5be5ae2d@sentry.io/1815669"},
         "debug": "False",
     }

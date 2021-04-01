@@ -124,6 +124,11 @@ class MaintenanceSettings(BaseModel):
     message: str = ""
 
 
+class ContactSettings(BaseModel):
+    support_email: str = "support@gitential.com"
+    info_email: str = "gitential@gitential.com"
+
+
 class GitentialSettings(BaseModel):
     maintenance: MaintenanceSettings = MaintenanceSettings()
     secret: str
@@ -138,6 +143,7 @@ class GitentialSettings(BaseModel):
     kvstore: KeyValueStoreType = KeyValueStoreType.redis
     celery: CelerySettings = CelerySettings()
     frontend: FrontendSettings = FrontendSettings()
+    contacts: ContactSettings = ContactSettings()
 
     @validator("secret")
     def secret_validation(cls, v):
