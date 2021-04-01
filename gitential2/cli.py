@@ -1,3 +1,5 @@
+import json
+
 import click
 import uvicorn
 
@@ -17,6 +19,7 @@ from gitential2.core import (
 )
 from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
+from gitential2.legacy_import import import_legacy_database
 
 
 def protocol_from_clone_url(clone_url: str) -> GitProtocol:
@@ -133,6 +136,50 @@ def send_email_to_user_(ctx, template_name, user_id):
     user = get_user(g, user_id=user_id)
     send_email_to_user(g, user, template_name)
 
+
+@click.command(name="import-legacy-db")
+@click.option("--users", "-u", "users_file", type=str)
+@click.option("--secrets", "-s", "secrets_file", type=str)
+@click.option("--accounts", "-a", "accounts_file", type=str)
+@click.option("--collaborators", "-c", "collaborators_file", type=str)
+@click.pass_context
+def import_legacy_db_(ctx, users_file, secrets_file, accounts_file, collaborators_file):
+    def _load_list(filename):
+        try:
+            return json.loads(open(filename, "r").read())
+        except Exception as e:  # pylint: disable=broad-except
+            print(e)
+            return []
+
+    legacy_users = _load_list(users_file)
+    legacy_secrects = _load_list(secrets_file)
+    legacy_accounts = _load_list(accounts_file)
+    legacy_collaborators = _load_list(collaborators_file)
+
+    g = init_context_from_settings(ctx.obj["settings"])
+    import_legacy_database(g, legacy_users, legacy_secrects, legacy_accounts, legacy_collaborators)
+
+
+@click.command(name="import-legacy-workspace")
+@click.option("--workspace-id", "-w", "workspace_id", type=int)
+@click.option("--users", "-u", "users_file", type=str)
+@click.option("--secrets", "-s", "secrets_file", type=str)
+@click.option("--accounts", "-a", "accounts_file", type=str)
+@click.option("--collaborators", "-c", "collaborators_file", type=str)
+@click.pass_context
+def import_legacy_workspace_(
+    ctx, workspace_id, users_file, secrets_file, accounts_file, collaborators_file
+):  # pylint: disable=unused-argument
+    def _load_list(filename):  # pylint: disable=unused-variable
+        try:
+            return json.loads(open(filename, "r").read())
+        except Exception as e:  # pylint: disable=broad-except
+            print(e)
+            return []
+
+
+cli.add_command(import_legacy_db_)
+cli.add_command(import_legacy_workspace_)
 
 cli.add_command(extract_git_metrics)
 cli.add_command(public_api)
