@@ -109,7 +109,7 @@ def get_repository_state(repository: LocalGitRepository) -> GitRepositoryState:
                     commit, _ = g2_repo.resolve_refish(ref)
                     name = ref.replace(prefix, "")
                     ret[name] = str(commit.id)
-                except pygit2.InvalidSpecError as e:
+                except pygit2.InvalidSpecError:
                     logger.warning("pygit2 error, invalid ref", ref_id=ref)
         return ret
 
