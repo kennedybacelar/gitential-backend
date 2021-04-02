@@ -105,9 +105,12 @@ def get_repository_state(repository: LocalGitRepository) -> GitRepositoryState:
         skip = skip or []
         for ref in from_:
             if ref.startswith(prefix) and (ref not in skip):
-                commit, _ = g2_repo.resolve_refish(ref)
-                name = ref.replace(prefix, "")
-                ret[name] = str(commit.id)
+                try:
+                    commit, _ = g2_repo.resolve_refish(ref)
+                    name = ref.replace(prefix, "")
+                    ret[name] = str(commit.id)
+                except pygit2.InvalidSpecError:
+                    logger.warning("pygit2 error, invalid ref", ref_id=ref)
         return ret
 
     return GitRepositoryState(
