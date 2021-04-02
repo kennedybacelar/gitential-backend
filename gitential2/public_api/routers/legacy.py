@@ -1,4 +1,5 @@
 import asyncio
+from structlog import get_logger
 
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse
@@ -6,14 +7,12 @@ from gitential2.core import (
     GitentialContext,
     handle_authorize,
 )
+from gitential2.exceptions import AuthenticationException
 
 from ..dependencies import gitential_context, OAuth, current_user
 from .auth import _get_token, _get_user_info
 
-
-async def handle_failed_authorize(integration, token, user_info):
-
-    return {"integration": integration, "token": token, "user_info": user_info, "failed": True}
+logger = get_logger(__name__)
 
 
 router = APIRouter()
@@ -36,17 +35,21 @@ async def legacy_login(
 
     if remote is None or integration is None:
         raise HTTPException(404)
+    try:
 
-    token = await _get_token(request, remote, integration, code, id_token, oauth_verifier)
-    user_info = await _get_user_info(request, remote, token)
+        token = await _get_token(request, remote, code, id_token, oauth_verifier)
+        user_info = await _get_user_info(request, remote, token)
 
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, handle_authorize, g, integration.name, token, user_info, current_user)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, handle_authorize, g, integration.name, token, user_info, current_user)
 
-    request.session["current_user_id"] = result["user"].id
+        request.session["current_user_id"] = result["user"].id
 
-    redirect_uri = request.session.get("redirect_uri")
-    if redirect_uri:
-        return RedirectResponse(url=redirect_uri)
-    else:
-        return result
+        redirect_uri = request.session.get("redirect_uri")
+        if redirect_uri:
+            return RedirectResponse(url=redirect_uri)
+        else:
+            return result
+    except Exception as e:  # pylint: disable=broad-except
+        logger.exception("Error during authtentication")
+        raise AuthenticationException("Error during authentication") from e

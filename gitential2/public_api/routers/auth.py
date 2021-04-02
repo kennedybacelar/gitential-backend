@@ -13,26 +13,16 @@ from gitential2.core import (
 )
 from gitential2.datatypes.users import UserCreate
 from gitential2.datatypes.subscriptions import SubscriptionType
-
+from gitential2.exceptions import AuthenticationException
 from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token
 
 logger = get_logger(__name__)
 
 
-async def handle_failed_authorize(integration, token, user_info):
-    # if integration.name == "gitlab-internal":
-    #     repositories = integration.list_available_private_repositories(token=token, update_token=print)
-    #     print("!!!", repositories)
-    #     new_token = integration.refresh_token(token)
-    #     normalized_user_info = integration.normalize_userinfo(user_info)
-
-    return {"integration": integration, "token": token, "user_info": user_info, "failed": True}
-
-
 router = APIRouter()
 
 
-async def _get_token(request, remote, integration, code, id_token, oauth_verifier):
+async def _get_token(request, remote, code, id_token, oauth_verifier):
     if code:
         token = await remote.authorize_access_token(request)
         print("van code", token)
@@ -45,7 +35,7 @@ async def _get_token(request, remote, integration, code, id_token, oauth_verifie
         token = await remote.authorize_access_token(request)
     else:
         # handle failed
-        return await handle_failed_authorize(integration, None, None)
+        raise AuthenticationException("failed to get token")
     return token
 
 
@@ -83,19 +73,24 @@ async def auth(
     if remote is None or integration is None:
         raise HTTPException(404)
 
-    token = await _get_token(request, remote, integration, code, id_token, oauth_verifier)
-    user_info = await _get_user_info(request, remote, token)
+    try:
 
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, handle_authorize, g, integration.name, token, user_info, current_user)
+        token = await _get_token(request, remote, code, id_token, oauth_verifier)
+        user_info = await _get_user_info(request, remote, token)
 
-    request.session["current_user_id"] = result["user"].id
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, handle_authorize, g, integration.name, token, user_info, current_user)
 
-    redirect_uri = request.session.get("redirect_uri")
-    if redirect_uri:
-        return RedirectResponse(url=redirect_uri)
-    else:
-        return result
+        request.session["current_user_id"] = result["user"].id
+
+        redirect_uri = request.session.get("redirect_uri")
+        if redirect_uri:
+            return RedirectResponse(url=redirect_uri)
+        else:
+            return result
+    except Exception as e:  # pylint: disable=broad-except
+        logger.exception("Error during authentication")
+        raise AuthenticationException("error durin authentication") from e
 
 
 @router.get("/login/{backend}")

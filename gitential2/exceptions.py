@@ -2,6 +2,10 @@ class GitentialException(Exception):
     pass
 
 
+class AuthenticationException(GitentialException):
+    pass
+
+
 class NotImplementedException(GitentialException):
     pass
 

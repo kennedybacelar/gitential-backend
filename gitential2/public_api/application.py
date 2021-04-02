@@ -1,13 +1,17 @@
 from typing import Optional
+from uuid import uuid4
 from structlog import get_logger
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+
+
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from authlib.integrations.starlette_client import OAuth
 
 from gitential2.settings import GitentialSettings, load_settings
+from gitential2.exceptions import AuthenticationException
 
 from gitential2.core.context import init_context_from_settings
 from gitential2.core.tasks import configure_celery
@@ -98,10 +102,27 @@ def _configure_oauth_authentication(app: FastAPI):
     app.state.oauth = oauth
 
 
+def _error_page(request, error_code):
+    redirect_uri = (request.session.get("redirect_uri") or request.app.settings.web.base_url).rstrip("/")
+    return redirect_uri + f"/error?code={error_code}"
+
+
 def _configure_error_handling(app: FastAPI):
     @app.exception_handler(500)
     async def custom_http_exception_handler(request, exc):
-        logger.error("Internal server error", exc=exc)
+        error_code = uuid4()
+        logger.exception(
+            "Internal server error",
+            exc=exc,
+            error_code=error_code,
+            headers=request.headers,
+            method=request.method,
+            url=request.url,
+        )
+
+        if isinstance(exc, AuthenticationException):
+            return RedirectResponse(url=_error_page(request, error_code))
+
         response = JSONResponse(content={"error": "Something went wrong"}, status_code=500)
 
         # Since the CORSMiddleware is not executed when an unhandled server exception
