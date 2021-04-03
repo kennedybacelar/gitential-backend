@@ -1,136 +1,106 @@
-from typing import List, Optional, Any, Dict, Union
+from typing import List, Any, Dict
 from structlog import get_logger
 from pydantic import BaseModel
 import pandas as pd
+import ibis
 
-from gitential2.datatypes.stats import IbisTables, StatsRequest, MetricName, DimensionName, FilterName, TableName
-from gitential2.exceptions import InvalidStateException
+
+from gitential2.datatypes.stats import (
+    IbisTables,
+    Query,
+    MetricName,
+    DimensionName,
+    FilterName,
+    QueryType,
+    TableDef,
+    TableName,
+    DATE_DIMENSIONS,
+)
+
 from .context import GitentialContext
 
 
 logger = get_logger(__name__)
 
-METRICS_BY_TABLES: Dict[TableName, List[MetricName]] = {
-    TableName.pull_requests: [
-        MetricName.avg_pr_commit_count,
-        MetricName.avg_pr_code_volume,
-        MetricName.avg_review_time,
-        MetricName.avg_pickup_time,
-        MetricName.avg_development_time,
-        MetricName.pr_merge_ratio,
-        MetricName.sum_pr_closed,
-        MetricName.sum_pr_merged,
-        MetricName.sum_pr_open,
-        MetricName.sum_review_comment_count,
-        MetricName.avg_pr_review_comment_count,
-        MetricName.sum_pr_count,
-        MetricName.avg_pr_cycle_time,
-    ],
-    TableName.calculated_commits: [
-        MetricName.count_commits,
-        MetricName.sum_loc_effort,
-        MetricName.sum_hours,
-        MetricName.sum_ploc,
-        MetricName.efficiency,
-        MetricName.nunique_contributors,
-    ],
-    TableName.calculated_patches: [],
-}
-
-
-class StatQuery(BaseModel):
-    table: TableName
-    metrics: List[MetricName]
-    dimensions: Optional[List[DimensionName]] = None
-    filters: Dict[FilterName, Any]
-    sort_by: Optional[List[Union[str, int]]] = None
-    type: str = "aggregate"  # or "select"
-
 
 class QueryResult(BaseModel):
-    query: StatQuery
+    query: Query
     values: pd.DataFrame
 
     class Config:
         arbitrary_types_allowed = True
 
 
-def _get_table_for_metric(m: MetricName) -> TableName:
-    for table_name, metrics in METRICS_BY_TABLES.items():
-        if m in metrics:
-            return table_name
-    raise InvalidStateException(f"No table defined for metric: {m}")
-
-
-def _request_to_queries(request: StatsRequest) -> List[StatQuery]:
-    queries = {}
-    for metric in request.metrics:
-        table_name = _get_table_for_metric(metric)
-        if table_name not in queries:
-            queries[table_name] = StatQuery(
-                table=table_name,
-                metrics=[metric],
-                dimensions=request.dimensions,
-                filters=request.filters,
-                sort_by=request.sort_by,
-                type=request.type,
-            )
-        else:
-            queries[table_name].metrics.append(metric)
-    return list(queries.values())
-
-
-def _prepare_dimensions(dimensions, table_name: TableName, ibis_table):
+def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table):
     ret = []
     for dimension in dimensions:
-        res = _prepare_dimension(dimension, table_name, ibis_table)
+        res = _prepare_dimension(dimension, table_def, ibis_tables, ibis_table)
         if res is not None:
             ret.append(res)
     return ret
 
 
-def _prepare_dimension(dimension: DimensionName, table_name: TableName, ibis_tables: IbisTables):
-    ibis_table = ibis_tables.get_table(table_name)
-    if table_name == TableName.pull_requests:
-        date_field_name = "created_at"
-    else:
-        date_field_name = "date"
-    if dimension == DimensionName.day:
-        return (ibis_table[date_field_name].date().epoch_seconds() * 1000).name("date")
-    elif dimension == DimensionName.week:
-        return (ibis_table[date_field_name].date().truncate("W").epoch_seconds() * 1000).name("date")
-    elif dimension == DimensionName.month:
-        return (ibis_table[date_field_name].date().truncate("M").epoch_seconds() * 1000).name("date")
-    elif dimension == DimensionName.pr_state and table_name == TableName.pull_requests:
+def _prepare_dimension(
+    dimension: DimensionName, table_def: TableDef, ibis_tables: IbisTables, ibis_table
+):  # pylint: disable=too-complex
+    if dimension in DATE_DIMENSIONS:
+        if TableName.pull_requests in table_def:
+            date_field_name = "created_at"
+            # ibis_table = ibis_tables.pull_requests
+        else:
+            date_field_name = "date"
+            # ibis_table = ibis_tables.commits
+
+        if dimension == DimensionName.day:
+            return (ibis_table[date_field_name].date().epoch_seconds() * 1000).name("date")
+        elif dimension == DimensionName.week:
+            return (ibis_table[date_field_name].date().truncate("W").epoch_seconds() * 1000).name("date")
+        elif dimension == DimensionName.month:
+            return (ibis_table[date_field_name].date().truncate("M").epoch_seconds() * 1000).name("date")
+
+    elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
-    if table_name == TableName.calculated_patches:
-        if dimension == DimensionName.language:
-            return ibis_tables.patches.language.name("language")
+
+    elif dimension == DimensionName.language:
+        return ibis_table["lang"].name("language")
+    elif dimension == DimensionName.name:
+        return ibis_table["name"].name("name")
+    elif dimension == DimensionName.email:
+        return ibis_table["email"].name("email")
+    elif dimension == DimensionName.repo_id:
+        return ibis_table["repo_id"].name("repo_id")
     return None
 
 
-def _prepare_metrics(metrics, table_name: TableName, ibis_tables):
+def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table):
     ret = []
     for metric in metrics:
-        if table_name == TableName.calculated_commits:
-            res = _prepare_commits_metric(metric, ibis_tables)
-        elif table_name == TableName.pull_requests:
+        if TableName.commits in table_def:
+            res = _prepare_commits_metric(metric, ibis_tables, ibis_table)
+        elif TableName.pull_requests in table_def:
             res = _prepare_prs_metric(metric, ibis_tables)
         if res is not None:
             ret.append(res)
     return ret
 
 
-def _prepare_commits_metric(metric: MetricName, ibis_tables: IbisTables):
-    t = ibis_tables
+def _prepare_commits_metric(metric: MetricName, ibis_tables: IbisTables, ibis_table):
+    # t = ibis_tables
+    commits = ibis_table
+
+    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
+    print(ibis_tables)
+    print(commits.columns)
+    print(dir(commits))
+    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
 
     # commit metrics
-    count_commits = t.commits.count().name("count_commits")
-    loc_effort = t.commits.loc_effort.sum().name("sum_loc_effort")
-    sum_hours = t.commits.hours.sum().name("sum_hours")
-    sum_ploc = (t.commits.loc_i.sum() - t.commits.uploc.sum()).name("sum_ploc")
-    efficiency = (sum_ploc / t.commits.loc_i.sum() * 100).name("efficiency")
-    nunique_contributors = t.commits.aid.nunique().name("nunique_contributors")
+    count_commits = commits.count().name("count_commits")
+    loc_effort = commits.loc_effort_c.sum().name("sum_loc_effort")
+    sum_hours = commits.hours.sum().name("sum_hours")
+    sum_ploc = (commits.loc_i_c.sum() - commits.uploc_c.sum()).name("sum_ploc")
+    efficiency = (sum_ploc / commits.loc_i_c.sum() * 100).name("efficiency")
+    nunique_contributors = commits.aid.nunique().name("nunique_contributors")
 
     commit_metrics = {
         MetricName.count_commits: count_commits,
@@ -196,28 +166,28 @@ def _prepare_filters(  # pylint: disable=too-complex
     g: GitentialContext,
     workspace_id: int,
     filters: Dict[FilterName, Any],
-    table_name: TableName,
+    table_def: TableDef,
     ibis_tables: IbisTables,
+    ibis_table,
 ) -> list:
     filters_dict: dict = {}
-
-    t = ibis_tables
+    print(ibis_tables)
 
     _ibis_filters: dict = {
-        TableName.calculated_commits: {
-            FilterName.repo_ids: t.commits.repo_id.isin,
-            FilterName.emails: t.commits.aemail.isin,
-            "aids": t.commits.aid.isin,
-            "name": t.commits.aname.isin,
-            FilterName.day: t.commits.date.between,
-            FilterName.is_merge: t.commits.is_merge.__eq__,
-            "keyword": t.commits.message.lower().re_search,
-            "outlier": t.patches.outlier.__eq__,
-            "commit_msg": t.commits.message.lower().re_search,
+        TableName.commits: {
+            FilterName.repo_ids: lambda t: t.repo_id.isin,
+            FilterName.emails: lambda t: t.aemail.isin,
+            "aids": lambda t: t.aid.isin,
+            "name": lambda t: t.aname.isin,
+            FilterName.day: lambda t: t.date.between,
+            FilterName.is_merge: lambda t: t.is_merge.__eq__,
+            # "keyword": t.message.lower().re_search,
+            # "outlier": t.outlier.__eq__,
+            # "commit_msg": t.message.lower().re_search,
         },
         TableName.pull_requests: {
-            FilterName.repo_ids: t.pull_requests.repo_id.isin,
-            FilterName.day: t.pull_requests.created_at.between,
+            FilterName.repo_ids: lambda t: t.repo_id.isin,
+            FilterName.day: lambda t: t.created_at.between,
         },
     }
 
@@ -239,18 +209,19 @@ def _prepare_filters(  # pylint: disable=too-complex
 
     ret = []
     for filter_key, values in filters_dict.items():
-        if filter_key in _ibis_filters.get(table_name, {}):
-            filter_ = _ibis_filters[table_name][filter_key]
+        if filter_key in _ibis_filters.get(table_def[0], {}):
+            filter_ = _ibis_filters[table_def[0]][filter_key](ibis_table)
             if filter_.__name__ == "isin":
                 ret.append(filter_(values))
             elif isinstance(values, list):
                 ret.append(filter_(*values))
             else:
                 ret.append(filter_(values))
+    print("filters", ret)
     return ret
 
 
-def _prepare_sort_by(query: StatQuery):
+def _prepare_sort_by(query: Query):
     if (
         not set({DimensionName.day, DimensionName.week, DimensionName.month, DimensionName}).isdisjoint(
             set(query.dimensions or [])
@@ -263,45 +234,59 @@ def _prepare_sort_by(query: StatQuery):
         return query.sort_by
 
 
-def _exec_query(
-    g: GitentialContext,
-    workspace_id: int,
-    query: StatQuery,
-):
-    logger.debug("Executing query", query=query, workspace_id=workspace_id)
-    ibis_tables = g.backend.get_ibis_tables(workspace_id)
-    ibis_table = ibis_tables.get_table(query.table)
-    ibis_metrics = _prepare_metrics(query.metrics, query.table, ibis_tables)
-    ibis_dimensions = _prepare_dimensions(query.dimensions, query.table, ibis_tables) if query.dimensions else None
-    ibis_filters = _prepare_filters(g, workspace_id, query.filters, query.table, ibis_tables)
+class IbisQuery:
+    def __init__(self, g: GitentialContext, workspace_id: int, query: Query):
+        self.g = g
+        self.workspace_id = workspace_id
+        self.query = query
 
-    # print("IBIS_METRICS", ibis_metrics)
-    # print("*" * 120)
-    # print("IBIS_DIMENSIONS", ibis_dimensions)
-    # print("*" * 120)
-    # print("IBIS_FILTERS", ibis_filters)
-    # print("*" * 120)
+    def execute(self) -> QueryResult:
+        logger.debug("Executing query", query=self.query, workspace_id=self.workspace_id)
+        ibis_tables = self.g.backend.get_ibis_tables(self.workspace_id)
+        ibis_table = ibis_tables.get_table(self.query.table)
+        ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table, ibis_tables, ibis_table)
+        ibis_dimensions = (
+            _prepare_dimensions(self.query.dimensions, self.query.table, ibis_tables, ibis_table)
+            if self.query.dimensions
+            else None
+        )
+        # ibis_dimensions = None
+        ibis_filters = _prepare_filters(
+            self.g, self.workspace_id, self.query.filters, self.query.table, ibis_tables, ibis_table
+        )
 
-    if ibis_metrics:
-        if query.type == "aggregate":
-            # ibis_table.aggregate(ibis_metrics, by=query.dimensions).filter(query.filters)
-            ibis_query = ibis_table.filter(ibis_filters).aggregate(metrics=ibis_metrics, by=ibis_dimensions)
+        # print("IBIS_METRICS", ibis_metrics)
+        # print("*" * 120)
+        # print("IBIS_DIMENSIONS", ibis_dimensions)
+        # print("*" * 120)
+        # print("IBIS_FILTERS", ibis_filters)
+        # print("*" * 120)
+
+        if ibis_metrics:
+            if self.query.type == QueryType.aggregate:
+                # ibis_table.aggregate(ibis_metrics, by=query.dimensions).filter(query.filters)
+                ibis_query = ibis_table.aggregate(metrics=ibis_metrics, by=ibis_dimensions).filter(ibis_filters)
+            else:
+                ibis_query = ibis_table.filter(ibis_filters).select(ibis_metrics)
+
+            print("RUNNING SQL:")
+            print(ibis_query)
+
+            print(ibis.postgres.compile(ibis_query))
+            print("------ -------------------")
+            # result = pd.DataFrame()
+            result = ibis_tables.conn.execute(ibis_query)
         else:
-            ibis_query = ibis_table.filter(ibis_filters).select(ibis_metrics)
+            result = pd.DataFrame()
 
-        result = ibis_tables.conn.execute(ibis_query)
-    else:
-        result = pd.DataFrame()
+        print("RESULT", result)
 
-    print("RESULT", result)
+        sort_by = _prepare_sort_by(self.query)
+        if sort_by:
+            print("SORTING", result.columns, sort_by, [s for s in sort_by if s in result.columns])
+            result = result.sort_values(by=[s for s in sort_by if s in result.columns])
 
-    sort_by = _prepare_sort_by(query)
-    if sort_by:
-        print("SORTING", result.columns, sort_by, [s for s in sort_by if s in result.columns])
-        result = result.sort_values(by=[s for s in sort_by if s in result.columns])
-
-    return QueryResult(query=query, values=result)
-    # print(ibis_table)
+        return QueryResult(query=self.query, values=result)
 
 
 def _merge_query_results(results: List[QueryResult]):
@@ -311,8 +296,8 @@ def _merge_query_results(results: List[QueryResult]):
         return ret.to_dict(orient="list")
 
 
-def collect_stats_v2(g: GitentialContext, workspace_id: int, request: StatsRequest):
-    queries = _request_to_queries(request)
-    results = [_exec_query(g, workspace_id, query) for query in queries]
+def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
+    # queries = _request_to_queries(request)
+    results = [IbisQuery(g, workspace_id, q).execute() for q in [query]]
 
     return _merge_query_results(results)

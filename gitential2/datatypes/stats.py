@@ -1,9 +1,13 @@
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 
 class MetricName(str, Enum):
+    # Patch metrics
+    sum_loc_test = "sum_loc_test"
+    sum_loc_impl = "sum_loc_impl"
+
     # Commit metrics
     count_commits = "count_commits"
     sum_loc_effort = "sum_loc_effort"
@@ -27,6 +31,37 @@ class MetricName(str, Enum):
     avg_pr_cycle_time = "avg_pr_cycle_time"
 
 
+PR_METRICS = [
+    MetricName.avg_pr_commit_count,
+    MetricName.avg_pr_code_volume,
+    MetricName.avg_review_time,
+    MetricName.avg_pickup_time,
+    MetricName.avg_development_time,
+    MetricName.pr_merge_ratio,
+    MetricName.sum_pr_closed,
+    MetricName.sum_pr_merged,
+    MetricName.sum_pr_open,
+    MetricName.sum_review_comment_count,
+    MetricName.avg_pr_review_comment_count,
+    MetricName.sum_pr_count,
+    MetricName.avg_pr_cycle_time,
+]
+
+COMMIT_METRICS = [
+    MetricName.count_commits,
+    MetricName.sum_loc_effort,
+    MetricName.sum_hours,
+    MetricName.sum_ploc,
+    MetricName.efficiency,
+    MetricName.nunique_contributors,
+]
+
+PATCH_METRICS = [
+    MetricName.sum_loc_test,
+    MetricName.sum_loc_impl,
+]
+
+
 class FilterName(str, Enum):
     repo_ids = "repo_ids"
     emails = "emails"
@@ -43,21 +78,44 @@ class FilterName(str, Enum):
 
 
 class DimensionName(str, Enum):
+    repo_id = "repo_id"
+
+    # author dimensions
+    name = "name"
+    email = "email"
+
+    # date dimensions
     day = "day"
     week = "week"
     month = "month"
     hour = "hour"
-    repo_id = "repo_id"
-    name = "name"
-    istest = "istest"
-    email = "email"
+
+    # patch dimensions
     newpath = "newpath"
+    istest = "istest"
     language = "language"
+
+    # commit dimensions
     commit_id = "commit_id"
     keyword = "keyword"
 
     # pr dimensions
     pr_state = "pr_state"
+
+
+AUTHOR_DIMENSIONS = [DimensionName.name, DimensionName.email]
+
+PATCH_DIMENSIONS = [
+    DimensionName.newpath,
+    DimensionName.istest,
+    DimensionName.language,
+]
+DATE_DIMENSIONS = [
+    DimensionName.day,
+    DimensionName.week,
+    DimensionName.month,
+    DimensionName.hour,
+]
 
 
 class StatsRequest(BaseModel):
@@ -74,9 +132,14 @@ class QueryType(str, Enum):
 
 
 class TableName(str, Enum):
-    calculated_commits = "calculated_commits"
-    calculated_patches = "calculated_patches"
+    # simple tables
+    commits = "commits"
+    patches = "calculated_patches"
     pull_requests = "pull_requests"
+    authors = "authors"
+
+
+TableDef = List[TableName]
 
 
 class Query(BaseModel):
@@ -85,6 +148,34 @@ class Query(BaseModel):
     filters: Dict[FilterName, Any]
     sort_by: Optional[List[Union[str, int]]] = None
     type: QueryType
+
+    @validator("metrics")
+    def mixed_metrics(cls, v):
+        if all(m in PR_METRICS for m in v) or all(m in COMMIT_METRICS for m in v) or all(m in PATCH_METRICS for m in v):
+            return v
+        else:
+            raise ValueError("Cannot mix PR, PATCH and COMMIT metrics.")
+
+    @property
+    def table(self) -> TableDef:
+        if all(m in PR_METRICS for m in self.metrics):
+            return [TableName.pull_requests]
+        elif all(m in PATCH_METRICS for m in self.metrics):
+            ret = [TableName.patches]
+            if any(d in AUTHOR_DIMENSIONS for d in self.dimensions or []):
+                ret.append(TableName.authors)
+            return ret
+        elif all(m in COMMIT_METRICS for m in self.metrics):
+            ret = [TableName.commits]
+            if any(m in PATCH_METRICS for m in self.metrics) or any(
+                d in PATCH_DIMENSIONS for d in self.dimensions or []
+            ):
+                ret.append(TableName.patches)
+            if any(d in AUTHOR_DIMENSIONS for d in self.dimensions or []):
+                ret.append(TableName.authors)
+            return ret
+        else:
+            raise ValueError("Cannot mix PR, PATCH and COMMIT metrics.")
 
 
 class QueryResult(BaseModel):
@@ -105,13 +196,85 @@ class IbisTables:
     pull_requests: Any
     commits: Any
     patches: Any
+    authors: Any
 
-    def get_table(self, name: TableName) -> Any:
-        if name == TableName.pull_requests:
+    def get_table(self, table_def: TableDef) -> Any:
+        # commits_columns = columns = [col for col in self.commits.columns if col not in ["is_test"]]
+        commits_patches_overlapping_columns = [
+            "date",
+            "aid",
+            "is_merge",
+            "cid",
+            # "commit_id",
+            # "repo_id",
+        ]
+        patches_join_columns = [c for c in self.patches.columns if c not in commits_patches_overlapping_columns]
+
+        # expr = self.commits.inner_join(
+        #     self.patches,
+        #     [self.commits.repo_id == self.patches.repo_id, self.commits.commit_id == self.patches.commit_id],
+        #     # ["repo_id", "commit_id"],
+        # )
+
+        # e = expr[
+        #     self.commits,
+        #     self.patches["lang"],
+        #     self.patches["is_test"],
+        #     self.patches["anomaly"],
+        #     self.patches["outlier"],
+        # ]
+        # m = e.materialize()
+
+        # print("*********************************")
+        # print(m)
+
+        # # print("****", ibis.postgres.compile(expr))
+        # print("*********************************")
+        # # print(expr["date"].materialize())
+
+        if table_def == [TableName.pull_requests]:
             return self.pull_requests
-        elif name == TableName.calculated_commits:
+        elif table_def == [TableName.commits]:
             return self.commits
-        elif name == TableName.calculated_patches:
+        elif table_def == [TableName.patches]:
             return self.patches
+        elif table_def == [TableName.commits, TableName.patches]:
+
+            expr = self.commits.inner_join(
+                self.patches,
+                [self.commits.repo_id == self.patches.repo_id, self.commits.commit_id == self.patches.commit_id],
+                # ["repo_id", "commit_id"],
+            )
+            e = expr[
+                self.commits["repo_id"],
+                self.commits["commit_id"],
+                self.commits["loc_effort_c"],
+                self.commits["hours"],
+                self.commits["loc_i_c"],
+                self.commits["uploc_c"],
+                self.commits["aid"],
+                self.commits["aemail"],
+                self.commits["aname"],
+                self.commits["date"],
+                self.commits["is_merge"],
+                self.patches["lang"],
+                self.patches["is_test"],
+                self.patches["anomaly"],
+                self.patches["outlier"],
+            ]
+            m = e.materialize()
+            return m
+
+        elif table_def == [TableName.commits, TableName.authors]:
+            e = self.commits.inner_join(self.authors, [("aid", "id")])
+            m = e.materialize()
+            return m
+        elif table_def == [TableName.commits, TableName.patches, TableName.authors]:
+            e = self.commits.inner_join(
+                self.patches[patches_join_columns],
+                (self.patches.commit_id == self.commits.commit_id) & (self.patches.repo_id == self.commits.repo_id),
+            ).inner_join(self.authors, ["aid"])
+            m = e.materialize()
+            return m
         else:
-            raise ValueError(f"Unknown ibis table {name}")
+            raise ValueError(f"Unknown ibis table def {table_def}")

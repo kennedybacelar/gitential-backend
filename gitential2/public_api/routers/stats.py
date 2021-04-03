@@ -4,7 +4,7 @@ import datetime as dt
 
 from fastapi import APIRouter, Depends
 
-from gitential2.datatypes.stats import StatsRequest
+from gitential2.datatypes.stats import Query
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core import collect_stats_v2, GitentialContext, check_permission
 from ..dependencies import gitential_context, current_user
@@ -14,7 +14,7 @@ router = APIRouter(tags=["metrics"])
 
 @router.post("/workspaces/{workspace_id}/stats")
 def workspace_stats(
-    val: StatsRequest,
+    val: Query,
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
@@ -26,7 +26,7 @@ def workspace_stats(
 
 @router.post("/workspaces/{workspace_id}/multi-stats")
 def workspace_multi_stats(
-    stats_request: Dict[str, StatsRequest],
+    stats_request: Dict[str, Query],
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),

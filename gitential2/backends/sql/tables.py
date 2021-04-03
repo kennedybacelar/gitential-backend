@@ -198,24 +198,24 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("cid", sa.Integer()),
         # is_merge, is_test
         sa.Column("is_merge", sa.Boolean),
-        sa.Column("is_test", sa.Boolean),
+        # sa.Column("is_test", sa.Boolean),
         # number of patches
         sa.Column("nfiles", sa.Integer(), nullable=True),
         # calculated from patch, outlier
-        sa.Column("loc_i", sa.Integer(), nullable=True),
+        sa.Column("loc_i_c", sa.Integer(), nullable=True),
         sa.Column("loc_i_inlier", sa.Integer(), nullable=True),
         sa.Column("loc_i_outlier", sa.Integer(), nullable=True),
-        sa.Column("loc_d", sa.Integer(), nullable=True),
+        sa.Column("loc_d_c", sa.Integer(), nullable=True),
         sa.Column("loc_d_inlier", sa.Integer(), nullable=True),
         sa.Column("loc_d_outlier", sa.Integer(), nullable=True),
-        sa.Column("comp_i", sa.Integer(), nullable=True),
+        sa.Column("comp_i_c", sa.Integer(), nullable=True),
         sa.Column("comp_i_inlier", sa.Integer(), nullable=True),
         sa.Column("comp_i_outlier", sa.Integer(), nullable=True),
-        sa.Column("comp_d", sa.Integer(), nullable=True),
+        sa.Column("comp_d_c", sa.Integer(), nullable=True),
         sa.Column("comp_d_inlier", sa.Integer(), nullable=True),
         sa.Column("comp_d_outlier", sa.Integer(), nullable=True),
-        sa.Column("loc_effort", sa.Integer(), nullable=True),
-        sa.Column("uploc", sa.Integer(), default=0),  # unproductive line of code
+        sa.Column("loc_effort_c", sa.Integer(), nullable=True),
+        sa.Column("uploc_c", sa.Integer(), default=0),  # unproductive line of code
         # work hour estimation
         sa.Column("hours_measured", sa.Float(), nullable=True),
         sa.Column("hours_estimated", sa.Float(), nullable=True),
@@ -224,6 +224,8 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("velocity", sa.Float(), nullable=True),
         # primary key
         sa.PrimaryKeyConstraint("repo_id", "commit_id"),
+        sa.Index("idx_repo_id", "repo_id"),
+        sa.Index("idx_is_merge", "is_merge"),
     )
 
     # Extracted Patches
@@ -289,6 +291,8 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("outlier", sa.Integer()),
         sa.Column("anomaly", sa.Integer()),
         sa.PrimaryKeyConstraint("repo_id", "commit_id", "parent_commit_id", "newpath"),
+        sa.Index("idx_repo_id_commit_id", "repo_id", "commit_id"),
+        sa.Index("idx_lang", "lang"),
     )
 
     # Extracted Patch Rewrites

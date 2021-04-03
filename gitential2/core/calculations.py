@@ -168,17 +168,26 @@ def _calculate_commit_level(prepared_commits_df: pd.DataFrame, commits_patches_d
     calculated_commits = prepared_commits_df.join(
         commits_patches_df.groupby("commit_id")
         .agg({"loc_i": "sum", "loc_d": "sum", "comp_i": "sum", "comp_d": "sum", "uploc": "sum", "aid": "count"})
-        .rename(columns={"aid": "nfiles"})
+        .rename(
+            columns={
+                "aid": "nfiles",
+                "loc_i": "loc_i_c",
+                "loc_d": "loc_d_c",
+                "comp_i": "comp_i_c",
+                "comp_d": "comp_d_c",
+                "uploc": "uploc_c",
+            }
+        )
         # commits_patches_df.groupby("commit_id")[["loc_i", "loc_d", "comp_i", "comp_d", "uploc"]].sum()
     )
 
-    calculated_commits["loc_effort"] = 1.0 * calculated_commits["loc_i"] + 0.2 * calculated_commits["loc_d"]
+    calculated_commits["loc_effort_c"] = 1.0 * calculated_commits["loc_i_c"] + 0.2 * calculated_commits["loc_d_c"]
 
     calculated_commits = calculated_commits.join(outlier_df)
 
-    calculated_commits["velocity_measured"] = calculated_commits["loc_i"] / calculated_commits["hours_measured"]
+    calculated_commits["velocity_measured"] = calculated_commits["loc_i_c"] / calculated_commits["hours_measured"]
     calculated_commits = _add_estimate_hours(_median_measured_velocity(calculated_commits))
-    calculated_commits["velocity"] = calculated_commits["loc_i"] / calculated_commits["hours"]
+    calculated_commits["velocity"] = calculated_commits["loc_i_c"] / calculated_commits["hours"]
     return calculated_commits
 
 
@@ -232,7 +241,7 @@ def _median_measured_velocity(calculated_commits: pd.DataFrame) -> pd.DataFrame:
 
 def _add_estimate_hours(calculated_commits: pd.DataFrame) -> pd.DataFrame:
     df = calculated_commits.copy()
-    df["hours_estimated"] = (df["loc_i"] / df["median_velocity_measured"]).fillna(1 / 12)
+    df["hours_estimated"] = (df["loc_i_c"] / df["median_velocity_measured"]).fillna(1 / 12)
     df["hours_estimated"] = df["hours_estimated"].clip(lower=1 / 12)
     df["hours"] = df[["hours_measured", "hours_estimated"]].min(axis=1, skipna=True).clip(upper=4.0)
     return df
