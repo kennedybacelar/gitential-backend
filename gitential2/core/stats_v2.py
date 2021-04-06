@@ -76,7 +76,7 @@ def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table):
     ret = []
     for metric in metrics:
         if TableName.commits in table_def:
-            res = _prepare_commits_metric(metric, ibis_tables, ibis_table)
+            res = _prepare_commits_metric(metric, ibis_table)
         elif TableName.pull_requests in table_def:
             res = _prepare_prs_metric(metric, ibis_tables)
         if res is not None:
@@ -84,15 +84,15 @@ def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table):
     return ret
 
 
-def _prepare_commits_metric(metric: MetricName, ibis_tables: IbisTables, ibis_table):
+def _prepare_commits_metric(metric: MetricName, ibis_table):
     # t = ibis_tables
     commits = ibis_table
 
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
-    print(ibis_tables)
-    print(commits.columns)
-    print(dir(commits))
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
+    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
+    # print(ibis_tables)
+    # print(commits.columns)
+    # print(dir(commits))
+    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
 
     # commit metrics
     count_commits = commits.count().name("count_commits")
@@ -282,7 +282,7 @@ class IbisQuery:
         print("RESULT", result)
 
         sort_by = _prepare_sort_by(self.query)
-        if sort_by:
+        if sort_by and not result.empty:
             print("SORTING", result.columns, sort_by, [s for s in sort_by if s in result.columns])
             result = result.sort_values(by=[s for s in sort_by if s in result.columns])
 
