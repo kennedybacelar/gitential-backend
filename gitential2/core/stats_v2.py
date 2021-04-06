@@ -76,7 +76,7 @@ def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table):
     ret = []
     for metric in metrics:
         if TableName.commits in table_def:
-            res = _prepare_commits_metric(metric, ibis_tables, ibis_table)
+            res = _prepare_commits_metric(metric, ibis_table)
         elif TableName.pull_requests in table_def:
             res = _prepare_prs_metric(metric, ibis_tables)
         if res is not None:
@@ -84,7 +84,7 @@ def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table):
     return ret
 
 
-def _prepare_commits_metric(metric: MetricName, ibis_tables: IbisTables, ibis_table):
+def _prepare_commits_metric(metric: MetricName, ibis_table):
     # t = ibis_tables
     commits = ibis_table
 
