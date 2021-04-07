@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any, Union
+from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, validator
 
@@ -13,8 +14,13 @@ class MetricName(str, Enum):
     sum_loc_effort = "sum_loc_effort"
     sum_hours = "sum_hours"
     sum_ploc = "sum_ploc"
+    sum_uploc = "sum_uploc"
     efficiency = "efficiency"
+    utilization = "utilization"
     nunique_contributors = "nunique_contributors"
+    comp_sum = "comp_sum"
+    avg_velocity = "avg_velocity"
+
     # PR metrics
     avg_pr_commit_count = "avg_pr_commit_count"
     avg_pr_code_volume = "avg_pr_code_volume"
@@ -52,8 +58,12 @@ COMMIT_METRICS = [
     MetricName.sum_loc_effort,
     MetricName.sum_hours,
     MetricName.sum_ploc,
+    MetricName.sum_uploc,
     MetricName.efficiency,
+    MetricName.utilization,
     MetricName.nunique_contributors,
+    MetricName.comp_sum,
+    MetricName.avg_velocity,
 ]
 
 PATCH_METRICS = [
@@ -177,6 +187,25 @@ class Query(BaseModel):
         else:
             raise ValueError("Cannot mix PR, PATCH and COMMIT metrics.")
 
+    def utilization_working_hours(self):
+        dimensions = self.dimensions or []
+
+        if DimensionName.day in dimensions:
+            return 8
+        elif DimensionName.week in dimensions:
+            return 8 * 5
+        elif DimensionName.month in dimensions:
+            return 8 * 5 * 4
+
+        from_, to_ = self.filters.get("day", self.filters.get("month", [None, None]))
+        if from_ and to_:
+            to_date = datetime.strptime(to_, "%Y-%m-%d").date()
+            from_date = datetime.strptime(from_, "%Y-%m-%d").date()
+            elapsed = to_date - from_date
+            return 8 * elapsed.days * 5 / 7
+        else:
+            return 1
+
 
 class QueryResult(BaseModel):
     query: Query
@@ -274,6 +303,10 @@ class IbisTables:
                 self.patches[patches_join_columns],
                 (self.patches.commit_id == self.commits.commit_id) & (self.patches.repo_id == self.commits.repo_id),
             ).inner_join(self.authors, ["aid"])
+            m = e.materialize()
+            return m
+        elif table_def == [TableName.patches, TableName.authors]:
+            e = self.patches.inner_join(self.authors, [("aid", "id")])
             m = e.materialize()
             return m
         else:

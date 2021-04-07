@@ -2,6 +2,7 @@ from typing import List, Any, Dict
 from structlog import get_logger
 from pydantic import BaseModel
 import pandas as pd
+import numpy as np
 import ibis
 
 
@@ -72,19 +73,21 @@ def _prepare_dimension(
     return None
 
 
-def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table):
+def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table, q: Query):
     ret = []
     for metric in metrics:
         if TableName.commits in table_def:
-            res = _prepare_commits_metric(metric, ibis_table)
+            res = _prepare_commits_metric(metric, ibis_table, q)
         elif TableName.pull_requests in table_def:
             res = _prepare_prs_metric(metric, ibis_tables)
+        elif TableName.patches in table_def:
+            res = _prepare_patch_metric(metric, ibis_table)
         if res is not None:
             ret.append(res)
     return ret
 
 
-def _prepare_commits_metric(metric: MetricName, ibis_table):
+def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
     # t = ibis_tables
     commits = ibis_table
 
@@ -99,19 +102,38 @@ def _prepare_commits_metric(metric: MetricName, ibis_table):
     loc_effort = commits.loc_effort_c.sum().name("sum_loc_effort")
     sum_hours = commits.hours.sum().name("sum_hours")
     sum_ploc = (commits.loc_i_c.sum() - commits.uploc_c.sum()).name("sum_ploc")
+    sum_uploc = commits.uploc_c.sum().name("sum_uploc")
     efficiency = (sum_ploc / commits.loc_i_c.sum() * 100).name("efficiency")
     nunique_contributors = commits.aid.nunique().name("nunique_contributors")
+    comp_sum = (commits.comp_i_c.sum() - commits.comp_d_c.sum()).name("comp_sum")
+    utilization = (sum_hours / q.utilization_working_hours() * 100).name("utilization")
+    avg_velocity = commits.velocity.mean().name("avg_velocity")
 
     commit_metrics = {
         MetricName.count_commits: count_commits,
         MetricName.sum_loc_effort: loc_effort,
         MetricName.sum_hours: sum_hours,
         MetricName.sum_ploc: sum_ploc,
+        MetricName.sum_uploc: sum_uploc,
         MetricName.efficiency: efficiency,
         MetricName.nunique_contributors: nunique_contributors,
+        MetricName.comp_sum: comp_sum,
+        MetricName.utilization: utilization,
+        MetricName.avg_velocity: avg_velocity,
     }
-
+    if metric not in commit_metrics:
+        raise ValueError(f"missing metric {metric}")
     return commit_metrics.get(metric)
+
+
+def _prepare_patch_metric(metric: MetricName, ibis_table):
+    # pylint: disable=singleton-comparison, compare-to-zero
+    if metric == MetricName.sum_loc_test:
+        return ibis_table.loc_i.sum(where=ibis_table.is_test == True).name("sum_loc_test")
+    elif metric == MetricName.sum_loc_impl:
+        return ibis_table.loc_i.sum(where=ibis_table.is_test == False).name("sum_loc_impl")
+    else:
+        return None
 
 
 def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
@@ -159,6 +181,7 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
         MetricName.sum_review_comment_count: sum_review_comment_count,
         MetricName.avg_pr_review_comment_count: avg_pr_review_comment_count,
     }
+
     return pr_metrics.get(metric)
 
 
@@ -244,7 +267,7 @@ class IbisQuery:
         logger.debug("Executing query", query=self.query, workspace_id=self.workspace_id)
         ibis_tables = self.g.backend.get_ibis_tables(self.workspace_id)
         ibis_table = ibis_tables.get_table(self.query.table)
-        ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table, ibis_tables, ibis_table)
+        ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table, ibis_tables, ibis_table, self.query)
         ibis_dimensions = (
             _prepare_dimensions(self.query.dimensions, self.query.table, ibis_tables, ibis_table)
             if self.query.dimensions
@@ -291,7 +314,8 @@ class IbisQuery:
 
 def _merge_query_results(results: List[QueryResult]):
     for r in results:
-        ret = r.values.fillna(0)
+        ret = r.values.replace([np.inf, -np.inf], np.nan)
+        ret = ret.fillna(0)
         print("INDEX", ret.index)
         return ret.to_dict(orient="list")
 
