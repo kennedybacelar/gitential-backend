@@ -12,6 +12,7 @@ class MetricName(str, Enum):
     # Commit metrics
     count_commits = "count_commits"
     sum_loc_effort = "sum_loc_effort"
+    avg_loc_effort = "avg_loc_effort"
     sum_hours = "sum_hours"
     sum_ploc = "sum_ploc"
     sum_uploc = "sum_uploc"
@@ -20,6 +21,8 @@ class MetricName(str, Enum):
     nunique_contributors = "nunique_contributors"
     comp_sum = "comp_sum"
     avg_velocity = "avg_velocity"
+    loc_sum = "loc_sum"
+    avg_hours = "avg_hours"
 
     # PR metrics
     avg_pr_commit_count = "avg_pr_commit_count"
@@ -56,6 +59,7 @@ PR_METRICS = [
 COMMIT_METRICS = [
     MetricName.count_commits,
     MetricName.sum_loc_effort,
+    MetricName.avg_loc_effort,
     MetricName.sum_hours,
     MetricName.sum_ploc,
     MetricName.sum_uploc,
@@ -64,6 +68,8 @@ COMMIT_METRICS = [
     MetricName.nunique_contributors,
     MetricName.comp_sum,
     MetricName.avg_velocity,
+    MetricName.loc_sum,
+    MetricName.avg_hours,
 ]
 
 PATCH_METRICS = [
@@ -156,7 +162,7 @@ class Query(BaseModel):
     metrics: List[MetricName]
     dimensions: Optional[List[DimensionName]] = None
     filters: Dict[FilterName, Any]
-    sort_by: Optional[List[Union[str, int]]] = None
+    sort_by: Optional[List[Any]] = None
     type: QueryType
 
     @validator("metrics")
@@ -281,6 +287,9 @@ class IbisTables:
                 self.commits["hours"],
                 self.commits["loc_i_c"],
                 self.commits["uploc_c"],
+                self.commits["comp_i_c"],
+                self.commits["comp_d_c"],
+                self.commits["velocity"],
                 self.commits["aid"],
                 self.commits["aemail"],
                 self.commits["aname"],

@@ -99,8 +99,12 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
 
     # commit metrics
     count_commits = commits.count().name("count_commits")
+
     loc_effort = commits.loc_effort_c.sum().name("sum_loc_effort")
+    avg_loc_effort = commits.loc_effort_c.mean().name("avg_loc_effort")
+
     sum_hours = commits.hours.sum().name("sum_hours")
+    avg_hours = commits.hours.mean().name("avg_hours")
     sum_ploc = (commits.loc_i_c.sum() - commits.uploc_c.sum()).name("sum_ploc")
     sum_uploc = commits.uploc_c.sum().name("sum_uploc")
     efficiency = (sum_ploc / commits.loc_i_c.sum() * 100).name("efficiency")
@@ -108,11 +112,14 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
     comp_sum = (commits.comp_i_c.sum() - commits.comp_d_c.sum()).name("comp_sum")
     utilization = (sum_hours / q.utilization_working_hours() * 100).name("utilization")
     avg_velocity = commits.velocity.mean().name("avg_velocity")
+    loc_sum = commits.loc_i_c.sum().name("loc_sum")
 
     commit_metrics = {
         MetricName.count_commits: count_commits,
         MetricName.sum_loc_effort: loc_effort,
+        MetricName.avg_loc_effort: avg_loc_effort,
         MetricName.sum_hours: sum_hours,
+        MetricName.avg_hours: avg_hours,
         MetricName.sum_ploc: sum_ploc,
         MetricName.sum_uploc: sum_uploc,
         MetricName.efficiency: efficiency,
@@ -120,6 +127,7 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
         MetricName.comp_sum: comp_sum,
         MetricName.utilization: utilization,
         MetricName.avg_velocity: avg_velocity,
+        MetricName.loc_sum: loc_sum,
     }
     if metric not in commit_metrics:
         raise ValueError(f"missing metric {metric}")
@@ -306,8 +314,14 @@ class IbisQuery:
 
         sort_by = _prepare_sort_by(self.query)
         if sort_by and not result.empty:
-            print("SORTING", result.columns, sort_by, [s for s in sort_by if s in result.columns])
-            result = result.sort_values(by=[s for s in sort_by if s in result.columns])
+            print("SORTING", result.columns, sort_by)
+            if isinstance(sort_by[0], list):
+                by, ascending = map(list, zip(*sort_by))
+                result.sort_values(by=by, ascending=ascending, inplace=True)
+            else:
+                result.sort_values(by=sort_by, inplace=True)
+
+            # result = result.sort_values(by=sort_by)
 
         return QueryResult(query=self.query, values=result)
 
