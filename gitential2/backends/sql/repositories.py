@@ -72,6 +72,11 @@ from ..base import (
     TeamRepository,
 )
 
+fetchone_ = lambda result: result.fetchone()
+fetchall_ = lambda result: result.fetchall()
+inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
+rowcount_ = lambda result: result.rowcount
+
 
 class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  # pylint: disable=unsubscriptable-object
     def __init__(self, table: sa.Table, engine: sa.engine.Engine, in_db_cls: Callable[..., InDBType]):
@@ -84,20 +89,17 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
 
     def get(self, id_: IdType) -> Optional[InDBType]:
         query = self.table.select().where(self.identity(id_)).limit(1)
-        result = self._execute_query(query)
-        row = result.fetchone()
+        row = self._execute_query(query, callback_fn=fetchone_)
         return self.in_db_cls(**row) if row else None
 
     def get_or_error(self, id_: IdType) -> InDBType:
         query = self.table.select().where(self.identity(id_)).limit(1)
-        result = self._execute_query(query)
-        row = result.fetchone()
+        row = self._execute_query(query, callback_fn=fetchone_)
         return self.in_db_cls(**row)
 
     def create(self, obj: CreateType) -> InDBType:
         query = self.table.insert().values(**obj.dict())
-        result = self._execute_query(query)
-        id_ = result.inserted_primary_key[0]
+        id_ = self._execute_query(query, callback_fn=inserted_primary_key_)
         return self.get_or_error(id_)
 
     def create_or_update(self, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
@@ -137,18 +139,17 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
 
     def delete(self, id_: IdType) -> int:
         query = self.table.delete().where(self.identity(id_))
-        result = self._execute_query(query)
-        return result.rowcount
+        return self._execute_query(query, callback_fn=rowcount_)
 
     def all(self) -> Iterable[InDBType]:
         query = self.table.select()
-        result = self._execute_query(query)
-        return (self.in_db_cls(**row) for row in result.fetchall())
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return (self.in_db_cls(**row) for row in rows)
 
-    def _execute_query(self, query):
+    def _execute_query(self, query, callback_fn=lambda result: result):
         with self.engine.connect() as connection:
             result = connection.execute(query)
-            return result
+            return callback_fn(result)
 
     def truncate(self):
         query = f"TRUNCATE TABLE {self.table.name} CASCADE;"
@@ -171,20 +172,17 @@ class SQLWorkspaceScopedRepository(
 
     def get(self, workspace_id: int, id_: IdType) -> Optional[InDBType]:
         query = self.table.select().where(self.identity(id_)).limit(1)
-        result = self._execute_query(query, workspace_id=workspace_id)
-        row = result.fetchone()
+        row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
         return self.in_db_cls(**row) if row else None
 
     def get_or_error(self, workspace_id: int, id_: IdType) -> InDBType:
         query = self.table.select().where(self.identity(id_)).limit(1)
-        result = self._execute_query(query, workspace_id=workspace_id)
-        row = result.fetchone()
+        row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
         return self.in_db_cls(**row)
 
     def create(self, workspace_id: int, obj: CreateType) -> InDBType:
         query = self.table.insert().values(**obj.dict())
-        result = self._execute_query(query, workspace_id=workspace_id)
-        id_ = result.inserted_primary_key[0]
+        id_ = self._execute_query(query, workspace_id=workspace_id, callback_fn=inserted_primary_key_)
         return self.get_or_error(workspace_id, id_)
 
     def create_or_update(self, workspace_id: int, obj: Union[CreateType, UpdateType, InDBType]) -> InDBType:
@@ -224,26 +222,27 @@ class SQLWorkspaceScopedRepository(
 
     def delete(self, workspace_id: int, id_: IdType) -> int:
         query = self.table.delete().where(self.identity(id_))
-        result = self._execute_query(query, workspace_id=workspace_id)
-        return result.rowcount
+        return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
 
     def all(self, workspace_id: int) -> Iterable[InDBType]:
         query = self.table.select()
-        result = self._execute_query(query, workspace_id=workspace_id)
-        return (self.in_db_cls(**row) for row in result.fetchall())
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return (self.in_db_cls(**row) for row in rows)
 
     def truncate(self, workspace_id: int):
         schema_name = self._schema_name(workspace_id)
         query = f"TRUNCATE TABLE `{schema_name}`.`{self.table.name}`;"
         self._execute_query(query, workspace_id=workspace_id)
 
-    def _execute_query(self, query, workspace_id, values: Optional[List[dict]] = None):
+    def _execute_query(
+        self, query, workspace_id, values: Optional[List[dict]] = None, callback_fn=lambda result: result
+    ):
         with self._connection_with_schema(workspace_id) as connection:
             if values:
                 result = connection.execute(query, values)
             else:
                 result = connection.execute(query)
-            return result
+            return callback_fn(result)
 
     def _schema_name(self, workspace_id):
         return f"ws_{workspace_id}"
@@ -265,8 +264,8 @@ class SQLSubscriptionRepository(
 ):
     def get_subscriptions_for_user(self, user_id: int) -> List[SubscriptionInDB]:
         query = self.table.select().where(self.table.c.user_id == user_id)
-        result = self._execute_query(query)
-        return [SubscriptionInDB(**row) for row in result.fetchall()]
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [SubscriptionInDB(**row) for row in rows]
 
 
 class SQLUserInfoRepository(UserInfoRepository, SQLRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
@@ -274,19 +273,17 @@ class SQLUserInfoRepository(UserInfoRepository, SQLRepository[int, UserInfoCreat
         query = self.table.select().where(
             and_(self.table.c.sub == sub, self.table.c.integration_name == integration_name)
         )
-        result = self._execute_query(query)
-        row = result.fetchone()
+        row = self._execute_query(query, callback_fn=fetchone_)
         return UserInfoInDB(**row) if row else None
 
     def get_for_user(self, user_id: int) -> List[UserInfoInDB]:
         query = self.table.select().where(self.table.c.user_id == user_id)
-        result = self._execute_query(query)
-        return [UserInfoInDB(**row) for row in result.fetchall()]
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [UserInfoInDB(**row) for row in rows]
 
     def get_by_email(self, email: str) -> Optional[UserInfoInDB]:
         query = self.table.select().where(self.table.c.email == email)
-        result = self._execute_query(query)
-        row = result.fetchone()
+        row = self._execute_query(query, callback_fn=fetchone_)
         return UserInfoInDB(**row) if row else None
 
 
@@ -297,21 +294,20 @@ class SQLCredentialRepository(
         query = self.table.select().where(
             and_(self.table.c.owner_id == owner_id, self.table.c.integration_name == integration_name)
         )
-        result = self._execute_query(query)
-        row = result.fetchone()
+        row = self._execute_query(query, callback_fn=fetchone_)
         return CredentialInDB(**row) if row else None
 
     def get_for_user(self, owner_id) -> List[CredentialInDB]:
         query = self.table.select().where(self.table.c.owner_id == owner_id)
-        result = self._execute_query(query)
-        return [CredentialInDB(**row) for row in result.fetchall()]
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [CredentialInDB(**row) for row in rows]
 
 
 class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
     def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
         query = self.table.select().where(self.table.c.id.in_(workspace_ids))
-        result = self._execute_query(query)
-        return [WorkspaceInDB(**row) for row in result.fetchall()]
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [WorkspaceInDB(**row) for row in rows]
 
 
 class SQLWorkspaceMemberRepository(
@@ -320,20 +316,19 @@ class SQLWorkspaceMemberRepository(
 ):
     def get_for_user(self, user_id: int) -> List[WorkspaceMemberInDB]:
         query = self.table.select().where(self.table.c.user_id == user_id)
-        result = self._execute_query(query)
-        return [WorkspaceMemberInDB(**row) for row in result.fetchall()]
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [WorkspaceMemberInDB(**row) for row in rows]
 
     def get_for_workspace(self, workspace_id: int) -> List[WorkspaceMemberInDB]:
         query = self.table.select().where(self.table.c.workspace_id == workspace_id)
-        result = self._execute_query(query)
-        return [WorkspaceMemberInDB(**row) for row in result.fetchall()]
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [WorkspaceMemberInDB(**row) for row in rows]
 
     def get_for_workspace_and_user(self, workspace_id: int, user_id: int) -> Optional[WorkspaceMemberInDB]:
         query = self.table.select().where(
             and_(self.table.c.workspace_id == workspace_id, self.table.c.user_id == user_id)
         )
-        result = self._execute_query(query)
-        row = result.fetchone()
+        row = self._execute_query(query, callback_fn=fetchone_)
         return WorkspaceMemberInDB(**row) if row else None
 
 
@@ -348,8 +343,7 @@ class SQLRepositoryRepository(
 ):
     def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
         query = self.table.select().where(self.table.c.clone_url == clone_url)
-        result = self._execute_query(query, workspace_id=workspace_id)
-        row = result.fetchone()
+        row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
         return RepositoryInDB(**row) if row else None
 
 
@@ -359,8 +353,7 @@ class SQLProjectRepositoryRepository(
 ):
     def get_repo_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:
         query = select([self.table.c.repo_id]).where(self.table.c.project_id == project_id)
-        result = self._execute_query(query, workspace_id=workspace_id)
-        rows = result.fetchall()
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [r["repo_id"] for r in rows]
 
     def add_repo_ids_to_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
@@ -379,64 +372,6 @@ class SQLProjectRepositoryRepository(
 class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
     pass
 
-    # def get_or_create_author_for_alias(self, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
-    #     query = self.metadata.tables["author_aliases"].select(
-    #         self.metadata.tables["author_aliases"].c.email == alias.email
-    #     )
-    #     result = self._execute_query(query, workspace_id=workspace_id)
-    #     row = result.fetchone()
-    #     if row:
-    #         author_id = row.author_id
-    #         return self.get_or_error(workspace_id=workspace_id, id_=cast(int, author_id))
-    #     else:
-    #         return self.create(workspace_id=workspace_id, obj=AuthorCreate(active=True, aliases=[alias]))
-
-    # def get(self, workspace_id: int, id_: int) -> Optional[AuthorInDB]:
-    #     alias_table = self.metadata.tables["author_aliases"]
-    #     query = self.table.select().where(self.identity(id_)).limit(1)
-    #     result = self._execute_query(query, workspace_id=workspace_id)
-    #     row = result.fetchone()
-    #     if row["id"]:
-    #         alias_query = alias_table.select(alias_table.c.author_id == row["id"])
-    #         alias_result = self._execute_query(alias_query, workspace_id=workspace_id)
-    #         alias_rows = alias_result.fetchall()
-    #         aliases = [AuthorAlias(name=row["name"], email=row["email"]) for row in alias_rows]
-    #         return AuthorInDB(active=row["active"], id=row["id"], aliases=aliases)
-    #     else:
-    #         return None
-
-    # def get_or_error(self, workspace_id: int, id_: int) -> AuthorInDB:
-    #     author = self.get(workspace_id, id_)
-    #     if not author:
-    #         raise NotFoundException
-    #     else:
-    #         return author
-
-    # def create(self, workspace_id: int, obj: CreateType) -> AuthorInDB:
-    #     alias_table = self.metadata.tables["author_aliases"]
-
-    #     values = obj.dict()
-    #     aliases = values.pop("aliases")
-    #     print("values:", values, "aliases:", aliases, self.table)
-    #     query = self.table.insert().values(values)
-    #     result = self._execute_query(query, workspace_id=workspace_id)
-    #     id_ = result.inserted_primary_key[0]
-    #     # dealing with the aliases
-    #     alias_values = [{"name": alias["name"], "email": alias["email"], "author_id": id_} for alias in aliases]
-    #     alias_query = alias_table.insert(alias_values)
-    #     self._execute_query(alias_query, workspace_id=workspace_id)
-    #     # returning with get
-    #     return self.get_or_error(workspace_id, id_)
-
-    # def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
-    #     update_dict = obj.dict(exclude_unset=True)
-    #     if "updated_at" in self.table.columns.keys() and "updated_at" not in update_dict:
-    #         update_dict["updated_at"] = dt.datetime.utcnow()
-
-    #     query = self.table.update().where(self.identity(id_)).values(**update_dict)
-    #     self._execute_query(query, workspace_id=workspace_id)
-    #     return self.get_or_error(workspace_id, id_)
-
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
     pass
@@ -449,13 +384,12 @@ class SQLTeamMemberRepository(
         query = self.table.insert([{"team_id": team_id, "author_id": author_id} for author_id in author_ids]).returning(
             self.table.c.id, self.table.c.team_id, self.table.c.author_id
         )
-        result = self._execute_query(query, workspace_id=workspace_id)
-        return [TeamMemberInDB(**row) for row in result.fetchall()]
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [TeamMemberInDB(**row) for row in rows]
 
     def remove_members_from_team(self, workspace_id: int, team_id: int, author_ids: List[int]) -> int:
         query = self.table.delete().where(and_(self.table.c.team_id == team_id, self.table.c.author_id.in_(author_ids)))
-        result = self._execute_query(query, workspace_id=workspace_id)
-        return result.rowcount
+        return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
 
 
 class SQLRepoDFMixin:
@@ -528,5 +462,5 @@ class SQLPullRequestRepository(
             return d.replace(tzinfo=dt.timezone.utc)
 
         query = select([self.table.c.number, self.table.c.updated_at]).where(self.table.c.repo_id == repository_id)
-        result = self._execute_query(query, workspace_id=workspace_id)
-        return {row["number"]: _add_utc_timezone(row["updated_at"]) for row in result.fetchall()}
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return {row["number"]: _add_utc_timezone(row["updated_at"]) for row in rows}
