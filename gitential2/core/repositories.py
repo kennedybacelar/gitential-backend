@@ -13,8 +13,14 @@ logger = get_logger(__name__)
 
 
 def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryCreate]:
+    def _merge_repo_lists(first: List[RepositoryCreate], second: List[RepositoryCreate]):
+        existing_clone_urls = [r.clone_url for r in first]
+        new_repos = [r for r in second if r.clone_url not in existing_clone_urls]
+        return first + new_repos
 
-    results: List[RepositoryCreate] = []
+    all_already_used_repositories = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
+
+    results: List[RepositoryCreate] = all_already_used_repositories
     for credential in list_credentials_for_workspace(g, workspace_id):
 
         if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
@@ -25,13 +31,14 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
                 lambda ui: ui.integration_name == credential.integration_name,  # pylint: disable=cell-var-from-loop
                 g.backend.user_infos.get_for_user(credential.owner_id),
             )
-            results += integration.list_available_private_repositories(
+            collected_repositories = integration.list_available_private_repositories(
                 token=token,
                 update_token=get_update_token_callback(g, credential),
                 provider_user_id=userinfo.sub if userinfo else None,
             )
+            results = _merge_repo_lists(collected_repositories, results)
 
-    results += list_ssh_repositories(g, workspace_id)
+    results = _merge_repo_lists(list_ssh_repositories(g, workspace_id), results)
     return results
 
 
@@ -83,11 +90,17 @@ def search_public_repositories(g: GitentialContext, workspace_id: int, search: s
     for credential in list_credentials_for_workspace(g, workspace_id):
 
         if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
-
+            userinfo: UserInfoInDB = find_first(
+                lambda ui: ui.integration_name == credential.integration_name,  # pylint: disable=cell-var-from-loop
+                g.backend.user_infos.get_for_user(credential.owner_id),
+            )
             integration = g.integrations[credential.integration_name]
             token = credential.to_token_dict(fernet=g.fernet)
             results += integration.search_public_repositories(
-                query=search, token=token, update_token=get_update_token_callback(g, credential)
+                query=search,
+                token=token,
+                update_token=get_update_token_callback(g, credential),
+                provider_user_id=userinfo.sub if userinfo else None,
             )
 
     return sorted(results, key=lambda i: levenshtein(search, i.name))
