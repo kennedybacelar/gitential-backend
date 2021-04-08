@@ -17,6 +17,7 @@ from gitential2.datatypes.stats import (
     TableName,
     DATE_DIMENSIONS,
 )
+from gitential2.datatypes.pull_requests import PullRequestState
 
 from .context import GitentialContext
 
@@ -91,12 +92,6 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
     # t = ibis_tables
     commits = ibis_table
 
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
-    # print(ibis_tables)
-    # print(commits.columns)
-    # print(dir(commits))
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++3")
-
     # commit metrics
     count_commits = commits.count().name("count_commits")
 
@@ -149,6 +144,9 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     prs = ibis_tables.pull_requests
 
     sum_pr_count = prs.count().name("sum_pr_count")
+    sum_pr_open = prs.title.count(where=prs.state == PullRequestState.open).name("sum_pr_open")
+    sum_pr_closed = prs.title.count(where=prs.state == PullRequestState.closed).name("sum_pr_closed")
+    sum_pr_merged = prs.title.count(where=prs.state == PullRequestState.merged).name("sum_pr_merged")
     avg_pr_commit_count = prs["commits"].mean().name("avg_pr_commit_count")
     avg_pr_code_volume = prs["additions"].mean().name("avg_pr_code_volume")
     avg_pr_cycle_time = (
@@ -176,9 +174,6 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     avg_pr_review_comment_count = prs["commits"].mean().name("avg_pr_review_comment_count")
 
     pr_metrics = {
-        # "pr_merge_ratio": (prs.filter(prs["state"] == "merged").count()).name("pr_merge_ratio"),
-        # "sum_pr_closed": prs["state"].value_counts()["state"].name("sum_pr_closed"),
-        # "sum_pr_merged": prs[prs["state"] == "merged"].count().name("sum_pr_merged"),
         MetricName.sum_pr_count: sum_pr_count,
         MetricName.avg_pr_commit_count: avg_pr_commit_count,
         MetricName.avg_pr_code_volume: avg_pr_code_volume,
@@ -188,9 +183,40 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
         MetricName.avg_development_time: avg_development_time,
         MetricName.sum_review_comment_count: sum_review_comment_count,
         MetricName.avg_pr_review_comment_count: avg_pr_review_comment_count,
+        MetricName.sum_pr_open: sum_pr_open,
+        MetricName.sum_pr_closed: sum_pr_closed,
+        MetricName.sum_pr_merged: sum_pr_merged,
     }
 
     return pr_metrics.get(metric)
+
+
+def _prepare_filters_dict(
+    g: GitentialContext,
+    workspace_id: int,
+    filters: Dict[FilterName, Any],
+):
+    filters_dict: dict = {}
+
+    for filter_name, filter_params in filters.items():
+        if filter_name == FilterName.account_id:
+            continue
+        elif filter_name == FilterName.project_id:
+            if filter_params:
+                repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
+                    workspace_id=workspace_id, project_id=filter_params
+                )
+            else:
+                repo_ids = []
+            filters_dict[FilterName.repo_ids] = repo_ids
+        elif filter_name == FilterName.day:
+            filters_dict[FilterName.day] = filter_params
+        elif filter_name == FilterName.is_merge:
+            filters_dict[FilterName.is_merge] = filter_params
+        else:
+            logger.warning("Unhandled filter name", filter_name=filter_name, filter_params=filter_params)
+
+    return filters_dict
 
 
 def _prepare_filters(  # pylint: disable=too-complex
@@ -198,11 +224,9 @@ def _prepare_filters(  # pylint: disable=too-complex
     workspace_id: int,
     filters: Dict[FilterName, Any],
     table_def: TableDef,
-    ibis_tables: IbisTables,
     ibis_table,
 ) -> list:
-    filters_dict: dict = {}
-    print(ibis_tables)
+    filters_dict = _prepare_filters_dict(g, workspace_id, filters)
 
     _ibis_filters: dict = {
         TableName.commits: {
@@ -220,23 +244,13 @@ def _prepare_filters(  # pylint: disable=too-complex
             FilterName.repo_ids: lambda t: t.repo_id.isin,
             FilterName.day: lambda t: t.created_at.between,
         },
+        TableName.patches: {
+            FilterName.repo_ids: lambda t: t.repo_id.isin,
+            FilterName.emails: lambda t: t.aemail.isin,
+            FilterName.day: lambda t: t.date.between,
+            FilterName.is_merge: lambda t: t.is_merge.__eq__,
+        },
     }
-
-    for filter_name, filter_params in filters.items():
-        if filter_name == FilterName.account_id:
-            continue
-        elif filter_name == FilterName.project_id:
-            if filter_params:
-                repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
-                    workspace_id=workspace_id, project_id=filter_params
-                )
-            else:
-                repo_ids = []
-            filters_dict[FilterName.repo_ids] = repo_ids
-        elif filter_name == FilterName.day:
-            filters_dict[FilterName.day] = filter_params
-        elif filter_name == FilterName.is_merge:
-            filters_dict[FilterName.is_merge] = filter_params
 
     ret = []
     for filter_key, values in filters_dict.items():
@@ -248,7 +262,9 @@ def _prepare_filters(  # pylint: disable=too-complex
                 ret.append(filter_(*values))
             else:
                 ret.append(filter_(values))
-    print("filters", ret)
+        else:
+            logger.warning("FILTERKEY_MISSING", filter_key=filter_key, table_def=table_def)
+
     return ret
 
 
@@ -259,7 +275,7 @@ def _prepare_sort_by(query: Query):
         )
         and not query.sort_by
     ):
-        print("adding date sort_by", query.dimensions, query.sort_by)
+        logger.debug("adding date sort_by", dimensions=query.dimensions, sort_by=query.sort_by)
         return ["date"]
     else:
         return query.sort_by
@@ -282,16 +298,7 @@ class IbisQuery:
             else None
         )
         # ibis_dimensions = None
-        ibis_filters = _prepare_filters(
-            self.g, self.workspace_id, self.query.filters, self.query.table, ibis_tables, ibis_table
-        )
-
-        # print("IBIS_METRICS", ibis_metrics)
-        # print("*" * 120)
-        # print("IBIS_DIMENSIONS", ibis_dimensions)
-        # print("*" * 120)
-        # print("IBIS_FILTERS", ibis_filters)
-        # print("*" * 120)
+        ibis_filters = _prepare_filters(self.g, self.workspace_id, self.query.filters, self.query.table, ibis_table)
 
         if ibis_metrics:
             if self.query.type == QueryType.aggregate:
@@ -300,21 +307,18 @@ class IbisQuery:
             else:
                 ibis_query = ibis_table.filter(ibis_filters).select(ibis_metrics)
 
-            print("RUNNING SQL:")
-            print(ibis_query)
+            compiled = ibis.postgres.compile(ibis_query)
+            logger.debug("**IBIS QUERY**", compiled_query=str(compiled), query=ibis_query)
 
-            print(ibis.postgres.compile(ibis_query))
-            print("------ -------------------")
-            # result = pd.DataFrame()
             result = ibis_tables.conn.execute(ibis_query)
         else:
             result = pd.DataFrame()
 
-        print("RESULT", result)
+        logger.debug("RESULT", result=result)
 
         sort_by = _prepare_sort_by(self.query)
         if sort_by and not result.empty:
-            print("SORTING", result.columns, sort_by)
+            logger.debug("SORTING", columns=result.columns, sort_by=sort_by)
             if isinstance(sort_by[0], list):
                 by, ascending = map(list, zip(*sort_by))
                 result.sort_values(by=by, ascending=ascending, inplace=True)
@@ -330,7 +334,7 @@ def _merge_query_results(results: List[QueryResult]):
     for r in results:
         ret = r.values.replace([np.inf, -np.inf], np.nan)
         ret = ret.fillna(0)
-        print("INDEX", ret.index)
+        logger.debug("INDEX", index=ret.index)
         return ret.to_dict(orient="list")
 
 
