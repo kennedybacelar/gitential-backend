@@ -27,6 +27,7 @@ from .projects import (
     schedule_project_refresh,
 )
 from .repositories import (
+    get_repository,
     list_available_repositories,
     list_repositories,
     list_ssh_repositories,

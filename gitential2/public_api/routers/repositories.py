@@ -10,6 +10,7 @@ from gitential2.core import (
     check_permission,
     list_available_repositories,
     search_public_repositories,
+    get_repository,
     list_repositories,
     create_repositories,
     delete_repositories,
@@ -49,6 +50,18 @@ def workspace_repos(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return list_repositories(g, workspace_id)
+
+
+@router.get("/workspaces/{workspace_id}/repos/{repository_id}")
+def get_repo(
+    workspace_id: int,
+    repository_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return get_repository(g, workspace_id, repository_id)
 
 
 @router.post("/workspaces/{workspace_id}/repos")

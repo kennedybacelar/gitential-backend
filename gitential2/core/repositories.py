@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from structlog import get_logger
 from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, GitProtocol
@@ -10,6 +10,10 @@ from .credentials import list_credentials_for_workspace, get_update_token_callba
 
 
 logger = get_logger(__name__)
+
+
+def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -> Optional[RepositoryInDB]:
+    return g.backend.repositories.get(workspace_id, repository_id)
 
 
 def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryCreate]:
