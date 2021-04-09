@@ -297,6 +297,9 @@ def _indentation(s, tabsize=4):
 
 
 def _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id):  # pylint: disable=too-complex
+    def _is_merge():
+        return len(commit.parent_ids) > 1
+
     def _is_addition():
         return patch.delta.status_char() == "A"
 
@@ -309,7 +312,7 @@ def _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id):  #
     def _is_binary():
         return patch.delta.is_binary
 
-    if _is_addition() or _is_initial_commit() or _is_empty_patch() or _is_binary():
+    if _is_merge() or _is_addition() or _is_initial_commit() or _is_empty_patch() or _is_binary():
         return 0, 0
 
     deletion = "-"
