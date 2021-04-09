@@ -19,7 +19,7 @@ def get_accessible_workspaces(
     g: GitentialContext, current_user: UserInDB, include_members: bool = False, include_projects: bool = False
 ) -> List[WorkspacePublic]:
     workspace_memberships = g.backend.workspace_members.get_for_user(user_id=current_user.id)
-    return [
+    workspaces = [
         get_workspace(
             g=g,
             workspace_id=membership.workspace_id,
@@ -30,6 +30,40 @@ def get_accessible_workspaces(
         )
         for membership in workspace_memberships
     ]
+    if current_user.is_admin:
+        workspaces = _add_admin_as_collaborator_to_all_workspaces(
+            g, current_user, workspaces, include_members, include_projects
+        )
+    return workspaces
+
+
+def _add_admin_as_collaborator_to_all_workspaces(
+    g: GitentialContext,
+    current_user: UserInDB,
+    workspaces: List[WorkspacePublic],
+    include_members: bool = False,
+    include_projects: bool = False,
+) -> List[WorkspacePublic]:
+    allready_added_workspace_ids = [ws.id for ws in workspaces]
+    all_workspaces = g.backend.workspaces.all()
+    for ws in all_workspaces:
+        if ws.id not in allready_added_workspace_ids:
+            ws_data = ws.dict()
+            ws_data["name"] = ws_data["name"] + " [A]"
+            if include_members:
+                ws_data["members"] = get_members(g, workspace_id=ws.id)
+
+            if include_projects:
+                ws_data["projects"] = list_projects(g=g, workspace_id=ws.id)
+
+            ws_data["membership"] = WorkspaceMemberInDB(
+                id=0,
+                user_id=current_user.id,
+                workspace_id=ws.id,
+                role=WorkspaceRole.collaborator,
+            )
+            workspaces.append(WorkspacePublic(**ws_data))
+    return workspaces
 
 
 def get_workspace(
