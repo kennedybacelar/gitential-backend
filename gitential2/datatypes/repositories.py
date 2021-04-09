@@ -159,6 +159,7 @@ class RepositoryStatus(CoreModel):
 
     def finished_with_error(self, error_msg: str):
         self.status = RepositoryStatusStatus.finished
+        self.phase = RepositoryStatusPhase.done
         self.done = True
         self.error = [True, error_msg]
         self.finished_at = datetime.utcnow()
