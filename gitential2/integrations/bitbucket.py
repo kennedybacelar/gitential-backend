@@ -24,6 +24,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "client_kwargs": {"scope": "email repository pullrequest account"},
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
+            "token_endpoint": "https://bitbucket.org/site/oauth2/access_token"
         }
 
     def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
