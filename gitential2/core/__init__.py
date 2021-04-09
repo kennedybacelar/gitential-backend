@@ -7,6 +7,8 @@ from .users import (
     update_user,
     delete_user,
     get_profile_picture,
+    list_users,
+    set_as_admin,
 )
 from .workspaces import (
     get_accessible_workspaces,

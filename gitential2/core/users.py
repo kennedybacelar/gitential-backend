@@ -1,6 +1,6 @@
 from datetime import datetime
-
-from typing import Optional, Tuple, cast
+from typing import Iterable, Optional, Tuple, cast
+from structlog import get_logger
 from gitential2.datatypes.users import UserCreate, UserUpdate, UserInDB
 from gitential2.datatypes.subscriptions import SubscriptionInDB, SubscriptionCreate, SubscriptionType
 from gitential2.datatypes.userinfos import UserInfoCreate, UserInfoUpdate
@@ -10,6 +10,9 @@ from gitential2.datatypes.workspacemember import WorkspaceRole
 from .context import GitentialContext
 from .workspaces import create_workspace
 from .emails import send_email_to_user
+
+
+logger = get_logger(__name__)
 
 
 def handle_authorize(
@@ -188,3 +191,18 @@ def _create_primary_workspace_if_missing(g: GitentialContext, user: UserInDB):
 
 def _create_default_subscription(g: GitentialContext, user) -> SubscriptionInDB:
     return g.backend.subscriptions.create(SubscriptionCreate.default_for_new_user(user.id))
+
+
+def set_as_admin(g: GitentialContext, user_id: int, is_admin: bool = True) -> UserInDB:
+    user = g.backend.users.get_or_error(user_id)
+    user_update = UserUpdate(**user.dict())
+    user_update.is_admin = is_admin
+    if is_admin:
+        logger.info(f"Setting user {user.login}(id: {user.id}) to admin")
+    else:
+        logger.info(f"Setting user {user.login}(id: {user.id}) to non-admin")
+    return g.backend.users.update(user_id, user_update)
+
+
+def list_users(g: GitentialContext) -> Iterable[UserInDB]:
+    return g.backend.users.all()

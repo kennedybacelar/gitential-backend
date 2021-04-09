@@ -1,4 +1,5 @@
 import json
+from pprint import pprint
 
 import click
 import uvicorn
@@ -16,6 +17,8 @@ from gitential2.core import (
     refresh_repository_pull_requests,
     collect_stats,
     get_user,
+    list_users,
+    set_as_admin,
 )
 from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
@@ -137,6 +140,24 @@ def send_email_to_user_(ctx, template_name, user_id):
     send_email_to_user(g, user, template_name)
 
 
+@click.command(name="list-users")
+@click.pass_context
+def list_users_(ctx):
+    g = init_context_from_settings(ctx.obj["settings"])
+    users = list(list_users(g))
+    for u in users:
+        pprint(u.dict(skip_defaults=True, exclude_none=True))
+
+
+@click.command(name="set-as-admin")
+@click.option("--user-id", "-u", "user_id", type=int)
+@click.option("--unset", "-s", "unset", type=bool, is_flag=True)
+@click.pass_context
+def set_as_admin_(ctx, user_id, unset):
+    g = init_context_from_settings(ctx.obj["settings"])
+    set_as_admin(g, user_id, is_admin=not unset)
+
+
 @click.command(name="import-legacy-db")
 @click.option("--users", "-u", "users_file", type=str)
 @click.option("--secrets", "-s", "secrets_file", type=str)
@@ -191,3 +212,5 @@ cli.add_command(recalculate_repository_values_)
 cli.add_command(check_license)
 cli.add_command(wip)
 cli.add_command(send_email_to_user_)
+cli.add_command(list_users_)
+cli.add_command(set_as_admin_)
