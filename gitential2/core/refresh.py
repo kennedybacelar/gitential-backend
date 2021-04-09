@@ -29,12 +29,11 @@ def refresh_repository(g: GitentialContext, workspace_id: int, repository_id: in
 
         try:
             refresh_repository_commits(g, workspace_id, repository_id)
-            refresh_repository_pull_requests(g, workspace_id, repository_id)
-
+            recalculate_repository_values(g, workspace_id, repository_id)
             repo_status = get_repository_status(g, workspace_id, repository_id)
             persist_repository_status(g, workspace_id, repository_id, repo_status.persist_started())
-            recalculate_repository_values(g, workspace_id, repository_id)
 
+            refresh_repository_pull_requests(g, workspace_id, repository_id)
             persist_repository_status(g, workspace_id, repository_id, repo_status.persist_finished())
         except Exception:  # pylint: disable=broad-except
             logger.exception("Failed to refresh repository", workspace_id=workspace_id, repository_id=repository_id)
