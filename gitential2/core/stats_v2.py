@@ -102,7 +102,7 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
     avg_hours = commits.hours.mean().name("avg_hours")
     sum_ploc = (commits.loc_i_c.sum() - commits.uploc_c.sum()).name("sum_ploc")
     sum_uploc = commits.uploc_c.sum().name("sum_uploc")
-    efficiency = (sum_ploc / commits.loc_i_c.sum() * 100).name("efficiency")
+    efficiency = (sum_ploc / (commits.loc_i_c.sum()).nullif(0) * 100).name("efficiency")
     nunique_contributors = commits.aid.nunique().name("nunique_contributors")
     comp_sum = (commits.comp_i_c.sum() - commits.comp_d_c.sum()).name("comp_sum")
     utilization = (sum_hours / q.utilization_working_hours() * 100).name("utilization")
@@ -173,6 +173,8 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     sum_review_comment_count = prs["commits"].sum().name("sum_review_comment_count")
     avg_pr_review_comment_count = prs["commits"].mean().name("avg_pr_review_comment_count")
 
+    pr_merge_ratio = (sum_pr_merged / sum_pr_count.nullif(0) * 100).name("pr_merge_ratio")
+
     pr_metrics = {
         MetricName.sum_pr_count: sum_pr_count,
         MetricName.avg_pr_commit_count: avg_pr_commit_count,
@@ -186,6 +188,7 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
         MetricName.sum_pr_open: sum_pr_open,
         MetricName.sum_pr_closed: sum_pr_closed,
         MetricName.sum_pr_merged: sum_pr_merged,
+        MetricName.pr_merge_ratio: pr_merge_ratio,
     }
 
     return pr_metrics.get(metric)
