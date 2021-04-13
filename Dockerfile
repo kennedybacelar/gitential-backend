@@ -8,5 +8,6 @@ FROM nexus-docker.ops.gitential.com/python-poetry:v1-py3.8.6 as prod
 COPY --from=build --chown=app:app /project/.cache /project/.cache
 COPY --from=build --chown=app:app /project/.local /project/.local
 COPY --chown=app:app . /project/app
-
+ARG APP_VERSION
+RUN echo $APP_VERSION > /project/app/VERSION
 ENTRYPOINT ["poetry", "run", "python", "-m", "gitential2"]

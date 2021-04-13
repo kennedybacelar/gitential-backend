@@ -1,2 +1,4 @@
 .git
 licenses/
+*ipynb
+*.egg-info

@@ -5,7 +5,7 @@ workflow:
     - if: $CI_COMMIT_BRANCH == "master"
 
 variables:
-  IMAGE_NAME: "gitential2"
+  IMAGE_NAME: "backend"
   KANIKO_VERBOSITY: info
   DOCKERFILE: Dockerfile
   IMAGE_VERSION_POSTFIX: ""
@@ -35,10 +35,13 @@ stages:
     - >
       if [ "$CI_COMMIT_TAG" != "" ]; then
         export SKIP_PUSH=""
+        export DESTINATION_REGISTRY=$DESTINATION_REGISTRY_STABLE
       elif [ "$CI_COMMIT_BRANCH" == "master" ]; then
         export SKIP_PUSH=""
+        export DESTINATION_REGISTRY=$DESTINATION_REGISTRY_INTERNAL
       else
         export SKIP_PUSH="--no-push"
+        export DESTINATION_REGISTRY=$DESTINATION_REGISTRY_INTERNAL
       fi
   script:
     - echo "Building $DESTINATION_REGISTRY/$IMAGE_NAME:${IMAGE_VERSION}${IMAGE_VERSION_POSTFIX} ..."
@@ -52,6 +55,7 @@ stages:
       --build-arg NEXUS_PASSWORD=$NEXUS_PASSWORD \
       --build-arg NEXUS_HOSTNAME=$NEXUS_HOSTNAME \
       --build-arg PYTHON_VERSION=$PYTHON_VERSION \
+      --build-arg IMAGE_VERSION=$IMAGE_VERSION \
       $SKIP_PUSH
 
 poetry_invoke_lint:
