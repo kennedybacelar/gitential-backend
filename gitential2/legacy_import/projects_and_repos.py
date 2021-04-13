@@ -17,11 +17,25 @@ def import_project_and_repos(
     workspace_id: int,
     legacy_projects_repos: List[dict],
 ):
+    def search_old_id(items, id):
+        for item in items:
+            if item["old_id"] == id:
+                return item["new_obj"]
+        return False
+
+    added_repoids = []
+    added_projectids = []
     g.backend.initialize_workspace(workspace_id)
     for project_repo in legacy_projects_repos:
-        repo = _import_repo(g, project_repo["repo"], workspace_id)
-        project = _import_project(g, project_repo["project"], workspace_id)
-        _create_project_repo(g, repo.id, project.id, workspace_id)
+        existing_repo_obj = search_old_id(added_repoids, project_repo["repo"]["id"])
+        if not existing_repo_obj:
+            existing_repo_obj = _import_repo(g, project_repo["repo"], workspace_id)
+            added_repoids.append({"old_id": project_repo["repo"]["id"], "new_obj": existing_repo_obj})
+        existing_project_obj = search_old_id(added_projectids, project_repo["repo"]["id"])
+        if not existing_project_obj:
+            existing_project_obj = _import_repo(g, project_repo["repo"], workspace_id)
+            added_projectids.append({"old_id": project_repo["project"]["id"], "new_obj": existing_project_obj})
+        _create_project_repo(g, existing_repo_obj.id, existing_project_obj.id, workspace_id)
     pass
 
 
