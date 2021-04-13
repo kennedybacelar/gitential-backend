@@ -1,16 +1,112 @@
 from typing import List
 from gitential2.core import GitentialContext
+from structlog import get_logger
+
+from pydantic import ValidationError
+
+from gitential2.datatypes.repositories import RepositoryCreate
+from gitential2.datatypes.projects import ProjectCreate
+from gitential2.datatypes.workspaces import WorkspaceCreate
+from gitential2.datatypes.project_repositories import ProjectRepositoryCreate
+from gitential2.datatypes.userinfos import UserInfoCreate
+from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionType
+
+logger = get_logger(__name__)
 
 
 def import_project_and_repos(
     g: GitentialContext,
     workspace_id: int,
-    legacy_projects: List[dict],
-    legacy_repositories: List[dict],
     legacy_projects_repos: List[dict],
-):  # pylint: disable=unused-argument
-    # We assume the workspace is already exists in the workspaces table
-    # We're going to drop and recreate the ws_{workspace_id} shema
-
-    # _recreate_schema(g, workspace_id)
+):
+    g.backend.initialize_workspace(workspace_id)
+    for project_repo in legacy_projects_repos:
+        repo = _import_repo(g, project_repo['repo'], workspace_id)
+        project = _import_project(g, project_repo['project'], workspace_id)
+        _create_project_repo(g, repo.id, project.id, workspace_id)
     pass
+
+def get_repo_name(input: str):
+    proto = str.split('://')[0]
+    if proto == "ssh":
+        return str.split(':')[1].split('/')[1].split('.')[0]
+    elif proto == "https":
+        return str.split('/')[-2]
+    else:
+        print("notimplemented repo name gather")
+
+def get_namespace(input: str):
+    proto = str.split('://')[0]
+    if proto == "ssh":
+        return str.split(':')[1].split('/')[0]
+    elif proto == "https":
+        return str.split('/')[-2]
+    else:
+        print("notimplemented namespace gather")
+
+def get_integration_type(input: str):
+    if "bitb" in input:
+        return "bitbucket"
+    elif "github" in input:
+        return "github"
+    else:
+        print("notimplemented integration type")
+
+
+def _import_repo(g: GitentialContext, repo: dict, workspace_id: int):
+    try:
+        repo_create = RepositoryCreate(
+            clone_url=repo["clone_url"],
+            protocol=repo['clone_url'].split('://')[0],
+            name=get_repo_name(repo['clone_url']),
+            namespace=get_namespace(repo['clone_url']),
+            private=repo['private'],
+            integration_type=get_integration_type(repo['clone_url']),
+            created_at=repo["created_at"],
+            updated_at=repo["updated_at"],
+        )
+        logger.info("Importing repo", workspace_id=workspace_id)
+        return g.backend.repositories.create(workspace_id, repo_create)
+    except ValidationError as e:
+        print(f"Failed to import repo {repo['clone_url']}", e)
+
+
+def _import_project(g: GitentialContext, project: dict, workspace_id: int):
+    try:
+        project_create = ProjectCreate(
+            name=project["name"],
+            shareable=project["shareable"],
+            pattern=project['pattern'] if project['pattern'] else None,
+            created_at=project["created_at"],
+            updated_at=project["updated_at"],
+            extra=None,
+        )
+        logger.info("Importing project", workspace_id=workspace_id)
+        return g.backend.projects.create(workspace_id, project_create)
+    except ValidationError as e:
+        print(f"Failed to import project {project['name']}", e)
+
+def _create_project_repo(g: GitentialContext, project_id: int, repo_id: int, workspace_id: int):
+    try:
+        project_repo_create = ProjectRepositoryCreate(
+            project_id=project_id,
+            repo_id=repo_id,
+        )
+        logger.info("Importing project repo", workspace_id=workspace_id)
+        g.backend.project_repositories.create(workspace_id, project_repo_create)
+    except ValidationError as e:
+        print(f"Failed to import project repo {project_repo}", e)
+
+
+def _import_workspace(g: GitentialContext, workspace: dict):
+    try:
+        workspace_create = WorkspaceCreate(
+            name=workspace["name"],
+            created_by=workspace['owner']['id'],
+            created_at=workspace["created_at"],
+            updated_at=workspace["updated_at"],
+        )
+        logger.info("Importing workspace", workspace_id=workspace["id"])
+        return g.backend.workspaces.create(workspace_create)
+    except ValidationError as e:
+        print(f"Failed to import workspace {workspace['id']}", e)
