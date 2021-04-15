@@ -1,9 +1,9 @@
 import sys
 from typing import List
-from gitential2.core import GitentialContext
-from structlog import get_logger
-
 from pydantic import ValidationError
+
+from structlog import get_logger
+from gitential2.core import GitentialContext
 
 from gitential2.datatypes.repositories import RepositoryCreate
 from gitential2.datatypes.projects import ProjectCreate
@@ -18,9 +18,9 @@ def import_project_and_repos(
     workspace_id: int,
     legacy_projects_repos: List[dict],
 ):
-    def search_old_id(items, id):
+    def search_old_id(items, obj_id):
         for item in items:
-            if item["old_id"] == id:
+            if item["old_id"] == obj_id:
                 return item["new_obj"]
         return False
 
@@ -41,35 +41,35 @@ def import_project_and_repos(
         )
 
 
-def get_repo_name(input: str):
+def get_repo_name(input_str: str):
     proto = str.split("://")[0]
     if proto == "ssh":
         return str.split(":")[1].split("/")[1].split(".")[0]
     elif proto == "https":
         return str.split("/")[-2]
     else:
-        print("notimplemented repo name gather", input)
+        print("notimplemented repo name gather", input_str)
         sys.exit(1)
 
 
-def get_namespace(input: str):
+def get_namespace(input_str: str):
     proto = str.split("://")[0]
     if proto == "ssh":
         return str.split(":")[1].split("/")[0]
     elif proto == "https":
         return str.split("/")[-2]
     else:
-        print("notimplemented namespace gather", input)
+        print("notimplemented namespace gather", input_str)
         sys.exit(1)
 
 
-def get_integration_type(input: str):
-    if "bitb" in input:
+def get_integration_type(input_str: str):
+    if "bitb" in input_str:
         return "bitbucket"
-    elif "github" in input:
+    elif "github" in input_str:
         return "github"
     else:
-        print("notimplemented integration type", input)
+        print("notimplemented integration type", input_str)
         sys.exit(1)
 
 
@@ -116,7 +116,7 @@ def _create_project_repo(g: GitentialContext, project_id: int, repo_id: int, wor
         logger.info("Importing project repo", workspace_id=workspace_id)
         g.backend.project_repositories.create(workspace_id, project_repo_create)
     except ValidationError as e:
-        print(f"Failed to import project repo", e)
+        print(f'Failed to import project repo {e}')
 
 
 def _import_workspace(g: GitentialContext, workspace: dict):
