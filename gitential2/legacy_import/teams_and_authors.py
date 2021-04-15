@@ -23,6 +23,7 @@ def import_teams_and_authors(
             if item["old_id"] == id:
                 return item["new_obj"]
         return False
+
     added_teamids = []
     added_authorids = []
     g.backend.initialize_workspace(workspace_id)
@@ -35,8 +36,9 @@ def import_teams_and_authors(
         if not existing_author_obj:
             existing_author_obj = _import_author(g, team_author["author"], workspace_id)
             added_authorids.append({"old_id": team_author["author"]["id"], "new_obj": existing_author_obj})
-        _create_team_author(g, team_id=existing_team_obj.id, author_id=existing_author_obj.id,
-                             workspace_id=workspace_id)
+        _create_team_author(
+            g, team_id=existing_team_obj.id, author_id=existing_author_obj.id, workspace_id=workspace_id
+        )
 
 
 def _import_aliases(g: GitentialContext, email: str, workspace_id: int) -> list:
@@ -72,6 +74,7 @@ def _import_team(g: GitentialContext, team: dict, workspace_id: int):
         g.backend.teams.create(workspace_id, team_create)
     except ValidationError as e:
         print(f"Failed to import team {team['name']}", e)
+
 
 def _create_team_author(g: GitentialContext, team_id: int, author_id: int, workspace_id: int):
     try:

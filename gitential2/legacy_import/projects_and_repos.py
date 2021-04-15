@@ -36,7 +36,9 @@ def import_project_and_repos(
         if not existing_project_obj:
             existing_project_obj = _import_repo(g, project_repo["repo"], workspace_id)
             added_projectids.append({"old_id": project_repo["project"]["id"], "new_obj": existing_project_obj})
-        _create_project_repo(g, repo_id=existing_repo_obj.id, project_id=existing_project_obj.id, workspace_id=workspace_id)
+        _create_project_repo(
+            g, repo_id=existing_repo_obj.id, project_id=existing_project_obj.id, workspace_id=workspace_id
+        )
 
 
 def get_repo_name(input: str):

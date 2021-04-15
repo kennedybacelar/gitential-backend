@@ -204,8 +204,13 @@ def import_legacy_workspace_(
     team_authors = _load_list(teamauthors)
     aliases = _load_list(aliases)
     g = init_context_from_settings(ctx.obj["settings"])
-    import_legacy_workspace(g, workspace_id=1, legacy_teams_authors=team_authors, legacy_aliases=aliases, legacy_projects_repos=project_repos)
-
+    import_legacy_workspace(
+        g,
+        workspace_id=1,
+        legacy_teams_authors=team_authors,
+        legacy_aliases=aliases,
+        legacy_projects_repos=project_repos,
+    )
 
 
 cli.add_command(import_legacy_db_)
