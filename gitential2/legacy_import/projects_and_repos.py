@@ -1,3 +1,4 @@
+import sys
 from typing import List
 from gitential2.core import GitentialContext
 from structlog import get_logger
@@ -35,8 +36,7 @@ def import_project_and_repos(
         if not existing_project_obj:
             existing_project_obj = _import_repo(g, project_repo["repo"], workspace_id)
             added_projectids.append({"old_id": project_repo["project"]["id"], "new_obj": existing_project_obj})
-        _create_project_repo(g, existing_repo_obj.id, existing_project_obj.id, workspace_id)
-    pass
+        _create_project_repo(g, repo_id=existing_repo_obj.id, project_id=existing_project_obj.id, workspace_id=workspace_id)
 
 
 def get_repo_name(input: str):
@@ -46,7 +46,8 @@ def get_repo_name(input: str):
     elif proto == "https":
         return str.split("/")[-2]
     else:
-        print("notimplemented repo name gather")
+        print("notimplemented repo name gather", input)
+        sys.exit(1)
 
 
 def get_namespace(input: str):
@@ -56,7 +57,8 @@ def get_namespace(input: str):
     elif proto == "https":
         return str.split("/")[-2]
     else:
-        print("notimplemented namespace gather")
+        print("notimplemented namespace gather", input)
+        sys.exit(1)
 
 
 def get_integration_type(input: str):
@@ -65,7 +67,8 @@ def get_integration_type(input: str):
     elif "github" in input:
         return "github"
     else:
-        print("notimplemented integration type")
+        print("notimplemented integration type", input)
+        sys.exit(1)
 
 
 def _import_repo(g: GitentialContext, repo: dict, workspace_id: int):

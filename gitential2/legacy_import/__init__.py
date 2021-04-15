@@ -43,21 +43,14 @@ def import_legacy_database(
 def import_legacy_workspace(
     g: GitentialContext,
     workspace_id: int,
-    legacy_projects: List[dict],
-    legacy_repositories: List[dict],
     legacy_projects_repos: List[dict],
-    legacy_authors: List[dict],
     legacy_aliases: List[dict],
-    legacy_teams: List[dict],
     legacy_teams_authors: List[dict],
-):  # pylint: disable=unused-argument, too-many-arguments
-
+):
     _recreate_workspace_schema(g, workspace_id)
-    import_project_and_repos(g, workspace_id, legacy_projects, legacy_repositories, legacy_projects_repos)
-    import_teams_and_authors(g, workspace_id, legacy_authors, legacy_aliases, legacy_teams, legacy_teams_authors)
+    import_project_and_repos(g, workspace_id, legacy_projects_repos)
+    import_teams_and_authors(g, workspace_id, legacy_aliases, legacy_teams_authors)
 
 
 def _recreate_workspace_schema(g: GitentialContext, workspace_id: int):  # pylint: disable=unused-argument
-    # We assume the workspace is already exists in the workspaces table
-    # We're going to drop and recreate the ws_{workspace_id} shema
-    pass
+    g.backend.initialize_workspace(workspace_id)

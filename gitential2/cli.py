@@ -23,6 +23,7 @@ from gitential2.core import (
 from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
 from gitential2.legacy_import import import_legacy_database
+from gitential2.legacy_import import import_legacy_workspace
 
 
 def protocol_from_clone_url(clone_url: str) -> GitProtocol:
@@ -183,13 +184,13 @@ def import_legacy_db_(ctx, users_file, secrets_file, accounts_file, collaborator
 
 @click.command(name="import-legacy-workspace")
 @click.option("--workspace-id", "-w", "workspace_id", type=int)
-@click.option("--users", "-u", "users_file", type=str)
-@click.option("--secrets", "-s", "secrets_file", type=str)
-@click.option("--accounts", "-a", "accounts_file", type=str)
-@click.option("--collaborators", "-c", "collaborators_file", type=str)
+@click.option("--projectrepos", "-pr", "projectrepos", type=str)
+@click.option("--teamauthors", "-ta", "teamauthors", type=str)
+@click.option("--aliases", "-al", "aliases", type=str)
+@click.option("--account", "-a", "account", type=str)
 @click.pass_context
 def import_legacy_workspace_(
-    ctx, workspace_id, users_file, secrets_file, accounts_file, collaborators_file
+    ctx, workspace_id, projectrepos, teamauthors, account, aliases
 ):  # pylint: disable=unused-argument
     def _load_list(filename):  # pylint: disable=unused-variable
         try:
@@ -197,6 +198,14 @@ def import_legacy_workspace_(
         except Exception as e:  # pylint: disable=broad-except
             print(e)
             return []
+
+    project_repos = _load_list(projectrepos)
+    account = _load_list(account)
+    team_authors = _load_list(teamauthors)
+    aliases = _load_list(aliases)
+    g = init_context_from_settings(ctx.obj["settings"])
+    import_legacy_workspace(g, workspace_id=1, legacy_teams_authors=team_authors, legacy_aliases=aliases, legacy_projects_repos=project_repos)
+
 
 
 cli.add_command(import_legacy_db_)
