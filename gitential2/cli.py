@@ -1,4 +1,5 @@
 import json
+import os
 from pprint import pprint
 
 import click
@@ -194,7 +195,7 @@ def import_legacy_workspace_(
 ):  # pylint: disable=unused-argument
     def _load_list(filename):  # pylint: disable=unused-variable
         try:
-            return json.loads(open(filename, "r").read())
+            return json.loads(open(os.getcwd() + "/" + filename, "r").read())
         except Exception as e:  # pylint: disable=broad-except
             print(e)
             return []
