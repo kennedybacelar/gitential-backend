@@ -103,7 +103,7 @@ def _configure_oauth_authentication(app: FastAPI):
 
 
 def _error_page(request, error_code):
-    redirect_uri = (request.session.get("redirect_uri") or request.app.settings.web.base_url).rstrip("/")
+    redirect_uri = (request.session.get("redirect_uri") or request.app.state.settings.web.base_url).rstrip("/")
     return redirect_uri + f"/error?code={error_code}"
 
 
