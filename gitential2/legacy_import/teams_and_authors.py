@@ -1,9 +1,9 @@
 import json
 from typing import List
-from gitential2.core import GitentialContext
-from structlog import get_logger
-
 from pydantic import ValidationError
+
+from structlog import get_logger
+from gitential2.core import GitentialContext
 
 from gitential2.datatypes.authors import AuthorCreate
 from gitential2.datatypes.teams import TeamCreate
@@ -41,13 +41,13 @@ def import_teams_and_authors(
         )
 
 
-def _import_aliases(g: GitentialContext, email: str, workspace_id: int) -> list:
+def _import_aliases(g: GitentialContext, email: str, workspace_id: int) -> list:  # pylint: disable=unused-argument
     return []
 
 
 def _import_author(g: GitentialContext, author: dict, workspace_id: int, aliases):
     try:
-        processed_aliases = _import_aliases(g, aliases, workspace_id=workspace_id)
+        processed_aliases = _import_aliases(g, aliases, workspace_id=workspace_id)  # pylint: disable=unused-variable
         author_create = AuthorCreate(
             active=author["active"],
             name=author["name"],
@@ -85,4 +85,4 @@ def _create_team_author(g: GitentialContext, team_id: int, author_id: int, works
         logger.info("adding teammember", workspace_id=workspace_id)
         g.backend.team_members.create(workspace_id, team_author_create)
     except ValidationError as e:
-        print(f"Failed to create teammember", e)
+        print(f"Failed to create teammember {e}")

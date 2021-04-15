@@ -116,7 +116,7 @@ def _create_project_repo(g: GitentialContext, project_id: int, repo_id: int, wor
         logger.info("Importing project repo", workspace_id=workspace_id)
         g.backend.project_repositories.create(workspace_id, project_repo_create)
     except ValidationError as e:
-        print(f'Failed to import project repo {e}')
+        print(f"Failed to import project repo {e}")
 
 
 def _import_workspace(g: GitentialContext, workspace: dict):
