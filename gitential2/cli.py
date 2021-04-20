@@ -187,12 +187,16 @@ def import_legacy_db_(ctx, users_file, secrets_file, accounts_file, collaborator
 @click.option("--workspace-id", "-w", "workspace_id", type=int)
 @click.option("--projectrepos", "-pr", "projectrepos", type=str)
 @click.option("--teamauthors", "-ta", "teamauthors", type=str)
+@click.option("--accountrepos", "-ar", "accountrepos", type=str)
+@click.option("--authors", "-au", "authors", type=str)
+@click.option("--teams", "-t", "teams", type=str)
+@click.option("--projects", "-p", "projects", type=str)
 @click.option("--aliases", "-al", "aliases", type=str)
-@click.option("--account", "-a", "account", type=str)
+@click.option("--account", "-ac", "account", type=str)
 @click.pass_context
 def import_legacy_workspace_(
-    ctx, workspace_id, projectrepos, teamauthors, account, aliases
-):  # pylint: disable=unused-argument
+    ctx, workspace_id, projectrepos, teamauthors, account, aliases, teams, authors, accountrepos, projects
+):  # pylint: disable=unused-argument,too-many-arguments,unused-variable
     def _load_list(filename):  # pylint: disable=unused-variable
         try:
             return json.loads(open(os.getcwd() + "/" + filename, "r").read())
@@ -200,18 +204,26 @@ def import_legacy_workspace_(
             print(e)
             return []
 
-    project_repos = _load_list(projectrepos)
-    account = _load_list(account)
-    team_authors = _load_list(teamauthors)
-    aliases = _load_list(aliases)
+    teams_ = _load_list(teams)
+    authors_ = _load_list(authors)
+    project_repos_ = _load_list(projectrepos)
+    # account_ = _load_list(account)
+    account_repos_ = _load_list(accountrepos)
+    team_authors_ = _load_list(teamauthors)
+    aliases_ = _load_list(aliases)
+    projects_ = _load_list(projects)
     g = init_context_from_settings(ctx.obj["settings"])
     import_legacy_workspace(
         g,
         workspace_id=1,
-        legacy_teams_authors=team_authors,
-        legacy_aliases=aliases,
-        legacy_projects_repos=project_repos,
-    )
+        legacy_projects_repos=project_repos_,
+        legacy_aliases=aliases_,
+        legacy_teams=teams_,
+        legacy_teams_authors=team_authors_,
+        legacy_authors=authors_,
+        legacy_account_repos=account_repos_,
+        legacy_projects=projects_,
+    )  # pylint: disable=too-many-arguments
 
 
 cli.add_command(import_legacy_db_)

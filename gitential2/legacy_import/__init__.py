@@ -46,10 +46,14 @@ def import_legacy_workspace(
     legacy_projects_repos: List[dict],
     legacy_aliases: List[dict],
     legacy_teams_authors: List[dict],
-):
+    legacy_teams: List[dict],
+    legacy_authors: List[dict],
+    legacy_account_repos: List[dict],
+    legacy_projects: List[dict],
+):  # pylint: disable=too-many-arguments
     _recreate_workspace_schema(g, workspace_id)
-    import_project_and_repos(g, workspace_id, legacy_projects_repos)
-    import_teams_and_authors(g, workspace_id, legacy_aliases, legacy_teams_authors)
+    import_project_and_repos(g, workspace_id, legacy_projects_repos, legacy_account_repos, legacy_projects)
+    import_teams_and_authors(g, workspace_id, legacy_aliases, legacy_teams_authors, legacy_teams, legacy_authors)
 
 
 def _recreate_workspace_schema(g: GitentialContext, workspace_id: int):  # pylint: disable=unused-argument
