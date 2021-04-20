@@ -29,19 +29,22 @@ def import_teams_and_authors(
         _create_team_author(g, team_author, workspace_id=workspace_id)
 
 
-def _import_aliases(g: GitentialContext, email: str, workspace_id: int) -> list:  # pylint: disable=unused-argument
-    return [
-        AuthorAlias(
-            name="asd",
-            email="asdqwe",
-        )
-    ]
+def _import_aliases(aliases: List[dict], author_id: int, name: str) -> list:
+    tmp = []
+    for alias in aliases:
+        if alias["author"]["id"] == author_id:
+            tmp.append(
+                AuthorAlias(
+                    email=alias["email"],
+                    name=name,
+                )
+            )
+    return tmp
 
 
-def _import_author(g: GitentialContext, author: dict, workspace_id: int, aliases):
+def _import_author(g: GitentialContext, author: dict, workspace_id: int, aliases: List[dict]):
     try:
-        existing_author = g.backend.authors.all(workspace_id=workspace_id)  # pylint: disable=unused-variable
-        processed_aliases = _import_aliases(g, aliases, workspace_id=workspace_id)  # pylint: disable=unused-variable
+        processed_aliases = _import_aliases(aliases, author["id"], author["name"])
         author_create = AuthorInDB(
             id=author["id"],
             active=author["active"],
