@@ -391,6 +391,16 @@ class SQLTeamMemberRepository(
         query = self.table.delete().where(and_(self.table.c.team_id == team_id, self.table.c.author_id.in_(author_ids)))
         return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
 
+    def get_author_team_ids(self, workspace_id: int, author_id: int) -> List[int]:
+        query = select([self.table.c.team_id]).where(self.table.c.author_id == author_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["team_id"] for row in rows]
+
+    def get_team_member_author_ids(self, workspace_id: int, team_id: int) -> List[int]:
+        query = select([self.table.c.author_id]).where(self.table.c.team_id == team_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["author_id"] for row in rows]
+
 
 class SQLRepoDFMixin:
 

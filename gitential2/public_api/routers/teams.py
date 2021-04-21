@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from fastapi import APIRouter, Depends
 from gitential2.core import (
     GitentialContext,
@@ -12,7 +12,13 @@ from gitential2.core import (
     add_authors_to_team,
 )
 from gitential2.datatypes.permissions import Entity, Action
-from gitential2.datatypes.teams import TeamCreate, TeamPublic, TeamUpdate, TeamPublicWithAuthors
+from gitential2.datatypes.teams import (
+    TeamCreate,
+    TeamCreateWithAuthorIds,
+    TeamPublic,
+    TeamUpdate,
+    TeamPublicWithAuthors,
+)
 from ..dependencies import current_user, gitential_context
 
 router = APIRouter(tags=["teams"])
@@ -42,7 +48,7 @@ def get_team_(
 @router.post("/workspaces/{workspace_id}/teams", response_model=TeamPublic)
 def create_team_(
     workspace_id: int,
-    team_create: TeamCreate,
+    team_create: Union[TeamCreateWithAuthorIds, TeamCreate],
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):

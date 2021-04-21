@@ -25,6 +25,10 @@ def find_first(predicate, iterable):
     return None
 
 
+def remove_none(iterable):
+    return [e for e in iterable if e is not None]
+
+
 def rchop(s, sub):
     return s[: -len(sub)] if s.endswith(sub) else s
 

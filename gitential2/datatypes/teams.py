@@ -24,6 +24,10 @@ class TeamCreate(TeamBase):
     pass
 
 
+class TeamCreateWithAuthorIds(TeamCreate):
+    authors: List[int]
+
+
 class TeamUpdate(TeamBase):
     pass
 

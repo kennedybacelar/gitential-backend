@@ -80,6 +80,7 @@ PATCH_METRICS = [
 
 class FilterName(str, Enum):
     repo_ids = "repo_ids"
+    author_ids = "author_ids"
     emails = "emails"
     name = "name"
     day = "day"

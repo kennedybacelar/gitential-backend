@@ -212,6 +212,14 @@ def _prepare_filters_dict(
             else:
                 repo_ids = []
             filters_dict[FilterName.repo_ids] = repo_ids
+        elif filter_name == FilterName.team_id:
+            if filter_params:
+                author_ids = g.backend.team_members.get_team_member_author_ids(
+                    workspace_id=workspace_id, team_id=filter_params
+                )
+            else:
+                author_ids = []
+            filters_dict[FilterName.author_ids] = author_ids
         elif filter_name == FilterName.day:
             filters_dict[FilterName.day] = filter_params
         elif filter_name == FilterName.is_merge:
@@ -234,6 +242,7 @@ def _prepare_filters(  # pylint: disable=too-complex
     _ibis_filters: dict = {
         TableName.commits: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
+            FilterName.author_ids: lambda t: t.aid.isin,
             FilterName.emails: lambda t: t.aemail.isin,
             "aids": lambda t: t.aid.isin,
             "name": lambda t: t.aname.isin,
@@ -249,6 +258,7 @@ def _prepare_filters(  # pylint: disable=too-complex
         },
         TableName.patches: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
+            FilterName.author_ids: lambda t: t.aid.isin,
             FilterName.emails: lambda t: t.aemail.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,

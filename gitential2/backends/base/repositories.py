@@ -292,3 +292,11 @@ class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, 
     @abstractmethod
     def remove_members_from_team(self, workspace_id: int, team_id: int, author_ids: List[int]) -> int:
         pass
+
+    @abstractmethod
+    def get_team_member_author_ids(self, workspace_id: int, team_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def get_author_team_ids(self, workspace_id: int, author_id: int) -> List[int]:
+        pass
