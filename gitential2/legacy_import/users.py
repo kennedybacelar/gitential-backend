@@ -20,7 +20,7 @@ def import_legacy_users(g: GitentialContext, legacy_users: List[dict]):
 
     for legacy_user in legacy_users:
         _import_legacy_user(g, legacy_user)
-    # fix_seq_counter()
+    g.backend.users.reset_primary_key_id()
 
 
 def _import_legacy_user(g: GitentialContext, legacy_user: dict):
