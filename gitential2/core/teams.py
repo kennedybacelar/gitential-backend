@@ -38,6 +38,7 @@ def create_team(
 
 def delete_team(g: GitentialContext, workspace_id: int, team_id: int) -> int:
     logger.info("deleting team", workspace_id=workspace_id, team_id=team_id)
+    g.backend.team_members.remove_all_members_from_team(workspace_id, team_id)
     return g.backend.teams.delete(workspace_id, team_id)
 
 
