@@ -93,6 +93,10 @@ class BaseRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):
     def truncate(self):
         pass
 
+    @abstractmethod
+    def reset_primary_key_id(self):
+        pass
+
 
 class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):
     @abstractmethod
@@ -132,6 +136,10 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
 
     @abstractmethod
     def truncate(self, workspace_id: int):
+        pass
+
+    @abstractmethod
+    def reset_primary_key_id(self, workspace_id: int):
         pass
 
 

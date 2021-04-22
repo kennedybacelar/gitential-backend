@@ -27,6 +27,9 @@ def import_project_and_repos(
         _import_project(g, project, workspace_id)
     for project_repo in legacy_projects_repos:
         _create_project_repo(g, project_repo, workspace_id=workspace_id)
+    g.backend.projects.reset_primary_key_id(workspace_id=workspace_id)
+    g.backend.repositories.reset_primary_key_id(workspace_id=workspace_id)
+    g.backend.project_repositories.reset_primary_key_id(workspace_id=workspace_id)
 
 
 def get_repo_name(input_str: str) -> str:

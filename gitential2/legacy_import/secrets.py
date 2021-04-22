@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 def import_legacy_secrets(g: GitentialContext, legacy_secrets: List[dict]):
     for legacy_secret in legacy_secrets:
         _import_legacy_secret(g, legacy_secret)
-    # fix_seq_counter()
+    g.backend.credentials.reset_primary_key_id()
 
 
 def _import_legacy_secret(g: GitentialContext, legacy_secret: dict):

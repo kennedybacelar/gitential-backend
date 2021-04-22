@@ -115,6 +115,9 @@ class InMemRepository(
     def truncate(self):
         self._state = {}
 
+    def reset_primary_key_id(self):
+        pass
+
     def _new_id(self):
         with self._counter_lock:
             ret = self._counter
@@ -169,6 +172,9 @@ class InMemWorkspaceScopedRepository(
 
     def truncate(self, workspace_id: int):
         self._state[workspace_id] = {}
+
+    def reset_primary_key_id(self, workspace_id: int):
+        pass
 
     def delete(self, workspace_id: int, id_: IdType) -> int:
         try:
