@@ -5,7 +5,7 @@ extraction:
   show_progress: true
   executor: process_pool
 web:
-  legacy_login: true
+  legacy_login: false
   session_https_only: false
   session_max_age: 86400
 
