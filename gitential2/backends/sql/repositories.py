@@ -243,7 +243,7 @@ class SQLWorkspaceScopedRepository(
         # query = f"ALTER SEQUENCE {schema_name}.{self.table.name}_id_seq RESTART WITH (SELECT max(id)+1 FROM {schema_name}.{self.table.name});"
         query = (
             f"SELECT pg_catalog.setval(pg_get_serial_sequence('{schema_name}.{self.table.name}', 'id'), "
-            f"(SELECT coalesce(max(id), 0) FROM {schema_name}.{self.table.name}));"
+            f"(SELECT coalesce(max(id), 1) FROM {schema_name}.{self.table.name}));"
         )
         self._execute_query(query, workspace_id)
 

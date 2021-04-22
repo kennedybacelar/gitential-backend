@@ -21,12 +21,17 @@ def import_project_and_repos(
     legacy_projects: List[dict],
 ):
     g.backend.initialize_workspace(workspace_id)
-    for account_repo in legacy_account_repos:
-        _import_repo(g, account_repo["repo"], workspace_id)
     for project in legacy_projects:
         _import_project(g, project, workspace_id)
     for project_repo in legacy_projects_repos:
+        if not g.backend.projects.get(workspace_id, id_=project_repo["project"]["id"]):
+            _import_project(g, project_repo["project"], workspace_id)
+        if not g.backend.repositories.get(workspace_id, id_=project_repo["repo"]["id"]):
+            _import_repo(g, project_repo["repo"], workspace_id)
         _create_project_repo(g, project_repo, workspace_id=workspace_id)
+    for account_repo in legacy_account_repos:
+        if not g.backend.repositories.get(workspace_id, id_=account_repo["repo"]["id"]):
+            _import_repo(g, account_repo["repo"], workspace_id)
     g.backend.projects.reset_primary_key_id(workspace_id=workspace_id)
     g.backend.repositories.reset_primary_key_id(workspace_id=workspace_id)
     g.backend.project_repositories.reset_primary_key_id(workspace_id=workspace_id)
@@ -36,8 +41,12 @@ def get_repo_name(input_str: str) -> str:
     proto = input_str.split("://")[0]
     if proto == "ssh":
         return input_str.split(":")[1].split("/")[1].split(".")[0]
+    elif proto == "https" and "visualst" in input_str:
+        return input_str.split("/")[-1]
     elif proto == "https":
         return input_str.split("/")[-2]
+    elif ".git" in input_str:
+        return "ssh"
     else:
         print("notimplemented repo name gather", input_str)
         sys.exit(1)
@@ -47,23 +56,40 @@ def get_namespace(input_str: str) -> str:
     proto = input_str.split("://")[0]
     if proto == "ssh":
         return input_str.split(":")[1].split("/")[0]
+    elif proto == "https" and "visualst" in input_str:
+        return input_str.split("/")[-3]
     elif proto == "https":
         return input_str.split("/")[-2]
+    elif (
+        "git@github.com" in input_str or "git@gitlab.com" in input_str or ("git@" in input_str and ".git" in input_str)
+    ):
+        return input_str.split(":")[1].split("/")[0]
     else:
         print("notimplemented namespace gather", input_str)
         sys.exit(1)
 
 
-def get_integration_type(input_str: str) -> str:
+def get_integration_type(input_str: str) -> Optional[str]:
     if "bitb" in input_str:
         return "bitbucket"
     elif "github" in input_str:
         return "github"
     elif "gitlab" in input_str:
         return "gitlab"
+    elif "visuals" in input_str:
+        return "vsts"
     else:
         print("notimplemented integration type", input_str)
-        sys.exit(1)
+        # sys.exit(1)
+        return None
+
+
+def get_clone_protocol(input_str: str) -> str:
+    if "://" in input_str:
+        tmp = input_str.split("://")[0]
+    else:
+        tmp = "ssh"
+    return tmp
 
 
 def _import_repo(g: GitentialContext, repo: dict, workspace_id: int):
@@ -71,10 +97,10 @@ def _import_repo(g: GitentialContext, repo: dict, workspace_id: int):
         repo_create = RepositoryInDB(
             id=repo["id"],
             clone_url=repo["clone_url"],
-            protocol=repo["clone_url"].split("://")[0],
+            protocol=get_clone_protocol(repo["clone_url"]),
             name=get_repo_name(repo["clone_url"]),
             namespace=get_namespace(repo["clone_url"]),
-            private=repo["private"],
+            private=repo["private"] if repo["private"] is not None else False,
             integration_type=get_integration_type(repo["clone_url"]),
             created_at=repo["created_at"],
             updated_at=repo["updated_at"],
@@ -83,6 +109,7 @@ def _import_repo(g: GitentialContext, repo: dict, workspace_id: int):
         g.backend.repositories.insert(workspace_id, repo["id"], repo_create)
     except ValidationError as e:
         print(f"Failed to import repo {repo['clone_url']}", e)
+        sys.exit(1)
 
 
 def _import_project(g: GitentialContext, project: dict, workspace_id: int):

@@ -167,13 +167,6 @@ def set_as_admin_(ctx, user_id, unset):
 @click.option("--collaborators", "-c", "collaborators_file", type=str)
 @click.pass_context
 def import_legacy_db_(ctx, users_file, secrets_file, accounts_file, collaborators_file):
-    def _load_list(filename):
-        try:
-            return json.loads(open(filename, "r").read())
-        except Exception as e:  # pylint: disable=broad-except
-            print(e)
-            return []
-
     legacy_users = _load_list(users_file)
     legacy_secrects = _load_list(secrets_file)
     legacy_accounts = _load_list(accounts_file)
@@ -181,6 +174,37 @@ def import_legacy_db_(ctx, users_file, secrets_file, accounts_file, collaborator
 
     g = init_context_from_settings(ctx.obj["settings"])
     import_legacy_database(g, legacy_users, legacy_secrects, legacy_accounts, legacy_collaborators)
+
+
+@click.command(name="import-legacy-workspace-bulk")
+@click.option("--folder", "-f", "folder", type=str)
+@click.pass_context
+def import_legacy_workspace_bulk(ctx, folder):  # pylint: disable=unused-argument,too-many-arguments,unused-variable
+    dirs = os.listdir(os.getcwd() + "/" + folder)
+    g = init_context_from_settings(ctx.obj["settings"])
+    for directory in dirs:
+        workspace_id = int(directory.split("_")[1])
+        path = folder + "/" + directory + "/"
+        aliases_ = _load_list(path + "alias.json")
+        authors_ = _load_list(path + "author.json")
+        # account_ = _load_list(account)
+        projects_ = _load_list(path + "project.json")
+        project_repos_ = _load_list(path + "project_repo.json")
+        account_repos_ = _load_list(path + "repo.json")
+        team_authors_ = _load_list(path + "teams_author.json")
+        teams_ = _load_list(path + "teams.json")
+
+        import_legacy_workspace(
+            g,
+            workspace_id,
+            legacy_projects_repos=project_repos_,
+            legacy_aliases=aliases_,
+            legacy_teams=teams_,
+            legacy_teams_authors=team_authors_,
+            legacy_authors=authors_,
+            legacy_account_repos=account_repos_,
+            legacy_projects=projects_,
+        )  # pylint: disable=too-many-arguments
 
 
 @click.command(name="import-legacy-workspace")
@@ -197,13 +221,6 @@ def import_legacy_db_(ctx, users_file, secrets_file, accounts_file, collaborator
 def import_legacy_workspace_(
     ctx, workspace_id, projectrepos, teamauthors, account, aliases, teams, authors, accountrepos, projects
 ):  # pylint: disable=unused-argument,too-many-arguments,unused-variable
-    def _load_list(filename):  # pylint: disable=unused-variable
-        try:
-            return json.loads(open(os.getcwd() + "/" + filename, "r").read())
-        except Exception as e:  # pylint: disable=broad-except
-            print(e)
-            return []
-
     teams_ = _load_list(teams)
     authors_ = _load_list(authors)
     project_repos_ = _load_list(projectrepos)
@@ -226,9 +243,17 @@ def import_legacy_workspace_(
     )  # pylint: disable=too-many-arguments
 
 
+def _load_list(filename):  # pylint: disable=unused-variable
+    try:
+        return json.loads(open(os.getcwd() + "/" + filename, "r").read())
+    except Exception as e:  # pylint: disable=broad-except
+        print(e)
+        return []
+
+
 cli.add_command(import_legacy_db_)
 cli.add_command(import_legacy_workspace_)
-
+cli.add_command(import_legacy_workspace_bulk)
 cli.add_command(extract_git_metrics)
 cli.add_command(public_api)
 cli.add_command(initialize_database)
