@@ -159,6 +159,7 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         query = f"ALTER SEQUENCE {self.table.name}_id_seq RESTART WITH (SELECT max(id) FROM {self.table.name});"
         self._execute_query(query)
 
+
 class SQLWorkspaceScopedRepository(
     BaseWorkspaceScopedRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
@@ -240,10 +241,11 @@ class SQLWorkspaceScopedRepository(
     def reset_primary_key_id(self, workspace_id: int):
         schema_name = self._schema_name(workspace_id)
         # query = f"ALTER SEQUENCE {schema_name}.{self.table.name}_id_seq RESTART WITH (SELECT max(id)+1 FROM {schema_name}.{self.table.name});"
-        query = f"SELECT pg_catalog.setval(pg_get_serial_sequence('{schema_name}.{self.table.name}', 'id'), " \
-                f"(SELECT coalesce(max(id), 0) FROM {schema_name}.{self.table.name}));"
+        query = (
+            f"SELECT pg_catalog.setval(pg_get_serial_sequence('{schema_name}.{self.table.name}', 'id'), "
+            f"(SELECT coalesce(max(id), 0) FROM {schema_name}.{self.table.name}));"
+        )
         self._execute_query(query, workspace_id)
-
 
     def _execute_query(
         self, query, workspace_id, values: Optional[List[dict]] = None, callback_fn=lambda result: result

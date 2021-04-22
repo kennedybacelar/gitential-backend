@@ -12,6 +12,7 @@ def import_legacy_secrets(g: GitentialContext, legacy_secrets: List[dict]):
         _import_legacy_secret(g, legacy_secret)
     g.backend.credentials.reset_primary_key_id()
 
+
 def _import_legacy_secret(g: GitentialContext, legacy_secret: dict):
     def _encrypt(s: Optional[str]):
         if s:

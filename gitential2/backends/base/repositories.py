@@ -142,6 +142,7 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
     def reset_primary_key_id(self, workspace_id: int):
         pass
 
+
 class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
     def get_by_email(self, email: str) -> Optional[UserInDB]:

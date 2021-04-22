@@ -31,6 +31,7 @@ def import_project_and_repos(
     g.backend.repositories.reset_primary_key_id(workspace_id=workspace_id)
     g.backend.project_repositories.reset_primary_key_id(workspace_id=workspace_id)
 
+
 def get_repo_name(input_str: str) -> str:
     proto = input_str.split("://")[0]
     if proto == "ssh":
