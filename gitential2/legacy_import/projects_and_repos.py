@@ -100,7 +100,7 @@ def get_clone_protocol(input_str: str) -> str:
 
 def _import_repo(g: GitentialContext, project_repo: dict, workspace_id: int):
     repo = project_repo["repo"]
-    credential_id = project_repo["secret_id"]
+    credential_id = project_repo["secret_id"][0] if project_repo.get("secret_id", []) else None
     try:
         repo_create = RepositoryInDB(
             id=repo["id"],
