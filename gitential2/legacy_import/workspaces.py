@@ -13,7 +13,7 @@ def import_legacy_workspaces(g: GitentialContext, legacy_workspaces: List[dict],
     for legacy_workspace in legacy_workspaces:
         members = [member for member in legacy_workspace_members if member["account_id"] == legacy_workspace["id"]]
         _import_legacy_workspace(g, legacy_workspace, members, user_login_id_map)
-    # # fix_seq_counter()
+    g.backend.workspaces.reset_primary_key_id()
 
 
 def _import_legacy_workspace(g: GitentialContext, legacy_ws: dict, members: List[dict], user_login_id_map: dict):
