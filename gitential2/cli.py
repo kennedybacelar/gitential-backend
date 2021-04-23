@@ -19,7 +19,9 @@ from gitential2.core import (
     collect_stats,
     get_user,
     list_users,
+    list_repositories,
     set_as_admin,
+    schedule_project_refresh,
 )
 from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
@@ -251,6 +253,35 @@ def _load_list(filename):  # pylint: disable=unused-variable
         return []
 
 
+@click.command(name="schedule-project-refresh")
+@click.option("--workspace-id", "-w", "workspace_id", type=int)
+@click.option("--project-id", "-p", "project_id", type=int)
+@click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
+@click.pass_context
+def schedule_project_refresh_(ctx, workspace_id, project_id, force_rebuild):
+    g = init_context_from_settings(ctx.obj["settings"])
+
+    schedule_project_refresh(g, workspace_id, project_id, force_rebuild)
+
+
+@click.command(name="list-projects")
+@click.option("--workspace-id", "-w", "workspace_id", type=int)
+@click.pass_context
+def list_projects_(ctx, workspace_id):
+    g = init_context_from_settings(ctx.obj["settings"])
+    for project in g.backend.projects.all(workspace_id):
+        print(project.dict(exclude={"extra"}))
+
+
+@click.command(name="list-used-repos")
+@click.option("--workspace-id", "-w", "workspace_id", type=int)
+@click.pass_context
+def list_used_repos_(ctx, workspace_id):
+    g = init_context_from_settings(ctx.obj["settings"])
+    for repo in list_repositories(g, workspace_id):
+        print(repo.dict(exclude={"extra"}))
+
+
 cli.add_command(import_legacy_db_)
 cli.add_command(import_legacy_workspace_)
 cli.add_command(import_legacy_workspace_bulk)
@@ -266,3 +297,6 @@ cli.add_command(wip)
 cli.add_command(send_email_to_user_)
 cli.add_command(list_users_)
 cli.add_command(set_as_admin_)
+cli.add_command(schedule_project_refresh_)
+cli.add_command(list_projects_)
+cli.add_command(list_used_repos_)
