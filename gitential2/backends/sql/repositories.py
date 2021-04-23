@@ -156,7 +156,10 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         self._execute_query(query)
 
     def reset_primary_key_id(self):
-        query = f"ALTER SEQUENCE {self.table.name}_id_seq RESTART WITH (SELECT max(id) FROM {self.table.name});"
+        query = (
+            f"SELECT pg_catalog.setval(pg_get_serial_sequence('{self.table.name}', 'id'), "
+            f"(SELECT coalesce(max(id), 1) FROM {self.table.name}));"
+        )
         self._execute_query(query)
 
 
