@@ -4,7 +4,7 @@ from pprint import pprint
 
 import click
 import uvicorn
-
+from structlog import get_logger
 from gitential2.datatypes.stats import StatsRequest
 from gitential2.extraction.repository import extract_incremental
 from gitential2.extraction.output import DataCollector
@@ -28,6 +28,10 @@ from gitential2.license import check_license as check_license_
 from gitential2.legacy_import import import_legacy_database
 from gitential2.legacy_import import import_legacy_workspace
 from gitential2.core.tasks import configure_celery
+from gitential2.core.context import GitentialContext
+
+
+logger = get_logger(__name__)
 
 
 def protocol_from_clone_url(clone_url: str) -> GitProtocol:
@@ -283,6 +287,36 @@ def list_used_repos_(ctx, workspace_id):
         print(repo.dict(exclude={"extra"}))
 
 
+@click.command(name="refresh-all-workspaces")
+@click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
+@click.pass_context
+def refresh_all_workspaces_(ctx, force_rebuild):
+    g = init_context_from_settings(ctx.obj["settings"])
+    configure_celery(g.settings)
+
+    workpsaces = g.backend.workspaces.all()
+    for ws in workpsaces:
+        logger.info("refreshing workspace", workspace_id=ws.id, workspace_name=ws.name)
+        _refresh_workspace(g, ws.id, force_rebuild)
+
+
+@click.command(name="refresh-workspace")
+@click.option("--workspace-id", "-w", "workspace_id", type=int)
+@click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
+@click.pass_context
+def refresh_workspace_(ctx, workspace_id, force_rebuild):
+    g = init_context_from_settings(ctx.obj["settings"])
+    configure_celery(g.settings)
+
+    _refresh_workspace(g, workspace_id, force_rebuild)
+
+
+def _refresh_workspace(g: GitentialContext, workspace_id: int, force_rebuild):
+    for project in g.backend.projects.all(workspace_id):
+        logger.info("refreshing project", workspace_id=workspace_id, project_id=project.id, project_name=project.name)
+        schedule_project_refresh(g, workspace_id, project.id, force_rebuild)
+
+
 cli.add_command(import_legacy_db_)
 cli.add_command(import_legacy_workspace_)
 cli.add_command(import_legacy_workspace_bulk)
@@ -301,3 +335,5 @@ cli.add_command(set_as_admin_)
 cli.add_command(schedule_project_refresh_)
 cli.add_command(list_projects_)
 cli.add_command(list_used_repos_)
+cli.add_command(refresh_all_workspaces_)
+cli.add_command(refresh_workspace_)
