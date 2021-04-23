@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 def import_legacy_workspaces(g: GitentialContext, legacy_workspaces: List[dict], legacy_workspace_members: List[dict]):
     user_login_id_map = {user.login: user.id for user in g.backend.users.all()}
     for legacy_workspace in legacy_workspaces:
-        members = [member for member in legacy_workspace_members if member["account_id"] == legacy_workspace["id"]]
+        members = [member for member in legacy_workspace_members if member["account"]["id"] == legacy_workspace["id"]]
         _import_legacy_workspace(g, legacy_workspace, members, user_login_id_map)
     g.backend.workspaces.reset_primary_key_id()
 
@@ -20,10 +20,12 @@ def _import_legacy_workspace(g: GitentialContext, legacy_ws: dict, members: List
     def _find_owner_from_members(members: List[dict]):
         for m in members:
             if m["role"] == 1:
-                return m["user_id"]
+                return m["user"]["id"]
         return None
 
-    created_by = legacy_ws["owner_id"] or _find_owner_from_members(members) or user_login_id_map.get(legacy_ws["name"])
+    created_by = (
+        legacy_ws.get("owner_id") or _find_owner_from_members(members) or user_login_id_map.get(legacy_ws["name"])
+    )
 
     if created_by:
         workspace_create = WorkspaceInDB(
@@ -44,8 +46,8 @@ def _import_legacy_workspace(g: GitentialContext, legacy_ws: dict, members: List
         g.backend.workspaces.insert(legacy_ws["id"], workspace_create)
         for m in members:
             workspace_member_create = WorkspaceMemberCreate(
-                user_id=m["user_id"],
-                workspace_id=m["account_id"],
+                user_id=m["user"]["id"],
+                workspace_id=m["account"]["id"],
                 primary=bool(m["primary"]),
                 role=WorkspaceRole.owner if m["role"] == 1 else WorkspaceRole.collaborator,
             )

@@ -20,13 +20,13 @@ def _import_legacy_secret(g: GitentialContext, legacy_secret: dict):
         else:
             return None
 
-    logger.info(
-        "Importing secret", name=legacy_secret["name"], owner_id=legacy_secret["owner_id"], type=legacy_secret["type"]
-    )
+    owner_id = legacy_secret["owner"]["id"] if "owner" in legacy_secret else legacy_secret["owner_id"]
+
+    logger.info("Importing secret", name=legacy_secret["name"], owner_id=owner_id, type=legacy_secret["type"])
 
     g.backend.credentials.create(
         CredentialCreate(
-            owner_id=legacy_secret["owner_id"],
+            owner_id=owner_id,
             name=legacy_secret["name"],
             created_at=legacy_secret["created_at"],
             updated_at=legacy_secret["updated_at"],
