@@ -1,4 +1,6 @@
 from typing import List
+import os
+import json
 
 from structlog import get_logger
 from gitential2.core import GitentialContext
@@ -31,7 +33,8 @@ def import_legacy_database(
 ):
 
     _truncate_public(g)
-    import_legacy_users(g, legacy_users)
+    users_json = json.loads(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json"), "r").read())
+    import_legacy_users(g, legacy_users, users_json)
     import_legacy_secrets(g, legacy_secrets)
     import_legacy_workspaces(
         g,

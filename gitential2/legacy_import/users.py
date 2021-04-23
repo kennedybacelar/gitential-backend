@@ -16,24 +16,30 @@ from gitential2.core import GitentialContext
 logger = get_logger(__name__)
 
 
-def import_legacy_users(g: GitentialContext, legacy_users: List[dict]):
+def import_legacy_users(g: GitentialContext, legacy_users: List[dict], users_json: dict):
 
     for legacy_user in legacy_users:
-        _import_legacy_user(g, legacy_user)
+        _import_legacy_user(g, legacy_user, users_json)
     g.backend.users.reset_primary_key_id()
 
 
-def _import_legacy_user(g: GitentialContext, legacy_user: dict):
+def _import_legacy_user(g: GitentialContext, legacy_user: dict, users_json: dict):
+    info = users_json.get(str(legacy_user["id"]), {})
     try:
         user_create = UserInDB(
             id=legacy_user["id"],
             login=legacy_user["login"],
-            email=legacy_user["email"] or f"{legacy_user['login']}@gitential-missing-email.com",
+            email=info.get("Other email")
+            or legacy_user["email"]
+            or f"{legacy_user['login']}@gitential-missing-email.com",
             is_admin=bool(legacy_user["admin"]),
             login_ready=True,
             is_active=legacy_user["is_active"],
             created_at=legacy_user["created_at"],
             updated_at=legacy_user["updated_at"],
+            first_name=info.get("first_name"),
+            last_name=info.get("last_name"),
+            company_name=info.get("company_name"),
         )
         logger.info("Importing user", user_id=user_create.id_, email=user_create.email)
         g.backend.users.insert(legacy_user["id"], user_create)
@@ -105,6 +111,8 @@ def _is_paying_customer(legacy_user: dict):
         "bill@tech9.com": 40,
         "f.sodano@wisr.com.au": 16,
         "jsudbury@vistek.ca": 4,
+        "novan@qasir.id": 35,
+        "mail@laszloandrasi.com": 100,
     }
 
     if legacy_user["email"] in paying_customers:
