@@ -43,7 +43,7 @@ def _calc_user_login(user_create: UserCreate):
 
 def register_user(
     g: GitentialContext, user: UserCreate, current_user: Optional[UserInDB] = None
-) -> Tuple[UserInDB, SubscriptionInDB]:
+) -> Tuple[UserInDB, Optional[SubscriptionInDB]]:
     if not current_user:
         existing_user = g.backend.users.get_by_email(user.email)
         if existing_user:
@@ -51,14 +51,14 @@ def register_user(
         user.registration_ready = True
         user.login = _calc_user_login(user)
         user_in_db = g.backend.users.create(user)
-        subscription = _create_default_subscription(g, user_in_db)
+        subscription = _create_default_subscription_after_reg(g, user_in_db)
         _create_primary_workspace_if_missing(g, user_in_db)
     else:
         user.registration_ready = True
         user.login = _calc_user_login(user)
         user_in_db = g.backend.users.update(current_user.id, cast(UserUpdate, user))
-        subscription = _create_default_subscription(g, user_in_db)
-    if g.license.is_cloud:
+        subscription = _create_default_subscription_after_reg(g, user_in_db)
+    if g.license.is_cloud and subscription:
         send_email_to_user(g, user_in_db, template_name="welcome")
     return user_in_db, subscription
 
@@ -91,6 +91,20 @@ def get_current_subscription(g: GitentialContext, user_id: int) -> SubscriptionI
             subscription_start=datetime(1970, 1, 1),
             subscription_end=datetime(2099, 12, 31),
         )
+
+    current_subscription_from_db = _get_current_subscription_from_db(g, user_id)
+    if current_subscription_from_db:
+        return current_subscription_from_db
+    else:
+        return SubscriptionInDB(
+            id=0,
+            user_id=user_id,
+            subscription_type=SubscriptionType.free,
+            subscription_start=datetime.utcnow(),
+        )
+
+
+def _get_current_subscription_from_db(g: GitentialContext, user_id: int) -> Optional[SubscriptionInDB]:
     current_time = datetime.utcnow()
 
     def _is_subscription_valid(s: SubscriptionInDB):
@@ -102,12 +116,7 @@ def get_current_subscription(g: GitentialContext, user_id: int) -> SubscriptionI
     if valid_subscriptions:
         return valid_subscriptions[0]
     else:
-        return SubscriptionInDB(
-            id=0,
-            user_id=user_id,
-            subscription_type=SubscriptionType.free,
-            subscription_start=datetime.utcnow(),
-        )
+        return None
 
 
 def get_profile_picture(g: GitentialContext, user: UserInDB) -> Optional[str]:
@@ -189,8 +198,12 @@ def _create_primary_workspace_if_missing(g: GitentialContext, user: UserInDB):
         create_workspace(g, workspace, current_user=user, primary=True)
 
 
-def _create_default_subscription(g: GitentialContext, user) -> SubscriptionInDB:
-    return g.backend.subscriptions.create(SubscriptionCreate.default_for_new_user(user.id))
+def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optional[SubscriptionInDB]:
+    subscriptions = g.backend.subscriptions.get_subscriptions_for_user(user.id)
+    if subscriptions:
+        return None
+    else:
+        return g.backend.subscriptions.create(SubscriptionCreate.default_for_new_user(user.id))
 
 
 def set_as_admin(g: GitentialContext, user_id: int, is_admin: bool = True) -> UserInDB:
