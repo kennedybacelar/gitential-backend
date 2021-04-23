@@ -27,7 +27,7 @@ def import_project_and_repos(
         if not g.backend.projects.get(workspace_id, id_=project_repo["project"]["id"]):
             _import_project(g, project_repo["project"], workspace_id)
         if not g.backend.repositories.get(workspace_id, id_=project_repo["repo"]["id"]):
-            _import_repo(g, project_repo["repo"], workspace_id)
+            _import_repo(g, project_repo, workspace_id)
         _create_project_repo(g, project_repo, workspace_id=workspace_id)
     for account_repo in legacy_account_repos:
         if not g.backend.repositories.get(workspace_id, id_=account_repo["repo"]["id"]):
@@ -38,18 +38,24 @@ def import_project_and_repos(
 
 
 def get_repo_name(input_str: str) -> str:
-    proto = input_str.split("://")[0]
-    if proto == "ssh":
-        return input_str.split(":")[1].split("/")[1].split(".")[0]
-    elif proto == "https" and "visualst" in input_str:
-        return input_str.split("/")[-1]
-    elif proto == "https":
-        return input_str.split("/")[-2]
-    elif ".git" in input_str:
-        return "ssh"
+    repo_name = input_str.split("/")[-1]
+    if repo_name.endswith(".git"):
+        return repo_name[0:-4]
     else:
-        print("notimplemented repo name gather", input_str)
-        sys.exit(1)
+        return repo_name
+
+    # proto = input_str.split("://")[0]
+    # if proto == "ssh":
+    #     return input_str.split(":")[1].split("/")[1].split(".")[0]
+    # elif proto == "https" and "visualst" in input_str:
+    #     return input_str.split("/")[-1]
+    # elif proto == "https":
+    #     return input_str.split("/")[-2]
+    # elif ".git" in input_str:
+    #     return "ssh"
+    # else:
+    #     print("notimplemented repo name gather", input_str)
+    #     sys.exit(1)
 
 
 def get_namespace(input_str: str) -> str:
@@ -92,7 +98,9 @@ def get_clone_protocol(input_str: str) -> str:
     return tmp
 
 
-def _import_repo(g: GitentialContext, repo: dict, workspace_id: int):
+def _import_repo(g: GitentialContext, project_repo: dict, workspace_id: int):
+    repo = project_repo["repo"]
+    credential_id = project_repo["secret_id"]
     try:
         repo_create = RepositoryInDB(
             id=repo["id"],
@@ -101,7 +109,13 @@ def _import_repo(g: GitentialContext, repo: dict, workspace_id: int):
             name=get_repo_name(repo["clone_url"]),
             namespace=get_namespace(repo["clone_url"]),
             private=repo["private"] if repo["private"] is not None else False,
-            integration_type=get_integration_type(repo["clone_url"]),
+            integration_type=get_integration_type(repo["clone_url"])
+            if get_clone_protocol(repo["clone_url"]) != "ssh"
+            else None,
+            integration_name=get_integration_type(repo["clone_url"])
+            if get_clone_protocol(repo["clone_url"]) != "ssh"
+            else None,
+            credential_id=credential_id if get_clone_protocol(repo["clone_url"]) == "ssh" else None,
             created_at=repo["created_at"],
             updated_at=repo["updated_at"],
         )
