@@ -115,7 +115,20 @@ def recalculate_repository_values_(ctx, workspace_id, repository_id):
 @click.pass_context
 def refresh_repository_pull_requests_(ctx, workspace_id, repository_id):
     g = init_context_from_settings(ctx.obj["settings"])
+    logger.info("refreshing PRs", workspace_id=workspace_id, repo_id=repository_id)
+
     refresh_repository_pull_requests(g, workspace_id=workspace_id, repository_id=repository_id)
+
+
+@click.command(name="refresh-workspace-pull-requests")
+@click.option("--workspace", "-w", "workspace_id", type=int)
+@click.pass_context
+def refresh_workspace_pull_requests_(ctx, workspace_id):
+    g = init_context_from_settings(ctx.obj["settings"])
+    for repo in list_repositories(g, workspace_id):
+        if repo.protocol == GitProtocol.https and repo.integration_name is not None:
+            logger.info("refreshing PRs", workspace_id=workspace_id, repo_name=repo.name, repo_id=repo.id)
+            refresh_repository_pull_requests(g, workspace_id=workspace_id, repository_id=repo.id)
 
 
 @click.command()
@@ -325,6 +338,7 @@ cli.add_command(public_api)
 cli.add_command(initialize_database)
 cli.add_command(refresh_repository_)
 cli.add_command(refresh_repository_pull_requests_)
+cli.add_command(refresh_workspace_pull_requests_)
 cli.add_command(get_stats)
 cli.add_command(recalculate_repository_values_)
 cli.add_command(check_license)

@@ -9,7 +9,7 @@ from gitential2.extraction.repository import extract_incremental_local, clone_re
 from gitential2.utils.tempdir import TemporaryDirectory
 
 from .context import GitentialContext
-from .credentials import get_credential_for_repository
+from .credentials import get_credential_for_repository, get_update_token_callback
 from .statuses import get_repository_status, persist_repository_status, delete_repository_status
 from .calculations import recalculate_repository_values
 
@@ -61,32 +61,32 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
     prs_we_already_have = g.backend.pull_requests.get_prs_updated_at(workspace_id, repository_id)
     # print(prs_we_already_have)
     if not credential:
-        # log ...
+        logger.info("Skipping PR refresh: no credential", workspace_id=workspace_id, repository_id=repository_id)
         return
 
     integration = g.integrations.get(repository.integration_name)
     if not integration:
-        # log...
+        logger.info("Skipping PR refresh: no integration", workspace_id=workspace_id, repository_id=repository_id)
         return
     output = g.backend.output_handler(workspace_id)
+
     if hasattr(integration, "collect_pull_requests"):
         token = credential.to_token_dict(g.fernet)
-
-        def _update_token(*args, **kwargs):
-            print("****** UPDATE TOKEN *****")
-            print(args, kwargs)
-            print("****** UPDATE TOKEN *****")
 
         integration.collect_pull_requests(
             repository=repository,
             token=token,
-            update_token=_update_token,
+            update_token=get_update_token_callback(g, credential),
             output=output,
             prs_we_already_have=prs_we_already_have,
         )
     else:
-        # log ...
-        pass
+        logger.info(
+            "Skipping PR refresh: collect_pull_requests not implemented",
+            workspace_id=workspace_id,
+            repository_id=repository_id,
+            integration=repository.integration_name,
+        )
 
 
 def _extract_commits_patches(
