@@ -27,6 +27,7 @@ from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
 from gitential2.legacy_import import import_legacy_database
 from gitential2.legacy_import import import_legacy_workspace
+from gitential2.core.tasks import configure_celery
 
 
 def protocol_from_clone_url(clone_url: str) -> GitProtocol:
@@ -260,7 +261,7 @@ def _load_list(filename):  # pylint: disable=unused-variable
 @click.pass_context
 def schedule_project_refresh_(ctx, workspace_id, project_id, force_rebuild):
     g = init_context_from_settings(ctx.obj["settings"])
-
+    configure_celery(g.settings)
     schedule_project_refresh(g, workspace_id, project_id, force_rebuild)
 
 
