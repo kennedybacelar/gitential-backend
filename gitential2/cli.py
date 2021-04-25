@@ -1,14 +1,18 @@
+from collections import defaultdict
+
 import json
 import os
+import csv
 from pprint import pprint
 
 import click
 import uvicorn
 from structlog import get_logger
 from gitential2.datatypes.stats import StatsRequest
+from gitential2.datatypes.credentials import CredentialType
 from gitential2.extraction.repository import extract_incremental
 from gitential2.extraction.output import DataCollector
-from gitential2.datatypes.repositories import RepositoryInDB, GitProtocol
+from gitential2.datatypes.repositories import RepositoryInDB, GitProtocol, RepositoryUpdate
 from gitential2.settings import load_settings
 from gitential2.logging import initialize_logging
 from gitential2.core import (
@@ -330,6 +334,67 @@ def _refresh_workspace(g: GitentialContext, workspace_id: int, force_rebuild):
         schedule_project_refresh(g, workspace_id, project.id, force_rebuild)
 
 
+@click.command(name="fix-ssh-repo-credentials")
+@click.pass_context
+def fix_ssh_repo_credentials(ctx):
+    def _load_fix_file():
+        ret = {}
+        with open(
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "credential_fix.csv"), "r"
+        ) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                ret[(row["account_id"], row["clone_url"])] = row
+        return ret
+
+    def _all_credentials_by_owner_and_name(g: GitentialContext):
+        ret = defaultdict(list)
+        for credential in g.backend.credentials.all():
+            if credential.type == CredentialType.keypair:
+                ret[(credential.owner_id, credential.name)].append(credential)
+        return ret
+
+    g = init_context_from_settings(ctx.obj["settings"])
+
+    fixes = _load_fix_file()
+
+    all_workspaces = list(g.backend.workspaces.all())
+    all_keypairs = _all_credentials_by_owner_and_name(g)
+
+    logger.info("all_fixes", fixes=fixes.keys())
+    logger.info("all_keypairs", all_credentials=all_keypairs.keys())
+
+    for workspace in all_workspaces:
+        logger.info("Fixing ssh repositories in workspace", workspace_id=workspace.id)
+        repositories = g.backend.repositories.all(workspace.id)
+        for repository in repositories:
+            if repository.protocol == GitProtocol.https:
+                logger.info(
+                    "skipping repo",
+                    repo_id=repository.id,
+                    clone_url=repository.clone_url,
+                )
+                continue
+            elif (workspace.id, repository.clone_url) in fixes:
+                fix = fixes[(workspace.id, repository.clone_url)]
+                credential = all_keypairs[(workspace.created_by, fix["name"])]
+                logger.info(
+                    "Updating repository credential_id",
+                    workspace_id=workspace.id,
+                    clone_url=repository.clone_url,
+                    repo_id=repository.id,
+                    credential_id=credential.id,
+                    credential_name=credential.name,
+                )
+                repo_update = RepositoryUpdate(**repository.dict())
+                repo_update.credential_id = credential.id
+                g.backend.repositories.update(workspace.id, repository.id, repo_update)
+            else:
+                logger.warning(
+                    "Missing fix for ssh repository", workspace_id=workspace.id, clone_url=repository.clone_url
+                )
+
+
 cli.add_command(import_legacy_db_)
 cli.add_command(import_legacy_workspace_)
 cli.add_command(import_legacy_workspace_bulk)
@@ -351,3 +416,4 @@ cli.add_command(list_projects_)
 cli.add_command(list_used_repos_)
 cli.add_command(refresh_all_workspaces_)
 cli.add_command(refresh_workspace_)
+cli.add_command(fix_ssh_repo_credentials)
