@@ -343,17 +343,19 @@ def _load_fix_file():
     return ret
 
 
+def _all_credentials_by_owner_and_name(g: GitentialContext):
+    ret = {}
+    for credential in g.backend.credentials.all():
+        if credential.type == CredentialType.keypair:
+            if (credential.owner_id, credential.name) in ret:
+                logger.warning("Credential with the same name", owner_id=credential.owner_id, name=credential.name)
+            ret[(credential.owner_id, credential.name)] = credential
+    return ret
+
+
 @click.command(name="fix-ssh-repo-credentials")
 @click.pass_context
 def fix_ssh_repo_credentials(ctx):
-    def _all_credentials_by_owner_and_name(g: GitentialContext):
-        ret = {}
-        for credential in g.backend.credentials.all():
-            if credential.type == CredentialType.keypair:
-                if (credential.owner_id, credential.name) in ret:
-                    logger.warning("Credential with the same name", owner_id=credential.owner_id, name=credential.name)
-                ret[(credential.owner_id, credential.name)] = credential
-        return ret
 
     g = init_context_from_settings(ctx.obj["settings"])
 
@@ -373,7 +375,13 @@ def fix_ssh_repo_credentials(ctx):
                 continue
             elif (str(workspace.id), repository.clone_url) in fixes and repository.credential_id is None:
                 fix = fixes[(str(workspace.id), repository.clone_url)]
-                credential = all_keypairs[(workspace.created_by, fix["name"])]
+
+                try:
+                    credential = all_keypairs[(workspace.created_by, fix["name"])]
+                except KeyError:
+                    logger.error("Missing credential ", repository=repository, fix=fix, workspace_id=workspace.id)
+                    continue
+
                 logger.info(
                     "Updating repository credential_id",
                     workspace_id=workspace.id,
@@ -386,9 +394,7 @@ def fix_ssh_repo_credentials(ctx):
                 repo_update.credential_id = credential.id
                 g.backend.repositories.update(workspace.id, repository.id, repo_update)
             else:
-                logger.warning(
-                    "Missing fix for ssh repository", workspace_id=workspace.id, clone_url=repository.clone_url
-                )
+                logger.warning("Missing fix ", workspace_id=workspace.id, repository=repository)
 
 
 cli.add_command(import_legacy_db_)
