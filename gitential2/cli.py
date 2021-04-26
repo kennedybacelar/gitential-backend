@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import json
 import os
 import csv
@@ -334,24 +332,27 @@ def _refresh_workspace(g: GitentialContext, workspace_id: int, force_rebuild):
         schedule_project_refresh(g, workspace_id, project.id, force_rebuild)
 
 
+def _load_fix_file():
+    ret = {}
+    with open(
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "credential_fix.csv"), "r"
+    ) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            ret[(row["account_id"], row["clone_url"])] = row
+    return ret
+
+
 @click.command(name="fix-ssh-repo-credentials")
 @click.pass_context
 def fix_ssh_repo_credentials(ctx):
-    def _load_fix_file():
-        ret = {}
-        with open(
-            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "credential_fix.csv"), "r"
-        ) as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                ret[(row["account_id"], row["clone_url"])] = row
-        return ret
-
     def _all_credentials_by_owner_and_name(g: GitentialContext):
-        ret = defaultdict(list)
+        ret = {}
         for credential in g.backend.credentials.all():
             if credential.type == CredentialType.keypair:
-                ret[(credential.owner_id, credential.name)].append(credential)
+                if (credential.owner_id, credential.name) in ret:
+                    logger.warning("Credential with the same name", owner_id=credential.owner_id, name=credential.name)
+                ret[(credential.owner_id, credential.name)] = credential
         return ret
 
     g = init_context_from_settings(ctx.obj["settings"])
