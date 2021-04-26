@@ -369,14 +369,9 @@ def fix_ssh_repo_credentials(ctx):
         repositories = g.backend.repositories.all(workspace.id)
         for repository in repositories:
             if repository.protocol == GitProtocol.https:
-                logger.info(
-                    "skipping repo",
-                    repo_id=repository.id,
-                    clone_url=repository.clone_url,
-                )
                 continue
-            elif (workspace.id, repository.clone_url) in fixes:
-                fix = fixes[(workspace.id, repository.clone_url)]
+            elif (str(workspace.id), repository.clone_url) in fixes and repository.credential_id is None:
+                fix = fixes[(str(workspace.id), repository.clone_url)]
                 credential = all_keypairs[(workspace.created_by, fix["name"])]
                 logger.info(
                     "Updating repository credential_id",
