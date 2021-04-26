@@ -1,0 +1,24 @@
+name: request_free_trial
+subject: New Free Trial Request on {{ settings.web.base_url }}
+body_html: |
+  <div>
+    <p>
+      <b>First Name:</b> {{ user.first_name }}<br/>
+      <b>Last Name:</b> {{ user.last_name }}<br/>
+      <b>Company Email:</b> {{ user.email }}<br/>
+      <b>Company Name:</b>  {{ user.company_name }}<br/>
+      <b>Position:</b> {{ user.position }} <br/>
+      <b>How big is your development team?:</b> {{ user.development_team_size }}<br/>
+      <br/>
+      I agree to receive other communications from Gitential. [{{ user.marketing_consent_accepted}}]
+    </p>
+  </div>
+
+body_plaintext: |
+  First Name: {{ user.first_name }}
+  Last Name: {{ user.last_name }}
+  Company Email: {{ user.email }}
+  Company Name: {{ user.company_name }}
+  Position: {{ user.position }}
+  How big is your development team?: {{ user.development_team_size }}
+  I agree to receive other communications from Gitential. [{{ user.marketing_consent_accepted}}]

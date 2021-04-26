@@ -129,12 +129,18 @@ class ContactSettings(BaseModel):
     info_email: str = "gitential@gitential.com"
 
 
+class NotificationSettings(BaseModel):
+    system_notification_recipient = "info@gitential.com"
+    request_free_trial: bool = True
+
+
 class GitentialSettings(BaseModel):
     maintenance: MaintenanceSettings = MaintenanceSettings()
     secret: str
     log_level: LogLevel = LogLevel.info
     connections: ConnectionSettings = ConnectionSettings()
     email: EmailSettings = EmailSettings()
+    notifications: NotificationSettings = NotificationSettings()
     web: WebSettings = WebSettings()
     extraction: ExtractionSettings = ExtractionSettings()
     recaptcha: RecaptchaSettings = RecaptchaSettings()

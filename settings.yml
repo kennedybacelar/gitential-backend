@@ -17,6 +17,9 @@ email:
   smtp_port: 587
   smtp_username: AKIA4G3GM7INBOETB3XG
   smtp_password: BKWXqc4jofWzDrbS0ZgYuhrAngjlAq/5NvWjJJCLdZkh
+notifications:
+  system_notification_recipient: laszlo.andrasi@gitential.com
+  request_free_trial: false
 recaptcha:
   site_key: 6LftqHEaAAAAANgRbGA6Ew6nToApMx3TysEMYa-y
   secret_key: 6LftqHEaAAAAABt-WU7zTL9WHbv49GzWGuAjJiH8

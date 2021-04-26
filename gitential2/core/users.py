@@ -9,7 +9,7 @@ from gitential2.datatypes.workspaces import WorkspaceCreate
 from gitential2.datatypes.workspacemember import WorkspaceRole
 from .context import GitentialContext
 from .workspaces import create_workspace
-from .emails import send_email_to_user
+from .emails import send_email_to_user, send_system_notification_email
 
 
 logger = get_logger(__name__)
@@ -60,6 +60,8 @@ def register_user(
         subscription = _create_default_subscription_after_reg(g, user_in_db)
     if g.license.is_cloud and subscription:
         send_email_to_user(g, user_in_db, template_name="welcome")
+        if g.settings.notifications.request_free_trial:
+            send_system_notification_email(g, user_in_db, template_name="request_free_trial")
     return user_in_db, subscription
 
 

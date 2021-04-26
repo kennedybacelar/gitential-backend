@@ -28,6 +28,17 @@ def send_email_to_user(g: GitentialContext, user: UserInDB, template_name: str, 
     smtp_send(g, rendered_email)
 
 
+def send_system_notification_email(g: GitentialContext, user: UserInDB, template_name: str, **kwargs):
+    template = get_email_template(template_name)
+    if not template:
+        logger.error(f"Email template not found: {template_name}, cannot send system notificaiton email.")
+        return
+    rendered_email = _render_email_template(
+        g, template, user, recipient=g.settings.notifications.system_notification_recipient, **kwargs
+    )
+    smtp_send(g, rendered_email)
+
+
 def get_email_template(template_name: str) -> Optional[EmailTemplate]:
     filename = EMAIL_TEMPLATES_DIR / f"{template_name}.yml"
     if filename.is_file():
@@ -58,14 +69,16 @@ def smtp_send(g: GitentialContext, email: RenderedEmail):
         logger.warning("SMTP not configured, cannot send emails.")
 
 
-def _render_email_template(g: GitentialContext, template: EmailTemplate, user: UserInDB, **kwargs) -> RenderedEmail:
+def _render_email_template(
+    g: GitentialContext, template: EmailTemplate, user: UserInDB, recipient: Optional[str] = None, **kwargs
+) -> RenderedEmail:
     def _render_template(s: str) -> str:
         t = Template(s)
         return t.render(user=user, settings=g.settings, **kwargs)
 
     return RenderedEmail(
         sender=g.settings.email.sender,
-        recipient=_user_to_recipient(user),
+        recipient=recipient or _user_to_recipient(user),
         subject=_render_template(template.subject),
         body_html=_render_template(template.body_html),
         body_plaintext=_render_template(template.body_plaintext),
