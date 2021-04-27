@@ -1,3 +1,4 @@
+# pylint: disable=too-complex,too-many-branches
 from typing import List, Any, Dict
 from structlog import get_logger
 from pydantic import BaseModel
@@ -71,6 +72,8 @@ def _prepare_dimension(
         return ibis_table["email"].name("email")
     elif dimension == DimensionName.repo_id:
         return ibis_table["repo_id"].name("repo_id")
+    elif dimension == DimensionName.aid and TableName.pull_requests not in table_def:
+        return ibis_table["aid"].name("aid")
     return None
 
 
@@ -212,6 +215,8 @@ def _prepare_filters_dict(
             else:
                 repo_ids = []
             filters_dict[FilterName.repo_ids] = repo_ids
+        elif filter_name == FilterName.repo_ids:
+            filters_dict[FilterName.repo_ids] = filter_params
         elif filter_name == FilterName.team_id:
             if filter_params:
                 author_ids = g.backend.team_members.get_team_member_author_ids(
@@ -224,6 +229,8 @@ def _prepare_filters_dict(
             filters_dict[FilterName.day] = filter_params
         elif filter_name == FilterName.is_merge:
             filters_dict[FilterName.is_merge] = filter_params
+        elif filter_name == FilterName.active:
+            filters_dict[FilterName.active] = filter_params
         else:
             logger.warning("Unhandled filter name", filter_name=filter_name, filter_params=filter_params)
 
@@ -327,8 +334,6 @@ class IbisQuery:
         else:
             result = pd.DataFrame()
 
-        logger.debug("RESULT", result=result)
-
         sort_by = _prepare_sort_by(self.query)
         if sort_by and not result.empty:
             logger.debug("SORTING", columns=result.columns, sort_by=sort_by)
@@ -339,6 +344,7 @@ class IbisQuery:
                 result.sort_values(by=sort_by, inplace=True)
 
             # result = result.sort_values(by=sort_by)
+        logger.debug("RESULT", result=result)
 
         return QueryResult(query=self.query, values=result)
 

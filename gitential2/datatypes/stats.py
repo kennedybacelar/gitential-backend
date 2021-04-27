@@ -86,6 +86,7 @@ class FilterName(str, Enum):
     day = "day"
     ismerge = "ismerge"
     is_merge = "is_merge"
+    active = "active"
     keyword = "keyword"
     outlier = "outlier"
     commit_msg = "commit_msg"
@@ -96,7 +97,7 @@ class FilterName(str, Enum):
 
 class DimensionName(str, Enum):
     repo_id = "repo_id"
-
+    aid = "aid"
     # author dimensions
     name = "name"
     email = "email"
@@ -120,7 +121,7 @@ class DimensionName(str, Enum):
     pr_state = "pr_state"
 
 
-AUTHOR_DIMENSIONS = [DimensionName.name, DimensionName.email]
+AUTHOR_DIMENSIONS = [DimensionName.name, DimensionName.email, DimensionName.aid]
 
 PATCH_DIMENSIONS = [
     DimensionName.newpath,

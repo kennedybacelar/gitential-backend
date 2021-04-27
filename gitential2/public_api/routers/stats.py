@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from gitential2.datatypes.stats import Query
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core import collect_stats_v2, GitentialContext, check_permission
+from gitential2.core.legacy import get_developers
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["metrics"])
@@ -38,11 +39,6 @@ def workspace_multi_stats(
         result = collect_stats_v2(g, workspace_id, val)
         ret[name] = result
     return ret
-
-
-@router.get("/workspaces/{workspace_id}/projects/{project_id}/developers")
-async def developers(orient: str, limit: int):
-    return []
 
 
 # @router.get("/workspaces/{workspace_id}/projects/{project_id}/outlier")

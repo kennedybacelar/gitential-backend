@@ -104,6 +104,30 @@ def developers(
     return get_developers(g, workspace_id)
 
 
+@router.get("/v2/workspaces/{workspace_id}/repos/{repo_id}/developers")
+def developers_repo_level(
+    workspace_id: int,
+    repo_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return get_developers(g, workspace_id=workspace_id, repo_id=repo_id)
+
+
+@router.get("/v2/workspaces/{workspace_id}/projects/{project_id}/developers")
+async def developers_project_level(
+    orient: str,
+    limit: int,
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):  # pylint: disable=unused-argument
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return get_developers(g, workspace_id=workspace_id, project_id=project_id)
+
+
 @router.get("/v2/workspaces/{workspace_id}/dev_related_projects")
 def dev_related_projects(
     workspace_id: int,
