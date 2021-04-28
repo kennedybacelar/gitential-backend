@@ -40,6 +40,17 @@ def acquire_credential(
             credential_name=credential.name,
             owner_id=credential.owner_id,
         )
+
+        if credential.type == CredentialType.token:
+            integration = g.integrations.get(credential.integration_name)
+            token = credential.to_token_dict(g.fernet)
+            if integration and token:
+                is_refreshed = integration.refresh_token_if_expired(
+                    token, update_token=get_update_token_callback(g, credential)
+                )
+                if is_refreshed:
+                    credential = g.backend.credentials.get_or_error(credential.id)
+
         with g.kvstore.lock(f"credential-lock-{credential.id}"):
             yield credential
 
@@ -48,9 +59,15 @@ def get_update_token_callback(g: GitentialContext, credential: CredentialInDB):
     # pylint: disable=unused-argument
     def callback(token: dict, refresh_token=None, access_token=None) -> Optional[CredentialInDB]:
 
-        logger.info("updating acces_token", user_id=credential.owner_id, integration_name=credential.integration_name)
+        logger.info(
+            "updating acces_token",
+            user_id=credential.owner_id,
+            integration_name=credential.integration_name,
+            credential_id=credential.id,
+        )
 
         if "access_token" in token:
+
             return g.backend.credentials.update(
                 credential.id,
                 CredentialUpdate.from_token(

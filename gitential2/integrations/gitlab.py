@@ -31,6 +31,9 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "client_secret": self.settings.oauth.client_secret,
         }
 
+    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
+        return False
+
     def refresh_token(self, token):
         client = self.get_oauth2_client(token=token)
         new_token = client.refresh_token(self.token_url, refresh_token=token["refresh_token"])

@@ -38,6 +38,10 @@ class OAuthLoginMixin(ABC):
     def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
         pass
 
+    @abstractmethod
+    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
+        pass
+
 
 class GitProviderMixin(ABC):
     @abstractmethod

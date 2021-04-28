@@ -46,6 +46,9 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "client_secret": self.settings.oauth.client_secret,
         }
 
+    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
+        return False
+
     def collect_pull_requests(
         self,
         repository: RepositoryInDB,

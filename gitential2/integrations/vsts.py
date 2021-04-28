@@ -82,6 +82,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     ):
         pass
 
+    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
+        self.refresh_token(token, update_token)
+        return True
+
     def refresh_token(self, token, update_token):
         client = self.get_oauth2_client(
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
