@@ -6,7 +6,7 @@ from structlog import get_logger
 logger = get_logger(__name__)
 
 
-def walk_next_link(client, starting_url, acc=None):
+def walk_next_link(client, starting_url, acc=None, max_pages=50):
     def _get_next_link(link_header) -> Optional[str]:
         if link_header:
             header_links = parse_header_links(link_header)
@@ -23,8 +23,8 @@ def walk_next_link(client, starting_url, acc=None):
         items, headers = response.json(), response.headers
         acc = acc + items
         next_url = _get_next_link(headers.get("Link"))
-        if next_url:
-            return walk_next_link(client, next_url, acc)
+        if next_url and max_pages > 0:
+            return walk_next_link(client, next_url, acc, max_pages=max_pages - 1)
         else:
             return acc
     else:

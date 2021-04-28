@@ -49,6 +49,17 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
         return False
 
+    def get_rate_limit(self, token, update_token: Callable):
+        api_base_url = self.oauth_register()["api_base_url"]
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        response = client.get(f"{api_base_url}rate_limit")
+        if response.status_code == 200:
+            rate_limit, headers = response.json(), response.headers
+
+            logger.info("Github API rate limit", rate_limit=rate_limit, headers=headers)
+            return rate_limit.get("core", None)
+        return None
+
     def collect_pull_requests(
         self,
         repository: RepositoryInDB,
@@ -65,6 +76,16 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         results = walk_next_link(client, pr_list_url)
 
         counter = 0
+        rate_limit = self.get_rate_limit(token, update_token)
+
+        if rate_limit and rate_limit["remaining"] < 1000:
+            logger.warn(
+                "Skipping pr collection because API rate limit",
+                rate_limit=rate_limit,
+                repository_name=repository.name,
+                repository_id=repository.id,
+            )
+            return
 
         for pr in results:
             pr_number = pr["number"]

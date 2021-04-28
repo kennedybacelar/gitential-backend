@@ -33,7 +33,7 @@ def refresh_repository(g: GitentialContext, workspace_id: int, repository_id: in
             persist_repository_status(g, workspace_id, repository_id, repo_status.persist_started())
 
             # Temporary disabled pull requests refresh for prod deploy
-            # refresh_repository_pull_requests(g, workspace_id, repository_id)
+            refresh_repository_pull_requests(g, workspace_id, repository_id, limit=200)
 
             persist_repository_status(g, workspace_id, repository_id, repo_status.persist_finished())
         except Exception:  # pylint: disable=broad-except
@@ -55,7 +55,7 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
     _extract_commits_patches(g, workspace_id, repository)
 
 
-def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, repository_id: int):
+def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, repository_id: int, limit: int = 200):
     repository = g.backend.repositories.get_or_error(workspace_id, repository_id)
     prs_we_already_have = g.backend.pull_requests.get_prs_updated_at(workspace_id, repository_id)
 
@@ -86,6 +86,7 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
                 update_token=get_update_token_callback(g, credential),
                 output=output,
                 prs_we_already_have=prs_we_already_have,
+                limit=limit,
             )
         else:
             logger.info(
