@@ -1,3 +1,5 @@
+from typing import Callable
+
 import pytest
 from gitential2.settings import GitentialSettings, IntegrationSettings, IntegrationType
 from gitential2.backends import InMemGitentialBackend
@@ -32,6 +34,9 @@ class DummyIntegration(OAuthLoginMixin, BaseIntegration):
             website=data.get("website_url"),
             extra=data,
         )
+
+    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
+        return False
 
 
 @pytest.fixture
