@@ -3,17 +3,36 @@ from itertools import product
 import datetime as dt
 import pandas as pd
 import numpy as np
-
+from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias
 from .authors import get_or_create_author_for_alias
 from .context import GitentialContext
+
+logger = get_logger(__name__)
 
 
 def recalculate_repository_values(
     g: GitentialContext, workspace_id: int, repository_id: int
 ):  # pylint: disable=unused-variable
+    logger.info("Recalculating repository commit values", workspace_id=workspace_id, repository_id=repository_id)
+
     extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df = g.backend.get_extracted_dataframes(
         workspace_id=workspace_id, repository_id=repository_id
+    )
+    logger.info(
+        "Extracted commits info",
+        size=extracted_commits_df.size,
+        mem=extracted_commits_df.memory_usage(deep=True).sum(),
+    )
+    logger.info(
+        "Extracted patches info",
+        size=extracted_patches_df.size,
+        mem=extracted_patches_df.memory_usage(deep=True).sum(),
+    )
+    logger.info(
+        "Extracted patch rewrites info",
+        size=extracted_patch_rewrites_df.size,
+        mem=extracted_patch_rewrites_df.memory_usage(deep=True).sum(),
     )
     # print(extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df)
     if extracted_patches_df.empty or extracted_commits_df.empty:
@@ -30,6 +49,8 @@ def recalculate_repository_values(
 
     calculated_commits_df = _calculate_commit_level(prepared_commits_df, commits_patches_df, outlier_df)
     calculated_patches_df = _calculate_patch_level(commits_patches_df)
+
+    logger.info("Saving repository commit calculations")
 
     g.backend.save_calculated_dataframes(
         workspace_id=workspace_id,

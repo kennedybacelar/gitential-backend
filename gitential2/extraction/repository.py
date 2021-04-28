@@ -54,11 +54,13 @@ def extract_incremental_local(
     ignore_spec: IgnoreSpec = default_ignorespec,
 ):
     current_state = get_repository_state(local_repo)
+    logger.info("Gettings commits from", local_repo=local_repo)
     commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
     executor = create_executor(
         settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
     )
     executor.map(fn=_extract_single_commit, items=commits)
+    logger.info("Finished commits extraction from", local_repo=local_repo)
     return current_state
 
 
@@ -318,20 +320,20 @@ def _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id):  #
     deletion = "-"
     filepath = patch.delta.old_file.path
     rewrites = defaultdict(int)
-    with Timer("blame_porcelain", threshold_ms=1000):
+    with Timer("blame_porcelain", threshold_ms=2000):
         line_blame_dict = blame_porcelain(g2_repo.path, filepath, str(parent.id))
 
     if not line_blame_dict:
         return 0, 0
 
-    with Timer("calc rewrites", threshold_ms=1000):
+    with Timer("calc rewrites", threshold_ms=2000):
         for hunk in patch.hunks:
             for line in hunk.lines:
                 if line.origin == deletion:
                     blame_co_id = line_blame_dict[line.old_lineno]
                     rewrites[blame_co_id] += 1
 
-    with Timer("construct output", threshold_ms=1000):
+    with Timer("construct output", threshold_ms=2000):
         for rewritten_commit_id, line_count in rewrites.items():
             rewritten = g2_repo.get(rewritten_commit_id)
             output.write(

@@ -1,3 +1,4 @@
+import contextlib
 from typing import List, Optional, cast
 from structlog import get_logger
 from gitential2.datatypes.credentials import CredentialInDB, CredentialCreate, CredentialType, CredentialUpdate
@@ -10,6 +11,37 @@ from ..exceptions import NotImplementedException, NotFoundException
 
 
 logger = get_logger(__name__)
+
+
+@contextlib.contextmanager
+def acquire_credential(
+    g: GitentialContext,
+    credential_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    integration_name: Optional[str] = None,
+):
+    if credential_id:
+        credential = g.backend.credentials.get(credential_id)
+    elif integration_name and user_id:
+        credential = g.backend.credentials.get_by_user_and_integration(
+            owner_id=user_id, integration_name=integration_name
+        )
+    elif integration_name and workspace_id:
+        workspace = g.backend.workspaces.get_or_error(workspace_id)
+        credential = g.backend.credentials.get_by_user_and_integration(
+            owner_id=workspace.created_by, integration_name=integration_name
+        )
+
+    if credential:
+        logger.info(
+            "Acquiring credential",
+            credential_id=credential.id,
+            credential_name=credential.name,
+            owner_id=credential.owner_id,
+        )
+        with g.kvstore.lock(f"credential-lock-{credential.id}"):
+            yield credential
 
 
 def get_update_token_callback(g: GitentialContext, credential: CredentialInDB):
