@@ -67,6 +67,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         update_token: Callable,
         output: OutputHandler,
         prs_we_already_have: Optional[dict] = None,
+        limit: int = 200,
     ):
         pass
 

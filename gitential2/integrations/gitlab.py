@@ -118,6 +118,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         update_token: Callable,
         output: OutputHandler,
         prs_we_already_have: Optional[dict] = None,
+        limit: int = 200,
     ):
         client = self.get_oauth2_client(token=token, update_token=update_token)
 
@@ -128,6 +129,9 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             merge_requests = walk_next_link(
                 client, f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple"
             )
+
+            counter = 0
+
             for mr in merge_requests:
                 iid = mr["iid"]
 
@@ -147,6 +151,15 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                     logger.exception(
                         "Failed to extract pull requests", repository=repository, raw_data_mr=raw_data["mr"]
                     )
+                counter += 1
+                if counter == limit:
+                    logger.info(
+                        "Reached pr extraction limit, finishing",
+                        limit=limit,
+                        repository_name=repository.name,
+                        repo_id=repository.id,
+                    )
+                    break
 
     def _transform_to_pr(self, raw_data: dict, repository: RepositoryInDB) -> PullRequest:
         def _calc_first_reaction_at(raw_notes):

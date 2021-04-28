@@ -102,7 +102,6 @@ class CredentialBase(CredentialBasePublic, CredentialBaseSecret):
             if self.expires_at:
                 ret["expires_at"] = int(self.expires_at.timestamp())
 
-            print(ret)
             return ret
         else:
             return None

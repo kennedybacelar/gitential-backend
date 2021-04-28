@@ -56,12 +56,15 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         update_token: Callable,
         output: OutputHandler,
         prs_we_already_have: Optional[dict] = None,
+        limit: int = 200,
     ):
         api_base_url = self.oauth_register()["api_base_url"]
 
         pr_list_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls?per_page=100&state=all"
         client = self.get_oauth2_client(token=token, update_token=update_token)
         results = walk_next_link(client, pr_list_url)
+
+        counter = 0
 
         for pr in results:
             pr_number = pr["number"]
@@ -80,6 +83,15 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 output.write(ExtractedKind.PULL_REQUEST, pull_request)
             except Exception:  # pylint: disable=broad-except
                 logger.exception("Failed to extract PR", pr_number=pr_number, raw_data=raw_data)
+            counter += 1
+            if counter == limit:
+                logger.info(
+                    "Reached pr extraction limit, finishing",
+                    limit=limit,
+                    repository_name=repository.name,
+                    repo_id=repository.id,
+                )
+                break
 
     def _collect_single_pr_data_raw(self, client, pr):
         resp = client.get(pr["url"])
