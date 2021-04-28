@@ -21,6 +21,8 @@ def acquire_credential(
     workspace_id: Optional[int] = None,
     integration_name: Optional[str] = None,
 ):
+    credential = None
+
     if credential_id:
         credential = g.backend.credentials.get(credential_id)
     elif integration_name and user_id:
