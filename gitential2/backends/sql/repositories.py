@@ -3,7 +3,7 @@ import datetime as dt
 import typing
 import sqlalchemy as sa
 import pandas as pd
-from sqlalchemy.sql import and_, select
+from sqlalchemy.sql import and_, select, desc
 from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes import (
     UserCreate,
@@ -28,7 +28,7 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchRewrite,
 )
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
-
+from gitential2.datatypes.access_log import AccessLog
 from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate
 from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
 
@@ -45,6 +45,7 @@ from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, T
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 
 from gitential2.backends.base.repositories import (
+    AccessLogRepository,
     AuthorRepository,
     ExtractedCommitRepository,
     ExtractedPatchRepository,
@@ -76,6 +77,33 @@ fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
 inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
 rowcount_ = lambda result: result.rowcount
+
+
+class SQLAccessLogRepository(AccessLogRepository):
+    def __init__(self, table: sa.Table, engine: sa.engine.Engine):
+        self.table = table
+        self.engine = engine
+
+    def create(self, log: AccessLog) -> AccessLog:
+        query = self.table.insert().values(**log.dict())
+        self._execute_query(query)
+        return log
+
+    def last_interaction(self, user_id: int) -> Optional[AccessLog]:
+        query = (
+            self.table.select()
+            .where(self.table.c.user_id == user_id)
+            .order_by(
+                desc(self.table.c.log_time),
+            )
+        )
+        row = self._execute_query(query, callback_fn=fetchone_)
+        return AccessLog(**row) if row else None
+
+    def _execute_query(self, query, callback_fn=lambda result: result):
+        with self.engine.connect() as connection:
+            result = connection.execute(query)
+            return callback_fn(result)
 
 
 class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  # pylint: disable=unsubscriptable-object

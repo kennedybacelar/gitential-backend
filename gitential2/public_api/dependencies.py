@@ -5,6 +5,7 @@ from fastapi import Request, Depends, Header
 from fastapi.exceptions import HTTPException
 from gitential2.core.context import GitentialContext
 from gitential2.core.users import get_user
+from gitential2.core.access_log import create_access_log
 
 logger = get_logger(__name__)
 
@@ -25,6 +26,28 @@ def current_user(request: Request, g: GitentialContext = Depends(gitential_conte
     if "current_user_id" in request.session:
         return get_user(g, request.session["current_user_id"])
     return None
+
+
+def api_access_log(
+    request: Request, current_user=Depends(current_user), g: GitentialContext = Depends(gitential_context)
+):
+    if current_user:
+        return create_access_log(
+            g,
+            user_id=current_user.id,
+            path=request.url.path,
+            method=request.method,
+            ip_address=request.client.host,
+        )
+
+    else:
+        logger.info(
+            "No access log, unknown user",
+            path=request.url.path,
+            method=request.method,
+            ip_address=request.client.host,
+        )
+        return None
 
 
 def verify_recaptcha_token(x_recaptcha_token: str = Header(...), g: GitentialContext = Depends(gitential_context)):

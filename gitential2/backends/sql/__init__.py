@@ -36,6 +36,7 @@ from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin
 
 from .tables import (
+    access_log_table,
     users_table,
     user_infos_table,
     credentials_table,
@@ -47,6 +48,7 @@ from .tables import (
 )
 
 from .repositories import (
+    SQLAccessLogRepository,
     SQLAuthorRepository,
     SQLProjectRepositoryRepository,
     SQLPullRequestRepository,
@@ -82,6 +84,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._metadata.create_all(self._engine)
 
         self._users = SQLUserRepository(table=users_table, engine=self._engine, in_db_cls=UserInDB)
+        self._access_logs = SQLAccessLogRepository(table=access_log_table, engine=self._engine)
         self._subscriptions = SQLSubscriptionRepository(
             table=subscriptions_table, engine=self._engine, in_db_cls=SubscriptionInDB
         )

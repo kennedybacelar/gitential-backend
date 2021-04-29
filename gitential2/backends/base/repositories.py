@@ -19,6 +19,7 @@ from gitential2.datatypes import (
     CredentialCreate,
     CredentialUpdate,
     CredentialInDB,
+    AccessLog,
 )
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
@@ -51,6 +52,16 @@ InDBType = TypeVar("InDBType", bound=CoreModel)
 
 class NotFoundException(Exception):
     pass
+
+
+class AccessLogRepository(ABC):
+    @abstractmethod
+    def create(self, log: AccessLog) -> AccessLog:
+        pass
+
+    @abstractmethod
+    def last_interaction(self, user_id: int) -> Optional[AccessLog]:
+        pass
 
 
 class BaseRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):

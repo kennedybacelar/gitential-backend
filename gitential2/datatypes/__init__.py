@@ -1,4 +1,5 @@
 from .common import CoreModel
+from .access_log import AccessLog
 from .userinfos import UserInfoCreate, UserInfoUpdate, UserInfoPublic, UserInfoInDB
 from .users import UserCreate, UserUpdate, UserPublic, UserInDB, UserHeader
 from .subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB, SubscriptionType

@@ -1,4 +1,5 @@
 from .repositories import (
+    AccessLogRepository,
     AuthorRepository,
     TeamMemberRepository,
     TeamRepository,
@@ -19,6 +20,7 @@ from .repositories import (
 
 
 class WithRepositoriesMixin:
+    _access_logs: AccessLogRepository
     _users: UserRepository
     _user_infos: UserInfoRepository
     _workspaces: WorkspaceRepository
@@ -35,6 +37,10 @@ class WithRepositoriesMixin:
     _extracted_patches: ExtractedPatchRepository
     _extracted_patch_rewrites: ExtractedPatchRewriteRepository
     _pull_requests: PullRequestRepository
+
+    @property
+    def access_logs(self):
+        return self._access_logs
 
     @property
     def users(self) -> UserRepository:
