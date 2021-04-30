@@ -140,7 +140,7 @@ def _create_or_update_user_and_user_info(
     )
     if existing_userinfo:
         if current_user and existing_userinfo.user_id != current_user.id:
-            raise ValueError("Authentication error...")
+            raise ValueError("Authentication error, this user's credential already existing in our system")
 
         user = g.backend.users.get_or_error(existing_userinfo.user_id)
 
