@@ -1,6 +1,8 @@
 from typing import Optional
 import datetime as dt
 import sqlalchemy as sa
+from sqlalchemy_utils import IPAddressType
+
 from gitential2.datatypes import WorkspaceRole
 from gitential2.datatypes.subscriptions import SubscriptionType
 from gitential2.datatypes.repositories import GitProtocol
@@ -27,6 +29,19 @@ users_table = sa.Table(
     sa.Column("login_ready", sa.Boolean, default=False, nullable=False),
     sa.Column("is_active", sa.Boolean, default=False, nullable=False),
     sa.Column("extra", sa.JSON, nullable=True),
+)
+
+access_log_table = sa.Table(
+    "access_log",
+    metadata,
+    sa.Column("log_time", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("ip_address", IPAddressType, nullable=True),
+    sa.Column("user_id", sa.Integer, nullable=False),
+    sa.Column("path", sa.String(256), nullable=False),
+    sa.Column("method", sa.String(16), nullable=False),
+    sa.Column("extra", sa.JSON, nullable=True),
+    sa.Index("idx_user_id", "user_id"),
+    sa.Index("idx_log_time_user_id", "log_time", "user_id"),
 )
 
 subscriptions_table = sa.Table(

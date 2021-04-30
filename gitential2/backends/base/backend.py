@@ -6,6 +6,7 @@ from gitential2.settings import GitentialSettings
 from gitential2.datatypes.stats import IbisTables
 
 from .repositories import (
+    AccessLogRepository,
     AuthorRepository,
     TeamMemberRepository,
     TeamRepository,
@@ -28,6 +29,11 @@ from .repositories import (
 class GitentialBackend(ABC):
     def __init__(self, settings: GitentialSettings):
         self.settings = settings
+
+    @property
+    @abstractmethod
+    def access_logs(self) -> AccessLogRepository:
+        pass
 
     @property
     @abstractmethod

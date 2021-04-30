@@ -7,7 +7,7 @@ from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, 
 # from gitential2.datatypes.extraction import ExtractedKind
 # from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
 from gitential2.extraction.output import OutputHandler
-from gitential2.utils import rchop
+from gitential2.utils import calc_repo_namespace
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error
 
@@ -93,7 +93,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             clone_url=clone_url,
             protocol=protocol,
             name=repo_dict["name"],
-            namespace=rchop(repo_dict["full_name"], "/" + repo_dict["name"]),
+            namespace=calc_repo_namespace(clone_url),
             private=repo_dict.get("is_private", False),
             integration_type="bitbucket",
             integration_name=self.name,

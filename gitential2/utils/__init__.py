@@ -1,3 +1,6 @@
+from urllib.parse import urlparse
+
+
 def levenshtein(s1: str, s2: str):
     if len(s1) < len(s2):
         return levenshtein(s2, s1)  # pylint: disable=arguments-out-of-order
@@ -35,3 +38,20 @@ def rchop(s, sub):
 
 def lchop(s, sub):
     return s[len(sub) :] if s.startswith(sub) else s
+
+
+def calc_repo_namespace(clone_url: str) -> str:
+    def _remove_last_part(path):
+        _ignored_parts = ["_git"]
+        return "/".join([e for e in path.split("/")[:-1] if e not in _ignored_parts]).strip("/")
+
+    if "://" in clone_url:
+        if clone_url.startswith("ssh://") and len(clone_url.split(":")) > 2:
+            # bad, messed up uri + ssh clone_url ssh://git@xxxx:yyyyy.git ...
+            return calc_repo_namespace(clone_url[6:])
+        parsed_url = urlparse(clone_url)
+
+        return _remove_last_part(parsed_url.path)
+    else:
+        _, path = clone_url.split(":")
+        return _remove_last_part(path)

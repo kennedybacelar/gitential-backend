@@ -20,8 +20,11 @@ from gitential2.datatypes import (
     CredentialCreate,
     CredentialUpdate,
     CredentialInDB,
+    AccessLog,
     # WorkspaceWithPermission,
 )
+from gitential2.backends.base.repositories import AccessLogRepository
+
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
@@ -49,6 +52,23 @@ from .base import (
     ProjectRepositoryRepository,
 )
 from .base.mixins import WithRepositoriesMixin
+
+
+class InMemAccessLogRepository(AccessLogRepository):
+    def __init__(self):
+        self._logs: List[AccessLog] = []
+
+    def create(self, log: AccessLog) -> AccessLog:
+        self._logs.append(log)
+        return log
+
+    def last_interaction(self, user_id: int) -> Optional[AccessLog]:
+        ret: Optional[AccessLog] = None
+        for log in self._logs:
+            if log.user_id == user_id:
+                if ret is None or (log.log_time and ret.log_time and log.log_time > ret.log_time):
+                    ret = log
+        return ret
 
 
 class InMemRepository(
@@ -286,6 +306,7 @@ class InMemProjectRepositoryRepository(
 class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def __init__(self, settings: GitentialSettings):
         super().__init__(settings)
+        self._access_logs: AccessLogRepository = InMemAccessLogRepository()
         self._users: UserRepository = InMemUserRepository(in_db_cls=UserInDB)
         self._user_infos: UserInfoRepository = InMemUserInfoRepository(in_db_cls=UserInfoInDB)
         self._workspaces: WorkspaceRepository = InMemWorkspaceRepository(in_db_cls=WorkspaceInDB)

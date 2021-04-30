@@ -111,6 +111,7 @@ class WebSettings(BaseModel):
     session_https_only: bool = True
     session_max_age: int = 14 * 24 * 60 * 60  # 14 days, in seconds
     legacy_login: bool = False
+    access_log: bool = False
 
 
 class ExtractionSettings(BaseModel):

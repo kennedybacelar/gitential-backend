@@ -14,7 +14,7 @@ from gitential2.core import (
 from gitential2.datatypes.users import UserCreate
 from gitential2.datatypes.subscriptions import SubscriptionType
 from gitential2.exceptions import AuthenticationException
-from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token
+from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token, api_access_log
 
 logger = get_logger(__name__)
 
@@ -127,9 +127,8 @@ async def logout(request: Request):
 
 @router.get("/session")
 def session(
-    request: Request,
-    g: GitentialContext = Depends(gitential_context),
-):
+    request: Request, g: GitentialContext = Depends(gitential_context), api_access_log=Depends(api_access_log)
+):  # pylint: disable=unused-argument
     current_user_id = request.session.get("current_user_id")
     if current_user_id:
         user_in_db = get_user(g, current_user_id)
