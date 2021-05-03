@@ -1,11 +1,13 @@
 from typing import Optional, Callable, List
+from urllib.parse import urlparse
 
-# from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
+from pydantic.datetime_parse import parse_datetime
+
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 
-# from gitential2.datatypes.extraction import ExtractedKind
-# from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
+from gitential2.datatypes.extraction import ExtractedKind
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
 from gitential2.extraction.output import OutputHandler
 from gitential2.utils import calc_repo_namespace
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
@@ -69,7 +71,121 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
     ):
-        pass
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        api_base_url = self.oauth_register()["api_base_url"]
+        workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
+        pr_list = _walk_paginated_results(
+            client,
+            f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED",
+        )
+        counter = 0
+        for pr in pr_list:
+            pr_number = pr["id"]
+
+            if (
+                prs_we_already_have
+                and pr_number in prs_we_already_have
+                and parse_datetime(prs_we_already_have[pr_number]) == parse_datetime(pr["updated_on"])
+            ):
+                logger.debug("Skipping PR, not updated.", pr_number=pr_number, repository=repository.name)
+                continue
+
+            counter += 1
+            if counter == limit:
+                logger.info(
+                    "Reached pr extraction limit, finishing",
+                    limit=limit,
+                    repository_name=repository.name,
+                    repo_id=repository.id,
+                )
+                break
+
+            raw_data = self._collect_single_pr_data_raw(client, repository, pr_number)
+
+            try:
+                pull_request = self._transform_to_pr(raw_data, repository=repository)
+                output.write(ExtractedKind.PULL_REQUEST, pull_request)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("Failed to extract PR", repository=repository, pr_number=pr_number, raw_data=raw_data)
+
+        client.close()
+
+    def _get_bitbucket_workspace_and_repo_slug(self, repositor: RepositoryInDB):
+        clone_url = repositor.clone_url
+        if clone_url.startswith("https://"):
+            parsed_url = urlparse(clone_url)
+            path_parts = parsed_url.path.split("/")
+            return "/".join(path_parts[:-1]).strip("/"), path_parts[-1].replace(".git", "")
+        else:
+            logger.error("Don't know how to parse clone_url for workspace, and repo slug", clone_url=clone_url)
+            raise ValueError("Don't know how to parse clone_url for workspace, and repo slug")
+
+    def _collect_single_pr_data_raw(self, client, repository: RepositoryInDB, pr_number: int):
+        api_base_url = self.oauth_register()["api_base_url"]
+        workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
+        pr_url = f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests/{pr_number}"
+
+        resp = client.get(pr_url)
+        resp.raise_for_status()
+        pr_details = resp.json()
+
+        commits = _walk_paginated_results(client, pr_details["links"]["commits"]["href"])
+        review_comments = _walk_paginated_results(client, pr_details["links"]["comments"]["href"])
+        diffstat = _walk_paginated_results(client, pr_details["links"]["diffstat"]["href"])
+        return {"pr": pr_details, "commits": commits, "review_comments": review_comments, "diffstat": diffstat}
+
+    def _transform_to_pr(self, raw_data, repository):
+        def _calc_first_commit_authored_at(raw_commits):
+            author_times = [c["date"] for c in raw_commits]
+            author_times.sort()
+            return author_times[0] if author_times else None
+
+        def _calc_first_reaction_at(raw_pr, review_comments):
+            human_note_creation_times = [rc["created_on"] for rc in review_comments]
+            human_note_creation_times.sort()
+            return (
+                human_note_creation_times[0]
+                if human_note_creation_times
+                else raw_pr.get("merged_on", raw_pr.get("closed_on"))
+            )
+
+        def _calc_addition_and_deletion_changed_files(diffstat):
+            additions, deletions, changed_files = 0, 0, 0
+            for change in diffstat:
+                changed_files += 1
+                additions += change["lines_added"]
+                deletions += change["lines_removed"]
+
+            return additions, deletions, changed_files
+
+        additions, deletions, changed_files = _calc_addition_and_deletion_changed_files(raw_data["diffstat"])
+
+        state = PullRequestState.from_bitbucket(raw_data["pr"]["state"])
+
+        return PullRequest(
+            repo_id=repository.id,
+            number=raw_data["pr"]["id"],
+            title=raw_data["pr"].get("title", "<missing title>"),
+            platform="bitbucket",
+            id_platform=raw_data["pr"]["id"],
+            api_resource_uri=raw_data["pr"]["links"]["self"]["href"],
+            state_platform=raw_data["pr"]["state"],
+            state=state,
+            created_at=raw_data["pr"]["created_on"],
+            closed_at=raw_data["pr"].get("updated_on") if state == PullRequestState.closed else None,
+            updated_at=raw_data["pr"]["updated_on"],
+            merged_at=raw_data["pr"].get("updated_on") if state == PullRequestState.merged else None,
+            additions=additions,
+            deletions=deletions,
+            changed_files=changed_files,
+            draft=False,
+            user=raw_data["pr"]["author"]["nickname"],
+            commits=len(raw_data["commits"]),
+            merged_by=None,
+            first_reaction_at=_calc_first_reaction_at(raw_data["pr"], raw_data["review_comments"]),
+            first_commit_authored_at=_calc_first_commit_authored_at(raw_data["commits"]),
+            extra=raw_data,
+        )
 
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str]

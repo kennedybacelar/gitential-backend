@@ -31,6 +31,19 @@ class PullRequestState(str, Enum):
         else:
             raise ValueError(f'invalid state for Github PR "{state}"')
 
+    @classmethod
+    def from_bitbucket(cls, state):
+        if state == "OPEN":
+            return cls.open
+        elif state == "MERGED":
+            return cls.merged
+        elif state == "SUPERSEDED":
+            return cls.closed
+        elif state == "DECLINED":
+            return cls.closed
+        else:
+            raise ValueError(f'invalid state for BitBucket PR "{state}"')
+
 
 class PullRequestId(CoreModel):
     repo_id: int
