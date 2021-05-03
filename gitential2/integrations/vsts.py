@@ -54,7 +54,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "authorize_url": f"{self.base_url}/oauth2/authorize",
             "userinfo_endpoint": f"{self.base_url}/_apis/profile/profiles/me?api-version=4.1",
             "client_kwargs": {
-                "scope": "vso.code vso.identity",
+                "scope": "vso.code vso.project",
                 "response_type": "Assertion",
                 "token_endpoint_auth_method": self._auth_client_secret_uri,
             },
