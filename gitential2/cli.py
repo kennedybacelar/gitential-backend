@@ -5,8 +5,8 @@ from pprint import pprint
 
 import click
 import uvicorn
+from fastapi.encoders import jsonable_encoder
 from structlog import get_logger
-from gitential2.datatypes.stats import StatsRequest
 from gitential2.datatypes.credentials import CredentialType
 from gitential2.extraction.repository import extract_incremental
 from gitential2.extraction.output import DataCollector
@@ -18,7 +18,6 @@ from gitential2.core import (
     refresh_repository,
     recalculate_repository_values,
     refresh_repository_pull_requests,
-    collect_stats,
     get_user,
     list_users,
     list_repositories,
@@ -31,7 +30,7 @@ from gitential2.legacy_import import import_legacy_database
 from gitential2.legacy_import import import_legacy_workspace
 from gitential2.core.tasks import configure_celery
 from gitential2.core.context import GitentialContext
-
+from gitential2.core.stats import calculate_workspace_usage_statistics, calculate_user_statistics
 
 logger = get_logger(__name__)
 
@@ -133,15 +132,43 @@ def refresh_workspace_pull_requests_(ctx, workspace_id):
             refresh_repository_pull_requests(g, workspace_id=workspace_id, repository_id=repo.id)
 
 
+# @click.command()
+# @click.option("--workspace", "-w", "workspace_id", type=int)
+# @click.pass_context
+# def get_stats(ctx, workspace_id):
+#     stdin_text = click.get_text_stream("stdin").read()
+#     stats_request = StatsRequest.parse_raw(stdin_text)
+#     g = init_context_from_settings(ctx.obj["settings"])
+#     result = collect_stats(g, workspace_id, stats_request)
+#     print(result)
+
+
 @click.command()
 @click.option("--workspace", "-w", "workspace_id", type=int)
 @click.pass_context
-def get_stats(ctx, workspace_id):
-    stdin_text = click.get_text_stream("stdin").read()
-    stats_request = StatsRequest.parse_raw(stdin_text)
+def workspace_usage_stats(ctx, workspace_id):
     g = init_context_from_settings(ctx.obj["settings"])
-    result = collect_stats(g, workspace_id, stats_request)
-    print(result)
+    result = calculate_workspace_usage_statistics(g, workspace_id)
+    print(json.dumps(jsonable_encoder(result)))
+
+
+@click.command()
+@click.option("--user", "-u", "user_id", type=int)
+@click.pass_context
+def user_usage_stats(ctx, user_id):
+    g = init_context_from_settings(ctx.obj["settings"])
+    result = calculate_user_statistics(g, user_id)
+    print(json.dumps(jsonable_encoder(result), indent=2))
+
+
+@click.command()
+@click.pass_context
+def usage_stats(ctx):
+    g = init_context_from_settings(ctx.obj["settings"])
+    result = {}
+    for user in g.backend.users.all():
+        result[user.id] = calculate_user_statistics(g, user_id=user.id)
+    print(json.dumps(jsonable_encoder(result), indent=2))
 
 
 @click.command()
@@ -406,7 +433,7 @@ cli.add_command(initialize_database)
 cli.add_command(refresh_repository_)
 cli.add_command(refresh_repository_pull_requests_)
 cli.add_command(refresh_workspace_pull_requests_)
-cli.add_command(get_stats)
+# cli.add_command(get_stats)
 cli.add_command(recalculate_repository_values_)
 cli.add_command(check_license)
 cli.add_command(wip)
@@ -419,3 +446,7 @@ cli.add_command(list_used_repos_)
 cli.add_command(refresh_all_workspaces_)
 cli.add_command(refresh_workspace_)
 cli.add_command(fix_ssh_repo_credentials)
+cli.add_command(workspace_usage_stats)
+cli.add_command(user_usage_stats)
+
+cli.add_command(usage_stats)

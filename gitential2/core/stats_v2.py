@@ -36,6 +36,9 @@ class QueryResult(BaseModel):
 
 def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table):
     ret = []
+    # Try this out first
+    # if (DimensionName.name in dimensions or DimensionName.email in dimensions) and DimensionName.aid not in dimensions:
+    #     dimensions.append(DimensionName.aid)
     for dimension in dimensions:
         res = _prepare_dimension(dimension, table_def, ibis_tables, ibis_table)
         if res is not None:

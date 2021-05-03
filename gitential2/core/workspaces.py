@@ -37,6 +37,16 @@ def get_accessible_workspaces(
     return workspaces
 
 
+def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]:
+    workspace_memberships = g.backend.workspace_members.get_for_user(user_id=user_id)
+    ret = []
+    for wm in workspace_memberships:
+        workspace = g.backend.workspaces.get(wm.workspace_id)
+        if workspace:
+            ret.append(workspace)
+    return ret
+
+
 def _add_admin_as_collaborator_to_all_workspaces(
     g: GitentialContext,
     current_user: UserInDB,
