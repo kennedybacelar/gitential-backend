@@ -1,10 +1,12 @@
+from datetime import datetime
 import json
 from typing import Any, Tuple
 
 import pandas as pd
 import sqlalchemy as sa
 from ibis.backends.postgres import connect
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import and_, select
+
 from fastapi.encoders import jsonable_encoder
 
 from gitential2.datatypes.extraction import (
@@ -183,20 +185,64 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)
 
     def get_extracted_dataframes(
-        self, workspace_id: int, repository_id: int
+        self, workspace_id: int, repository_id: int, from_: datetime, to_: datetime
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        def _filter_by_repo(df, repo_id):
-            return df[df["repo_id"] == repo_id]
+
+        # def _filter_by_repo(df, repo_id):
+        #     return df[df["repo_id"] == repo_id]
 
         schema_name = self._workspace_schema_name(workspace_id)
-        extracted_commits_df = _filter_by_repo(
-            pd.read_sql_table("extracted_commits", schema=schema_name, con=self._engine), repository_id
+        workspace_metadata, _ = get_workspace_metadata(schema_name)
+        extracted_commits_table = workspace_metadata.tables[f"{schema_name}.extracted_commits"]
+        extracted_patches_table = workspace_metadata.tables[f"{schema_name}.extracted_patches"]
+        extracted_patch_rewrites_table = workspace_metadata.tables[f"{schema_name}.extracted_patch_rewrites"]
+
+        schema_name = self._workspace_schema_name(workspace_id)
+        extracted_commits_df = pd.read_sql_query(
+            extracted_commits_table.select().where(
+                and_(
+                    extracted_commits_table.c.atime >= from_,
+                    extracted_commits_table.c.atime < to_,
+                    extracted_commits_table.c.repo_id == repository_id,
+                )
+            ),
+            con=self._engine,
         )
-        extracted_patches_df = _filter_by_repo(
-            pd.read_sql_table("extracted_patches", schema=schema_name, con=self._engine), repository_id
+
+        extracted_patches_join_ = extracted_patches_table.join(
+            extracted_commits_table,
+            and_(
+                extracted_commits_table.c.repo_id == extracted_patches_table.c.repo_id,
+                extracted_commits_table.c.commit_id == extracted_patches_table.c.commit_id,
+            ),
         )
-        extracted_patch_rewrites_df = _filter_by_repo(
-            pd.read_sql_table("extracted_patch_rewrites", schema=schema_name, con=self._engine), repository_id
+        extracted_patches_query_ = (
+            select([extracted_patches_table])
+            .select_from(extracted_patches_join_)
+            .where(
+                and_(
+                    extracted_commits_table.c.atime >= from_,
+                    extracted_commits_table.c.atime < to_,
+                    extracted_patches_table.c.repo_id == repository_id,
+                )
+            )
+        )
+
+        extracted_patches_df = pd.read_sql_query(
+            extracted_patches_query_,
+            con=self._engine,
+        )
+
+        extracted_patch_rewrites_df = pd.read_sql_query(
+            extracted_patch_rewrites_table.select().where(
+                and_(
+                    extracted_patch_rewrites_table.c.rewritten_atime >= from_,
+                    extracted_patch_rewrites_table.c.rewritten_atime < to_,
+                    extracted_patch_rewrites_table.c.repo_id == repository_id,
+                )
+            ),
+            #                schema=schema_name,
+            con=self._engine,
         )
         # print("megy a select", extracted_commits_df)
 
@@ -225,6 +271,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         repository_id: int,
         calculated_commits_df: pd.DataFrame,
         calculated_patches_df: pd.DataFrame,
+        from_: datetime,
+        to_: datetime,
     ):
         schema_name = self._workspace_schema_name(workspace_id)
         workspace_metadata, _ = get_workspace_metadata(schema_name)
@@ -237,10 +285,22 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         with self._engine.connect() as connection:
             with connection.begin():
                 connection.execute(
-                    calculated_commits_table.delete().where(calculated_commits_table.c.repo_id == repository_id)
+                    calculated_commits_table.delete().where(
+                        and_(
+                            calculated_commits_table.c.repo_id == repository_id,
+                            calculated_commits_table.c.date >= from_,
+                            calculated_commits_table.c.date < to_,
+                        )
+                    )
                 )
                 connection.execute(
-                    calculated_patches_table.delete().where(calculated_patches_table.c.repo_id == repository_id)
+                    calculated_patches_table.delete().where(
+                        and_(
+                            calculated_patches_table.c.repo_id == repository_id,
+                            calculated_patches_table.c.date >= from_,
+                            calculated_patches_table.c.date < to_,
+                        )
+                    )
                 )
                 calculated_commits_df.to_sql(
                     name="calculated_commits", schema=schema_name, if_exists="append", con=connection, index=False

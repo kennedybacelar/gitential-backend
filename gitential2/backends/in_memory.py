@@ -346,7 +346,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         return self._output_handlers[workspace_id]
 
     def get_extracted_dataframes(
-        self, workspace_id: int, repository_id: int
+        self, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
@@ -356,6 +356,8 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         repository_id: int,
         calculated_commits_df: pd.DataFrame,
         calculated_patches_df: pd.DataFrame,
+        from_: dt.datetime,
+        to_: dt.datetime,
     ):
         return
 

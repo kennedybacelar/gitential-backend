@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Tuple
 from abc import ABC, abstractmethod
 import pandas as pd
@@ -125,7 +126,7 @@ class GitentialBackend(ABC):
 
     @abstractmethod
     def get_extracted_dataframes(
-        self, workspace_id: int, repository_id: int
+        self, workspace_id: int, repository_id: int, from_: datetime, to_: datetime
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         pass
 
@@ -136,6 +137,8 @@ class GitentialBackend(ABC):
         repository_id: int,
         calculated_commits_df: pd.DataFrame,
         calculated_patches_df: pd.DataFrame,
+        from_: datetime,
+        to_: datetime,
     ):
         pass
 
