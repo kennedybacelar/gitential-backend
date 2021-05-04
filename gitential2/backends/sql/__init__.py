@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 from typing import Any, Tuple
-
+from threading import Lock
 import pandas as pd
 import sqlalchemy as sa
 from ibis.backends.postgres import connect
@@ -78,7 +78,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def __init__(self, settings: GitentialSettings):
         super().__init__(settings)
         self._ibis_conn = None
-
+        self._ibis_lock = Lock()
         self._engine = sa.create_engine(
             settings.connections.database_url, json_serializer=json_dumps, pool_pre_ping=True
         )
@@ -249,16 +249,16 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         return extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df
 
     def get_ibis_tables(self, workspace_id: int) -> Any:
-        ibis_conn = self._get_ibis_conn()
-        ibis_schema = ibis_conn.schema(self._workspace_schema_name(workspace_id))
-        ret = IbisTables()
-        ret.conn = ibis_conn
-        ret.pull_requests = ibis_schema.pull_requests
-        ret.commits = ibis_schema.calculated_commits
-        ret.patches = ibis_schema.calculated_patches
-        ret.authors = ibis_schema.authors
-
-        return ret
+        with self._ibis_lock:
+            ibis_conn = self._get_ibis_conn()
+            ibis_schema = ibis_conn.schema(self._workspace_schema_name(workspace_id))
+            ret = IbisTables()
+            ret.conn = ibis_conn
+            ret.pull_requests = ibis_schema.pull_requests
+            ret.commits = ibis_schema.calculated_commits
+            ret.patches = ibis_schema.calculated_patches
+            ret.authors = ibis_schema.authors
+            return ret
 
     def _get_ibis_conn(self):
         if not self._ibis_conn:

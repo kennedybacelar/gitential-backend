@@ -325,8 +325,7 @@ class IbisQuery:
 
     def execute(self) -> QueryResult:
         logger.debug("Executing query", query=self.query, workspace_id=self.workspace_id)
-        with self.g.kvstore.lock(f"ibis_tables_{self.workspace_id}"):
-            ibis_tables = self.g.backend.get_ibis_tables(self.workspace_id)
+        ibis_tables = self.g.backend.get_ibis_tables(self.workspace_id)
         ibis_table = ibis_tables.get_table(self.query.table)
         ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table, ibis_tables, ibis_table, self.query)
         ibis_dimensions = (
