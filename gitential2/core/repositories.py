@@ -27,19 +27,28 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
     results: List[RepositoryCreate] = all_already_used_repositories
     for credential_ in list_credentials_for_workspace(g, workspace_id):
         if credential_.integration_type in REPOSITORY_SOURCES and credential_.integration_name in g.integrations:
-            with acquire_credential(g, credential_id=credential_.id) as credential:
-                integration = g.integrations[credential.integration_name]
-                token = credential.to_token_dict(fernet=g.fernet)
-                userinfo: UserInfoInDB = find_first(
-                    lambda ui: ui.integration_name == credential.integration_name,  # pylint: disable=cell-var-from-loop
-                    g.backend.user_infos.get_for_user(credential.owner_id),
+            try:
+                with acquire_credential(g, credential_id=credential_.id) as credential:
+                    integration = g.integrations[credential.integration_name]
+                    token = credential.to_token_dict(fernet=g.fernet)
+                    userinfo: UserInfoInDB = find_first(
+                        lambda ui: ui.integration_name
+                        == credential.integration_name,  # pylint: disable=cell-var-from-loop
+                        g.backend.user_infos.get_for_user(credential.owner_id),
+                    )
+                    collected_repositories = integration.list_available_private_repositories(
+                        token=token,
+                        update_token=get_update_token_callback(g, credential),
+                        provider_user_id=userinfo.sub if userinfo else None,
+                    )
+                    results = _merge_repo_lists(collected_repositories, results)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    "Error during collecting repositories",
+                    integration_name=credential_.integration_name,
+                    credential_id=credential_.id,
+                    workspace_id=workspace_id,
                 )
-                collected_repositories = integration.list_available_private_repositories(
-                    token=token,
-                    update_token=get_update_token_callback(g, credential),
-                    provider_user_id=userinfo.sub if userinfo else None,
-                )
-                results = _merge_repo_lists(collected_repositories, results)
 
     results = _merge_repo_lists(list_ssh_repositories(g, workspace_id), results)
     return results
