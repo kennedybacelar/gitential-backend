@@ -40,3 +40,11 @@ def create_access_log(
             )
         )
     return None
+
+
+def get_last_interaction_at(g: GitentialContext, user_id: int) -> Optional[datetime]:
+    last_interaction = g.backend.access_logs.last_interaction(user_id)
+    if last_interaction:
+        return last_interaction.log_time
+    else:
+        return None
