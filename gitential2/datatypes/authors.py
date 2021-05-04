@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Set, List, Optional
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
@@ -12,6 +12,13 @@ class AuthorBase(ExtraFieldMixin, CoreModel):
     name: Optional[str]
     email: Optional[str]
     aliases: List[AuthorAlias]
+
+    @property
+    def all_emails(self) -> Set[str]:
+        emails = {a.email for a in self.aliases}
+        if self.email not in emails and self.email:
+            emails.add(self.email)
+        return emails
 
 
 class AuthorCreate(AuthorBase):

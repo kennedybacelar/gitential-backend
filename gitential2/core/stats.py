@@ -9,6 +9,7 @@ from .repositories import list_project_repositories
 from .workspaces import get_own_workspaces
 from .users import get_current_subscription
 from .stats_v2 import collect_stats_v2
+from .access_log import get_last_interaction_at
 
 
 def calculate_workspace_usage_statistics(g: GitentialContext, workspace_id: int) -> dict:
@@ -77,6 +78,7 @@ def calculate_user_statistics(g: GitentialContext, user_id: int) -> dict:
         "user": user.dict(exclude={"extra"}),
         "subscription": get_current_subscription(g, user_id=user_id).dict(),
     }
+    usage_stats["user"]["last_interaction_at"] = get_last_interaction_at(g, user.id)
     workspaces = get_own_workspaces(g, user.id)
     usage_stats["workspace_stats"] = {
         workspace.id: calculate_workspace_usage_statistics(g, workspace.id) for workspace in workspaces

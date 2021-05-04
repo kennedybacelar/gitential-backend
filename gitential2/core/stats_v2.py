@@ -200,6 +200,15 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     return pr_metrics.get(metric)
 
 
+def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: List[str]):
+    ret = []
+    emails_set = set(emails)
+    for author in g.backend.authors.all(workspace_id):
+        if author.all_emails.intersection(emails_set):
+            ret.append(author.id)
+    return ret
+
+
 def _prepare_filters_dict(
     g: GitentialContext,
     workspace_id: int,
@@ -208,6 +217,9 @@ def _prepare_filters_dict(
     filters_dict: dict = {}
 
     for filter_name, filter_params in filters.items():
+        if filter_name == FilterName.emails:
+            author_ids = _get_author_ids_from_emails(g, workspace_id, filter_params)
+            filters_dict[FilterName.author_ids] = author_ids
         if filter_name == FilterName.account_id:
             continue
         elif filter_name == FilterName.project_id:
@@ -312,7 +324,8 @@ class IbisQuery:
 
     def execute(self) -> QueryResult:
         logger.debug("Executing query", query=self.query, workspace_id=self.workspace_id)
-        ibis_tables = self.g.backend.get_ibis_tables(self.workspace_id)
+        with self.g.kvstore.lock(f"ibis_tables_{self.workspace_id}"):
+            ibis_tables = self.g.backend.get_ibis_tables(self.workspace_id)
         ibis_table = ibis_tables.get_table(self.query.table)
         ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table, ibis_tables, ibis_table, self.query)
         ibis_dimensions = (
