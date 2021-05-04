@@ -14,10 +14,10 @@ logger = get_logger(__name__)
 
 def _get_time_intervals() -> List[Tuple[dt.datetime, dt.datetime]]:
     current_time = dt.datetime.utcnow()
-    years_to_analyze = 8
+    quaters_to_analyze = 32
     ret: list = []
-    for i in range(years_to_analyze):
-        ret.append((current_time - dt.timedelta(days=365 * (i + 1)), current_time - dt.timedelta(days=365 * i)))
+    for i in range(quaters_to_analyze):
+        ret.append((current_time - dt.timedelta(days=100 * (i + 1)), current_time - dt.timedelta(days=100 * i)))
 
     return ret
 
