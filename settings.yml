@@ -5,6 +5,7 @@ extraction:
   show_progress: false
   executor: process_pool
 web:
+  base_url: https://localhost:8443
   legacy_login: false
   access_log: true
   session_https_only: false
