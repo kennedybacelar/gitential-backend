@@ -2,7 +2,7 @@ maintenance:
   enabled: false
 log_level: info
 extraction:
-  show_progress: true
+  show_progress: false
   executor: process_pool
 web:
   legacy_login: false

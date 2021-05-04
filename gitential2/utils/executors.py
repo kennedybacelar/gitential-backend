@@ -3,9 +3,13 @@ import functools
 from typing import Iterable, Callable
 import abc
 from tqdm import tqdm
+from structlog import get_logger
 from billiard import Pool  # pylint: disable=no-name-in-module
 from gitential2.settings import GitentialSettings, Executor as ExecutorSettings
 from gitential2.extraction.output import DataCollector
+
+
+logger = get_logger(__name__)
 
 
 class Executor(abc.ABC):
@@ -56,10 +60,15 @@ class ProcessPoolExecutor(Executor):
 
     def _process(self, fn_partial: Callable, items: Iterable, progress_bar):
         pool = Pool(self.pool_size)
+        counter = 0
         for output in pool.imap_unordered(fn_partial, items):
             for kind, value in output:
                 self.original_output.write(kind, value)
             progress_bar.update(1)
+            counter += 1
+        if not self._show_progress:
+            if counter % 100 == 0:  # pylint: disable=compare-to-zero
+                logger.info("Extracting commits", counter=counter)
         pool.close()
         pool.join()
 

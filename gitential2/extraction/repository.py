@@ -260,7 +260,7 @@ def _get_patch_lang_and_langtype(commit, patch, g2_repo):
 
 
 def _get_patch_stats(patch):
-    with Timer("_get_patch_stats", threshold_ms=100):
+    with Timer("_get_patch_stats", threshold_ms=10000):
         if len(patch.hunks) == 0:  # pylint: disable=compare-to-zero
             return np.zeros(8)
 
@@ -320,36 +320,34 @@ def _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id):  #
     deletion = "-"
     filepath = patch.delta.old_file.path
     rewrites = defaultdict(int)
-    with Timer("blame_porcelain", threshold_ms=2000):
+    with Timer("blame_porcelain", threshold_ms=10000):
         line_blame_dict = blame_porcelain(g2_repo.path, filepath, str(parent.id))
 
     if not line_blame_dict:
         return 0, 0
 
-    with Timer("calc rewrites", threshold_ms=2000):
-        for hunk in patch.hunks:
-            for line in hunk.lines:
-                if line.origin == deletion:
-                    blame_co_id = line_blame_dict[line.old_lineno]
-                    rewrites[blame_co_id] += 1
+    for hunk in patch.hunks:
+        for line in hunk.lines:
+            if line.origin == deletion:
+                blame_co_id = line_blame_dict[line.old_lineno]
+                rewrites[blame_co_id] += 1
 
-    with Timer("construct output", threshold_ms=2000):
-        for rewritten_commit_id, line_count in rewrites.items():
-            rewritten = g2_repo.get(rewritten_commit_id)
-            output.write(
-                ExtractedKind.EXTRACTED_PATCH_REWRITE.value,
-                ExtractedPatchRewrite(
-                    repo_id=repo_id,
-                    commit_id=commit.id.hex,
-                    atime=_utc_timestamp_for(commit.author),
-                    aemail=commit.author.email,
-                    newpath=patch.delta.new_file.path[:255],
-                    rewritten_commit_id=str(rewritten_commit_id),
-                    rewritten_atime=_utc_timestamp_for(rewritten.author),
-                    rewritten_aemail=rewritten.author.email,
-                    loc_d=line_count,
-                ),
-            )
+    for rewritten_commit_id, line_count in rewrites.items():
+        rewritten = g2_repo.get(rewritten_commit_id)
+        output.write(
+            ExtractedKind.EXTRACTED_PATCH_REWRITE.value,
+            ExtractedPatchRewrite(
+                repo_id=repo_id,
+                commit_id=commit.id.hex,
+                atime=_utc_timestamp_for(commit.author),
+                aemail=commit.author.email,
+                newpath=patch.delta.new_file.path[:255],
+                rewritten_commit_id=str(rewritten_commit_id),
+                rewritten_atime=_utc_timestamp_for(rewritten.author),
+                rewritten_aemail=rewritten.author.email,
+                loc_d=line_count,
+            ),
+        )
 
     return len(rewrites), sum(rewrites.values())
 

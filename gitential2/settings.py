@@ -116,7 +116,7 @@ class WebSettings(BaseModel):
 
 class ExtractionSettings(BaseModel):
     executor: Executor = Executor.process_pool
-    process_pool_size: int = 8
+    process_pool_size: int = 4
     show_progress: bool = False
 
 
