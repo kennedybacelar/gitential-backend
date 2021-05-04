@@ -9,6 +9,7 @@ import ibis
 
 from gitential2.datatypes.stats import (
     IbisTables,
+    PR_METRICS,
     Query,
     MetricName,
     DimensionName,
@@ -365,16 +366,18 @@ class IbisQuery:
         return QueryResult(query=self.query, values=result)
 
 
-def _merge_query_results(results: List[QueryResult]):
-    for r in results:
-        ret = r.values.replace([np.inf, -np.inf], np.nan)
-        ret = ret.fillna(0)
-        logger.debug("INDEX", index=ret.index)
-        return ret.to_dict(orient="list")
+def _to_jsonable_result(result: QueryResult) -> dict:
+    ret = result.values.replace([np.inf, -np.inf], np.nan)
+    ret = ret.fillna(0)
+    logger.debug("INDEX", index=ret.index)
+    return ret.to_dict(orient="list")
 
 
 def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
-    # queries = _request_to_queries(request)
-    results = [IbisQuery(g, workspace_id, q).execute() for q in [query]]
-
-    return _merge_query_results(results)
+    if any([m in PR_METRICS for m in query.metrics]) and any(
+        [f in [FilterName.author_ids, FilterName.emails, FilterName.team_id] for f in query.filters.keys()]
+    ):
+        logger.warn("Author based filtering for PRs is not implemented", query=query)
+        return {}
+    result = IbisQuery(g, workspace_id, query).execute()
+    return _to_jsonable_result(result)
