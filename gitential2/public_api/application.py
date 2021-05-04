@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from authlib.integrations.starlette_client import OAuth
-
+from gitential2.logging import initialize_logging
 from gitential2.settings import GitentialSettings, load_settings
 from gitential2.exceptions import AuthenticationException
 
@@ -35,6 +35,7 @@ logger = get_logger(__name__)
 def create_app(settings: Optional[GitentialSettings] = None):
     app = FastAPI(title="Gitential REST API", version="2.0.0")
     settings = settings or load_settings()
+    initialize_logging(settings)
     app.state.settings = settings
     _configure_celery(settings)
     _configure_cors(app)
@@ -98,7 +99,9 @@ def _configure_oauth_authentication(app: FastAPI):
     for integration in app.state.gitential.integrations.values():
         if integration.is_oauth:
             oauth.register(name=integration.name, **integration.oauth_register())
-            print("registering", integration.name, integration.oauth_register())
+            logger.debug(
+                "registering oauth app", integration_name=integration.name, options=integration.oauth_register()
+            )
     app.state.oauth = oauth
 
 

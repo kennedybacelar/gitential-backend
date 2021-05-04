@@ -3,11 +3,14 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Optional, Union, List, ContextManager
 from redis import Redis
+from structlog import get_logger
 from fastapi.encoders import jsonable_encoder
 from gitential2.settings import GitentialSettings, KeyValueStoreType
 from gitential2.exceptions import SettingsException
 
 JsonableType = Union[dict, str, int, float]
+
+logger = get_logger(__name__)
 
 
 class KeyValueStore(ABC):
@@ -87,7 +90,7 @@ class RedisKeyValueStore(KeyValueStore):
         redis_url = settings.connections.redis_url
         if redis_url:
             self.redis = Redis.from_url(redis_url)
-            print(f"Connected to redis on {redis_url}")
+            logger.debug("Connected to redis", redis_url=redis_url)
         else:
             raise SettingsException("redis_url missing from settings.")
 

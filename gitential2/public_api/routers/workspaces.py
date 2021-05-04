@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends
+from structlog import get_logger
 from gitential2.datatypes.workspaces import WorkspacePublic, WorkspaceCreate, WorkspaceUpdate
 from gitential2.datatypes.workspacemember import MemberInvite
 from gitential2.datatypes.permissions import Entity, Action
@@ -21,6 +22,8 @@ from gitential2.core import (
     delete_credential_from_workspace,
 )
 from ..dependencies import current_user, gitential_context
+
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["workspaces"])
 
@@ -189,5 +192,5 @@ def search(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    print(f"searching for {q} in {entity_type}")
+    logger.info("searching for", q=q, entity_type=entity_type, workspace_id=workspace_id)
     return []

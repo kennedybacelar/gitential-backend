@@ -6,7 +6,7 @@ from fastapi import APIRouter, WebSocket, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.encoders import jsonable_encoder
 import pandas as pd
-
+from structlog import get_logger
 from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories, ProjectStatus
 from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype
 from gitential2.datatypes.permissions import Entity, Action
@@ -26,6 +26,8 @@ from gitential2.core import (
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["projects"])
+
+logger = get_logger(__name__)
 
 
 @router.get("/workspaces/{workspace_id}/projects", response_model=List[ProjectPublic])
@@ -151,7 +153,7 @@ def export_project_data(
     project_id: int,
     datatype: ProjectExportDatatype,
 ):
-    print("Export called:", workspace_id, project_id, datatype)
+    logger.info("Export called", workspace_id=workspace_id, project_id=project_id, datatype=datatype)
 
     df = pd.DataFrame(
         {"num_legs": [2, 4, 8, 0], "num_wings": [2, 0, 0, 0], "num_specimen_seen": [10, 2, 1, 8]},

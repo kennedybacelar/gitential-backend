@@ -1,14 +1,17 @@
 from typing import Optional
 from celery import Celery
-
+from structlog import get_logger
 from gitential2.settings import GitentialSettings, load_settings
+from gitential2.logging import initialize_logging
 
+logger = get_logger(__name__)
 
 celery_app = Celery()
 
 
 def configure_celery(settings: Optional[GitentialSettings] = None):
     settings = settings or load_settings()
+    initialize_logging(settings)
     global celery_app  # pylint: disable=global-statement
     celery_app.conf.update(
         result_expires=120,
@@ -37,7 +40,7 @@ def refresh_repository_task(settings_dict: dict, workspace_id: int, repository_i
     g = init_context_from_settings(settings)
 
     refresh_repository(g, workspace_id, repository_id, force_rebuild)
-    print(f"refreshing repository {repository_id} in workspace {workspace_id}")
+    logger.info("refreshing repository", repository_id=repository_id, workspace_id=workspace_id)
 
 
 __all__ = ["configure_celery", "ping", "refresh_repository_task"]

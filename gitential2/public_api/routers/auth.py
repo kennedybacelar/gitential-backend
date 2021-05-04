@@ -25,7 +25,7 @@ router = APIRouter()
 async def _get_token(request, remote, code, id_token, oauth_verifier):
     if code:
         token = await remote.authorize_access_token(request)
-        print("van code", token)
+        logger.debug("has code", token=token)
         if id_token:
             token["id_token"] = id_token
     elif id_token:
@@ -50,7 +50,7 @@ async def _get_user_info(request, remote, token):
             user_info = await remote.userinfo(token=token)
         except Exception as e:
             logger.exception("error getting user_info", remote=remote, token=token)
-            # print(remote, token)
+
             raise e
     return user_info
 

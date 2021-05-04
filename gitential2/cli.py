@@ -165,9 +165,9 @@ def user_usage_stats(ctx, user_id):
 @click.pass_context
 def usage_stats(ctx):
     g = init_context_from_settings(ctx.obj["settings"])
-    result = {}
+    result = []
     for user in g.backend.users.all():
-        result[user.id] = calculate_user_statistics(g, user_id=user.id)
+        result.append(calculate_user_statistics(g, user_id=user.id))
     print(json.dumps(jsonable_encoder(result), indent=2))
 
 
