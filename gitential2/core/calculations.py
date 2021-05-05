@@ -144,24 +144,28 @@ def _calculate_uploc_df(
     extracted_commits_df, extracted_patch_rewrites_df
 ):  # pylint: disable=compare-to-zero,singleton-comparison
     # prepare patch rewrites
-    merges_df = extracted_commits_df[["commit_id", "is_merge"]].set_index("commit_id")
-    extracted_patch_rewrites_df = extracted_patch_rewrites_df.join(merges_df, on=["rewritten_commit_id"])
-    extracted_patch_rewrites_df = extracted_patch_rewrites_df.join(
-        merges_df, on=["commit_id"], rsuffix="__newer", lsuffix="__older"
-    )
-    # calculate uploc_df
-    df = extracted_patch_rewrites_df[
-        extracted_patch_rewrites_df["atime"] - extracted_patch_rewrites_df["rewritten_atime"] < dt.timedelta(days=21)
-    ]
-    df = df[df["is_merge__newer"] == False]
-    df = df[df["is_merge__older"] == False]
-    uploc_df = (
-        pd.DataFrame({"uploc": df.groupby(["rewritten_commit_id", "newpath"])["loc_d"].agg("sum")})
-        .reset_index()
-        .rename(columns={"rewritten_commit_id": "commit_id"})
-        .set_index(["commit_id", "newpath"])
-    )
-    return uploc_df
+    if not extracted_patch_rewrites_df.empty:
+        merges_df = extracted_commits_df[["commit_id", "is_merge"]].set_index("commit_id")
+        extracted_patch_rewrites_df = extracted_patch_rewrites_df.join(merges_df, on=["rewritten_commit_id"])
+        extracted_patch_rewrites_df = extracted_patch_rewrites_df.join(
+            merges_df, on=["commit_id"], rsuffix="__newer", lsuffix="__older"
+        )
+        # calculate uploc_df
+        df = extracted_patch_rewrites_df[
+            extracted_patch_rewrites_df["atime"] - extracted_patch_rewrites_df["rewritten_atime"]
+            < dt.timedelta(days=21)
+        ]
+        df = df[df["is_merge__newer"] == False]
+        df = df[df["is_merge__older"] == False]
+        uploc_df = (
+            pd.DataFrame({"uploc": df.groupby(["rewritten_commit_id", "newpath"])["loc_d"].agg("sum")})
+            .reset_index()
+            .rename(columns={"rewritten_commit_id": "commit_id"})
+            .set_index(["commit_id", "newpath"])
+        )
+        return uploc_df
+    else:
+        return pd.DataFrame()
 
 
 def _prepare_commits_patches_df(
@@ -172,7 +176,11 @@ def _prepare_commits_patches_df(
         .reset_index()
         .set_index(["commit_id", "parent_commit_id", "newpath"])
     )
-    df_with_uploc = df.join(uploc_df, on=["commit_id", "newpath"])
+    if not uploc_df.empty:
+        df_with_uploc = df.join(uploc_df, on=["commit_id", "newpath"])
+    else:
+        df_with_uploc = df
+        df_with_uploc["uploc"] = 0
 
     def _finalize_uploc(row):
         if row["is_merge"]:
