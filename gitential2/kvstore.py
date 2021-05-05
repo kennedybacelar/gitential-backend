@@ -45,7 +45,7 @@ class KeyValueStore(ABC):
             return self.set_value(name, default_value, ex)
 
     @abstractmethod
-    def lock(self, name: str, blocking_timeout: Optional[int] = None) -> ContextManager:
+    def lock(self, name: str, timeout: Optional[int] = None, blocking_timeout: Optional[int] = None) -> ContextManager:
         pass
 
 
@@ -78,7 +78,7 @@ class InMemKeyValueStore(KeyValueStore):
         return [is_match_pattern(pattern, k) for k in self._storage]
 
     def lock(
-        self, name: str, blocking_timeout: Optional[int] = None
+        self, name: str, timeout: Optional[int] = None, blocking_timeout: Optional[int] = None
     ) -> ContextManager:  # pylint: disable=unused-argument
         lock_ = self._locks.setdefault(name, threading.Lock())
         return lock_
@@ -122,8 +122,8 @@ class RedisKeyValueStore(KeyValueStore):
     def _decode_value(encoded_value: bytes) -> JsonableType:
         return json.loads(encoded_value)
 
-    def lock(self, name: str, blocking_timeout: Optional[int] = None) -> ContextManager:
-        return self.redis.lock(name, blocking_timeout=blocking_timeout)
+    def lock(self, name: str, timeout: Optional[int] = None, blocking_timeout: Optional[int] = None) -> ContextManager:
+        return self.redis.lock(name, timeout=timeout, blocking_timeout=blocking_timeout)
 
 
 def init_key_value_store(settings: GitentialSettings) -> KeyValueStore:

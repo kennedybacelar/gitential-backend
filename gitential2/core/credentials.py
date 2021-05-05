@@ -53,7 +53,11 @@ def acquire_credential(
                 if is_refreshed:
                     credential = g.backend.credentials.get_or_error(credential.id)
 
-        with g.kvstore.lock(f"credential-lock-{credential.id}"):
+        blocking_timeout_seconds = 5 * 60
+        timeout_seconds = 30 * 60
+        with g.kvstore.lock(
+            f"credential-lock-{credential.id}", timeout=timeout_seconds, blocking_timeout=blocking_timeout_seconds
+        ):
             yield credential
 
 
