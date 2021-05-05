@@ -63,7 +63,7 @@ def recalculate_repository_values(
         )
         # print(extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df)
         if extracted_patches_df.empty or extracted_commits_df.empty:
-            return
+            continue
 
         parents_df = extracted_patches_df.reset_index()[["commit_id", "parent_commit_id"]].drop_duplicates()
 
@@ -94,7 +94,6 @@ def recalculate_repository_values(
             to_=to_,
         )
     # return prepared_commits_df, prepared_patches_df, commits_patches_df, calculated_commits_df
-    return
 
 
 def _prepare_extracted_commits_df(
