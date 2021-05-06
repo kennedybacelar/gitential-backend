@@ -2,7 +2,12 @@ from datetime import datetime
 from typing import Iterable, Optional, Tuple, cast
 from structlog import get_logger
 from gitential2.datatypes.users import UserCreate, UserUpdate, UserInDB
-from gitential2.datatypes.subscriptions import SubscriptionInDB, SubscriptionCreate, SubscriptionType
+from gitential2.datatypes.subscriptions import (
+    SubscriptionInDB,
+    SubscriptionCreate,
+    SubscriptionType,
+    SubscriptionUpdate,
+)
 from gitential2.datatypes.userinfos import UserInfoCreate, UserInfoUpdate
 from gitential2.datatypes.credentials import CredentialCreate, CredentialUpdate
 from gitential2.datatypes.workspaces import WorkspaceCreate
@@ -221,3 +226,31 @@ def set_as_admin(g: GitentialContext, user_id: int, is_admin: bool = True) -> Us
 
 def list_users(g: GitentialContext) -> Iterable[UserInDB]:
     return g.backend.users.all()
+
+
+def set_as_professional(g: GitentialContext, user_id: int, number_of_developers: int) -> SubscriptionInDB:
+    user = g.backend.users.get_or_error(user_id)
+    current_subs = _get_current_subscription_from_db(g, user_id=user.id)
+
+    if current_subs and current_subs.subscription_type == SubscriptionType.professional:
+        su = SubscriptionUpdate(**current_subs.dict())
+        su.number_of_developers = number_of_developers
+        return g.backend.subscriptions.update(current_subs.id, su)
+    elif current_subs and current_subs.subscription_type != SubscriptionType.professional:
+        su = SubscriptionUpdate(**current_subs.dict())
+        su.subscription_end = datetime.utcnow()
+        g.backend.subscriptions.update(current_subs.id, su)
+        return _create_new_prof_subs(g, user_id, number_of_developers)
+    else:
+        return _create_new_prof_subs(g, user_id, number_of_developers)
+
+
+def _create_new_prof_subs(g: GitentialContext, user_id: int, number_of_developers: int) -> SubscriptionInDB:
+    return g.backend.subscriptions.create(
+        SubscriptionCreate(
+            user_id=user_id,
+            number_of_developers=number_of_developers,
+            subscription_type=SubscriptionType.professional,
+            subscription_start=datetime.utcnow(),
+        )
+    )

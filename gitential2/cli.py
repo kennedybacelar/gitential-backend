@@ -31,6 +31,7 @@ from gitential2.legacy_import import import_legacy_workspace
 from gitential2.core.tasks import configure_celery
 from gitential2.core.context import GitentialContext
 from gitential2.core.stats import calculate_workspace_usage_statistics, calculate_user_statistics
+from gitential2.core.users import set_as_professional
 
 logger = get_logger(__name__)
 
@@ -342,6 +343,16 @@ def refresh_all_workspaces_(ctx, force_rebuild):
         _refresh_workspace(g, ws.id, force_rebuild)
 
 
+@click.command(name="set-as-professional")
+@click.option("--user-id", "-u", "user_id", type=int)
+@click.option("--number-of-developers", "-d", "number_of_developers", type=int)
+@click.pass_context
+def set_as_professional_(ctx, user_id: int, number_of_developers: int):
+    g = init_context_from_settings(ctx.obj["settings"])
+    subscription = set_as_professional(g, user_id, number_of_developers)
+    print(subscription)
+
+
 @click.command(name="refresh-workspace")
 @click.option("--workspace-id", "-w", "workspace_id", type=int)
 @click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
@@ -448,5 +459,5 @@ cli.add_command(refresh_workspace_)
 cli.add_command(fix_ssh_repo_credentials)
 cli.add_command(workspace_usage_stats)
 cli.add_command(user_usage_stats)
-
+cli.add_command(set_as_professional_)
 cli.add_command(usage_stats)
