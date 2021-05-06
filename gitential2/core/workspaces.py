@@ -41,9 +41,10 @@ def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]
     workspace_memberships = g.backend.workspace_members.get_for_user(user_id=user_id)
     ret = []
     for wm in workspace_memberships:
-        workspace = g.backend.workspaces.get(wm.workspace_id)
-        if workspace:
-            ret.append(workspace)
+        if wm.role == WorkspaceRole.owner:
+            workspace = g.backend.workspaces.get(wm.workspace_id)
+            if workspace:
+                ret.append(workspace)
     return ret
 
 
