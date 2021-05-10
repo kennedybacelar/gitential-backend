@@ -382,13 +382,24 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         return result
 
     from_date = datetime.strptime(day_filter[0], "%Y-%m-%d").date()
-    to_date = datetime.strptime(day_filter[0], "%Y-%m-%d").date()
+    to_date = datetime.strptime(day_filter[1], "%Y-%m-%d").date()
 
     # pylint disable=unused-variable
-    all_timestamps = [ts.timestamp() for ts in _calculate_timestamps_between(date_dimension, from_date, to_date)]
-
-    # if a timestamp not in results.values, add it
-    # ...
+    prev = result.values
+    all_timestamps = [int(ts.timestamp()) for ts in _calculate_timestamps_between(date_dimension, from_date, to_date)]
+    for ts in all_timestamps:
+        if ts not in result.values:
+            result.values = result.values.append(pd.Series(), ignore_index=True)
+            if "datetime" in result.values.columns:
+                result.values.loc[[len(result.values) - 1], 'datetime'] = ts
+            elif "date" in result.values.columns:
+                result.values.loc[[len(result.values) - 1], 'date'] = ts
+            else:
+                logger.error("notimplemented")
+    if "datetime" in result.values.columns:
+        result.values.sort_values('datetime')
+    if "date" in result.values.columns:
+        result.values.sort_values('date')
     return result
 
 
