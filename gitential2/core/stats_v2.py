@@ -1,6 +1,6 @@
 # pylint: disable=too-complex,too-many-branches
 from typing import Generator, List, Any, Dict, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from structlog import get_logger
 from pydantic import BaseModel
@@ -375,7 +375,8 @@ def _to_jsonable_result(result: QueryResult) -> dict:
 
 
 def _add_missing_timestamp_to_result(result: QueryResult):
-
+    if result.values.empty:
+        return result
     date_dimension = _get_date_dimension(result.query)
     day_filter = result.query.filters.get(FilterName.day)
     if not date_dimension or not day_filter:
@@ -384,22 +385,19 @@ def _add_missing_timestamp_to_result(result: QueryResult):
     from_date = datetime.strptime(day_filter[0], "%Y-%m-%d").date()
     to_date = datetime.strptime(day_filter[1], "%Y-%m-%d").date()
 
-    # pylint disable=unused-variable
-    prev = result.values
-    all_timestamps = [int(ts.timestamp()) for ts in _calculate_timestamps_between(date_dimension, from_date, to_date)]
-    for ts in all_timestamps:
-        if ts not in result.values:
-            result.values = result.values.append(pd.Series(), ignore_index=True)
-            if "datetime" in result.values.columns:
-                result.values.loc[[len(result.values) - 1], 'datetime'] = ts
-            elif "date" in result.values.columns:
-                result.values.loc[[len(result.values) - 1], 'date'] = ts
-            else:
-                logger.error("notimplemented")
+    all_timestamps = [
+        int(ts.timestamp()) * 1000 for ts in _calculate_timestamps_between(date_dimension, from_date, to_date)
+    ]
+    date_col = ""
     if "datetime" in result.values.columns:
-        result.values.sort_values('datetime')
-    if "date" in result.values.columns:
-        result.values.sort_values('date')
+        date_col = "datetime"
+    elif "date" in result.values.columns:
+        date_col = "date"
+    for ts in all_timestamps:
+        if True not in (result.values[date_col] == ts).values:
+            result.values = result.values.append(pd.Series(), ignore_index=True).fillna(0)
+            result.values.loc[[len(result.values) - 1], date_col] = ts
+    result.values.sort_values(by=[date_col], ignore_index=True)
     return result
 
 
@@ -412,11 +410,11 @@ def _get_date_dimension(query: Query) -> Optional[DimensionName]:
 
 
 def _start_of_the_day(day: date) -> datetime:
-    return datetime.combine(day, datetime.min.time())
+    return datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
 
 
 def _end_of_the_day(day: date) -> datetime:
-    return datetime.combine(day, datetime.max.time())
+    return datetime.combine(day, datetime.max.time(), tzinfo=timezone.utc)
 
 
 def _next_hour(d: datetime) -> datetime:
