@@ -129,6 +129,18 @@ workspace_members_table = sa.Table(
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
 )
 
+email_log_table = sa.Table(
+    "email_log",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("template_name", sa.String(32), nullable=False),
+    sa.Column("status", sa.String(32), default="scheduled", nullable=False),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("scheduled_at", sa.DateTime, nullable=False),
+    sa.Column("sent_at", sa.DateTime, nullable=True)
+)
+
 
 def get_workspace_metadata(schema: Optional[str] = None):
     metadata = sa.MetaData(schema=schema)
