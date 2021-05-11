@@ -397,7 +397,7 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         if True not in (result.values[date_col] == ts).values:
             result.values = result.values.append(pd.Series(), ignore_index=True).fillna(0)
             result.values.loc[[len(result.values) - 1], date_col] = ts
-    result.values.sort_values(by=[date_col], ignore_index=True)
+    result.values.sort_values(by=[date_col], ignore_index=True, inplace=True)
     return result
 
 
