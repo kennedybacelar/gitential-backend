@@ -395,10 +395,27 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         date_col = "date"
     for ts in all_timestamps:
         if True not in (result.values[date_col] == ts).values:
-            result.values = result.values.append(pd.Series(), ignore_index=True).fillna(0)
-            result.values.loc[[len(result.values) - 1], date_col] = ts
-    result.values.sort_values(by=[date_col], ignore_index=True, inplace=True)
+            result.values = result.values.append(
+                _create_empty_row(ts, date_col, result.values.columns), ignore_index=True
+            )
+    result.values = result.values.sort_values(by=[date_col], ignore_index=True)
     return result
+
+
+def _create_empty_row(ts: int, date_column: str, column_list) -> dict:
+    tmp: dict = {}
+    for col in column_list:
+        if col == "language":
+            tmp[col] = "other"
+        elif col == date_column:
+            tmp[col] = ts
+        elif col == "name":
+            tmp[col] = ""
+        elif col == "email":
+            tmp[col] = ""
+        else:
+            tmp[col] = 0
+    return tmp
 
 
 def _get_date_dimension(query: Query) -> Optional[DimensionName]:
