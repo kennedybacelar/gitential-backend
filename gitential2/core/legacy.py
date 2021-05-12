@@ -96,6 +96,7 @@ def authors_in_projects(g: GitentialContext, workspace_id: int) -> dict:
                     results[author_emails[row["aid"]]]["project_names"].append(project_names[project_id])
     return results
 
+
 def get_dev_related_projects(g: GitentialContext, workspace_id: int) -> dict:
     results = authors_in_projects(g, workspace_id)
     return _to_categories_series_response(results, series_names=["project_ids", "project_names"])

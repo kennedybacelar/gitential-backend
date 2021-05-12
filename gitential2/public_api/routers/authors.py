@@ -11,8 +11,8 @@ from gitential2.core import (
 )
 from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate
 from gitential2.datatypes.permissions import Entity, Action
-from ..dependencies import current_user, gitential_context
 from gitential2.core.legacy import authors_in_projects
+from ..dependencies import current_user, gitential_context
 
 
 router = APIRouter(tags=["authors"])
