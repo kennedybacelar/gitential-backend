@@ -518,3 +518,22 @@ class SQLPullRequestRepository(
         query = select([self.table.c.number, self.table.c.updated_at]).where(self.table.c.repo_id == repository_id)
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return {row["number"]: _add_utc_timezone(row["updated_at"]) for row in rows}
+
+
+class SQLEmailLogRepository(
+    EmailLogRepository, SQLRepository[int, EmailLogRepositoryCreate, EmailLogRepositoryUpdate, EmailLogRepositoryInDB]
+):
+    @abstractmethod
+    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogRepositoryInDB:
+        return self.create(
+            user_id=user_id,
+            template_name="free_trial_ended",
+            scheduled_at=(dt.datetime.utcnow() + dt.timedelta(weeks=1)),
+        )
+
+    def get_emails_to_send(self) -> List[EmailLogRepositoryInDB]:
+        query = self.table.select().where(
+            and_(self.table.c.status == "scheduled", self.table.c.scheduled_at <= dt.datetime.utcnow())
+        )
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [EmailLogRepositoryInDB(**row) for row in rows]

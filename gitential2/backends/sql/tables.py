@@ -138,7 +138,7 @@ email_log_table = sa.Table(
     sa.Column("status", sa.String(32), default="scheduled", nullable=False),
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("scheduled_at", sa.DateTime, nullable=False),
-    sa.Column("sent_at", sa.DateTime, nullable=True)
+    sa.Column("sent_at", sa.DateTime, nullable=True),
 )
 
 

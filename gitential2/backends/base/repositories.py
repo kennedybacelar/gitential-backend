@@ -323,3 +323,15 @@ class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, 
     def remove_all_members_from_team(self, workspace_id: int, team_id) -> int:
         author_ids = self.get_team_member_author_ids(workspace_id, team_id)
         return self.remove_members_from_team(workspace_id, team_id, author_ids)
+
+
+class EmailLogRepository(
+    BaseRepository[int, EmailLogRepositoryCreate, EmailLogRepositoryUpdate, EmailLogRepositoryInDB]
+):
+    @abstractmethod
+    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogRepositoryInDB:
+        pass
+
+    @abstractmethod
+    def get_emails_to_send(self) -> List[EmailLogRepositoryInDB]:
+        pass

@@ -210,6 +210,7 @@ def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optiona
     if subscriptions:
         return None
     else:
+        g.backend.email_log.schedule_trial_expiration_email(user.id)
         return g.backend.subscriptions.create(SubscriptionCreate.default_for_new_user(user.id))
 
 
