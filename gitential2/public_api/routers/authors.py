@@ -12,6 +12,8 @@ from gitential2.core import (
 from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate
 from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import current_user, gitential_context
+from gitential2.core.legacy import authors_in_projects
+
 
 router = APIRouter(tags=["authors"])
 
@@ -82,10 +84,4 @@ def developers_with_projects(
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
 
-    authors = list_authors(g, workspace_id)
-    ret = []
-    for author in authors:
-        author_dict = author.dict()
-        author_dict["projects"] = []
-        ret.append(author_dict)
-    return ret
+    return authors_in_projects(g, workspace_id)

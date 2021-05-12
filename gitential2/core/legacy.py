@@ -76,7 +76,7 @@ def get_dev_top_repos(g: GitentialContext, workspace_id: int) -> dict:
     return _to_categories_series_response(results, series_names=["repo_ids", "repo_names"])
 
 
-def get_dev_related_projects(g: GitentialContext, workspace_id: int) -> dict:
+def authors_in_projects(g: GitentialContext, workspace_id: int) -> dict:
     dev_repo_commit_counts = _get_commit_counts_by_dev_and_repo(g, workspace_id)
     author_emails = {author.id: author.email for author in g.backend.authors.all(workspace_id) if author.active}
     project_names = {project.id: project.name for project in g.backend.projects.all(workspace_id)}
@@ -94,7 +94,10 @@ def get_dev_related_projects(g: GitentialContext, workspace_id: int) -> dict:
                 if project_id not in results[author_emails[row["aid"]]]["project_ids"] and project_id in project_names:
                     results[author_emails[row["aid"]]]["project_ids"].append(project_id)
                     results[author_emails[row["aid"]]]["project_names"].append(project_names[project_id])
+    return results
 
+def get_dev_related_projects(g: GitentialContext, workspace_id: int) -> dict:
+    results = authors_in_projects(g, workspace_id)
     return _to_categories_series_response(results, series_names=["project_ids", "project_names"])
 
 
