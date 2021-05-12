@@ -352,19 +352,22 @@ class IbisQuery:
         else:
             result = pd.DataFrame()
 
-        sort_by = _prepare_sort_by(self.query)
-        if sort_by and not result.empty:
-            logger.debug("SORTING", columns=result.columns, sort_by=sort_by)
-            if isinstance(sort_by[0], list):
-                by, ascending = map(list, zip(*sort_by))
-                result.sort_values(by=by, ascending=ascending, inplace=True)
-            else:
-                result.sort_values(by=sort_by, inplace=True)
-
-            # result = result.sort_values(by=sort_by)
-        logger.debug("RESULT", result=result)
-
+        result = _sort_dataframe(result, query=self.query)
         return QueryResult(query=self.query, values=result)
+
+
+def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
+    sort_by = _prepare_sort_by(query)
+    if sort_by and not result.empty:
+        logger.debug("SORTING", columns=result.columns, sort_by=sort_by)
+        if isinstance(sort_by[0], list):
+            by, ascending = map(list, zip(*sort_by))
+            result.sort_values(by=by, ascending=ascending, inplace=True)
+        else:
+            result.sort_values(by=sort_by, inplace=True)
+
+    logger.debug("RESULT AFTER SORTING", result=result)
+    return result
 
 
 def _to_jsonable_result(result: QueryResult) -> dict:
@@ -398,24 +401,25 @@ def _add_missing_timestamp_to_result(result: QueryResult):
             result.values = result.values.append(
                 _create_empty_row(ts, date_col, result.values.columns), ignore_index=True
             )
-    result.values = result.values.sort_values(by=[date_col], ignore_index=True)
+    result.values = _sort_dataframe(result.values, query=result.query)
     return result
 
 
 def _create_empty_row(ts: int, date_column: str, column_list) -> dict:
-    tmp: dict = {}
+    ret: dict = {}
+    default_values: dict = {
+        "language": "Others",
+        "name": "",
+        "email": "",
+    }
     for col in column_list:
-        if col == "language":
-            tmp[col] = "other"
-        elif col == date_column:
-            tmp[col] = ts
-        elif col == "name":
-            tmp[col] = ""
-        elif col == "email":
-            tmp[col] = ""
+        if col == date_column:
+            ret[col] = ts
+        elif col in default_values:
+            ret[col] = default_values[col]
         else:
-            tmp[col] = 0
-    return tmp
+            ret[col] = 0
+    return ret
 
 
 def _get_date_dimension(query: Query) -> Optional[DimensionName]:
