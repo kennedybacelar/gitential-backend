@@ -12,6 +12,8 @@ from gitential2.core import (
 from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.legacy import authors_in_projects
+from gitential2.core.authors import list_active_authors
+
 from ..dependencies import current_user, gitential_context
 
 
@@ -83,5 +85,11 @@ def developers_with_projects(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-
-    return authors_in_projects(g, workspace_id)
+    authors_and_projects = authors_in_projects(g, workspace_id)
+    authors = list_active_authors(g, workspace_id)
+    ret = []
+    for author in authors:
+        author_dict = author.dict()
+        author_dict["projects"] = authors_and_projects.get(author.email, {}).get("project_ids", [])
+        ret.append(author_dict)
+    return ret
