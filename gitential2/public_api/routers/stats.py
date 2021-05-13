@@ -26,7 +26,7 @@ def _limit_query_user_subscription(g: GitentialContext, user: UserInDB, query: Q
         if subs.subscription_end:
             if (
                 subs.subscription_type == SubscriptionType.professional
-                and subs.subscription_end > datetime.now()  # pylint disable=all
+                and subs.subscription_end > datetime.now()
             ):
                 return query
     if FilterName.day not in query.filters:
