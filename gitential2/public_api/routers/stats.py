@@ -24,10 +24,7 @@ def _limit_query_user_subscription(g: GitentialContext, user: UserInDB, query: Q
     active_user_subs: List[SubscriptionInDB] = g.backend.subscriptions.get_subscriptions_for_user(user.id)
     for subs in active_user_subs:
         if subs.subscription_end:
-            if (
-                subs.subscription_type == SubscriptionType.professional
-                and subs.subscription_end > datetime.now()
-            ):
+            if subs.subscription_type == SubscriptionType.professional and subs.subscription_end > datetime.now():
                 return query
     if FilterName.day not in query.filters:
         query.filters[FilterName.day].append(
