@@ -1,16 +1,57 @@
-# pylint: skip-file
-from typing import List, Dict, Any, Optional
-import datetime as dt
+from typing import Dict, List
 
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 
+from structlog import get_logger
 from gitential2.datatypes.stats import Query
+from gitential2.datatypes.subscriptions import SubscriptionInDB, SubscriptionType
+from gitential2.datatypes.users import UserInDB
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core import collect_stats_v2, GitentialContext, check_permission
-from gitential2.core.legacy import get_developers
+from gitential2.datatypes.stats import FilterName
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["metrics"])
+
+logger = get_logger(__name__)
+TRIAL_FILTER_PERIOD_DAY = 90
+
+
+def _limit_query_user_subscription(g: GitentialContext, user: UserInDB, query: Query) -> Query:
+    if g.license.is_on_premises:
+        return query
+    active_user_subs: List[SubscriptionInDB] = g.backend.subscriptions.get_subscriptions_for_user(user.id)
+    for subs in active_user_subs:
+        if subs.subscription_end:
+            if (
+                subs.subscription_type == SubscriptionType.professional
+                and subs.subscription_end > datetime.now()  # pylint disable=all
+            ):
+                return query
+    if FilterName.day not in query.filters:
+        query.filters[FilterName.day].append(
+            [
+                (datetime.now() - timedelta(days=TRIAL_FILTER_PERIOD_DAY)).strftime("%Y-%m-%d"),
+                datetime.now().strftime("%Y-%m-%d"),
+            ]
+        )
+        logger.debug("limiting query by adding filters", userid=user.id)
+    else:
+        filter_start_dt = datetime.strptime(query.filters[FilterName.day][0], "%Y-%m-%d")
+        filter_end_dt = datetime.strptime(query.filters[FilterName.day][1], "%Y-%m-%d")
+        if (datetime.now() - filter_start_dt) > timedelta(days=TRIAL_FILTER_PERIOD_DAY):
+            query.filters[FilterName.day][0] = (datetime.now() - timedelta(days=TRIAL_FILTER_PERIOD_DAY)).strftime(
+                "%Y-%m-%d"
+            )
+            logger.debug("limiting query, limit start filtertime", userid=user.id)
+        if (datetime.now() - filter_end_dt) > timedelta(days=TRIAL_FILTER_PERIOD_DAY):
+            query.filters[FilterName.day][1] = (datetime.now() - timedelta(days=TRIAL_FILTER_PERIOD_DAY - 1)).strftime(
+                "%Y-%m-%d"
+            )
+            logger.debug("limiting query, limit end filtertime", userid=user.id)
+
+    return query
 
 
 @router.post("/workspaces/{workspace_id}/stats")
@@ -21,7 +62,6 @@ def workspace_stats(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-
     return collect_stats_v2(g, workspace_id, val)
 
 
@@ -36,6 +76,7 @@ def workspace_multi_stats(
 
     ret: dict = {}
     for name, val in stats_request.items():
+        val = _limit_query_user_subscription(g, current_user, val)
         result = collect_stats_v2(g, workspace_id, val)
         ret[name] = result
     return ret
