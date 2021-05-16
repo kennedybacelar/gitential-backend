@@ -54,6 +54,8 @@ from gitential2.backends.base.repositories import (
     TeamMemberRepository,
 )
 
+from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB
+
 from ..base import (
     IdType,
     CreateType,
@@ -71,6 +73,7 @@ from ..base import (
     RepositoryRepository,
     ProjectRepositoryRepository,
     TeamRepository,
+    EmailLogRepository,
 )
 
 fetchone_ = lambda result: result.fetchone()
@@ -520,20 +523,17 @@ class SQLPullRequestRepository(
         return {row["number"]: _add_utc_timezone(row["updated_at"]) for row in rows}
 
 
-class SQLEmailLogRepository(
-    EmailLogRepository, SQLRepository[int, EmailLogRepositoryCreate, EmailLogRepositoryUpdate, EmailLogRepositoryInDB]
-):
-    @abstractmethod
-    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogRepositoryInDB:
+class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
+    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogInDB:
         return self.create(
             user_id=user_id,
             template_name="free_trial_ended",
             scheduled_at=(dt.datetime.utcnow() + dt.timedelta(weeks=1)),
         )
 
-    def get_emails_to_send(self) -> List[EmailLogRepositoryInDB]:
+    def get_emails_to_send(self) -> List[EmailLogInDB]:
         query = self.table.select().where(
             and_(self.table.c.status == "scheduled", self.table.c.scheduled_at <= dt.datetime.utcnow())
         )
         rows = self._execute_query(query, callback_fn=fetchall_)
-        return [EmailLogRepositoryInDB(**row) for row in rows]
+        return [EmailLogInDB(**row) for row in rows]

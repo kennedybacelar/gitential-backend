@@ -43,6 +43,7 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchRewrite,
     ExtractedPatchRewriteId,
 )
+from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB
 
 IdType = TypeVar("IdType")
 CreateType = TypeVar("CreateType", bound=CoreModel)
@@ -325,13 +326,11 @@ class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, 
         return self.remove_members_from_team(workspace_id, team_id, author_ids)
 
 
-class EmailLogRepository(
-    BaseRepository[int, EmailLogRepositoryCreate, EmailLogRepositoryUpdate, EmailLogRepositoryInDB]
-):
+class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
     @abstractmethod
-    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogRepositoryInDB:
+    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogInDB:
         pass
 
     @abstractmethod
-    def get_emails_to_send(self) -> List[EmailLogRepositoryInDB]:
+    def get_emails_to_send(self) -> List[EmailLogInDB]:
         pass
