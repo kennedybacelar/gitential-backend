@@ -19,7 +19,7 @@ def workspace_stats(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    val = limit_filter_time(g, workspace_id, val)
+    val = limit_filter_time(g, workspace_id, val, current_user)
     return collect_stats_v2(g, workspace_id, val)
 
 
@@ -34,7 +34,7 @@ def workspace_multi_stats(
 
     ret: dict = {}
     for name, val in stats_request.items():
-        val = limit_filter_time(g, workspace_id, val)
+        val = limit_filter_time(g, workspace_id, val, current_user)
         result = collect_stats_v2(g, workspace_id, val)
         ret[name] = result
     return ret
