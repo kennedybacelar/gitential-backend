@@ -1,5 +1,10 @@
 from typing import Optional, List
 
+####----- this must remove after rebase
+from gitential2.datatypes.subscriptions import SubscriptionType
+from gitential2.core.users import get_current_subscription
+
+####-----
 from gitential2.exceptions import AuthenticationException
 from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
 from gitential2.datatypes.workspacemember import (
@@ -17,17 +22,15 @@ from .emails import send_email_to_user
 
 # this should remove!!!!!!!!!!!!
 def is_free_user(g: GitentialContext, user_id: int):
-    from gitential2.datatypes.subscriptions import SubscriptionType
-    from gitential2.core.users import get_current_subscription
-    from datetime import datetime
     sub = get_current_subscription(g, user_id)
     if sub.subscription_type == SubscriptionType.trial:
-            return True
+        return True
     return False
-## -----
+
 
 def _workspace_sort_by(items: WorkspacePublic):
     return items.id
+
 
 def _limit_workspace_get(g: GitentialContext, user_id: int, workspaces: list) -> list:
     if is_free_user(g, user_id):
@@ -35,6 +38,7 @@ def _limit_workspace_get(g: GitentialContext, user_id: int, workspaces: list) ->
         return [workspaces[0]]
     else:
         return workspaces
+
 
 def get_accessible_workspaces(
     g: GitentialContext, current_user: UserInDB, include_members: bool = False, include_projects: bool = False
@@ -133,8 +137,7 @@ def create_workspace(
     workspace.created_by = current_user.id
     if is_free_user(g, current_user.id):
         raise AuthenticationException("Access Denied")
-    else:
-        workspace_in_db = g.backend.workspaces.create(workspace)
+    workspace_in_db = g.backend.workspaces.create(workspace)
     g.backend.workspace_members.create(
         WorkspaceMemberCreate(
             workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
