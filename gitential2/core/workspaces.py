@@ -1,5 +1,6 @@
 from typing import Optional, List
 
+from gitential2.exceptions import AuthenticationException
 from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
 from gitential2.datatypes.workspacemember import (
     WorkspaceMemberCreate,
@@ -14,6 +15,26 @@ from .users_common import get_user_by_email
 from .projects import list_projects
 from .emails import send_email_to_user
 
+# this should remove!!!!!!!!!!!!
+def is_free_user(g: GitentialContext, user_id: int):
+    from gitential2.datatypes.subscriptions import SubscriptionType
+    from gitential2.core.users import get_current_subscription
+    from datetime import datetime
+    sub = get_current_subscription(g, user_id)
+    if sub.subscription_type == SubscriptionType.trial:
+            return True
+    return False
+## -----
+
+def _workspace_sort_by(items: WorkspacePublic):
+    return items.id
+
+def _limit_workspace_get(g: GitentialContext, user_id: int, workspaces: list) -> list:
+    if is_free_user(g, user_id):
+        workspaces.sort(key=_workspace_sort_by)
+        return [workspaces[0]]
+    else:
+        return workspaces
 
 def get_accessible_workspaces(
     g: GitentialContext, current_user: UserInDB, include_members: bool = False, include_projects: bool = False
@@ -34,7 +55,7 @@ def get_accessible_workspaces(
         workspaces = _add_admin_as_collaborator_to_all_workspaces(
             g, current_user, workspaces, include_members, include_projects
         )
-    return workspaces
+    return _limit_workspace_get(g, current_user.id, workspaces)
 
 
 def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]:
@@ -45,7 +66,7 @@ def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]
             workspace = g.backend.workspaces.get(wm.workspace_id)
             if workspace:
                 ret.append(workspace)
-    return ret
+    return _limit_workspace_get(g, user_id, ret)
 
 
 def _add_admin_as_collaborator_to_all_workspaces(
@@ -103,15 +124,17 @@ def get_workspace(
 
         return WorkspacePublic(**workspace_data)
     else:
-        raise Exception("Access Denied")
+        raise AuthenticationException("Access Denied")
 
 
 def create_workspace(
     g: GitentialContext, workspace: WorkspaceCreate, current_user: UserInDB, primary=False
 ) -> WorkspaceInDB:
     workspace.created_by = current_user.id
-
-    workspace_in_db = g.backend.workspaces.create(workspace)
+    if is_free_user(g, current_user.id):
+        raise AuthenticationException("Access Denied")
+    else:
+        workspace_in_db = g.backend.workspaces.create(workspace)
     g.backend.workspace_members.create(
         WorkspaceMemberCreate(
             workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
@@ -140,7 +163,7 @@ def delete_workspace(g: GitentialContext, workspace_id: int, current_user: UserI
     if membership:
         return g.backend.workspaces.delete(workspace_id)
     else:
-        raise Exception("Authentication error")
+        raise AuthenticationException("Authentication error")
 
 
 def get_members(g: GitentialContext, workspace_id: int, include_user_header=True) -> List[WorkspaceMemberPublic]:
