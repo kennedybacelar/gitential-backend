@@ -32,6 +32,8 @@ from gitential2.datatypes import (
     WorkspaceMemberInDB,
     AuthorInDB,
 )
+from gitential2.datatypes.email_log import EmailLogInDB
+
 from gitential2.settings import GitentialSettings
 
 from ..base import GitentialBackend
@@ -39,6 +41,7 @@ from ..base.mixins import WithRepositoriesMixin
 
 from .tables import (
     access_log_table,
+    email_log_table,
     users_table,
     user_infos_table,
     credentials_table,
@@ -52,6 +55,7 @@ from .tables import (
 from .repositories import (
     SQLAccessLogRepository,
     SQLAuthorRepository,
+    SQLEmailLogRepository,
     SQLProjectRepositoryRepository,
     SQLPullRequestRepository,
     SQLRepositoryRepository,
@@ -166,6 +170,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             metadata=self._workspace_tables,
             in_db_cls=PullRequest,
         )
+
+        self._email_log = SQLEmailLogRepository(table=email_log_table, engine=self._engine, in_db_cls=EmailLogInDB)
 
     def _execute_query(self, query):
         with self._engine.connect() as connection:

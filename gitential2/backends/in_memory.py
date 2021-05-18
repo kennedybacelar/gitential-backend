@@ -286,6 +286,11 @@ class InMemRepositoryRepository(
         return None
 
 
+class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
+    def get_emails_to_send(self) -> List[EmailLogInDB]:
+        return []
+
+
 class InMemProjectRepositoryRepository(
     ProjectRepositoryRepository,
     InMemWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB],
@@ -321,6 +326,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._project_repositories: ProjectRepositoryRepository = InMemProjectRepositoryRepository(
             in_db_cls=ProjectRepositoryInDB
         )
+        self._email_log: EmailLogRepository = InMemEmailLogRepository(in_db_cls=EmailLogInDB)
         self._output_handlers: Dict[int, OutputHandler] = defaultdict(DataCollector)
 
     # def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:
@@ -365,15 +371,3 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def get_ibis_tables(self, workspace_id: int) -> IbisTables:
         return IbisTables()
-
-
-class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
-    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogInDB:
-        return self.create(
-            user_id=user_id,
-            template_name="free_trial_ended",
-            scheduled_at=(dt.datetime.utcnow() + dt.timedelta(weeks=1)),
-        )
-
-    def get_emails_to_send(self) -> List[EmailLogInDB]:
-        pass

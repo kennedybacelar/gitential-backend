@@ -327,9 +327,11 @@ class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, 
 
 
 class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
-    @abstractmethod
-    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogInDB:
-        pass
+    def schedule_email(self, user_id: int, template_name: str, scheduled_at: Optional[datetime] = None) -> EmailLogInDB:
+        email_log_create = EmailLogCreate(
+            user_id=user_id, template_name=template_name, scheduled_at=scheduled_at or datetime.utcnow()
+        )
+        return self.create(email_log_create)
 
     @abstractmethod
     def get_emails_to_send(self) -> List[EmailLogInDB]:

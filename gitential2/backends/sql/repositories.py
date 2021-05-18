@@ -524,13 +524,6 @@ class SQLPullRequestRepository(
 
 
 class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
-    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogInDB:
-        return self.create(
-            user_id=user_id,
-            template_name="free_trial_ended",
-            scheduled_at=(dt.datetime.utcnow() + dt.timedelta(weeks=1)),
-        )
-
     def get_emails_to_send(self) -> List[EmailLogInDB]:
         query = self.table.select().where(
             and_(self.table.c.status == "scheduled", self.table.c.scheduled_at <= dt.datetime.utcnow())

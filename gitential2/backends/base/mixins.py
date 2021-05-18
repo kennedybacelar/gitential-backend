@@ -1,6 +1,7 @@
 from .repositories import (
     AccessLogRepository,
     AuthorRepository,
+    EmailLogRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
@@ -37,6 +38,7 @@ class WithRepositoriesMixin:
     _extracted_patches: ExtractedPatchRepository
     _extracted_patch_rewrites: ExtractedPatchRewriteRepository
     _pull_requests: PullRequestRepository
+    _email_log: EmailLogRepository
 
     @property
     def access_logs(self):
@@ -105,3 +107,6 @@ class WithRepositoriesMixin:
     @property
     def team_members(self) -> TeamMemberRepository:
         return self._team_members
+
+    def email_log(self) -> EmailLogRepository:
+        return self._email_log
