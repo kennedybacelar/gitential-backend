@@ -1,5 +1,7 @@
 # pylint: disable=too-complex,too-many-branches
-from typing import List, Any, Dict
+from typing import Generator, List, Any, Dict, Optional
+from datetime import datetime, date, timedelta, timezone
+
 from structlog import get_logger
 from pydantic import BaseModel
 import pandas as pd
@@ -350,19 +352,22 @@ class IbisQuery:
         else:
             result = pd.DataFrame()
 
-        sort_by = _prepare_sort_by(self.query)
-        if sort_by and not result.empty:
-            logger.debug("SORTING", columns=result.columns, sort_by=sort_by)
-            if isinstance(sort_by[0], list):
-                by, ascending = map(list, zip(*sort_by))
-                result.sort_values(by=by, ascending=ascending, inplace=True)
-            else:
-                result.sort_values(by=sort_by, inplace=True)
-
-            # result = result.sort_values(by=sort_by)
-        logger.debug("RESULT", result=result)
-
+        result = _sort_dataframe(result, query=self.query)
         return QueryResult(query=self.query, values=result)
+
+
+def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
+    sort_by = _prepare_sort_by(query)
+    if sort_by and not result.empty:
+        logger.debug("SORTING", columns=result.columns, sort_by=sort_by)
+        if isinstance(sort_by[0], list):
+            by, ascending = map(list, zip(*sort_by))
+            result.sort_values(by=by, ascending=ascending, inplace=True)
+        else:
+            result.sort_values(by=sort_by, inplace=True)
+
+    logger.debug("RESULT AFTER SORTING", result=result)
+    return result
 
 
 def _to_jsonable_result(result: QueryResult) -> dict:
@@ -372,11 +377,114 @@ def _to_jsonable_result(result: QueryResult) -> dict:
     return ret.to_dict(orient="list")
 
 
+def _add_missing_timestamp_to_result(result: QueryResult):
+    if result.values.empty:
+        return result
+    date_dimension = _get_date_dimension(result.query)
+    day_filter = result.query.filters.get(FilterName.day)
+    if not date_dimension or not day_filter:
+        return result
+
+    from_date = datetime.strptime(day_filter[0], "%Y-%m-%d").date()
+    to_date = datetime.strptime(day_filter[1], "%Y-%m-%d").date()
+
+    all_timestamps = [
+        int(ts.timestamp()) * 1000 for ts in _calculate_timestamps_between(date_dimension, from_date, to_date)
+    ]
+    date_col = ""
+    if "datetime" in result.values.columns:
+        date_col = "datetime"
+    elif "date" in result.values.columns:
+        date_col = "date"
+    for ts in all_timestamps:
+        if True not in (result.values[date_col] == ts).values:
+            result.values = result.values.append(
+                _create_empty_row(ts, date_col, result.values.columns), ignore_index=True
+            )
+    result.values = _sort_dataframe(result.values, query=result.query)
+    return result
+
+
+def _create_empty_row(ts: int, date_column: str, column_list) -> dict:
+    ret: dict = {}
+    default_values: dict = {
+        "language": "Others",
+        "name": "",
+        "email": "",
+    }
+    for col in column_list:
+        if col == date_column:
+            ret[col] = ts
+        elif col in default_values:
+            ret[col] = default_values[col]
+        else:
+            ret[col] = 0
+    return ret
+
+
+def _get_date_dimension(query: Query) -> Optional[DimensionName]:
+    if query.dimensions:
+        for d in query.dimensions:
+            if d in DATE_DIMENSIONS:
+                return d
+    return None
+
+
+def _start_of_the_day(day: date) -> datetime:
+    return datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
+
+
+def _end_of_the_day(day: date) -> datetime:
+    return datetime.combine(day, datetime.max.time(), tzinfo=timezone.utc)
+
+
+def _next_hour(d: datetime) -> datetime:
+    return d + timedelta(hours=1)
+
+
+def _next_day(d: datetime) -> datetime:
+    return d + timedelta(days=1)
+
+
+def _next_week(d: datetime) -> datetime:
+    return d + timedelta(days=7)
+
+
+def _next_month(d: datetime) -> datetime:
+    if d.month == 12:
+        return d.replace(year=d.year + 1, month=1)
+    else:
+        return d.replace(month=d.month + 1)
+
+
+def _calculate_timestamps_between(
+    date_dimension: DimensionName, from_date: date, to_date: date
+) -> Generator[datetime, None, None]:
+    from_ = _start_of_the_day(from_date)
+    to_ = _end_of_the_day(to_date)
+    if date_dimension == DimensionName.hour:
+        start_ts = from_
+        get_next = _next_hour
+    elif date_dimension == DimensionName.day:
+        start_ts = from_
+        get_next = _next_day
+    elif date_dimension == DimensionName.week:
+        start_ts = from_ - timedelta(days=from_date.weekday())
+        get_next = _next_week
+    elif date_dimension == DimensionName.month:
+        start_ts = from_ - timedelta(days=from_date.day - 1)
+        get_next = _next_month
+    current_ts = start_ts
+    while current_ts < to_:
+        yield current_ts
+        current_ts = get_next(current_ts)
+
+
 def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
     if any([m in PR_METRICS for m in query.metrics]) and any(
         [f in [FilterName.author_ids, FilterName.emails, FilterName.team_id] for f in query.filters.keys()]
     ):
         logger.warn("Author based filtering for PRs is not implemented", query=query)
         return {}
-    result = IbisQuery(g, workspace_id, query).execute()
+    result = _add_missing_timestamp_to_result(IbisQuery(g, workspace_id, query).execute())
     return _to_jsonable_result(result)

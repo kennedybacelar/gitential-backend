@@ -4,6 +4,10 @@ from gitential2.datatypes.authors import AuthorAlias, AuthorInDB, AuthorCreate, 
 from .context import GitentialContext
 
 
+def list_active_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
+    return [author for author in list_authors(g, workspace_id) if author.active]
+
+
 def list_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
     return list(g.backend.authors.all(workspace_id))
 

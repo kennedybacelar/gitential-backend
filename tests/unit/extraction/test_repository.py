@@ -66,7 +66,7 @@ def is_commit_hash(commit_id):
 
 def test_get_repository_state(test_repositories):
     state = get_repository_state(test_repositories["flask"])
-    assert "master" in state.branches and is_commit_hash(state.branches["master"])
+    assert "main" in state.branches and is_commit_hash(state.branches["main"])
     assert "1.0" in state.tags and state.tags["1.0"] == "291f3c338c4d302dbde01ab9153a7817e5a780f5"
 
 
