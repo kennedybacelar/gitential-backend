@@ -117,10 +117,20 @@ def _prepare_extracted_patches_df(extracted_patches_df: pd.DataFrame) -> pd.Data
     def _fix_lang_type(row):
         return row["langtype"].name
 
+    def _zero_if_not_programming(field_name):
+        def _inner(row):
+            return row[field_name] if row["langtype"] == "PROGRAMMING" else 0
+
+        return _inner
+
     extracted_patches_df["outlier"] = 0
     extracted_patches_df["anomaly"] = 0
     extracted_patches_df["langtype"] = extracted_patches_df.apply(_fix_lang_type, axis=1)
     extracted_patches_df["is_test"] = extracted_patches_df.apply(_calc_is_test, axis=1)
+    extracted_patches_df["comp_i"] = extracted_patches_df.apply(_zero_if_not_programming("comp_i"), axis=1)
+    extracted_patches_df["comp_d"] = extracted_patches_df.apply(_zero_if_not_programming("comp_d"), axis=1)
+    extracted_patches_df["loc_i"] = extracted_patches_df.apply(_zero_if_not_programming("loc_i"), axis=1)
+    extracted_patches_df["loc_d"] = extracted_patches_df.apply(_zero_if_not_programming("loc_d"), axis=1)
 
     return extracted_patches_df.set_index(["commit_id"])
 
