@@ -34,6 +34,7 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryInDB,
 )
 from gitential2.datatypes.stats import IbisTables
+from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB
 from .base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
@@ -50,6 +51,7 @@ from .base import (
     ProjectRepository,
     RepositoryRepository,
     ProjectRepositoryRepository,
+    EmailLogRepository,
 )
 from .base.mixins import WithRepositoriesMixin
 
@@ -363,3 +365,15 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def get_ibis_tables(self, workspace_id: int) -> IbisTables:
         return IbisTables()
+
+
+class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
+    def schedule_trial_expiration_email(self, user_id: int) -> EmailLogInDB:
+        return self.create(
+            user_id=user_id,
+            template_name="free_trial_ended",
+            scheduled_at=(dt.datetime.utcnow() + dt.timedelta(weeks=1)),
+        )
+
+    def get_emails_to_send(self) -> List[EmailLogInDB]:
+        pass
