@@ -395,7 +395,16 @@ def blame_porcelain(git_path, filepath, newest_commit) -> Dict[int, str]:
         # 40-byte SHA-1 of the commit the line is attributed to;
         # the line number of the line in the original file;
         # the line number of the line in the final file;
-        if words and COMMIT_ID_RE.match(words[0]):
-            headers[int(words[2])] = words[0]
+        try:
+            if words and COMMIT_ID_RE.match(words[0]):
+                headers[int(words[2])] = words[0]
+        except IndexError:
+            logger.warning(
+                "git porcelain output format error",
+                git_path=git_path,
+                filepath=filepath,
+                newest_commit=newest_commit,
+                line=line,
+            )
 
     return headers
