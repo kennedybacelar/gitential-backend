@@ -34,8 +34,9 @@ def workspace_multi_stats(
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
 
     ret: dict = {}
+    is_professional = is_workspace_subs_prof(g, workspace_id)
     for name, val in stats_request.items():
-        if not is_workspace_subs_prof(g, workspace_id):
+        if not is_professional:
             val = limit_filter_time(workspace_id, val)
         result = collect_stats_v2(g, workspace_id, val)
         ret[name] = result

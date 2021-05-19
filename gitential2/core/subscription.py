@@ -37,7 +37,10 @@ def is_workspace_subs_prof(g: GitentialContext, ws_id: int) -> bool:
     sub = get_workspace_subscription(g, ws_id)
     if sub.subscription_type == SubscriptionType.professional:
         return True
-    return False
+    elif sub.subscription_type == SubscriptionType.free:
+        return False
+    else:
+        raise InvalidStateException
 
 
 def limit_filter_time(ws_id: int, query: Query) -> Query:
