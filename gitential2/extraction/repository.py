@@ -398,8 +398,8 @@ def blame_porcelain(git_path, filepath, newest_commit) -> Dict[int, str]:
         try:
             if words and COMMIT_ID_RE.match(words[0]):
                 headers[int(words[2])] = words[0]
-        except IndexError:
-            logger.warning(
+        except (IndexError, ValueError):
+            logger.exception(
                 "git porcelain output format error",
                 git_path=git_path,
                 filepath=filepath,
