@@ -1,13 +1,11 @@
-# pylint: skip-file
-from typing import List, Dict, Any, Optional
-import datetime as dt
+from typing import Dict
 
 from fastapi import APIRouter, Depends
 
 from gitential2.datatypes.stats import Query
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core import collect_stats_v2, GitentialContext, check_permission
-from gitential2.core.legacy import get_developers
+from gitential2.core.subscription import limit_filter_time, is_workspace_subs_prof
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["metrics"])
@@ -21,7 +19,8 @@ def workspace_stats(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-
+    if not is_workspace_subs_prof(g, workspace_id):
+        val = limit_filter_time(workspace_id, val)
     return collect_stats_v2(g, workspace_id, val)
 
 
@@ -35,7 +34,10 @@ def workspace_multi_stats(
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
 
     ret: dict = {}
+    is_professional = is_workspace_subs_prof(g, workspace_id)
     for name, val in stats_request.items():
+        if not is_professional:
+            val = limit_filter_time(workspace_id, val)
         result = collect_stats_v2(g, workspace_id, val)
         ret[name] = result
     return ret
