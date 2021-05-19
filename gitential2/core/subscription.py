@@ -35,12 +35,7 @@ def get_workspace_owner(g: GitentialContext, ws_id: int) -> Optional[UserInDB]:
 
 def is_workspace_subs_prof(g: GitentialContext, ws_id: int) -> bool:
     sub = get_workspace_subscription(g, ws_id)
-    if sub.subscription_type == SubscriptionType.professional:
-        return True
-    elif sub.subscription_type == SubscriptionType.free:
-        return False
-    else:
-        raise InvalidStateException
+    return sub.subscription_type in [SubscriptionType.professional, SubscriptionType.trial]
 
 
 def limit_filter_time(ws_id: int, query: Query) -> Query:
