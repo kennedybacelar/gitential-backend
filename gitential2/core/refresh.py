@@ -130,8 +130,20 @@ def _extract_commits_patches(
             )
             repo_status = _persist_status(repo_status.cloning_finished())
         repo_status = _persist_status(repo_status.extract_started())
+        commits_we_already_have = g.backend.get_commit_ids_for_repository(workspace_id, repository.id)
+        logger.info(
+            "Extracting commits from",
+            workspace_id=workspace_id,
+            repository_id=repository.id,
+            repository_name=repository.name,
+            commits_we_already_have=len(commits_we_already_have),
+        )
         extraction_state = extract_incremental_local(
-            local_repo, output=output, settings=g.settings, previous_state=previous_state
+            local_repo,
+            output=output,
+            settings=g.settings,
+            previous_state=previous_state,
+            commits_we_already_have=commits_we_already_have,
         )
         repo_status = _persist_status(repo_status.extract_finished())
 

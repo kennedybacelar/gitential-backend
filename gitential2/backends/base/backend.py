@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Set
 from abc import ABC, abstractmethod
 import pandas as pd
 from gitential2.extraction.output import OutputHandler
@@ -122,6 +122,10 @@ class GitentialBackend(ABC):
 
     @abstractmethod
     def output_handler(self, workspace_id: int) -> OutputHandler:
+        pass
+
+    @abstractmethod
+    def get_commit_ids_for_repository(self, workspace_id: int, repository_id: int) -> Set[str]:
         pass
 
     @abstractmethod

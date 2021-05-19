@@ -1,7 +1,7 @@
 import datetime as dt
 
 from threading import Lock
-from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union
+from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union, Set
 from collections import defaultdict
 import pandas as pd
 from gitential2.settings import GitentialSettings
@@ -363,3 +363,6 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def get_ibis_tables(self, workspace_id: int) -> IbisTables:
         return IbisTables()
+
+    def get_commit_ids_for_repository(self, workspace_id: int, repository_id: int) -> Set[str]:
+        return set()
