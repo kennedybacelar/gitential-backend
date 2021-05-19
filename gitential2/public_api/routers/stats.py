@@ -20,7 +20,7 @@ def workspace_stats(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     if is_workspace_subs_prof(g, workspace_id):
-        val = limit_filter_time(g, workspace_id, val, current_user)
+        val = limit_filter_time(workspace_id, val)
     return collect_stats_v2(g, workspace_id, val)
 
 
@@ -36,7 +36,7 @@ def workspace_multi_stats(
     ret: dict = {}
     for name, val in stats_request.items():
         if is_workspace_subs_prof(g, workspace_id):
-            val = limit_filter_time(g, workspace_id, val, current_user)
+            val = limit_filter_time(workspace_id, val)
         result = collect_stats_v2(g, workspace_id, val)
         ret[name] = result
     return ret
