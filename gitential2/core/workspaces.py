@@ -1,6 +1,6 @@
 from typing import Optional, List
 from gitential2.exceptions import AuthenticationException, InvalidStateException
-from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
+from gitential2.datatypes.workspaces import WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
 from gitential2.datatypes.workspacemember import (
     WorkspaceMemberCreate,
     WorkspaceRole,
@@ -15,16 +15,17 @@ from .users_common import get_user_by_email
 from .projects import list_projects
 from .emails import send_email_to_user
 
-from .subscription import is_free_user, get_current_subscription
+from .subscription import get_current_subscription
 
 
 def _workspace_sort_by(items: WorkspacePublic):
     return items.id
 
 
-def _limit_workspace_get(g: GitentialContext, user_id: int, workspaces: list) -> list:
-    if is_free_user(g, user_id):
-        workspaces.sort(key=_workspace_sort_by)
+def _limit_workspace_get_for_user(g: GitentialContext, user_id: int, workspaces: list) -> list:
+    sub = get_current_subscription(g, user_id)
+    if sub.subscription_type == SubscriptionType.free:
+        workspaces.sort(key=lambda x: x.id)
         return [workspaces[0]]
     else:
         return workspaces
@@ -69,7 +70,7 @@ def get_accessible_workspaces(
         workspaces = _add_admin_as_collaborator_to_all_workspaces(
             g, current_user, workspaces, include_members, include_projects
         )
-    return _limit_workspace_get(g, current_user.id, workspaces)
+    return _limit_workspace_get_for_user(g, current_user.id, workspaces)
 
 
 def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]:
@@ -80,7 +81,7 @@ def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]
             workspace = g.backend.workspaces.get(wm.workspace_id)
             if workspace:
                 ret.append(workspace)
-    return _limit_workspace_get(g, user_id, ret)
+    return ret
 
 
 def _add_admin_as_collaborator_to_all_workspaces(
@@ -141,22 +142,6 @@ def get_workspace(
         raise AuthenticationException("Access Denied")
 
 
-def create_workspace(
-    g: GitentialContext, workspace: WorkspaceCreate, current_user: UserInDB, primary=False
-) -> WorkspaceInDB:
-    workspace.created_by = current_user.id
-    if is_free_user(g, current_user.id):
-        raise AuthenticationException("Access Denied")
-    workspace_in_db = g.backend.workspaces.create(workspace)
-    g.backend.workspace_members.create(
-        WorkspaceMemberCreate(
-            workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
-        )
-    )
-    g.backend.initialize_workspace(workspace_id=workspace_in_db.id)
-    return workspace_in_db
-
-
 def update_workspace(
     g: GitentialContext, workspace_id: int, workspace: WorkspaceUpdate, current_user: UserInDB
 ) -> WorkspaceInDB:
@@ -194,6 +179,9 @@ def invite_members(
     g: GitentialContext, current_user: UserInDB, workspace_id: int, invitations: List[MemberInvite]
 ) -> int:
     workspace = g.backend.workspaces.get_or_error(workspace_id)
+    ws_subscription = get_workspace_subscription(g, workspace.id)
+    if ws_subscription.subscription_type == SubscriptionType.free:
+        raise PermissionError("Only PRO or TRIAL can invite members")
     for invitation in invitations:
         existing_user = get_user_by_email(g, invitation.email)
         if existing_user:

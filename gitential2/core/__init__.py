@@ -12,7 +12,6 @@ from .users import (
 from .workspaces import (
     get_accessible_workspaces,
     get_workspace,
-    create_workspace,
     update_workspace,
     delete_workspace,
     get_members,

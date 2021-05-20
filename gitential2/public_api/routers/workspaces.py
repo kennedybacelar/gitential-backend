@@ -15,7 +15,6 @@ from gitential2.core.workspaces import (
     invite_members,
     update_workspace,
     delete_workspace,
-    create_workspace,
 )
 from gitential2.core.credentials import (
     create_credential_for_workspace,
@@ -23,6 +22,8 @@ from gitential2.core.credentials import (
     delete_credential_from_workspace,
     list_connected_repository_sources,
 )
+
+from gitential2.core.workspace_common import create_workspace
 
 from ..dependencies import current_user, gitential_context
 

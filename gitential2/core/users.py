@@ -10,8 +10,9 @@ from gitential2.datatypes.userinfos import UserInfoCreate, UserInfoUpdate
 from gitential2.datatypes.credentials import CredentialCreate, CredentialUpdate
 from gitential2.datatypes.workspaces import WorkspaceCreate
 from gitential2.datatypes.workspacemember import WorkspaceRole
+from gitential2.core.workspace_common import create_workspace
+
 from .context import GitentialContext
-from .workspaces import create_workspace
 from .emails import send_email_to_user, send_system_notification_email
 
 
