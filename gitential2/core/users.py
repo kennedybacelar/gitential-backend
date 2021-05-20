@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Iterable, Optional, Tuple, cast
 from structlog import get_logger
 from gitential2.datatypes.users import UserCreate, UserUpdate, UserInDB
@@ -229,6 +229,13 @@ def set_as_admin(g: GitentialContext, user_id: int, is_admin: bool = True) -> Us
 
 def list_users(g: GitentialContext) -> Iterable[UserInDB]:
     return g.backend.users.all()
+
+
+def send_trial_end_soon_emails(g: GitentialContext):
+    for s in g.backend.subscriptions.list_active_trials(datetime.utcnow()):
+        delta = abs((s.subscription_end.date() - date.today()).days)
+        if delta == 7:
+            send_email_to_user(g, user=get_user(g, s.user_id), template_name="free_trial_expiration")
 
 
 def set_as_professional(g: GitentialContext, user_id: int, number_of_developers: int) -> SubscriptionInDB:

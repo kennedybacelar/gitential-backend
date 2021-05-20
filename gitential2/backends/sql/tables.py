@@ -7,7 +7,7 @@ from gitential2.datatypes import WorkspaceRole
 from gitential2.datatypes.subscriptions import SubscriptionType
 from gitential2.datatypes.repositories import GitProtocol
 from gitential2.datatypes.extraction import Langtype
-from gitential2.datatypes.email_log import EmailLogStatus
+from gitential2.datatypes.email_log import EmailLogStatus, EmailLogTemplate
 
 metadata = sa.MetaData()
 
@@ -135,7 +135,7 @@ email_log_table = sa.Table(
     metadata,
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
-    sa.Column("template_name", sa.String(32), nullable=False),
+    sa.Column("template_name", sa.Enum(EmailLogTemplate), nullable=False),
     sa.Column("status", sa.Enum(EmailLogStatus), default=EmailLogStatus.scheduled, nullable=False),
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),

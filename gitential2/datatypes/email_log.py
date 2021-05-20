@@ -9,6 +9,10 @@ class EmailLogStatus(str, Enum):
     sent = "sent"
 
 
+class EmailLogTemplate(str, Enum):
+    free_trial_expiration = "free_trial_expiration"
+
+
 class EmailLogBase(CoreModel):
     user_id: int
     template_name: str
