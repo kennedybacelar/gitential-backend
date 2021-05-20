@@ -3,7 +3,6 @@ from .users import (
     handle_authorize,
     register_user,
     get_user,
-    get_current_subscription,
     update_user,
     delete_user,
     get_profile_picture,
@@ -72,3 +71,4 @@ from .teams import (
     remove_authors_from_team,
 )
 from .emails import send_email_to_user, get_email_template, smtp_send
+from .subscription import get_current_subscription, is_free_user

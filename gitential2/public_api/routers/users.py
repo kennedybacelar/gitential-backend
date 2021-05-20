@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
 from gitential2.datatypes.users import UserPublic, UserUpdate
-from gitential2.core import GitentialContext, update_user, delete_user
+from gitential2.core.context import GitentialContext
+from gitential2.core.users import update_user, delete_user
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["users"])

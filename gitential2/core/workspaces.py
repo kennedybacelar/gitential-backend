@@ -1,11 +1,5 @@
 from typing import Optional, List
-
-####----- this must remove after rebase
-from gitential2.datatypes.subscriptions import SubscriptionType
-from gitential2.core.users import get_current_subscription
-
-####-----
-from gitential2.exceptions import AuthenticationException
+from gitential2.exceptions import AuthenticationException, InvalidStateException
 from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
 from gitential2.datatypes.workspacemember import (
     WorkspaceMemberCreate,
@@ -14,18 +8,14 @@ from gitential2.datatypes.workspacemember import (
     WorkspaceMemberInDB,
     MemberInvite,
 )
+from gitential2.datatypes.subscriptions import SubscriptionInDB, SubscriptionType
 from gitential2.datatypes.users import UserInDB, UserHeader
 from .context import GitentialContext
 from .users_common import get_user_by_email
 from .projects import list_projects
 from .emails import send_email_to_user
 
-# this should remove!!!!!!!!!!!!
-def is_free_user(g: GitentialContext, user_id: int):
-    sub = get_current_subscription(g, user_id)
-    if sub.subscription_type == SubscriptionType.trial:
-        return True
-    return False
+from .subscription import is_free_user, get_current_subscription
 
 
 def _workspace_sort_by(items: WorkspacePublic):
@@ -38,6 +28,26 @@ def _limit_workspace_get(g: GitentialContext, user_id: int, workspaces: list) ->
         return [workspaces[0]]
     else:
         return workspaces
+
+
+def is_workspace_subs_prof(g: GitentialContext, ws_id: int) -> bool:
+    sub = get_workspace_subscription(g, ws_id)
+    return sub.subscription_type in [SubscriptionType.professional, SubscriptionType.trial]
+
+
+def get_workspace_subscription(g: GitentialContext, ws_id: int) -> SubscriptionInDB:
+    owner = get_workspace_owner(g, ws_id)
+    if not owner:
+        raise InvalidStateException("no owner of the workspace")
+    return get_current_subscription(g, owner.id)
+
+
+def get_workspace_owner(g: GitentialContext, ws_id: int) -> Optional[UserInDB]:
+    members = g.backend.workspace_members.get_for_workspace(ws_id)
+    for member in members:
+        if member.role == WorkspaceRole.owner:
+            return g.backend.users.get(member.user_id)
+    raise InvalidStateException("No owner of the workspace")
 
 
 def get_accessible_workspaces(

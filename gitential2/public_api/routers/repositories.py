@@ -5,9 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from gitential2.datatypes.permissions import Entity, Action
-from gitential2.core import (
-    GitentialContext,
-    check_permission,
+from gitential2.core.context import GitentialContext
+from gitential2.core.permissions import check_permission
+
+from gitential2.core.repositories import (
     list_available_repositories,
     search_public_repositories,
     get_repository,

@@ -13,17 +13,12 @@ from gitential2.extraction.output import DataCollector
 from gitential2.datatypes.repositories import RepositoryInDB, GitProtocol, RepositoryUpdate
 from gitential2.settings import load_settings
 from gitential2.logging import initialize_logging
-from gitential2.core import (
-    init_context_from_settings,
-    refresh_repository,
-    recalculate_repository_values,
-    refresh_repository_pull_requests,
-    get_user,
-    list_users,
-    list_repositories,
-    set_as_admin,
-    schedule_project_refresh,
-)
+from gitential2.core.context import init_context_from_settings
+from gitential2.core.projects import schedule_project_refresh
+from gitential2.core.refresh import refresh_repository, refresh_repository_pull_requests
+from gitential2.core.repositories import list_repositories
+from gitential2.core.users import get_user, list_users, set_as_admin
+from gitential2.core.calculations import recalculate_repository_values
 from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
 from gitential2.legacy_import import import_legacy_database
@@ -31,7 +26,7 @@ from gitential2.legacy_import import import_legacy_workspace
 from gitential2.core.tasks import configure_celery
 from gitential2.core.context import GitentialContext
 from gitential2.core.stats import calculate_workspace_usage_statistics, calculate_user_statistics
-from gitential2.core.users import set_as_professional
+from gitential2.core.subscription import set_as_professional
 
 logger = get_logger(__name__)
 

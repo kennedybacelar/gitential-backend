@@ -7,7 +7,7 @@ from gitential2.datatypes.stats import DimensionName, FilterName, MetricName, Qu
 from .context import GitentialContext
 from .repositories import list_project_repositories
 from .workspaces import get_own_workspaces
-from .users import get_current_subscription
+from .subscription import get_current_subscription
 from .stats_v2 import collect_stats_v2
 from .access_log import get_last_interaction_at
 
