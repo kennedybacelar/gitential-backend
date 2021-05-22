@@ -203,8 +203,11 @@ class InMemWorkspaceScopedRepository(
         except KeyError:
             return 0
 
-    def all(self, worskspace_id: int) -> Iterable[InDBType]:
-        return self._state[worskspace_id].values()
+    def all(self, workspace_id: int) -> Iterable[InDBType]:
+        return self._state[workspace_id].values()
+
+    def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
+        return self._state[workspace_id].values()
 
     def _new_id(self, workspace_id):
         with self._counter_lock:

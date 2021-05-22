@@ -1,4 +1,6 @@
-from typing import Optional
+from typing import Optional, Tuple, List
+from gitential2.datatypes.export import ExportableModel
+
 from .common import IDModelMixin, CoreModel
 
 
@@ -17,6 +19,12 @@ class TeamMemberUpdate(TeamMemberBase):
     author_id: int
 
 
-class TeamMemberInDB(IDModelMixin, TeamMemberBase):
+class TeamMemberInDB(IDModelMixin, TeamMemberBase, ExportableModel):
     team_id: int
     author_id: int
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("team_member", "team_members")
+
+    def export_fields(self) -> List[str]:
+        return ["id", "team_id", "author_id"]

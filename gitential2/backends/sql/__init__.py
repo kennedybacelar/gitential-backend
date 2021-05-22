@@ -1,4 +1,5 @@
 from datetime import datetime
+
 import json
 from typing import Any, Tuple, Set
 from threading import Lock
@@ -32,6 +33,7 @@ from gitential2.datatypes import (
     WorkspaceMemberInDB,
     AuthorInDB,
 )
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
 from gitential2.settings import GitentialSettings
 
 from ..base import GitentialBackend
@@ -52,6 +54,7 @@ from .tables import (
 from .repositories import (
     SQLAccessLogRepository,
     SQLAuthorRepository,
+    SQLCalculatedPatchRepository,
     SQLProjectRepositoryRepository,
     SQLPullRequestRepository,
     SQLRepositoryRepository,
@@ -67,6 +70,7 @@ from .repositories import (
     SQLExtractedCommitRepository,
     SQLExtractedPatchRepository,
     SQLExtractedPatchRewriteRepository,
+    SQLCalculatedCommitRepository,
 )
 
 
@@ -158,6 +162,20 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ExtractedPatchRewrite,
+        )
+
+        self._calculated_commits = SQLCalculatedCommitRepository(
+            table=self._workspace_tables.tables["calculated_commits"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=CalculatedCommit,
+        )
+
+        self._calculated_patches = SQLCalculatedPatchRepository(
+            table=self._workspace_tables.tables["calculated_patches"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=CalculatedPatch,
         )
 
         self._pull_requests = SQLPullRequestRepository(

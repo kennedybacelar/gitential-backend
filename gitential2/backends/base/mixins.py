@@ -1,6 +1,8 @@
 from .repositories import (
     AccessLogRepository,
     AuthorRepository,
+    CalculatedCommitRepository,
+    CalculatedPatchRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
@@ -36,6 +38,8 @@ class WithRepositoriesMixin:
     _extracted_commits: ExtractedCommitRepository
     _extracted_patches: ExtractedPatchRepository
     _extracted_patch_rewrites: ExtractedPatchRewriteRepository
+    _calculated_commits: CalculatedCommitRepository
+    _calculated_patches: CalculatedPatchRepository
     _pull_requests: PullRequestRepository
 
     @property
@@ -93,6 +97,14 @@ class WithRepositoriesMixin:
     @property
     def extracted_patch_rewrites(self) -> ExtractedPatchRewriteRepository:
         return self._extracted_patch_rewrites
+
+    @property
+    def calculated_commits(self) -> CalculatedCommitRepository:
+        return self._calculated_commits
+
+    @property
+    def calculated_patches(self) -> CalculatedPatchRepository:
+        return self._calculated_patches
 
     @property
     def pull_requests(self) -> PullRequestRepository:

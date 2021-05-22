@@ -9,11 +9,13 @@ from gitential2.datatypes.stats import IbisTables
 from .repositories import (
     AccessLogRepository,
     AuthorRepository,
+    CalculatedPatchRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
     ExtractedPatchRepository,
     ExtractedPatchRewriteRepository,
+    CalculatedCommitRepository,
     UserRepository,
     UserInfoRepository,
     SubscriptionRepository,
@@ -109,6 +111,16 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def extracted_patch_rewrites(self) -> ExtractedPatchRewriteRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def calculated_commits(self) -> CalculatedCommitRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def calculated_patches(self) -> CalculatedPatchRepository:
         pass
 
     @property

@@ -1,8 +1,9 @@
 from enum import Enum
 from datetime import timedelta, datetime
-from typing import Optional, Dict, List, Union
-from pydantic import BaseModel
+from typing import Optional, Dict, List, Tuple, Union
 
+from pydantic import BaseModel
+from gitential2.datatypes.export import ExportableModel
 from .common import IDModelMixin, DateTimeModelMixin, CoreModel, ExtraFieldMixin
 
 
@@ -30,8 +31,25 @@ class RepositoryUpdate(RepositoryBase):
     pass
 
 
-class RepositoryInDB(IDModelMixin, DateTimeModelMixin, RepositoryBase):
-    pass
+class RepositoryInDB(IDModelMixin, DateTimeModelMixin, RepositoryBase, ExportableModel):
+    def export_fields(self) -> List[str]:
+        return [
+            "id",
+            "created_at",
+            "updated_at",
+            "clone_url",
+            "protocol",
+            "name",
+            "namespace",
+            "private",
+            "integration_type",
+            "integration_name",
+            "credential_id",
+            "extra",
+        ]
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("repository", "repositories")
 
 
 class RepositoryPublic(IDModelMixin, DateTimeModelMixin, RepositoryBase):

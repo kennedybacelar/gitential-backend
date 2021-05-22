@@ -43,10 +43,12 @@ from gitential2.datatypes.project_repositories import (
 from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
 
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
-
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.backends.base.repositories import (
     AccessLogRepository,
     AuthorRepository,
+    CalculatedCommitRepository,
+    CalculatedPatchRepository,
     ExtractedCommitRepository,
     ExtractedPatchRepository,
     ExtractedPatchRewriteRepository,
@@ -263,6 +265,18 @@ class SQLWorkspaceScopedRepository(
         query = self.table.select()
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return (self.in_db_cls(**row) for row in rows)
+
+    def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
+        query = self.table.select()
+        with self._connection_with_schema(workspace_id) as connection:
+            proxy = connection.execution_options(stream_results=True).execute(query)
+            while True:
+                batch = proxy.fetchmany(10000)
+                if not batch:
+                    break
+                for row in batch:
+                    yield self.in_db_cls(**row)
+            proxy.close()
 
     def truncate(self, workspace_id: int):
         schema_name = self._schema_name(workspace_id)
@@ -497,6 +511,29 @@ class SQLExtractedPatchRewriteRepository(
             self.table.c.repo_id == id_.repo_id,
             self.table.c.newpath == id_.newpath,
             self.table.c.rewritten_commit_id == id_.rewritten_commit_id,
+        )
+
+
+class SQLCalculatedCommitRepository(
+    SQLRepoDFMixin,
+    CalculatedCommitRepository,
+    SQLWorkspaceScopedRepository[CalculatedCommitId, CalculatedCommit, CalculatedCommit, CalculatedCommit],
+):
+    def identity(self, id_: CalculatedCommitId):
+        return and_(self.table.c.commit_id == id_.commit_id, self.table.c.repo_id == id_.repo_id)
+
+
+class SQLCalculatedPatchRepository(
+    SQLRepoDFMixin,
+    CalculatedPatchRepository,
+    SQLWorkspaceScopedRepository[CalculatedPatchId, CalculatedPatch, CalculatedPatch, CalculatedPatch],
+):
+    def identity(self, id_: CalculatedPatchId):
+        return and_(
+            self.table.c.commit_id == id_.commit_id,
+            self.table.c.repo_id == id_.repo_id,
+            self.table.c.parent_commit_id == id_.parent_commit_id,
+            self.table.c.newpath == id_.newpath,
         )
 
 

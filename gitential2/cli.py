@@ -461,3 +461,8 @@ cli.add_command(workspace_usage_stats)
 cli.add_command(user_usage_stats)
 cli.add_command(set_as_professional_)
 cli.add_command(usage_stats)
+
+
+def main():
+    # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+    cli(prog_name="g2", obj={})

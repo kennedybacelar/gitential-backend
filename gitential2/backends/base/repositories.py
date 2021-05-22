@@ -21,6 +21,8 @@ from gitential2.datatypes import (
     CredentialInDB,
     AccessLog,
 )
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
+
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
@@ -143,6 +145,10 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
 
     @abstractmethod
     def all(self, workspace_id: int) -> Iterable[InDBType]:
+        pass
+
+    @abstractmethod
+    def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
         pass
 
     @abstractmethod
@@ -282,6 +288,20 @@ class ExtractedPatchRewriteRepository(
     BaseWorkspaceScopedRepository[
         ExtractedPatchRewriteId, ExtractedPatchRewrite, ExtractedPatchRewrite, ExtractedPatchRewrite
     ],
+):
+    pass
+
+
+class CalculatedCommitRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[CalculatedCommitId, CalculatedCommit, CalculatedCommit, CalculatedCommit],
+):
+    pass
+
+
+class CalculatedPatchRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[CalculatedPatchId, CalculatedPatch, CalculatedPatch, CalculatedPatch],
 ):
     pass
 
