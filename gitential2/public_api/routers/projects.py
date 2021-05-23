@@ -10,7 +10,7 @@ from structlog import get_logger
 from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories, ProjectStatus
 from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype
 from gitential2.datatypes.permissions import Entity, Action
-from gitential2.core.projects import schedule_project_refresh
+from gitential2.core.refresh_v2 import refresh_project
 
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
@@ -106,14 +106,14 @@ def _get_project_status_hack(workspace_id, project_id) -> ProjectStatus:
 
 
 @router.post("/workspaces/{workspace_id}/projects/{project_id}/process", response_model=ProjectStatus)
-def refresh_project(
+def refresh_project_(
     workspace_id: int,
     project_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
-    schedule_project_refresh(g, workspace_id, project_id)
+    refresh_project(g, workspace_id, project_id)
     return get_project_status(g, workspace_id, project_id=project_id)
 
 
@@ -125,7 +125,7 @@ def refresh_project_rebuild(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
-    schedule_project_refresh(g, workspace_id, project_id, force_rebuild=True)
+    refresh_project(g, workspace_id, project_id)
     return get_project_status(g, workspace_id, project_id=project_id)
 
 

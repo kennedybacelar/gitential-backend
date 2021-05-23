@@ -10,4 +10,5 @@ COPY --from=build --chown=app:app /project/.local /project/.local
 COPY --chown=app:app . /project/app
 ARG APP_VERSION
 RUN echo $APP_VERSION > /project/app/VERSION
+RUN poetry install
 ENTRYPOINT ["poetry", "run", "python", "-m", "gitential2"]

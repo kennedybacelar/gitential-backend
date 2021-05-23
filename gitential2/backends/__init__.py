@@ -11,10 +11,10 @@ logger = get_logger(__name__)
 
 def init_backend(settings: GitentialSettings) -> GitentialBackend:
     if settings.backend == BackendType.in_memory:
-        logger.info("Creating in memory backend")
+        logger.debug("Creating in memory backend")
         return InMemGitentialBackend(settings)
     elif settings.backend == BackendType.sql:
-        logger.info("Creating SQL backend")
+        logger.debug("Creating SQL backend")
         return SQLGitentialBackend(settings)
     else:
         raise ValueError("Cannot initialize backend")

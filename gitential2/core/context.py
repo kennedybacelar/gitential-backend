@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from gitential2.settings import GitentialSettings
 from gitential2.backends import GitentialBackend, init_backend
 from gitential2.secrets import Fernet
@@ -22,6 +23,9 @@ class GitentialContext:
         self._fernet = fernet
         self._kvstore = kvstore
         self._license = license_
+
+    def current_time(self) -> datetime:
+        return datetime.utcnow().replace(tzinfo=timezone.utc)
 
     @property
     def settings(self) -> GitentialSettings:

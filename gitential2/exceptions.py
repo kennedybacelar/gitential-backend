@@ -24,3 +24,7 @@ class SettingsException(GitentialException):
 
 class InvalidStateException(GitentialException):
     pass
+
+
+class LockError(GitentialException):
+    pass

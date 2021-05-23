@@ -24,7 +24,6 @@ from .projects import (
     get_project,
     update_project,
     delete_project,
-    schedule_project_refresh,
 )
 from .repositories import (
     get_repository,
