@@ -54,14 +54,11 @@ def get_accessible_workspaces(
 ) -> List[WorkspacePublic]:
     workspace_memberships = g.backend.workspace_members.get_for_user(user_id=current_user.id)
     workspaces = []
+    free_ws_limitation = False
     for membership in workspace_memberships:
         ws_owner = get_workspace_owner(g, membership.workspace_id)
         if ws_owner:
-            if (
-                is_workspace_subs_prof(g, ws_owner.id)
-                or membership.role == WorkspaceRole.owner
-                and ws_owner.id == current_user.id
-            ):
+            if is_workspace_subs_prof(g, ws_owner.id):
                 workspaces.append(
                     get_workspace(
                         g=g,
@@ -72,6 +69,18 @@ def get_accessible_workspaces(
                         _membership=membership,
                     )
                 )
+            elif not free_ws_limitation and ws_owner.id == current_user.id and membership.role == WorkspaceRole.owner:
+                workspaces.append(
+                    get_workspace(
+                        g=g,
+                        workspace_id=membership.workspace_id,
+                        current_user=current_user,
+                        include_members=include_members,
+                        include_projects=include_projects,
+                        _membership=membership,
+                    )
+                )
+                free_ws_limitation = True
             else:
                 continue
 
