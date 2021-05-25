@@ -18,11 +18,9 @@ from .emails import send_email_to_user
 from .subscription import get_current_subscription
 
 
-def _workspace_sort_by(items: WorkspacePublic):
-    return items.id
-
-
-def _limit_workspace_get_for_user(g: GitentialContext, user_id: int, workspaces: list) -> list:
+def _limit_workspace_get_for_user(
+    g: GitentialContext, user_id: int, workspaces: List[WorkspaceInDB]
+) -> List[WorkspaceInDB]:
     sub = get_current_subscription(g, user_id)
     if sub.subscription_type == SubscriptionType.free:
         workspaces.sort(key=lambda x: x.id)
@@ -55,22 +53,33 @@ def get_accessible_workspaces(
     g: GitentialContext, current_user: UserInDB, include_members: bool = False, include_projects: bool = False
 ) -> List[WorkspacePublic]:
     workspace_memberships = g.backend.workspace_members.get_for_user(user_id=current_user.id)
-    workspaces = [
-        get_workspace(
-            g=g,
-            workspace_id=membership.workspace_id,
-            current_user=current_user,
-            include_members=include_members,
-            include_projects=include_projects,
-            _membership=membership,
-        )
-        for membership in workspace_memberships
-    ]
+    workspaces = []
+    for membership in workspace_memberships:
+        ws_owner = get_workspace_owner(g, membership.workspace_id)
+        if ws_owner:
+            if (
+                is_workspace_subs_prof(g, ws_owner.id)
+                or membership.role == WorkspaceRole.owner
+                and ws_owner.id == current_user.id
+            ):
+                workspaces.append(
+                    get_workspace(
+                        g=g,
+                        workspace_id=membership.workspace_id,
+                        current_user=current_user,
+                        include_members=include_members,
+                        include_projects=include_projects,
+                        _membership=membership,
+                    )
+                )
+            else:
+                continue
+
     if current_user.is_admin:
         workspaces = _add_admin_as_collaborator_to_all_workspaces(
             g, current_user, workspaces, include_members, include_projects
         )
-    return _limit_workspace_get_for_user(g, current_user.id, workspaces)
+    return workspaces
 
 
 def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]:
@@ -81,7 +90,7 @@ def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]
             workspace = g.backend.workspaces.get(wm.workspace_id)
             if workspace:
                 ret.append(workspace)
-    return ret
+    return _limit_workspace_get_for_user(g, user_id, ret)
 
 
 def _add_admin_as_collaborator_to_all_workspaces(
