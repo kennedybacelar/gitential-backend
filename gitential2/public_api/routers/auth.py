@@ -3,17 +3,14 @@ from typing import Optional
 from structlog import get_logger
 from fastapi import APIRouter, Request, HTTPException, Depends, Header
 from fastapi.responses import RedirectResponse
-from gitential2.core import (
-    GitentialContext,
-    handle_authorize,
-    register_user,
-    get_user,
-    get_current_subscription,
-    get_profile_picture,
-)
 from gitential2.datatypes.users import UserCreate
 from gitential2.datatypes.subscriptions import SubscriptionType
 from gitential2.exceptions import AuthenticationException
+from gitential2.core.context import GitentialContext
+from gitential2.core.users import handle_authorize, register_user, get_user, get_profile_picture
+from gitential2.core.subscription import get_current_subscription
+
+
 from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token, api_access_log
 
 logger = get_logger(__name__)

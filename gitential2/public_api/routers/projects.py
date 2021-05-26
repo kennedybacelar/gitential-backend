@@ -12,16 +12,16 @@ from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.projects import schedule_project_refresh
 
-from gitential2.core import (
-    check_permission,
-    GitentialContext,
+from gitential2.core.context import GitentialContext
+from gitential2.core.permissions import check_permission
+from gitential2.core.projects import (
     list_projects,
     create_project,
     update_project,
     delete_project,
     get_project,
-    get_project_status,
 )
+from gitential2.core.statuses import get_project_status
 
 from ..dependencies import gitential_context, current_user
 

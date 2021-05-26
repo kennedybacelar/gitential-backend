@@ -2,40 +2,66 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from structlog import get_logger
-from gitential2.exceptions import InvalidStateException
 
 from gitential2.datatypes.stats import Query
-from gitential2.datatypes.users import UserInDB
 
-from gitential2.core import GitentialContext
-from gitential2.core.users import get_current_subscription
-
-from gitential2.datatypes.subscriptions import SubscriptionType, SubscriptionInDB
+from gitential2.datatypes.subscriptions import (
+    SubscriptionInDB,
+    SubscriptionCreate,
+    SubscriptionType,
+    SubscriptionUpdate,
+)
 from gitential2.datatypes.stats import FilterName
-from gitential2.datatypes.workspacemember import WorkspaceRole
+
+from .context import GitentialContext
+
 
 logger = get_logger(__name__)
 TRIAL_FILTER_PERIOD_DAY = 90
 
 
-def get_workspace_subscription(g: GitentialContext, ws_id: int) -> SubscriptionInDB:
-    owner = get_workspace_owner(g, ws_id)
-    if not owner:
-        raise InvalidStateException("no owner of the workspace")
-    return get_current_subscription(g, owner.id)
+def is_free_user(g: GitentialContext, user_id: int):
+    sub = get_current_subscription(g, user_id)
+    if sub.subscription_type == SubscriptionType.trial:
+        return True
+    return False
 
 
-def get_workspace_owner(g: GitentialContext, ws_id: int) -> Optional[UserInDB]:
-    members = g.backend.workspace_members.get_for_workspace(ws_id)
-    for member in members:
-        if member.role == WorkspaceRole.owner:
-            return g.backend.users.get(member.user_id)
-    raise InvalidStateException("No owner of the workspace")
+def get_current_subscription(g: GitentialContext, user_id: int) -> SubscriptionInDB:
+    if g.license.is_on_premises:
+        return SubscriptionInDB(
+            id=0,
+            user_id=user_id,
+            subscription_type=SubscriptionType.professional,
+            subscription_start=datetime(1970, 1, 1),
+            subscription_end=datetime(2099, 12, 31),
+        )
+
+    current_subscription_from_db = _get_current_subscription_from_db(g, user_id)
+    if current_subscription_from_db:
+        return current_subscription_from_db
+    else:
+        return SubscriptionInDB(
+            id=0,
+            user_id=user_id,
+            subscription_type=SubscriptionType.free,
+            subscription_start=datetime.utcnow(),
+        )
 
 
-def is_workspace_subs_prof(g: GitentialContext, ws_id: int) -> bool:
-    sub = get_workspace_subscription(g, ws_id)
-    return sub.subscription_type in [SubscriptionType.professional, SubscriptionType.trial]
+def _get_current_subscription_from_db(g: GitentialContext, user_id: int) -> Optional[SubscriptionInDB]:
+    current_time = datetime.utcnow()
+
+    def _is_subscription_valid(s: SubscriptionInDB):
+        return s.subscription_start < current_time and (s.subscription_end is None or s.subscription_end > current_time)
+
+    subscriptions = g.backend.subscriptions.get_subscriptions_for_user(user_id)
+
+    valid_subscriptions = [s for s in subscriptions if _is_subscription_valid(s)]
+    if valid_subscriptions:
+        return valid_subscriptions[0]
+    else:
+        return None
 
 
 def limit_filter_time(ws_id: int, query: Query) -> Query:
@@ -59,3 +85,31 @@ def limit_filter_time(ws_id: int, query: Query) -> Query:
             logger.debug("limiting query, limit end filtertime", workspace_id=ws_id)
 
     return query
+
+
+def set_as_professional(g: GitentialContext, user_id: int, number_of_developers: int) -> SubscriptionInDB:
+    user = g.backend.users.get_or_error(user_id)
+    current_subs = _get_current_subscription_from_db(g, user_id=user.id)
+
+    if current_subs and current_subs.subscription_type == SubscriptionType.professional:
+        su = SubscriptionUpdate(**current_subs.dict())
+        su.number_of_developers = number_of_developers
+        return g.backend.subscriptions.update(current_subs.id, su)
+    elif current_subs and current_subs.subscription_type != SubscriptionType.professional:
+        su = SubscriptionUpdate(**current_subs.dict())
+        su.subscription_end = datetime.utcnow()
+        g.backend.subscriptions.update(current_subs.id, su)
+        return _create_new_prof_subs(g, user_id, number_of_developers)
+    else:
+        return _create_new_prof_subs(g, user_id, number_of_developers)
+
+
+def _create_new_prof_subs(g: GitentialContext, user_id: int, number_of_developers: int) -> SubscriptionInDB:
+    return g.backend.subscriptions.create(
+        SubscriptionCreate(
+            user_id=user_id,
+            number_of_developers=number_of_developers,
+            subscription_type=SubscriptionType.professional,
+            subscription_start=datetime.utcnow(),
+        )
+    )

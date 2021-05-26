@@ -4,8 +4,12 @@ from fastapi import APIRouter, Depends
 
 from gitential2.datatypes.stats import Query
 from gitential2.datatypes.permissions import Entity, Action
-from gitential2.core import collect_stats_v2, GitentialContext, check_permission
-from gitential2.core.subscription import limit_filter_time, is_workspace_subs_prof
+from gitential2.core.context import GitentialContext
+from gitential2.core.permissions import check_permission
+from gitential2.core.stats_v2 import collect_stats_v2
+
+from gitential2.core.subscription import limit_filter_time
+from gitential2.core.workspaces import is_workspace_subs_prof
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["metrics"])

@@ -4,11 +4,9 @@ from structlog import get_logger
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 from gitential2.datatypes.permissions import Entity, Action
-from gitential2.core import (
-    GitentialContext,
-    handle_authorize,
-    check_permission,
-)
+from gitential2.core.context import GitentialContext
+from gitential2.core.users import handle_authorize
+from gitential2.core.permissions import check_permission
 from gitential2.core.legacy import (
     get_dev_related_projects,
     get_repos_projects,

@@ -31,10 +31,8 @@ def ping(settings_dict: dict):
 @celery_app.task
 def refresh_repository_task(settings_dict: dict, workspace_id: int, repository_id: int, force_rebuild: bool):
     # pylint: disable=import-outside-toplevel,cyclic-import
-    from gitential2.core import (
-        init_context_from_settings,
-        refresh_repository,
-    )
+    from gitential2.core.context import init_context_from_settings
+    from gitential2.core.refresh import refresh_repository
 
     settings = GitentialSettings(**settings_dict)
     g = init_context_from_settings(settings)

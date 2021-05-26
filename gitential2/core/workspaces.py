@@ -1,6 +1,6 @@
 from typing import Optional, List
-
-from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
+from gitential2.exceptions import AuthenticationException, InvalidStateException
+from gitential2.datatypes.workspaces import WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
 from gitential2.datatypes.workspacemember import (
     WorkspaceMemberCreate,
     WorkspaceRole,
@@ -8,28 +8,86 @@ from gitential2.datatypes.workspacemember import (
     WorkspaceMemberInDB,
     MemberInvite,
 )
+from gitential2.datatypes.subscriptions import SubscriptionInDB, SubscriptionType
 from gitential2.datatypes.users import UserInDB, UserHeader
 from .context import GitentialContext
 from .users_common import get_user_by_email
 from .projects import list_projects
 from .emails import send_email_to_user
 
+from .subscription import get_current_subscription
+
+
+def _limit_workspace_get_for_user(
+    g: GitentialContext, user_id: int, workspaces: List[WorkspaceInDB]
+) -> List[WorkspaceInDB]:
+    sub = get_current_subscription(g, user_id)
+    if sub.subscription_type == SubscriptionType.free:
+        workspaces.sort(key=lambda x: x.id)
+        return [workspaces[0]]
+    else:
+        return workspaces
+
+
+def is_workspace_subs_prof(g: GitentialContext, ws_id: int) -> bool:
+    sub = get_workspace_subscription(g, ws_id)
+    return sub.subscription_type in [SubscriptionType.professional, SubscriptionType.trial]
+
+
+def get_workspace_subscription(g: GitentialContext, ws_id: int) -> SubscriptionInDB:
+    owner = get_workspace_owner(g, ws_id)
+    if not owner:
+        raise InvalidStateException("no owner of the workspace")
+    return get_current_subscription(g, owner.id)
+
+
+def get_workspace_owner(g: GitentialContext, ws_id: int) -> Optional[UserInDB]:
+    members = g.backend.workspace_members.get_for_workspace(ws_id)
+    for member in members:
+        if member.role == WorkspaceRole.owner:
+            return g.backend.users.get(member.user_id)
+    raise InvalidStateException("No owner of the workspace")
+
 
 def get_accessible_workspaces(
     g: GitentialContext, current_user: UserInDB, include_members: bool = False, include_projects: bool = False
 ) -> List[WorkspacePublic]:
     workspace_memberships = g.backend.workspace_members.get_for_user(user_id=current_user.id)
-    workspaces = [
-        get_workspace(
-            g=g,
-            workspace_id=membership.workspace_id,
-            current_user=current_user,
-            include_members=include_members,
-            include_projects=include_projects,
-            _membership=membership,
-        )
-        for membership in workspace_memberships
-    ]
+    workspaces = []
+    one_owned_workspace_already_added = False
+    for membership in workspace_memberships:
+        ws_owner = get_workspace_owner(g, membership.workspace_id)
+        if ws_owner:
+            if is_workspace_subs_prof(g, membership.workspace_id):
+                workspaces.append(
+                    get_workspace(
+                        g=g,
+                        workspace_id=membership.workspace_id,
+                        current_user=current_user,
+                        include_members=include_members,
+                        include_projects=include_projects,
+                        _membership=membership,
+                    )
+                )
+            elif (
+                not one_owned_workspace_already_added
+                and ws_owner.id == current_user.id
+                and membership.role == WorkspaceRole.owner
+            ):
+                workspaces.append(
+                    get_workspace(
+                        g=g,
+                        workspace_id=membership.workspace_id,
+                        current_user=current_user,
+                        include_members=include_members,
+                        include_projects=include_projects,
+                        _membership=membership,
+                    )
+                )
+                one_owned_workspace_already_added = True
+            else:
+                continue
+
     if current_user.is_admin:
         workspaces = _add_admin_as_collaborator_to_all_workspaces(
             g, current_user, workspaces, include_members, include_projects
@@ -45,7 +103,7 @@ def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]
             workspace = g.backend.workspaces.get(wm.workspace_id)
             if workspace:
                 ret.append(workspace)
-    return ret
+    return _limit_workspace_get_for_user(g, user_id, ret)
 
 
 def _add_admin_as_collaborator_to_all_workspaces(
@@ -103,22 +161,7 @@ def get_workspace(
 
         return WorkspacePublic(**workspace_data)
     else:
-        raise Exception("Access Denied")
-
-
-def create_workspace(
-    g: GitentialContext, workspace: WorkspaceCreate, current_user: UserInDB, primary=False
-) -> WorkspaceInDB:
-    workspace.created_by = current_user.id
-
-    workspace_in_db = g.backend.workspaces.create(workspace)
-    g.backend.workspace_members.create(
-        WorkspaceMemberCreate(
-            workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
-        )
-    )
-    g.backend.initialize_workspace(workspace_id=workspace_in_db.id)
-    return workspace_in_db
+        raise AuthenticationException("Access Denied")
 
 
 def update_workspace(
@@ -140,7 +183,7 @@ def delete_workspace(g: GitentialContext, workspace_id: int, current_user: UserI
     if membership:
         return g.backend.workspaces.delete(workspace_id)
     else:
-        raise Exception("Authentication error")
+        raise AuthenticationException("Authentication error")
 
 
 def get_members(g: GitentialContext, workspace_id: int, include_user_header=True) -> List[WorkspaceMemberPublic]:
@@ -158,6 +201,9 @@ def invite_members(
     g: GitentialContext, current_user: UserInDB, workspace_id: int, invitations: List[MemberInvite]
 ) -> int:
     workspace = g.backend.workspaces.get_or_error(workspace_id)
+    ws_subscription = get_workspace_subscription(g, workspace.id)
+    if ws_subscription.subscription_type == SubscriptionType.free:
+        raise PermissionError("Only PRO or TRIAL can invite members")
     for invitation in invitations:
         existing_user = get_user_by_email(g, invitation.email)
         if existing_user:

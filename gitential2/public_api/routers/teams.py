@@ -1,9 +1,10 @@
 from typing import List, Union
 from fastapi import APIRouter, Depends
-from gitential2.core import (
-    GitentialContext,
+from gitential2.core.context import GitentialContext
+from gitential2.core.permissions import check_permission
+
+from gitential2.core.teams import (
     list_teams,
-    check_permission,
     create_team,
     update_team,
     delete_team,
