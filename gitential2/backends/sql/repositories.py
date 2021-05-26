@@ -54,7 +54,7 @@ from gitential2.backends.base.repositories import (
     TeamMemberRepository,
 )
 
-from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB
+from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB, EmailLogStatus
 
 from ..base import (
     IdType,
@@ -530,3 +530,8 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         )
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [EmailLogInDB(**row) for row in rows]
+
+    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
+        query = self.table.update(self.table.c.status).where(self.table.c.status == row_id).values(status)
+        self._execute_query(query)
+        return self.get_or_error(row_id)

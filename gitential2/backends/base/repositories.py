@@ -338,9 +338,9 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
         )
         return self.create(email_log_create)
 
-    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> EmailLogInDB:
-        email_log_update = EmailLogUpdate(id=row_id, status=status)
-        return self.update(email_log_update)
+    @abstractmethod
+    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
+        pass
 
     @abstractmethod
     def get_emails_to_send(self) -> List[EmailLogInDB]:

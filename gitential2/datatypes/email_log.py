@@ -11,6 +11,9 @@ class EmailLogStatus(str, Enum):
 
 class EmailLogTemplate(str, Enum):
     free_trial_expiration = "free_trial_expiration"
+    invite_member = "invite_member"
+    request_free_trial = "request_free_trial"
+    welcome = "welcome"
 
 
 class EmailLogBase(CoreModel):

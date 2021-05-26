@@ -59,7 +59,7 @@ class ProcessPoolExecutor(Executor):
         super().__init__(**kwargs)
 
     def _process(self, fn_partial: Callable, items: Iterable, progress_bar):
-        pool = Pool(self.pool_size)
+        pool = Pool(self.pool_size)  # pylint: disable=not-callable
         counter = 0
         for output in pool.imap_unordered(fn_partial, items):
             for kind, value in output:

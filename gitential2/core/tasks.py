@@ -63,7 +63,7 @@ def send_scheduled_emails(settings: Optional[GitentialSettings] = None):
     g = init_context_from_settings(settings)
     for s in g.backend.email_log.get_emails_to_send():
         if s.template_name == EmailLogTemplate.free_trial_expiration:
-            send_trial_end_soon_emails(g)
+            send_trial_end_soon_emails(g, s.user_id)
         g.backend.email_log.email_log_status_update(s.id, EmailLogStatus.sent)
 
 
