@@ -42,7 +42,6 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
                         provider_user_id=userinfo.sub if userinfo else None,
                     )
                     results = _merge_repo_lists(collected_repositories, results)
-                    raise ValueError("ezt probald ki")
             except Exception:  # pylint: disable=broad-except
                 logger.exception(
                     "Error during collecting repositories",
