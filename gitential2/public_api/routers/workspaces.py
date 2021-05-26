@@ -15,6 +15,7 @@ from gitential2.core.workspaces import (
     invite_members,
     update_workspace,
     delete_workspace,
+    get_workspace_subscription,
 )
 from gitential2.core.credentials import (
     create_credential_for_workspace,
@@ -102,6 +103,11 @@ def create_workspace_(
 @router.get("/workspaces/{workspace_id}/repository-sources")
 def list_connected_repository_sources_(workspace_id: int, g: GitentialContext = Depends(gitential_context)):
     return list_connected_repository_sources(g, workspace_id)
+
+
+@router.get("/workspaces/{workspace_id}/subscription")
+def get_workspace_owner_subscription(workspace_id: int, g: GitentialContext = Depends(gitential_context)):
+    return get_workspace_subscription(g, workspace_id)
 
 
 @router.get("/workspaces/{workspace_id}/members")
