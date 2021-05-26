@@ -1,4 +1,5 @@
 from typing import Optional, List
+from structlog import get_logger
 from gitential2.exceptions import AuthenticationException, InvalidStateException
 from gitential2.datatypes.workspaces import WorkspaceInDB, WorkspaceUpdate, WorkspacePublic
 from gitential2.datatypes.workspacemember import (
@@ -16,6 +17,8 @@ from .projects import list_projects
 from .emails import send_email_to_user
 
 from .subscription import get_current_subscription
+
+logger = get_logger(__name__)
 
 
 def _limit_workspace_get_for_user(
@@ -46,7 +49,8 @@ def get_workspace_owner(g: GitentialContext, ws_id: int) -> Optional[UserInDB]:
     for member in members:
         if member.role == WorkspaceRole.owner:
             return g.backend.users.get(member.user_id)
-    raise InvalidStateException("No owner of the workspace")
+    logger.warning("No owner of the workspace", workspace_id=ws_id)
+    return None
 
 
 def get_accessible_workspaces(
