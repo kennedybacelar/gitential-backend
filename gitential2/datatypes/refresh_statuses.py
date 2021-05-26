@@ -56,10 +56,67 @@ class RepositoryRefreshStatus(CoreModel):
     prs_error_msg: str = ""
 
     def to_legacy(self) -> LegacyRepositoryRefreshStatus:
+
+        clone, extract, persist = self._calc_float_values()
+
+        phase = self._calc_phase()
         legacy_dict = {
             "id": self.repository_id,
             "name": self.repository_name,
             "started_at": self.commits_started,
             "finished_at": self.commits_last_successful_run,
+            "status": self._calc_legacy_status(),
+            "phase": phase,
+            "clone": clone,
+            "extract": extract,
+            "persist": persist,
+            "error": [self.commits_error_msg] if self.commits_error_msg else None,
+            "done": (not self.commits_in_progress and not self.commits_refresh_scheduled),
         }
+
         return LegacyRepositoryRefreshStatus(**legacy_dict)
+
+    def _calc_legacy_status(self):
+        if self.commits_in_progress:
+            return LegacyRepositoryStatusStatus.in_progress
+        elif self.commits_refresh_scheduled:
+            return LegacyRepositoryStatusStatus.pending
+        else:
+            return LegacyRepositoryStatusStatus.finished
+
+    def _calc_float_values(self):
+        if self.commits_phase == RefreshCommitsPhase.pending or (
+            not self.commits_in_progress and self.commits_refresh_scheduled
+        ):
+            return 0, 0, 0
+        elif self.commits_phase == RefreshCommitsPhase.cloning:
+            return 0.1, 0, 0
+        elif self.commits_phase == RefreshCommitsPhase.extract:
+            return 1.0, 0.1, 0
+        elif self.commits_phase == RefreshCommitsPhase.persist:
+            return 1.0, 1.0, 0.1
+        elif self.commits_phase == RefreshCommitsPhase.done:
+            return 1.0, 1.0, 1.0
+        else:
+            return 0, 0, 0
+
+    def _calc_phase(self):
+        if (not self.commits_in_progress) and self.commits_refresh_scheduled:
+            return "pending"
+        else:
+            return self.commits_phase.value
+
+
+class ProjectRefreshStatus(CoreModel):
+    workspace_id: int
+    id: int
+    name: str
+    summary: str
+    done: bool
+    repos: List[LegacyRepositoryRefreshStatus]
+    repositories: List[RepositoryRefreshStatus]
+    last_refreshed_at: Optional[datetime]
+
+    def _calc_last_refreshed_at(self) -> Optional[datetime]:
+        ret = None
+        return ret

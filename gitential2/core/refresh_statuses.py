@@ -1,7 +1,24 @@
 from typing import cast
 
-from gitential2.datatypes.refresh_statuses import RepositoryRefreshStatus
+from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus, RepositoryRefreshStatus
+from .repositories import list_project_repositories
 from .context import GitentialContext
+
+
+def get_project_refresh_status(g: GitentialContext, workspace_id: int, project_id: int) -> ProjectRefreshStatus:
+    repositories = list_project_repositories(g, workspace_id, project_id=project_id)
+    project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
+    repo_statuses = [get_repo_refresh_status(g, workspace_id, r.id) for r in repositories]
+    legacy_repo_statuses = [repo_status.to_legacy() for repo_status in repo_statuses]
+    return ProjectRefreshStatus(
+        workspace_id=workspace_id,
+        id=project_id,
+        name=project.name,
+        summary="...",
+        done=all(rs.done for rs in legacy_repo_statuses),
+        repos=legacy_repo_statuses,
+        repositories=repo_statuses,
+    )
 
 
 def _repo_refresh_status_key(workspace_id: int, repository_id: int) -> str:
