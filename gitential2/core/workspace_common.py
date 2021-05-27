@@ -13,10 +13,12 @@ from .context import GitentialContext
 def create_workspace(
     g: GitentialContext, workspace: WorkspaceCreate, current_user: UserInDB, primary=False
 ) -> WorkspaceInDB:
+    if not primary and g.license.is_cloud:
+        sub = get_current_subscription(g, current_user.id)
+        if sub.subscription_type == SubscriptionType.free:
+            raise AuthenticationException("Users with FREE subscription can only have one workspace")
+
     workspace.created_by = current_user.id
-    sub = get_current_subscription(g, current_user.id)
-    if sub.subscription_type == SubscriptionType.free:
-        raise AuthenticationException("Access Denied")
     workspace_in_db = g.backend.workspaces.create(workspace)
     g.backend.workspace_members.create(
         WorkspaceMemberCreate(
