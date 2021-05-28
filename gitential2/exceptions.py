@@ -6,6 +6,10 @@ class AuthenticationException(GitentialException):
     pass
 
 
+class PermissionException(GitentialException):
+    pass
+
+
 class NotImplementedException(GitentialException):
     pass
 

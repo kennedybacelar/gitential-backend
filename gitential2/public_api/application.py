@@ -11,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 from gitential2.logging import initialize_logging
 from gitential2.settings import GitentialSettings, load_settings
-from gitential2.exceptions import AuthenticationException
+from gitential2.exceptions import AuthenticationException, PermissionException
 
 from gitential2.core.context import init_context_from_settings
 from gitential2.core.tasks import configure_celery
@@ -125,8 +125,10 @@ def _configure_error_handling(app: FastAPI):
 
         if isinstance(exc, AuthenticationException):
             return RedirectResponse(url=_error_page(request, error_code))
-
-        response = JSONResponse(content={"error": "Something went wrong"}, status_code=500)
+        elif isinstance(exc, PermissionException):
+            response = JSONResponse(content={"error": str(exc)}, status_code=403)
+        else:
+            response = JSONResponse(content={"error": "Something went wrong"}, status_code=500)
 
         # Since the CORSMiddleware is not executed when an unhandled server exception
         # occurs, we need to manually set the CORS headers ourselves if we want the FE

@@ -1,4 +1,4 @@
-from gitential2.exceptions import AuthenticationException
+from gitential2.exceptions import PermissionException
 from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB
 
 from gitential2.datatypes.subscriptions import SubscriptionType
@@ -16,7 +16,7 @@ def create_workspace(
     if not primary and g.license.is_cloud:
         sub = get_current_subscription(g, current_user.id)
         if sub.subscription_type == SubscriptionType.free:
-            raise AuthenticationException("Users with FREE subscription can only have one workspace")
+            raise PermissionException("Users with FREE subscription can only have one workspace")
 
     workspace.created_by = current_user.id
     workspace_in_db = g.backend.workspaces.create(workspace)
