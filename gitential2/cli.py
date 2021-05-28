@@ -1,12 +1,9 @@
 import json
 import os
 import csv
-from pprint import pprint
 
 import click
-import uvicorn
 
-# from fastapi.encoders import jsonable_encoder
 from structlog import get_logger
 from gitential2.datatypes.credentials import CredentialType
 from gitential2.extraction.repository import extract_incremental
@@ -15,18 +12,11 @@ from gitential2.datatypes.repositories import RepositoryInDB, GitProtocol, Repos
 from gitential2.settings import load_settings
 from gitential2.logging import initialize_logging
 from gitential2.core.context import init_context_from_settings
-from gitential2.core.refresh import refresh_repository, refresh_repository_pull_requests
-from gitential2.core.repositories import list_repositories
-from gitential2.core.users import get_user, list_users, set_as_admin
-from gitential2.core.calculations import recalculate_repository_values
-from gitential2.core.emails import send_email_to_user
 from gitential2.license import check_license as check_license_
 from gitential2.legacy_import import import_legacy_database
 from gitential2.legacy_import import import_legacy_workspace
 
-# from gitential2.core.tasks import configure_celery
 from gitential2.core.context import GitentialContext
-from gitential2.core.subscription import set_as_professional
 
 logger = get_logger(__name__)
 
@@ -59,76 +49,6 @@ def extract_git_metrics(ctx, repo_id, clone_url):
 
 
 @click.command()
-@click.option("--host", "-h", "host", default="127.0.0.1")
-@click.option("--port", "-p", "port", type=int, default=7999)
-@click.option("--reload/--no-reload", default=False)
-def public_api(host, port, reload):
-    uvicorn.run("gitential2.public_api.main:app", host=host, port=port, log_level="info", reload=reload)
-
-
-@click.command()
-@click.pass_context
-def initialize_database(ctx):
-    g = init_context_from_settings(ctx.obj["settings"])
-    workspaces = g.backend.workspaces.all()
-    for w in workspaces:
-        g.backend.initialize_workspace(w.id)
-
-
-@click.command(name="refresh-repository")
-@click.option("--workspace", "-w", "workspace_id", type=int)
-@click.option("--repository", "-r", "repository_id", type=int)
-@click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
-@click.pass_context
-def refresh_repository_(ctx, workspace_id, repository_id, force_rebuild):
-    g = init_context_from_settings(ctx.obj["settings"])
-    g.backend.initialize_workspace(workspace_id)
-    refresh_repository(g, workspace_id, repository_id=repository_id, force_rebuild=force_rebuild)
-
-
-@click.command()
-@click.option("--workspace", "-w", "workspace_id", type=int)
-@click.option("--repository", "-r", "repository_id", type=int)
-@click.pass_context
-def wip(ctx, workspace_id, repository_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    g.backend.initialize_workspace(workspace_id)
-    df = g.backend.extracted_patches.get_repo_df(workspace_id, repository_id)
-    print(df, df.dtypes)
-
-
-@click.command(name="recalculate-repository-values")
-@click.option("--workspace", "-w", "workspace_id", type=int)
-@click.option("--repository", "-r", "repository_id", type=int)
-@click.pass_context
-def recalculate_repository_values_(ctx, workspace_id, repository_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    recalculate_repository_values(g, workspace_id=workspace_id, repository_id=repository_id)
-
-
-@click.command(name="refresh-repository-pull-requests")
-@click.option("--workspace", "-w", "workspace_id", type=int)
-@click.option("--repository", "-r", "repository_id", type=int)
-@click.pass_context
-def refresh_repository_pull_requests_(ctx, workspace_id, repository_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    logger.info("refreshing PRs", workspace_id=workspace_id, repo_id=repository_id)
-
-    refresh_repository_pull_requests(g, workspace_id=workspace_id, repository_id=repository_id)
-
-
-@click.command(name="refresh-workspace-pull-requests")
-@click.option("--workspace", "-w", "workspace_id", type=int)
-@click.pass_context
-def refresh_workspace_pull_requests_(ctx, workspace_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    for repo in list_repositories(g, workspace_id):
-        if repo.protocol == GitProtocol.https and repo.integration_name is not None:
-            logger.info("refreshing PRs", workspace_id=workspace_id, repo_name=repo.name, repo_id=repo.id)
-            refresh_repository_pull_requests(g, workspace_id=workspace_id, repository_id=repo.id)
-
-
-@click.command()
 @click.option("--license-file-path", "-l", "license_file_path", type=str)
 def check_license(license_file_path):
     license_, is_valid = check_license_(license_file_path)
@@ -136,34 +56,6 @@ def check_license(license_file_path):
         print("License is valid", license_)
     else:
         print("License is invalid or expired", license_)
-
-
-@click.command(name="send-email-to-user")
-@click.option("--template-name", "-t", "template_name", type=str)
-@click.option("--user-id", "-u", "user_id", type=int)
-@click.pass_context
-def send_email_to_user_(ctx, template_name, user_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    user = get_user(g, user_id=user_id)
-    send_email_to_user(g, user, template_name)
-
-
-@click.command(name="list-users")
-@click.pass_context
-def list_users_(ctx):
-    g = init_context_from_settings(ctx.obj["settings"])
-    users = list(list_users(g))
-    for u in users:
-        pprint(u.dict(skip_defaults=True, exclude_none=True))
-
-
-@click.command(name="set-as-admin")
-@click.option("--user-id", "-u", "user_id", type=int)
-@click.option("--unset", "-s", "unset", type=bool, is_flag=True)
-@click.pass_context
-def set_as_admin_(ctx, user_id, unset):
-    g = init_context_from_settings(ctx.obj["settings"])
-    set_as_admin(g, user_id, is_admin=not unset)
 
 
 @click.command(name="import-legacy-db")
@@ -257,58 +149,6 @@ def _load_list(filename):  # pylint: disable=unused-variable
         return []
 
 
-# @click.command(name="schedule-project-refresh")
-# @click.option("--workspace-id", "-w", "workspace_id", type=int)
-# @click.option("--project-id", "-p", "project_id", type=int)
-# @click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
-# @click.pass_context
-# def schedule_project_refresh_(ctx, workspace_id, project_id, force_rebuild):
-#     g = init_context_from_settings(ctx.obj["settings"])
-#     configure_celery(g.settings)
-#     schedule_project_refresh(g, workspace_id, project_id, force_rebuild)
-
-
-@click.command(name="list-projects")
-@click.option("--workspace-id", "-w", "workspace_id", type=int)
-@click.pass_context
-def list_projects_(ctx, workspace_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    for project in g.backend.projects.all(workspace_id):
-        print(project.dict(exclude={"extra"}))
-
-
-@click.command(name="list-used-repos")
-@click.option("--workspace-id", "-w", "workspace_id", type=int)
-@click.pass_context
-def list_used_repos_(ctx, workspace_id):
-    g = init_context_from_settings(ctx.obj["settings"])
-    for repo in list_repositories(g, workspace_id):
-        print(repo.dict(exclude={"extra"}))
-
-
-# @click.command(name="refresh-all-workspaces")
-# @click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
-# @click.pass_context
-# def refresh_all_workspaces_(ctx, force_rebuild):
-#     g = init_context_from_settings(ctx.obj["settings"])
-#     configure_celery(g.settings)
-
-#     workpsaces = g.backend.workspaces.all()
-#     for ws in workpsaces:
-#         logger.info("refreshing workspace", workspace_id=ws.id, workspace_name=ws.name)
-#         _refresh_workspace(g, ws.id, force_rebuild)
-
-
-@click.command(name="set-as-professional")
-@click.option("--user-id", "-u", "user_id", type=int)
-@click.option("--number-of-developers", "-d", "number_of_developers", type=int)
-@click.pass_context
-def set_as_professional_(ctx, user_id: int, number_of_developers: int):
-    g = init_context_from_settings(ctx.obj["settings"])
-    subscription = set_as_professional(g, user_id, number_of_developers)
-    print(subscription)
-
-
 # @click.command(name="refresh-workspace")
 # @click.option("--workspace-id", "-w", "workspace_id", type=int)
 # @click.option("--force", "-f", "force_rebuild", type=bool, is_flag=True)
@@ -395,23 +235,6 @@ cli.add_command(import_legacy_db_)
 cli.add_command(import_legacy_workspace_)
 cli.add_command(import_legacy_workspace_bulk)
 cli.add_command(extract_git_metrics)
-cli.add_command(public_api)
-cli.add_command(initialize_database)
-cli.add_command(refresh_repository_)
-cli.add_command(refresh_repository_pull_requests_)
-cli.add_command(refresh_workspace_pull_requests_)
-# cli.add_command(get_stats)
-cli.add_command(recalculate_repository_values_)
-cli.add_command(check_license)
-cli.add_command(wip)
-cli.add_command(send_email_to_user_)
-cli.add_command(list_users_)
-cli.add_command(set_as_admin_)
-# cli.add_command(schedule_project_refresh_)
-cli.add_command(list_projects_)
-cli.add_command(list_used_repos_)
-# cli.add_command(refresh_all_workspaces_)
-# cli.add_command(refresh_workspace_)
-cli.add_command(fix_ssh_repo_credentials)
 
-cli.add_command(set_as_professional_)
+
+cli.add_command(fix_ssh_repo_credentials)

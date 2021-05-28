@@ -1,17 +1,29 @@
 from typing import Optional
 import typer
 import uvicorn
+from structlog import get_logger
 from gitential2.settings import load_settings
 from gitential2.logging import initialize_logging
+from gitential2.core.users import get_user
+from gitential2.core.emails import send_email_to_user
 
 from .export import app as export_app
+from .users import app as users_app
+from .projects import app as projects_app
+from .repositories import app as repositories_app
 from .usage_stats import app as usage_stats_app
 from .refresh import app as refresh_app
 from .tasks import app as tasks_app
 from .status import app as status_app
+from .common import get_context
+
+logger = get_logger(__name__)
 
 app = typer.Typer()
 app.add_typer(export_app, name="export")
+app.add_typer(users_app, name="users")
+app.add_typer(projects_app, name="projects")
+app.add_typer(repositories_app, name="repositories")
 app.add_typer(usage_stats_app, name="usage-stats")
 app.add_typer(refresh_app, name="refresh")
 app.add_typer(tasks_app, name="tasks")
@@ -25,6 +37,26 @@ def public_api(
     reload: bool = False,
 ):
     uvicorn.run("gitential2.public_api.main:app", host=host, port=port, log_level="info", reload=reload)
+
+
+@app.command("initialize-database")
+def initialize_database():
+    g = get_context()
+    workspaces = g.backend.workspaces.all()
+    for w in workspaces:
+        logger.info("Initializing workspace schema", workspace_id=w.id)
+        g.backend.initialize_workspace(w.id)
+
+
+@app.command("send-email-to-user")
+def send_email_to_user_(
+    user_id: int,
+    template_name: str,
+):
+    g = get_context()
+    user = get_user(g, user_id=user_id)
+    if user:
+        send_email_to_user(g, user, template_name)
 
 
 def main(prog_name: Optional[str] = None):
