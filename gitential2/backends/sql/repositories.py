@@ -532,6 +532,6 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         return [EmailLogInDB(**row) for row in rows]
 
     def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
-        query = self.table.update(self.table.c.status).where(self.table.c.status == row_id).values(status)
+        query = self.table.update(self.table.c.status).where(self.table.c.id == row_id).values(status)
         self._execute_query(query)
         return self.get_or_error(row_id)
