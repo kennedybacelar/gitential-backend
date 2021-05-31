@@ -24,7 +24,6 @@ from .projects import (
     get_project,
     update_project,
     delete_project,
-    schedule_project_refresh,
 )
 from .repositories import (
     get_repository,
@@ -50,7 +49,6 @@ from .statuses import get_project_status, get_repository_status, update_reposito
 
 # from .stats import collect_stats  # type: ignore
 from .stats_v2 import collect_stats_v2
-from .refresh import refresh_repository, refresh_repository_pull_requests
 from .calculations import recalculate_repository_values
 from .authors import (
     list_authors,

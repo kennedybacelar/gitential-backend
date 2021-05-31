@@ -21,17 +21,6 @@ from .subscription import get_current_subscription
 logger = get_logger(__name__)
 
 
-def _limit_workspace_get_for_user(
-    g: GitentialContext, user_id: int, workspaces: List[WorkspaceInDB]
-) -> List[WorkspaceInDB]:
-    sub = get_current_subscription(g, user_id)
-    if sub.subscription_type == SubscriptionType.free:
-        workspaces.sort(key=lambda x: x.id)
-        return [workspaces[0]]
-    else:
-        return workspaces
-
-
 def is_workspace_subs_prof(g: GitentialContext, ws_id: int) -> bool:
     sub = get_workspace_subscription(g, ws_id)
     return sub.subscription_type in [SubscriptionType.professional, SubscriptionType.trial]
@@ -99,7 +88,20 @@ def get_accessible_workspaces(
     return workspaces
 
 
-def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]:
+def get_own_workspaces(g: GitentialContext, user_id: int, apply_free_limit=True) -> List[WorkspaceInDB]:
+    def _limit_workspace_get_for_user(
+        g: GitentialContext, user_id: int, workspaces: List[WorkspaceInDB]
+    ) -> List[WorkspaceInDB]:
+        if workspaces:
+            sub = get_current_subscription(g, user_id)
+            if sub.subscription_type == SubscriptionType.free:
+                workspaces.sort(key=lambda x: x.id)
+                return [workspaces[0]]
+            else:
+                return workspaces
+        else:
+            return []
+
     workspace_memberships = g.backend.workspace_members.get_for_user(user_id=user_id)
     ret = []
     for wm in workspace_memberships:
@@ -107,7 +109,10 @@ def get_own_workspaces(g: GitentialContext, user_id: int) -> List[WorkspaceInDB]
             workspace = g.backend.workspaces.get(wm.workspace_id)
             if workspace:
                 ret.append(workspace)
-    return _limit_workspace_get_for_user(g, user_id, ret)
+    if apply_free_limit:
+        return _limit_workspace_get_for_user(g, user_id, ret)
+    else:
+        return ret
 
 
 def _add_admin_as_collaborator_to_all_workspaces(
