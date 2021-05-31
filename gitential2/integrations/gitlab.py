@@ -3,7 +3,7 @@ from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 from gitential2.datatypes.extraction import ExtractedKind
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 from gitential2.extraction.output import OutputHandler
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error, walk_next_link
@@ -143,6 +143,8 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                     continue
 
                 raw_data = self._collect_single_pr_data_raw(client, project_id, iid)
+                self._write_pr_commits(raw_data["mr_commits"], raw_data, repository, output)
+                self._write_pr_comments(raw_data["mr_notes"], raw_data, repository, output)
                 try:
                     pull_request = self._transform_to_pr(raw_data, repository=repository)
                     # print(pull_request.number, pull_request.title, pull_request.state)
@@ -206,9 +208,61 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             changed_files=changed_files,
             draft=raw_data["mr"]["work_in_progress"],
             user=raw_data["mr"]["author"]["username"],
+            user_id_external=str(raw_data["mr"]["author"]["id"]),
+            user_name_external=raw_data["mr"]["author"]["name"],
+            user_username_external=raw_data["mr"]["author"]["username"],
+            user_aid=None,
             commits=len(raw_data["mr_commits"]),
             merged_by=raw_data["mr"]["merged_by"]["username"] if raw_data["mr"]["merged_by"] else None,
             first_reaction_at=_calc_first_reaction_at(raw_data["mr_notes"]) or raw_data["mr"]["merged_at"],
             first_commit_authored_at=_calc_first_commit_authored_at(raw_data["mr_commits"]),
             extra=raw_data,
         )
+
+    def _write_pr_commits(
+        self,
+        commits_raw: list,
+        raw_data: dict,
+        repository: RepositoryInDB,
+        output: OutputHandler,
+    ):
+        for commit_raw in commits_raw:
+            commit = PullRequestCommit(
+                repo_id=repository.id,
+                pr_number=raw_data["iid"],
+                commit_id=commit_raw["id"],
+                author_name=commit_raw["author_name"],
+                author_email=commit_raw.get("author_email", ""),
+                author_date=commit_raw["authored_date"],
+                author_login=None,
+                committer_name=commit_raw["committer_name"],
+                committer_email=commit_raw.get("committer_email", ""),
+                committer_date=commit_raw["committed_date"],
+                committer_login=None,
+                created_at=commit_raw["created_at"],
+                updated_at=commit_raw["created_at"],
+            )
+            output.write(ExtractedKind.PULL_REQUEST_COMMIT, commit)
+
+    def _write_pr_comments(
+        self,
+        notes_raw: list,
+        raw_data: dict,
+        repository: RepositoryInDB,
+        output: OutputHandler,
+    ):
+        for note_raw in notes_raw:
+            # print(note_raw)
+            comment = PullRequestComment(
+                repo_id=repository.id,
+                pr_number=raw_data["iid"],
+                comment_type=str(note_raw["type"]),
+                comment_id=str(note_raw["id"]),
+                author_id_external=note_raw["author"]["id"],
+                author_name_external=note_raw["author"]["name"],
+                author_username_external=note_raw["author"]["username"],
+                author_aid=None,
+                content=note_raw["body"],
+                extra=note_raw,
+            )
+            output.write(ExtractedKind.PULL_REQUEST_COMMENT, comment)

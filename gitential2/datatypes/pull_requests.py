@@ -2,7 +2,7 @@ from typing import Optional, Tuple, List
 from datetime import datetime
 from enum import Enum
 from gitential2.datatypes.export import ExportableModel
-from .common import CoreModel, ExtraFieldMixin
+from .common import CoreModel, DateTimeModelMixin, ExtraFieldMixin
 
 
 class PullRequestState(str, Enum):
@@ -68,9 +68,21 @@ class PullRequest(ExtraFieldMixin, CoreModel, ExportableModel):
     deletions: int
     changed_files: int
     draft: bool
-    user: str
+    user: str  # NOT USED
+
+    user_id_external: Optional[str] = None
+    user_name_external: Optional[str] = None
+    user_username_external: Optional[str] = None
+    user_aid: Optional[int] = None
+
     commits: int
-    merged_by: Optional[str] = None
+    merged_by: Optional[str] = None  # NOT USED
+
+    merged_by_id_external: Optional[str] = None
+    merged_by_name_external: Optional[str] = None
+    merged_by_username_external: Optional[str] = None
+    merged_by_aid: Optional[int] = None
+
     first_reaction_at: Optional[datetime] = None
     first_commit_authored_at: Optional[datetime] = None
 
@@ -82,18 +94,97 @@ class PullRequest(ExtraFieldMixin, CoreModel, ExportableModel):
         return list(self.fields)
 
     def export_names(self) -> Tuple[str, str]:
-        return ("pull_request", "pull_requets")
+        return ("pull_request", "pull_requests")
 
 
-class PullRequestCommit(ExtraFieldMixin, CoreModel):
+class PullRequestCommitId(CoreModel):
+    repo_id: int
+    pr_number: int
+    commit_id: str
+
+
+class PullRequestCommit(ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
     repo_id: int
     pr_number: int
     commit_id: str
     author_name: str
     author_email: str
     author_date: datetime
-    author_login: str
+    author_login: Optional[str] = None
     committer_name: str
     committer_email: str
     committer_date: datetime
-    committer_login: str
+    committer_login: Optional[str] = None
+
+    @property
+    def id_(self):
+        return PullRequestCommitId(repo_id=self.repo_id, pr_number=self.pr_number, commit_id=self.commit_id)
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("pull_request_commit", "pull_request_commits")
+
+
+class PullRequestCommentId(CoreModel):
+    repo_id: int
+    pr_number: int
+    comment_type: str
+    comment_id: str
+
+
+class PullRequestComment(ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
+    repo_id: int
+    pr_number: int
+    comment_type: str
+    comment_id: str
+
+    author_id_external: Optional[str] = None
+    author_name_external: Optional[str] = None
+    author_username_external: Optional[str] = None
+    author_aid: Optional[int] = None
+
+    published_at: Optional[datetime] = None
+
+    content: str
+    parent_comment_id: Optional[str] = None
+    thread_id: Optional[str] = None
+    review_id: Optional[str] = None
+
+    @property
+    def id_(self):
+        return PullRequestCommentId(
+            repo_id=self.repo_id, pr_number=self.pr_number, comment_type=self.comment_type, comment_id=self.comment_id
+        )
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("pull_request_comment", "pull_request_comments")
+
+
+class PullRequestLabelId(CoreModel):
+    repo_id: int
+    pr_number: int
+    name: str
+
+
+class PullRequestLabel(ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
+    repo_id: int
+    pr_number: int
+    name: str
+    color: Optional[str] = None
+    description: Optional[str] = None
+    active: bool = True
+
+    @property
+    def id_(self):
+        return PullRequestLabelId(repo_id=self.repo_id, pr_number=self.pr_number, name=self.name)
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("pull_request_label", "pull_request_labels")

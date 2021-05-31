@@ -26,6 +26,9 @@ from .repositories import (
     RepositoryRepository,
     ProjectRepositoryRepository,
     PullRequestRepository,
+    PullRequestCommitRepository,
+    PullRequestCommentRepository,
+    PullRequestLabelRepository,
 )
 
 
@@ -126,6 +129,21 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def pull_requests(self) -> PullRequestRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def pull_request_commits(self) -> PullRequestCommitRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def pull_request_comments(self) -> PullRequestCommentRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def pull_request_labels(self) -> PullRequestLabelRepository:
         pass
 
     @abstractmethod

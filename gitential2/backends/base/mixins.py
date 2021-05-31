@@ -10,6 +10,9 @@ from .repositories import (
     ExtractedPatchRewriteRepository,
     ProjectRepositoryRepository,
     PullRequestRepository,
+    PullRequestCommitRepository,
+    PullRequestCommentRepository,
+    PullRequestLabelRepository,
     RepositoryRepository,
     UserRepository,
     SubscriptionRepository,
@@ -40,7 +43,11 @@ class WithRepositoriesMixin:
     _extracted_patch_rewrites: ExtractedPatchRewriteRepository
     _calculated_commits: CalculatedCommitRepository
     _calculated_patches: CalculatedPatchRepository
+
     _pull_requests: PullRequestRepository
+    _pull_request_commits: PullRequestCommitRepository
+    _pull_request_comments: PullRequestCommentRepository
+    _pull_request_labels: PullRequestLabelRepository
 
     @property
     def access_logs(self):
@@ -109,6 +116,18 @@ class WithRepositoriesMixin:
     @property
     def pull_requests(self) -> PullRequestRepository:
         return self._pull_requests
+
+    @property
+    def pull_request_commits(self) -> PullRequestCommitRepository:
+        return self._pull_request_commits
+
+    @property
+    def pull_request_comments(self) -> PullRequestCommentRepository:
+        return self._pull_request_comments
+
+    @property
+    def pull_request_labels(self) -> PullRequestLabelRepository:
+        return self._pull_request_labels
 
     @property
     def teams(self) -> TeamRepository:
