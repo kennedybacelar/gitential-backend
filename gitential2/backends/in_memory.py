@@ -34,6 +34,7 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryInDB,
 )
 from gitential2.datatypes.stats import IbisTables
+from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB, EmailLogStatus
 from .base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
@@ -50,6 +51,7 @@ from .base import (
     ProjectRepository,
     RepositoryRepository,
     ProjectRepositoryRepository,
+    EmailLogRepository,
 )
 from .base.mixins import WithRepositoriesMixin
 
@@ -287,6 +289,14 @@ class InMemRepositoryRepository(
         return None
 
 
+class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
+    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
+        return None
+
+    def get_emails_to_send(self) -> List[EmailLogInDB]:
+        return []
+
+
 class InMemProjectRepositoryRepository(
     ProjectRepositoryRepository,
     InMemWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB],
@@ -322,6 +332,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._project_repositories: ProjectRepositoryRepository = InMemProjectRepositoryRepository(
             in_db_cls=ProjectRepositoryInDB
         )
+        self._email_log: EmailLogRepository = InMemEmailLogRepository(in_db_cls=EmailLogInDB)
         self._output_handlers: Dict[int, OutputHandler] = defaultdict(DataCollector)
 
     # def get_accessible_workspaces(self, user_id: int) -> List[WorkspaceWithPermission]:

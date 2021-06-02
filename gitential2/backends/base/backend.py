@@ -29,6 +29,7 @@ from .repositories import (
     PullRequestCommitRepository,
     PullRequestCommentRepository,
     PullRequestLabelRepository,
+    EmailLogRepository,
 )
 
 
@@ -144,6 +145,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def pull_request_labels(self) -> PullRequestLabelRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def email_log(self) -> EmailLogRepository:
         pass
 
     @abstractmethod
