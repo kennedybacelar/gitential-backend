@@ -1,14 +1,8 @@
 from typing import List
 from fastapi import APIRouter, Depends
-from gitential2.core import (
-    GitentialContext,
-    list_authors,
-    check_permission,
-    update_author,
-    deduplicate_authors,
-    delete_author,
-    create_author,
-)
+from gitential2.core.context import GitentialContext
+from gitential2.core.authors import list_authors, update_author, deduplicate_authors, delete_author, create_author
+from gitential2.core.permissions import check_permission
 from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.legacy import authors_in_projects

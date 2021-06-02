@@ -6,6 +6,10 @@ class AuthenticationException(GitentialException):
     pass
 
 
+class PermissionException(GitentialException):
+    pass
+
+
 class NotImplementedException(GitentialException):
     pass
 
@@ -19,4 +23,8 @@ class SettingsException(GitentialException):
 
 
 class InvalidStateException(GitentialException):
+    pass
+
+
+class LockError(GitentialException):
     pass

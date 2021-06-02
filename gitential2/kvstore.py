@@ -1,12 +1,14 @@
+from contextlib import contextmanager
 import json
 import threading
 from abc import ABC, abstractmethod
 from typing import Optional, Union, List, ContextManager
 from redis import Redis
+from redis.exceptions import LockError as RedisLockError
 from structlog import get_logger
 from fastapi.encoders import jsonable_encoder
 from gitential2.settings import GitentialSettings, KeyValueStoreType
-from gitential2.exceptions import SettingsException
+from gitential2.exceptions import SettingsException, LockError
 
 JsonableType = Union[dict, str, int, float]
 
@@ -122,8 +124,14 @@ class RedisKeyValueStore(KeyValueStore):
     def _decode_value(encoded_value: bytes) -> JsonableType:
         return json.loads(encoded_value)
 
-    def lock(self, name: str, timeout: Optional[int] = None, blocking_timeout: Optional[int] = None) -> ContextManager:
-        return self.redis.lock(name, timeout=timeout, blocking_timeout=blocking_timeout)
+    @contextmanager
+    def lock(self, name: str, timeout: Optional[int] = None, blocking_timeout: Optional[int] = None):
+        try:
+            with self.redis.lock(name, timeout=timeout, blocking_timeout=blocking_timeout) as redis_lock:
+                yield redis_lock
+        except RedisLockError as e:
+            logger.warning("Cannot acquire lock", name=name, timeout=timeout, blocking_timeout=blocking_timeout)
+            raise LockError(f"Cannot acquire lock {name}") from e
 
 
 def init_key_value_store(settings: GitentialSettings) -> KeyValueStore:

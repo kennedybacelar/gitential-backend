@@ -7,14 +7,18 @@ from gitential2.datatypes.stats import DimensionName, FilterName, MetricName, Qu
 from .context import GitentialContext
 from .repositories import list_project_repositories
 from .workspaces import get_own_workspaces
-from .users import get_current_subscription
+from .subscription import get_current_subscription
 from .stats_v2 import collect_stats_v2
 from .access_log import get_last_interaction_at
+from .authors import list_active_authors
 
 
 def calculate_workspace_usage_statistics(g: GitentialContext, workspace_id: int) -> dict:
     workspace = g.backend.workspaces.get_or_error(workspace_id)
     projects = g.backend.projects.all(workspace_id)
+    active_authors = list_active_authors(g, workspace_id)
+    active_author_dicts = [{"name": author.name, "email": "author.email", "id": author.id} for author in active_authors]
+    active_author_ids: List[int] = [a.id for a in active_authors]
     repositories: dict = {}
 
     for p in projects:
@@ -35,20 +39,22 @@ def calculate_workspace_usage_statistics(g: GitentialContext, workspace_id: int)
     usage_stats = {
         "workspace_id": workspace.id,
         "workspace_name": workspace.name,
+        "authors_with_active_flag": active_author_dicts,
+        "authors_with_active_flag_count": len(active_authors),
     }
     for group_name, repos in repos_by.items():
         usage_stats[f"{group_name}_repos_count"] = len(repos)
         usage_stats[f"{group_name}_committers_30days"] = _get_commiters_count(
-            g, workspace_id, repo_ids=[repo.id for repo in repos], days=30
+            g, workspace_id, repo_ids=[repo.id for repo in repos], active_author_ids=active_author_ids, days=30
         )
         usage_stats[f"{group_name}_committers_90days"] = _get_commiters_count(
-            g, workspace_id, repo_ids=[repo.id for repo in repos], days=90
+            g, workspace_id, repo_ids=[repo.id for repo in repos], active_author_ids=active_author_ids, days=90
         )
 
     return usage_stats
 
 
-def _get_commiters_count(g, workspace_id: int, repo_ids: List[int], days=30):
+def _get_commiters_count(g, workspace_id: int, repo_ids: List[int], active_author_ids: List[int], days=30):
     if repo_ids:
         results = collect_stats_v2(
             g,
@@ -66,7 +72,8 @@ def _get_commiters_count(g, workspace_id: int, repo_ids: List[int], days=30):
                 type=QueryType.aggregate,
             ),
         )
-        return len(results["aid"])
+        aids = [aid for aid in results["aid"] if aid in active_author_ids]
+        return len(aids)
     else:
         return 0
 
@@ -89,4 +96,7 @@ def calculate_user_statistics(g: GitentialContext, user_id: int) -> dict:
             field_name = "_".join([prefix, postfix])
             usage_stats["sum"][field_name] = sum(ws[field_name] for ws in usage_stats["workspace_stats"].values())
 
+    usage_stats["sum"]["authors_with_active_flag_count"] = sum(
+        ws["authors_with_active_flag_count"] for ws in usage_stats["workspace_stats"].values()
+    )
     return usage_stats

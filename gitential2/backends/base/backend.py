@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Set
 from abc import ABC, abstractmethod
 import pandas as pd
 from gitential2.extraction.output import OutputHandler
@@ -9,11 +9,13 @@ from gitential2.datatypes.stats import IbisTables
 from .repositories import (
     AccessLogRepository,
     AuthorRepository,
+    CalculatedPatchRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
     ExtractedPatchRepository,
     ExtractedPatchRewriteRepository,
+    CalculatedCommitRepository,
     UserRepository,
     UserInfoRepository,
     SubscriptionRepository,
@@ -114,6 +116,16 @@ class GitentialBackend(ABC):
 
     @property
     @abstractmethod
+    def calculated_commits(self) -> CalculatedCommitRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def calculated_patches(self) -> CalculatedPatchRepository:
+        pass
+
+    @property
+    @abstractmethod
     def pull_requests(self) -> PullRequestRepository:
         pass
 
@@ -128,6 +140,10 @@ class GitentialBackend(ABC):
 
     @abstractmethod
     def output_handler(self, workspace_id: int) -> OutputHandler:
+        pass
+
+    @abstractmethod
+    def get_commit_ids_for_repository(self, workspace_id: int, repository_id: int) -> Set[str]:
         pass
 
     @abstractmethod

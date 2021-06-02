@@ -1,9 +1,12 @@
+from datetime import datetime
+
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from pydantic import Field
 
 from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
 from .repositories import RepositoryCreate, RepositoryPublic, RepositoryStatus
+from .export import ExportableModel
 
 
 class ProjectExportDatatype(str, Enum):
@@ -34,8 +37,12 @@ class ProjectUpdateWithRepositories(ProjectUpdate):
     repos: List[RepositoryCreate]
 
 
-class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase):
-    pass
+class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase, ExportableModel):
+    def export_names(self) -> Tuple[str, str]:
+        return ("project", "projects")
+
+    def export_fields(self) -> List[str]:
+        return ["id", "created_at", "updated_at", "name", "shareable", "pattern"]
 
 
 class ProjectPublic(IDModelMixin, DateTimeModelMixin, ProjectBase):
@@ -51,4 +58,5 @@ class ProjectStatus(CoreModel):
     name: str
     status: str
     done: bool
+    last_refresh: datetime = datetime.utcnow()
     repos: List[RepositoryStatus]

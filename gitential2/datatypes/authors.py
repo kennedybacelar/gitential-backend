@@ -1,4 +1,6 @@
-from typing import Set, List, Optional
+from typing import Set, List, Optional, Tuple
+from gitential2.datatypes.export import ExportableModel
+
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
@@ -29,8 +31,12 @@ class AuthorUpdate(AuthorBase):
     pass
 
 
-class AuthorInDB(IDModelMixin, DateTimeModelMixin, AuthorBase):
-    pass
+class AuthorInDB(IDModelMixin, DateTimeModelMixin, AuthorBase, ExportableModel):
+    def export_names(self) -> Tuple[str, str]:
+        return ("author", "authors")
+
+    def export_fields(self) -> List[str]:
+        return ["id", "created_at", "updated_at", "active", "name", "email", "aliases"]
 
 
 class AuthorPublic(AuthorInDB):

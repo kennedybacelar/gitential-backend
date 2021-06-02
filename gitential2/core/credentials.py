@@ -20,6 +20,8 @@ def acquire_credential(
     user_id: Optional[int] = None,
     workspace_id: Optional[int] = None,
     integration_name: Optional[str] = None,
+    blocking_timeout_seconds=5 * 60,
+    timeout_seconds=30 * 60,
 ):
     credential = None
 
@@ -42,22 +44,20 @@ def acquire_credential(
             credential_name=credential.name,
             owner_id=credential.owner_id,
         )
-
-        if credential.type == CredentialType.token:
-            integration = g.integrations.get(credential.integration_name)
-            token = credential.to_token_dict(g.fernet)
-            if integration and token:
-                is_refreshed = integration.refresh_token_if_expired(
-                    token, update_token=get_update_token_callback(g, credential)
-                )
-                if is_refreshed:
-                    credential = g.backend.credentials.get_or_error(credential.id)
-
-        blocking_timeout_seconds = 5 * 60
-        timeout_seconds = 30 * 60
         with g.kvstore.lock(
             f"credential-lock-{credential.id}", timeout=timeout_seconds, blocking_timeout=blocking_timeout_seconds
         ):
+
+            if credential.type == CredentialType.token:
+                integration = g.integrations.get(credential.integration_name)
+                token = credential.to_token_dict(g.fernet)
+                if integration and token:
+                    is_refreshed = integration.refresh_token_if_expired(
+                        token, update_token=get_update_token_callback(g, credential)
+                    )
+                    if is_refreshed:
+                        credential = g.backend.credentials.get_or_error(credential.id)
+
             yield credential
 
 

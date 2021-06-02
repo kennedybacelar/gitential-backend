@@ -5,22 +5,27 @@ from gitential2.datatypes.workspaces import WorkspacePublic, WorkspaceCreate, Wo
 from gitential2.datatypes.workspacemember import MemberInvite
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.credentials import CredentialCreate, CredentialInDB, CredentialType
-from gitential2.core import (
-    GitentialContext,
+from gitential2.core.context import GitentialContext
+from gitential2.core.permissions import check_permission
+from gitential2.core.workspaces import (
     get_accessible_workspaces,
     get_workspace,
-    check_permission,
     get_members,
     remove_member,
     invite_members,
     update_workspace,
     delete_workspace,
-    create_workspace,
-    list_credentials_for_workspace,
-    create_credential_for_workspace,
-    list_connected_repository_sources,
-    delete_credential_from_workspace,
+    get_workspace_subscription,
 )
+from gitential2.core.credentials import (
+    create_credential_for_workspace,
+    list_credentials_for_workspace,
+    delete_credential_from_workspace,
+    list_connected_repository_sources,
+)
+
+from gitential2.core.workspace_common import create_workspace
+
 from ..dependencies import current_user, gitential_context
 
 logger = get_logger(__name__)
@@ -98,6 +103,11 @@ def create_workspace_(
 @router.get("/workspaces/{workspace_id}/repository-sources")
 def list_connected_repository_sources_(workspace_id: int, g: GitentialContext = Depends(gitential_context)):
     return list_connected_repository_sources(g, workspace_id)
+
+
+@router.get("/workspaces/{workspace_id}/subscription")
+def get_workspace_owner_subscription(workspace_id: int, g: GitentialContext = Depends(gitential_context)):
+    return get_workspace_subscription(g, workspace_id)
 
 
 @router.get("/workspaces/{workspace_id}/members")

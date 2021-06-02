@@ -1,4 +1,4 @@
-from .cli import cli
+from gitential2.cli_v2 import main
 
-# pylint: disable=unexpected-keyword-arg,no-value-for-parameter
-cli(prog_name="python -m gitential2", obj={})
+
+main(prog_name="python -m gitential2")

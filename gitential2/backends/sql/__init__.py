@@ -1,6 +1,7 @@
 from datetime import datetime
+
 import json
-from typing import Any, Tuple
+from typing import Any, Tuple, Set
 from threading import Lock
 import pandas as pd
 import sqlalchemy as sa
@@ -34,6 +35,7 @@ from gitential2.datatypes import (
 )
 from gitential2.datatypes.email_log import EmailLogInDB
 
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
 from gitential2.settings import GitentialSettings
 
 from ..base import GitentialBackend
@@ -56,6 +58,7 @@ from .repositories import (
     SQLAccessLogRepository,
     SQLAuthorRepository,
     SQLEmailLogRepository,
+    SQLCalculatedPatchRepository,
     SQLProjectRepositoryRepository,
     SQLPullRequestRepository,
     SQLRepositoryRepository,
@@ -71,6 +74,7 @@ from .repositories import (
     SQLExtractedCommitRepository,
     SQLExtractedPatchRepository,
     SQLExtractedPatchRewriteRepository,
+    SQLCalculatedCommitRepository,
 )
 
 
@@ -164,6 +168,20 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=ExtractedPatchRewrite,
         )
 
+        self._calculated_commits = SQLCalculatedCommitRepository(
+            table=self._workspace_tables.tables["calculated_commits"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=CalculatedCommit,
+        )
+
+        self._calculated_patches = SQLCalculatedPatchRepository(
+            table=self._workspace_tables.tables["calculated_patches"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=CalculatedPatch,
+        )
+
         self._pull_requests = SQLPullRequestRepository(
             table=self._workspace_tables.tables["pull_requests"],
             engine=self._engine,
@@ -189,6 +207,16 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)
+
+    def get_commit_ids_for_repository(self, workspace_id: int, repository_id: int) -> Set[str]:
+        schema_name = self._workspace_schema_name(workspace_id)
+        workspace_metadata, _ = get_workspace_metadata(schema_name)
+        extracted_commits_table = workspace_metadata.tables[f"{schema_name}.extracted_commits"]
+        query = select([extracted_commits_table.c.commit_id]).where(extracted_commits_table.c.repo_id == repository_id)
+        with self._engine.connect() as connection:
+            with connection.begin():
+                result = connection.execute(query)
+                return set(row["commit_id"] for row in result.fetchall())
 
     def get_extracted_dataframes(
         self, workspace_id: int, repository_id: int, from_: datetime, to_: datetime

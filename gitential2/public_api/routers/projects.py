@@ -7,21 +7,23 @@ from fastapi.responses import StreamingResponse
 from fastapi.encoders import jsonable_encoder
 import pandas as pd
 from structlog import get_logger
-from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories, ProjectStatus
+from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories
 from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype
 from gitential2.datatypes.permissions import Entity, Action
-from gitential2.core.projects import schedule_project_refresh
+from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus
 
-from gitential2.core import (
-    check_permission,
-    GitentialContext,
+from gitential2.core.refresh_v2 import refresh_project
+
+from gitential2.core.context import GitentialContext
+from gitential2.core.permissions import check_permission
+from gitential2.core.projects import (
     list_projects,
     create_project,
     update_project,
     delete_project,
     get_project,
-    get_project_status,
 )
+from gitential2.core.refresh_statuses import get_project_refresh_status
 
 from ..dependencies import gitential_context, current_user
 
@@ -85,7 +87,7 @@ def get_project_(
     return get_project(g, workspace_id, project_id=project_id)
 
 
-@router.get("/workspaces/{workspace_id}/projects/{project_id}/status", response_model=ProjectStatus)
+@router.get("/workspaces/{workspace_id}/projects/{project_id}/status", response_model=ProjectRefreshStatus)
 def get_project_status_(
     workspace_id: int,
     project_id: int,
@@ -93,31 +95,31 @@ def get_project_status_(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.project, Action.read, workspace_id=workspace_id, project_id=project_id)
-    return get_project_status(g, workspace_id, project_id=project_id)
+    return get_project_refresh_status(g, workspace_id, project_id=project_id)
 
 
-def _get_project_status_hack(workspace_id, project_id) -> ProjectStatus:
+def _get_project_status_hack(workspace_id, project_id) -> ProjectRefreshStatus:
     from gitential2.public_api.main import app  # pylint: disable=import-outside-toplevel,cyclic-import
 
     # app.state.gitential.check_permission(
     #     current_user, Entity.project, Action.read, workspace_id=workspace_id, project_id=project_id
     # )
-    return get_project_status(g=app.state.gitential, workspace_id=workspace_id, project_id=project_id)
+    return get_project_refresh_status(g=app.state.gitential, workspace_id=workspace_id, project_id=project_id)
 
 
-@router.post("/workspaces/{workspace_id}/projects/{project_id}/process", response_model=ProjectStatus)
-def refresh_project(
+@router.post("/workspaces/{workspace_id}/projects/{project_id}/process", response_model=ProjectRefreshStatus)
+def refresh_project_(
     workspace_id: int,
     project_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
-    schedule_project_refresh(g, workspace_id, project_id)
-    return get_project_status(g, workspace_id, project_id=project_id)
+    refresh_project(g, workspace_id, project_id)
+    return get_project_refresh_status(g, workspace_id, project_id=project_id)
 
 
-@router.post("/workspaces/{workspace_id}/projects/{project_id}/rebuild", response_model=ProjectStatus)
+@router.post("/workspaces/{workspace_id}/projects/{project_id}/rebuild", response_model=ProjectRefreshStatus)
 def refresh_project_rebuild(
     workspace_id: int,
     project_id: int,
@@ -125,8 +127,8 @@ def refresh_project_rebuild(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
-    schedule_project_refresh(g, workspace_id, project_id, force_rebuild=True)
-    return get_project_status(g, workspace_id, project_id=project_id)
+    refresh_project(g, workspace_id, project_id)
+    return get_project_refresh_status(g, workspace_id, project_id=project_id)
 
 
 @router.websocket("/workspaces/{workspace_id}/projects/{project_id}/progress")

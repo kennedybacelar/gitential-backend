@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, Tuple, List
 from datetime import datetime
 from enum import Enum
+from gitential2.datatypes.export import ExportableModel
 from .common import CoreModel, ExtraFieldMixin
 
 
@@ -50,7 +51,7 @@ class PullRequestId(CoreModel):
     number: int
 
 
-class PullRequest(ExtraFieldMixin, CoreModel):
+class PullRequest(ExtraFieldMixin, CoreModel, ExportableModel):
     repo_id: int
     number: int
     title: str
@@ -76,6 +77,12 @@ class PullRequest(ExtraFieldMixin, CoreModel):
     @property
     def id_(self):
         return PullRequestId(repo_id=self.repo_id, number=self.number)
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("pull_request", "pull_requets")
 
 
 class PullRequestCommit(ExtraFieldMixin, CoreModel):

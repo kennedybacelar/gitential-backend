@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Generator
+from typing import Optional, Dict, Generator, Set
 from collections import defaultdict
 from pathlib import Path
 import subprocess
@@ -52,10 +52,16 @@ def extract_incremental_local(
     settings: GitentialSettings,
     previous_state: Optional[GitRepositoryState] = None,
     ignore_spec: IgnoreSpec = default_ignorespec,
+    commits_we_already_have: Optional[Set[str]] = None,
 ):
     current_state = get_repository_state(local_repo)
     logger.info("Gettings commits from", local_repo=local_repo)
-    commits = get_commits(local_repo, previous_state=previous_state, current_state=current_state)
+    commits = get_commits(
+        local_repo,
+        previous_state=previous_state,
+        current_state=current_state,
+        commits_we_already_have=commits_we_already_have,
+    )
     executor = create_executor(
         settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
     )
@@ -125,6 +131,7 @@ def get_commits(
     repository: LocalGitRepository,
     previous_state: Optional[GitRepositoryState] = None,
     current_state: Optional[GitRepositoryState] = None,
+    commits_we_already_have: Optional[Set[str]] = None,
 ) -> Generator[str, None, None]:
 
     current_state = current_state or get_repository_state(repository)
@@ -132,7 +139,7 @@ def get_commits(
     heads = current_state.commit_ids
     tails = previous_state.commit_ids
     g2_repo = _git2_repo(repository)
-    commits_already_yielded = set()
+    commits_already_yielded = commits_we_already_have or set()
 
     for head in heads:
         walker = g2_repo.walk(head, pygit2.GIT_SORT_TOPOLOGICAL)  #  | pygit2.GIT_SORT_REVERSE)
@@ -388,7 +395,16 @@ def blame_porcelain(git_path, filepath, newest_commit) -> Dict[int, str]:
         # 40-byte SHA-1 of the commit the line is attributed to;
         # the line number of the line in the original file;
         # the line number of the line in the final file;
-        if words and COMMIT_ID_RE.match(words[0]):
-            headers[int(words[2])] = words[0]
+        try:
+            if words and COMMIT_ID_RE.match(words[0]):
+                headers[int(words[2])] = words[0]
+        except (IndexError, ValueError):
+            logger.exception(
+                "git porcelain output format error",
+                git_path=git_path,
+                filepath=filepath,
+                newest_commit=newest_commit,
+                line=line,
+            )
 
     return headers

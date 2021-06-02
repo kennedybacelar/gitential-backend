@@ -1,7 +1,7 @@
 import datetime as dt
 
 from threading import Lock
-from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union
+from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union, Set
 from collections import defaultdict
 import pandas as pd
 from gitential2.settings import GitentialSettings
@@ -205,8 +205,11 @@ class InMemWorkspaceScopedRepository(
         except KeyError:
             return 0
 
-    def all(self, worskspace_id: int) -> Iterable[InDBType]:
-        return self._state[worskspace_id].values()
+    def all(self, workspace_id: int) -> Iterable[InDBType]:
+        return self._state[workspace_id].values()
+
+    def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
+        return self._state[workspace_id].values()
 
     def _new_id(self, workspace_id):
         with self._counter_lock:
@@ -374,3 +377,6 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def get_ibis_tables(self, workspace_id: int) -> IbisTables:
         return IbisTables()
+
+    def get_commit_ids_for_repository(self, workspace_id: int, repository_id: int) -> Set[str]:
+        return set()

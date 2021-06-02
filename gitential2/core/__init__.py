@@ -3,7 +3,6 @@ from .users import (
     handle_authorize,
     register_user,
     get_user,
-    get_current_subscription,
     update_user,
     delete_user,
     get_profile_picture,
@@ -13,7 +12,6 @@ from .users import (
 from .workspaces import (
     get_accessible_workspaces,
     get_workspace,
-    create_workspace,
     update_workspace,
     delete_workspace,
     get_members,
@@ -26,7 +24,6 @@ from .projects import (
     get_project,
     update_project,
     delete_project,
-    schedule_project_refresh,
 )
 from .repositories import (
     get_repository,
@@ -52,7 +49,6 @@ from .statuses import get_project_status, get_repository_status, update_reposito
 
 # from .stats import collect_stats  # type: ignore
 from .stats_v2 import collect_stats_v2
-from .refresh import refresh_repository, refresh_repository_pull_requests
 from .calculations import recalculate_repository_values
 from .authors import (
     list_authors,
@@ -72,3 +68,4 @@ from .teams import (
     remove_authors_from_team,
 )
 from .emails import send_email_to_user, get_email_template, smtp_send
+from .subscription import get_current_subscription, is_free_user
