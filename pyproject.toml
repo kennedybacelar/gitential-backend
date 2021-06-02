@@ -40,6 +40,7 @@ billiard = "^3.6.3"
 jinja2 = "^2.11.3"
 typer = "^0.3.2"
 tabulate = "^0.8.9"
+stripe = "^2.57.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
