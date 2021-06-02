@@ -56,6 +56,8 @@ from gitential2.backends.base.repositories import (
     TeamMemberRepository,
 )
 
+from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB, EmailLogStatus
+
 from ..base import (
     IdType,
     CreateType,
@@ -73,6 +75,7 @@ from ..base import (
     RepositoryRepository,
     ProjectRepositoryRepository,
     TeamRepository,
+    EmailLogRepository,
 )
 
 fetchone_ = lambda result: result.fetchone()
@@ -555,3 +558,17 @@ class SQLPullRequestRepository(
         query = select([self.table.c.number, self.table.c.updated_at]).where(self.table.c.repo_id == repository_id)
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return {row["number"]: _add_utc_timezone(row["updated_at"]) for row in rows}
+
+
+class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
+    def get_emails_to_send(self) -> List[EmailLogInDB]:
+        query = self.table.select().where(
+            and_(self.table.c.status == "scheduled", self.table.c.scheduled_at <= dt.datetime.utcnow())
+        )
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [EmailLogInDB(**row) for row in rows]
+
+    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
+        query = self.table.update(self.table.c.status).where(self.table.c.id == row_id).values(status)
+        self._execute_query(query)
+        return self.get_or_error(row_id)

@@ -26,6 +26,7 @@ from .repositories import (
     RepositoryRepository,
     ProjectRepositoryRepository,
     PullRequestRepository,
+    EmailLogRepository,
 )
 
 
@@ -126,6 +127,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def pull_requests(self) -> PullRequestRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def email_log(self) -> EmailLogRepository:
         pass
 
     @abstractmethod
