@@ -1,8 +1,34 @@
-from typing import cast
+from datetime import datetime
+from typing import cast, List, Tuple, Optional, Dict
 
-from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus, RepositoryRefreshStatus
+from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus, RepositoryRefreshStatus, RefreshStatus
 from .repositories import list_project_repositories
 from .context import GitentialContext
+
+
+def _get_project_refresh_status_summary(
+    repositories: List[RepositoryRefreshStatus],
+) -> Tuple[RefreshStatus, Optional[Dict[str, str]]]:
+    summaries = {repository.repository_name: repository.summary() for repository in repositories}
+    ret_status: RefreshStatus = RefreshStatus.up_to_date
+    reason: Optional[Dict[str, str]] = None
+
+    if any([s[0] == RefreshStatus.error for s in summaries.values()]):
+        ret_status = RefreshStatus.error
+        reason = {n: s[1] for n, s in summaries.items() if s[0] == RefreshStatus.error}
+
+    elif any([s[0] == RefreshStatus.in_progress for s in summaries.values()]):
+        ret_status = RefreshStatus.in_progress
+
+    return ret_status, reason
+
+
+def _get_last_refreshed_at(repositories: List[RepositoryRefreshStatus]) -> Optional[datetime]:
+    ret = None
+    for repo_status in repositories:
+        if (not ret) or (repo_status.commits_last_run is not None and (repo_status.commits_last_run < ret)):
+            ret = repo_status.commits_last_run
+    return ret
 
 
 def get_project_refresh_status(g: GitentialContext, workspace_id: int, project_id: int) -> ProjectRefreshStatus:
@@ -10,14 +36,18 @@ def get_project_refresh_status(g: GitentialContext, workspace_id: int, project_i
     project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
     repo_statuses = [get_repo_refresh_status(g, workspace_id, r.id) for r in repositories]
     legacy_repo_statuses = [repo_status.to_legacy() for repo_status in repo_statuses]
+    status, reason = _get_project_refresh_status_summary(repo_statuses)
+
     return ProjectRefreshStatus(
         workspace_id=workspace_id,
         id=project_id,
         name=project.name,
-        summary="...",
         done=all(rs.done for rs in legacy_repo_statuses),
         repos=legacy_repo_statuses,
         repositories=repo_statuses,
+        status=status,
+        reason=reason,
+        last_refreshed_at=_get_last_refreshed_at(repo_statuses),
     )
 
 

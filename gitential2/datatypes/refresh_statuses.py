@@ -1,7 +1,13 @@
 from enum import Enum
 from datetime import datetime
-from typing import Optional, List, Union
+from typing import Dict, Optional, List, Tuple, Union
 from .common import CoreModel
+
+
+class RefreshStatus(str, Enum):
+    up_to_date = "up_to_date"
+    in_progress = "in_progress"
+    error = "error"
 
 
 class RefreshCommitsPhase(str, Enum):
@@ -54,6 +60,27 @@ class RepositoryRefreshStatus(CoreModel):
     prs_in_progress: bool = False
     prs_error: bool = False
     prs_error_msg: str = ""
+
+    def summary(self) -> Tuple[RefreshStatus, str]:
+        reason = ""
+        if self.prs_error or self.commits_error:
+            ret_status = RefreshStatus.error
+            error_msg = ",".join(
+                [msg for msg in [self.commits_error_msg, self.prs_error_msg] if msg is not None]
+            ).strip(",")
+            reason = f"Failed to process repository: {error_msg}"
+
+        elif (
+            self.prs_in_progress
+            or self.commits_in_progress
+            or self.prs_refresh_scheduled
+            or self.commits_refresh_scheduled
+        ):
+            ret_status = RefreshStatus.in_progress
+        else:
+            ret_status = RefreshStatus.up_to_date
+
+        return ret_status, reason
 
     def to_legacy(self) -> LegacyRepositoryRefreshStatus:
 
@@ -111,12 +138,9 @@ class ProjectRefreshStatus(CoreModel):
     workspace_id: int
     id: int
     name: str
-    summary: str
     done: bool
     repos: List[LegacyRepositoryRefreshStatus]
     repositories: List[RepositoryRefreshStatus]
-    last_refreshed_at: Optional[datetime]
-
-    def _calc_last_refreshed_at(self) -> Optional[datetime]:
-        ret = None
-        return ret
+    status: RefreshStatus
+    reason: Optional[Dict[str, str]]
+    last_refreshed_at: Optional[datetime] = None
