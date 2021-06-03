@@ -36,12 +36,15 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         )
 
     def oauth_register(self):
+        api_base_url = self.settings.options.get("api_base_url", "https://api.github.com/")
         return {
-            "api_base_url": "https://api.github.com/",
-            "access_token_url": "https://github.com/login/oauth/access_token",
-            "authorize_url": "https://github.com/login/oauth/authorize",
+            "api_base_url": api_base_url,
+            "access_token_url": self.settings.options.get(
+                "access_token_url", "https://github.com/login/oauth/access_token"
+            ),
+            "authorize_url": self.settings.options.get("authorize_url", "https://github.com/login/oauth/authorize"),
             "client_kwargs": {"scope": "user:email repo"},
-            "userinfo_endpoint": "https://api.github.com/user",
+            "userinfo_endpoint": self.settings.options.get("userinfo_endpoint", api_base_url + "user"),
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
         }
