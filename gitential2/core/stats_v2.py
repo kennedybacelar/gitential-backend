@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta, timezone
 from structlog import get_logger
 from pydantic import BaseModel
 import pandas as pd
-import numpy as np
+
 import ibis
 
 
@@ -371,8 +371,7 @@ def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
 
 
 def _to_jsonable_result(result: QueryResult) -> dict:
-    ret = result.values.replace([np.inf, -np.inf], np.nan)
-    ret = ret.fillna(0)
+    ret = result.values.where(pd.notnull(result.values), None)
     logger.debug("INDEX", index=ret.index)
     return ret.to_dict(orient="list")
 
