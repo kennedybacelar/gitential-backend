@@ -398,7 +398,7 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         date_col = "date"
     for ts in all_timestamps:
         if True not in (result.values[date_col] == ts).values:
-            if result.values[date_col] > ts:
+            if True in (result.values[date_col] > ts).values:
                 row = _create_empty_row(ts, date_col, result.values.columns, 0)
             else:
                 row = _create_empty_row(ts, date_col, result.values.columns, "NaN")
