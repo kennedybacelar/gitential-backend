@@ -1,5 +1,5 @@
 # pylint: disable=too-complex,too-many-branches
-from typing import Generator, List, Any, Dict, Optional, Union
+from typing import Generator, List, Any, Dict, Optional
 from datetime import datetime, date, timedelta, timezone
 
 from structlog import get_logger
@@ -401,13 +401,13 @@ def _add_missing_timestamp_to_result(result: QueryResult):
             if True in (result.values[date_col] > ts).values:
                 row = _create_empty_row(ts, date_col, result.values.columns, 0)
             else:
-                row = _create_empty_row(ts, date_col, result.values.columns, "NaN")
+                row = _create_empty_row(ts, date_col, result.values.columns, None)
             result.values = result.values.append(row, ignore_index=True)
     result.values = _sort_dataframe(result.values, query=result.query)
     return result
 
 
-def _create_empty_row(ts: int, date_column: str, column_list, default_field_value: Union[str, int]) -> dict:
+def _create_empty_row(ts: int, date_column: str, column_list, default_field_value: Optional[int]) -> dict:
     ret: dict = {}
     default_values: dict = {
         "language": "Others",
