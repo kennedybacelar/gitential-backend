@@ -5,6 +5,8 @@ import sqlalchemy as sa
 import pandas as pd
 from sqlalchemy.sql import and_, select, desc
 from sqlalchemy.dialects.postgresql import insert
+from gitential2.exceptions import NotFoundException
+
 from gitential2.datatypes import (
     UserCreate,
     UserUpdate,
@@ -218,7 +220,10 @@ class SQLWorkspaceScopedRepository(
     def get_or_error(self, workspace_id: int, id_: IdType) -> InDBType:
         query = self.table.select().where(self.identity(id_)).limit(1)
         row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
-        return self.in_db_cls(**row)
+        if row:
+            return self.in_db_cls(**row)
+        else:
+            raise NotFoundException("Object not found")
 
     def create(self, workspace_id: int, obj: CreateType) -> InDBType:
         query = self.table.insert().values(**obj.dict())
