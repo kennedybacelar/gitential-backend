@@ -1,6 +1,7 @@
 from typing import Optional
 import datetime as dt
 import sqlalchemy as sa
+from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_utils import IPAddressType
 
 from gitential2.datatypes import WorkspaceRole
@@ -402,13 +403,82 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("deletions", sa.Integer(), nullable=True),
         sa.Column("changed_files", sa.Integer(), nullable=True),
         sa.Column("draft", sa.Boolean, default=False, nullable=False),
-        sa.Column("user", sa.String(64)),
+        sa.Column("user", sa.String(64)),  # NOT USED ANYMORE
+        # user related fieds
+        sa.Column("user_id_external", sa.String(64), nullable=True),
+        sa.Column("user_name_external", sa.String(128), nullable=True),
+        sa.Column("user_username_external", sa.String(128), nullable=True),
+        sa.Column("user_aid", sa.Integer(), nullable=True),
+        # number of commits
         sa.Column("commits", sa.Integer(), nullable=True),
-        sa.Column("merged_by", sa.String(64), nullable=True),
+        # merged_by who?
+        sa.Column("merged_by", sa.String(64), nullable=True),  # NOT USED ANYMORE
+        sa.Column("merged_by_id_external", sa.String(64), nullable=True),
+        sa.Column("merged_by_name_external", sa.String(128), nullable=True),
+        sa.Column("merged_by_username_external", sa.String(128), nullable=True),
+        sa.Column("merged_by_aid", sa.Integer(), nullable=True),
+        # calculated fields
         sa.Column("first_reaction_at", sa.DateTime, nullable=True),
         sa.Column("first_commit_authored_at", sa.DateTime, nullable=True),
         sa.Column("extra", sa.JSON, nullable=True),
         sa.PrimaryKeyConstraint("repo_id", "number"),
+    )
+
+    pull_request_commits = sa.Table(
+        "pull_request_commits",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("pr_number", sa.Integer()),
+        sa.Column("commit_id", sa.String(40)),
+        sa.Column("author_name", sa.String(128)),
+        sa.Column("author_email", sa.String(128)),
+        sa.Column("author_login", sa.String(128), nullable=True),
+        sa.Column("author_date", sa.DateTime, nullable=False),
+        sa.Column("committer_name", sa.String(128)),
+        sa.Column("committer_email", sa.String(128)),
+        sa.Column("committer_login", sa.String(128), nullable=True),
+        sa.Column("committer_date", sa.DateTime, nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.PrimaryKeyConstraint("repo_id", "pr_number", "commit_id"),
+    )
+
+    pull_request_comments = sa.Table(
+        "pull_request_comments",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("pr_number", sa.Integer()),
+        sa.Column("comment_type", sa.String(32)),
+        sa.Column("comment_id", String(32)),
+        sa.Column("author_id_external", sa.String(64), nullable=True),
+        sa.Column("author_name_external", sa.String(128), nullable=True),
+        sa.Column("author_username_external", sa.String(128), nullable=True),
+        sa.Column("author_aid", sa.Integer(), nullable=True),
+        sa.Column("published_at", sa.DateTime, nullable=True),
+        sa.Column("content", sa.String()),
+        sa.Column("parent_comment_id", String(32)),
+        sa.Column("thread_id", String(32)),
+        sa.Column("review_id", String(32)),
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.PrimaryKeyConstraint("repo_id", "pr_number", "comment_type", "comment_id"),
+    )
+
+    pull_request_labels = sa.Table(
+        "pull_request_labels",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("pr_number", sa.Integer()),
+        sa.Column("name", sa.String(64)),
+        sa.Column("color", sa.String(16), nullable=True),
+        sa.Column("description", sa.String(128), nullable=True),
+        sa.Column("active", sa.Boolean(), default=True),
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.PrimaryKeyConstraint("repo_id", "pr_number", "name"),
     )
 
     return metadata, {
@@ -424,4 +494,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "teams": teams,
         "team_members": team_members,
         "pull_requests": pull_requests,
+        "pull_request_commits": pull_request_commits,
+        "pull_request_comments": pull_request_comments,
+        "pull_request_labels": pull_request_labels,
     }

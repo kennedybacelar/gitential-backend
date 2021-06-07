@@ -23,7 +23,16 @@ from gitential2.datatypes import (
 )
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
+from gitential2.datatypes.pull_requests import (
+    PullRequest,
+    PullRequestId,
+    PullRequestComment,
+    PullRequestCommentId,
+    PullRequestCommit,
+    PullRequestCommitId,
+    PullRequestLabel,
+    PullRequestLabelId,
+)
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
@@ -319,6 +328,27 @@ class PullRequestRepository(
     @abstractmethod
     def get_prs_updated_at(self, workspace_id: int, repository_id: int) -> Dict[int, datetime]:
         pass
+
+
+class PullRequestCommitRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[PullRequestCommitId, PullRequestCommit, PullRequestCommit, PullRequestCommit],
+):
+    pass
+
+
+class PullRequestCommentRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[PullRequestCommentId, PullRequestComment, PullRequestComment, PullRequestComment],
+):
+    pass
+
+
+class PullRequestLabelRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[PullRequestLabelId, PullRequestLabel, PullRequestLabel, PullRequestLabel],
+):
+    pass
 
 
 class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):

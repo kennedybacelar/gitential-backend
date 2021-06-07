@@ -16,6 +16,9 @@ class ExtractedKind(str, Enum):
     EXTRACTED_PATCH = "extracted_patch"
     EXTRACTED_PATCH_REWRITE = "extracted_patch_rewrite"
     PULL_REQUEST = "pull_request"
+    PULL_REQUEST_COMMIT = "pull_request_commit"
+    PULL_REQUEST_COMMENT = "pull_request_comment"
+    PULL_REQUEST_LABEL = "pull_request_label"
 
 
 class ExtractedCommitId(CoreModel):

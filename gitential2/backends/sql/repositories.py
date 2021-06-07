@@ -29,7 +29,16 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchRewriteId,
     ExtractedPatchRewrite,
 )
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
+from gitential2.datatypes.pull_requests import (
+    PullRequest,
+    PullRequestComment,
+    PullRequestCommentId,
+    PullRequestCommit,
+    PullRequestId,
+    PullRequestCommitId,
+    PullRequestLabel,
+    PullRequestLabelId,
+)
 from gitential2.datatypes.access_log import AccessLog
 from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate
 from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
@@ -55,6 +64,9 @@ from gitential2.backends.base.repositories import (
     ExtractedPatchRepository,
     ExtractedPatchRewriteRepository,
     PullRequestRepository,
+    PullRequestCommitRepository,
+    PullRequestCommentRepository,
+    PullRequestLabelRepository,
     TeamMemberRepository,
 )
 
@@ -563,6 +575,51 @@ class SQLPullRequestRepository(
         query = select([self.table.c.number, self.table.c.updated_at]).where(self.table.c.repo_id == repository_id)
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return {row["number"]: _add_utc_timezone(row["updated_at"]) for row in rows}
+
+
+class SQLPullRequestCommitRepository(
+    SQLRepoDFMixin,
+    PullRequestCommitRepository,
+    SQLWorkspaceScopedRepository[PullRequestCommitId, PullRequestCommit, PullRequestCommit, PullRequestCommit],
+):
+    def identity(self, id_: PullRequestCommitId):
+        return and_(
+            self.table.c.repo_id == id_.repo_id,
+            self.table.c.pr_number == id_.pr_number,
+            self.table.c.commit_id == id_.commit_id,
+        )
+
+
+class SQLPullRequestCommentRepository(
+    SQLRepoDFMixin,
+    PullRequestCommentRepository,
+    SQLWorkspaceScopedRepository[PullRequestCommentId, PullRequestComment, PullRequestComment, PullRequestComment],
+):
+    def identity(self, id_: PullRequestCommentId):
+        return and_(
+            self.table.c.repo_id == id_.repo_id,
+            self.table.c.pr_number == id_.pr_number,
+            self.table.c.comment_type == id_.comment_type,
+            self.table.c.comment_id == id_.comment_id,
+        )
+
+
+class SQLPullRequestLabelRepository(
+    SQLRepoDFMixin,
+    PullRequestLabelRepository,
+    SQLWorkspaceScopedRepository[
+        PullRequestLabelId,
+        PullRequestLabel,
+        PullRequestLabel,
+        PullRequestLabel,
+    ],
+):
+    def identity(self, id_: PullRequestLabelId):
+        return and_(
+            self.table.c.repo_id == id_.repo_id,
+            self.table.c.pr_number == id_.pr_number,
+            self.table.c.name == id_.name,
+        )
 
 
 class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):

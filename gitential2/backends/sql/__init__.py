@@ -1,5 +1,4 @@
 from datetime import datetime
-
 import json
 from typing import Any, Tuple, Set
 from threading import Lock
@@ -17,7 +16,7 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchRewrite,
 )
 from gitential2.datatypes.subscriptions import SubscriptionInDB
-from gitential2.datatypes.pull_requests import PullRequest
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
 from gitential2.extraction.output import OutputHandler
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
@@ -60,6 +59,9 @@ from .repositories import (
     SQLEmailLogRepository,
     SQLCalculatedPatchRepository,
     SQLProjectRepositoryRepository,
+    SQLPullRequestCommentRepository,
+    SQLPullRequestCommitRepository,
+    SQLPullRequestLabelRepository,
     SQLPullRequestRepository,
     SQLRepositoryRepository,
     SQLTeamMemberRepository,
@@ -189,6 +191,26 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=PullRequest,
         )
 
+        self._pull_request_commits = SQLPullRequestCommitRepository(
+            table=self._workspace_tables.tables["pull_request_commits"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=PullRequestCommit,
+        )
+
+        self._pull_request_comments = SQLPullRequestCommentRepository(
+            table=self._workspace_tables.tables["pull_request_comments"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=PullRequestComment,
+        )
+
+        self._pull_request_labels = SQLPullRequestLabelRepository(
+            table=self._workspace_tables.tables["pull_request_labels"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=PullRequestLabel,
+        )
         self._email_log = SQLEmailLogRepository(table=email_log_table, engine=self._engine, in_db_cls=EmailLogInDB)
 
     def _execute_query(self, query):
@@ -204,6 +226,21 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
         workspace_metadata, _ = get_workspace_metadata(schema_name)
         workspace_metadata.create_all(self._engine)
+
+        # add missing fields to pull_requests, temporary
+        migration_steps = [
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_id_external VARCHAR(64);"
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_name_external VARCHAR(128);"
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_username_external VARCHAR(128);"
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_aid INTEGER;"
+            # merged_by who?
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_id_external VARCHAR(64);"
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_name_external VARCHAR(128);"
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_username_external VARCHAR(128);"
+            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_aid INTEGER;"
+        ]
+        for migration_query_ in migration_steps:
+            self._engine.execute(migration_query_)
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)
@@ -356,11 +393,18 @@ class SQLOutputHandler(OutputHandler):
     def _get_repository(self, kind):
         if kind == ExtractedKind.PULL_REQUEST:
             return self.backend.pull_requests
+        elif kind == ExtractedKind.PULL_REQUEST_COMMIT:
+            return self.backend.pull_request_commits
+        elif kind == ExtractedKind.PULL_REQUEST_COMMENT:
+            return self.backend.pull_request_comments
+        elif kind == ExtractedKind.PULL_REQUEST_LABEL:
+            return self.backend.pull_request_labels
         elif kind == ExtractedKind.EXTRACTED_COMMIT:
             return self.backend.extracted_commits
         elif kind == ExtractedKind.EXTRACTED_PATCH:
             return self.backend.extracted_patches
         elif kind == ExtractedKind.EXTRACTED_PATCH_REWRITE:
             return self.backend.extracted_patch_rewrites
+
         else:
             raise ValueError("invalid kind")

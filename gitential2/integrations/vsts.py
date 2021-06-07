@@ -8,10 +8,11 @@ from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
 
 # from gitential2.datatypes.extraction import ExtractedKind
-# from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
+
+from gitential2.datatypes.pull_requests import PullRequestData  # , PullRequest, PullRequestState,
 from gitential2.extraction.output import OutputHandler
 
-from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
+from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, CollectPRsResult
 
 from .common import log_api_error
 
@@ -80,8 +81,13 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         output: OutputHandler,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
-    ):
-        pass
+    ) -> CollectPRsResult:
+        return CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
+
+    def collect_pull_request(
+        self, repository: RepositoryInDB, token: dict, update_token: Callable, output: OutputHandler, pr_number: int
+    ) -> Optional[PullRequestData]:
+        return None
 
     def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
         self.refresh_token(token, update_token)

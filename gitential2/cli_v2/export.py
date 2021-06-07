@@ -35,6 +35,9 @@ def export_full_workspace(
         ("calculated_commits", g.backend.calculated_commits),
         ("calculated_patches", g.backend.calculated_patches),
         ("pull_requests", g.backend.pull_requests),
+        ("pull_request_commits", g.backend.pull_request_commits),
+        ("pull_request_comments", g.backend.pull_request_comments),
+        ("pull_request_labels", g.backend.pull_request_labels),
     ]
 
     for name, backend_repository in data_to_export:

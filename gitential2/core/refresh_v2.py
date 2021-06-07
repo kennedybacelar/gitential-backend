@@ -27,6 +27,7 @@ def refresh_workspace(
     workspace_id: int,
     strategy: RefreshStrategy = RefreshStrategy.parallel,
     refresh_type: RefreshType = RefreshType.everything,
+    force: bool = False,
 ):
     projects = g.backend.projects.all(workspace_id)
     if strategy == RefreshStrategy.parallel:
@@ -39,6 +40,7 @@ def refresh_workspace(
                     "project_id": p.id,
                     "strategy": strategy,
                     "refresh_type": refresh_type,
+                    "force": force,
                 },
             )
     else:
@@ -52,6 +54,7 @@ def refresh_project(
     project_id: int,
     strategy: RefreshStrategy = RefreshStrategy.parallel,
     refresh_type: RefreshType = RefreshType.everything,
+    force: bool = False,
 ):
     for repo_id in g.backend.project_repositories.get_repo_ids_for_project(workspace_id, project_id):
         commits_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.commits_only]
@@ -72,10 +75,11 @@ def refresh_project(
                     "repository_id": repo_id,
                     "strategy": strategy,
                     "refresh_type": refresh_type,
+                    "force": force,
                 },
             )
         else:
-            refresh_repository(g, workspace_id, repo_id, strategy, refresh_type)
+            refresh_repository(g, workspace_id, repo_id, strategy, refresh_type, force=force)
 
 
 def refresh_repository(
@@ -84,6 +88,7 @@ def refresh_repository(
     repository_id: int,
     strategy: RefreshStrategy = RefreshStrategy.parallel,
     refresh_type: RefreshType = RefreshType.everything,
+    force: bool = False,
 ):
     repository = g.backend.repositories.get_or_error(workspace_id, repository_id)
     logger.info(
@@ -93,6 +98,7 @@ def refresh_repository(
         repository_name=repository.name,
         strategy=strategy,
         refresh_type=refresh_type,
+        force=force,
     )
     # Delegating tasks
     if strategy == RefreshStrategy.parallel and refresh_type == RefreshType.everything:
@@ -104,6 +110,7 @@ def refresh_repository(
                 "repository_id": repository_id,
                 "strategy": strategy,
                 "refresh_type": RefreshType.commits_only,
+                "force": force,
             },
         )
         schedule_task(
@@ -114,6 +121,7 @@ def refresh_repository(
                 "repository_id": repository_id,
                 "strategy": strategy,
                 "refresh_type": RefreshType.prs_only,
+                "force": force,
             },
         )
         logger.info("Delegated tasks, finishing")
@@ -122,7 +130,7 @@ def refresh_repository(
     if refresh_type in [RefreshType.commits_only, RefreshType.everything]:
         refresh_repository_commits(g, workspace_id, repository_id)
     if refresh_type in [RefreshType.prs_only, RefreshType.everything]:
-        refresh_repository_pull_requests(g, workspace_id, repository_id)
+        refresh_repository_pull_requests(g, workspace_id, repository_id, force)
     if refresh_type == RefreshType.commit_calculations_only:
         recalculate_repository_values(g, workspace_id, repository_id)
 
@@ -282,9 +290,9 @@ def set_extraction_state(g: GitentialContext, workspace_id: int, repository_id: 
     g.kvstore.set_value(_extraction_state_key(workspace_id, repository_id), state.dict())
 
 
-def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, repository_id: int):
+def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, repository_id: int, force: bool = False):
     repository = g.backend.repositories.get_or_error(workspace_id, repository_id)
-    prs_we_already_have = g.backend.pull_requests.get_prs_updated_at(workspace_id, repository_id)
+    prs_we_already_have = g.backend.pull_requests.get_prs_updated_at(workspace_id, repository_id) if not force else []
     _update_state = partial(update_repo_refresh_status, g=g, workspace_id=workspace_id, repository_id=repository_id)
 
     def _end_processing_no_error():
@@ -337,13 +345,20 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
             if hasattr(integration, "collect_pull_requests"):
                 token = credential.to_token_dict(g.fernet)
 
-                integration.collect_pull_requests(
+                collection_result = integration.collect_pull_requests(
                     repository=repository,
                     token=token,
                     update_token=get_update_token_callback(g, credential),
                     output=output,
                     prs_we_already_have=prs_we_already_have,
                     limit=200,
+                )
+                logger.info(
+                    "collect_pull_requests results",
+                    repository_name=repository.name,
+                    repository_id=repository.id,
+                    workspace_id=workspace_id,
+                    result=collection_result,
                 )
                 _end_processing_no_error()
             else:
