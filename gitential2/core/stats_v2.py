@@ -373,7 +373,6 @@ def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
 def _to_jsonable_result(result: QueryResult) -> dict:
     ret = result.values.replace([np.inf, -np.inf], np.nan)
     ret = ret.where(pd.notnull(ret), None)
-    ret.replace()
     logger.debug("INDEX", index=ret.index)
     return ret.to_dict(orient="list")
 

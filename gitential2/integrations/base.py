@@ -2,10 +2,12 @@ from abc import ABC, abstractmethod
 
 from typing import Callable, List, Optional
 from authlib.integrations.requests_client import OAuth2Session
-
+from pydantic import BaseModel
 from gitential2.settings import IntegrationSettings
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB
 from gitential2.datatypes.repositories import RepositoryCreate
+from gitential2.datatypes.pull_requests import PullRequestData
+
 from gitential2.extraction.output import OutputHandler
 
 
@@ -43,6 +45,12 @@ class OAuthLoginMixin(ABC):
         pass
 
 
+class CollectPRsResult(BaseModel):
+    prs_collected: List[int]
+    prs_left: List[int]
+    prs_failed: List[int]
+
+
 class GitProviderMixin(ABC):
     @abstractmethod
     def collect_pull_requests(
@@ -53,7 +61,18 @@ class GitProviderMixin(ABC):
         output: OutputHandler,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
-    ):
+    ) -> CollectPRsResult:
+        pass
+
+    @abstractmethod
+    def collect_pull_request(
+        self,
+        repository: RepositoryInDB,
+        token: dict,
+        update_token: Callable,
+        output: OutputHandler,
+        pr_number: int,
+    ) -> Optional[PullRequestData]:
         pass
 
     @abstractmethod

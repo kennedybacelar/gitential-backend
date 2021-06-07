@@ -3,9 +3,9 @@ from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB, RepositoryCreate, GitProtocol
 from gitential2.datatypes.extraction import ExtractedKind
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestState, PullRequestData
 from gitential2.extraction.output import OutputHandler
-from .base import OAuthLoginMixin, BaseIntegration, GitProviderMixin
+from .base import CollectPRsResult, OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
 
 logger = get_logger(__name__)
@@ -71,16 +71,24 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         output: OutputHandler,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
-    ):
+    ) -> CollectPRsResult:
         api_base_url = self.oauth_register()["api_base_url"]
 
         pr_list_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls?per_page=100&state=all"
         client = self.get_oauth2_client(token=token, update_token=update_token)
-        results = walk_next_link(client, pr_list_url)
+        prs = walk_next_link(client, pr_list_url)
 
-        counter = 0
+        def _is_pr_up_to_date(pr: dict) -> bool:
+            pr_number = pr["number"]
+            return (
+                prs_we_already_have is not None
+                and pr_number in prs_we_already_have
+                and parse_datetime(prs_we_already_have[pr_number]) == parse_datetime(pr["updated_at"])
+            )
+
+        prs_needs_update = [pr for pr in prs if not _is_pr_up_to_date(pr)]
+
         rate_limit = self.get_rate_limit(token, update_token)
-
         if rate_limit and rate_limit["remaining"] < 1000:
             logger.warn(
                 "Skipping pr collection because API rate limit",
@@ -88,41 +96,48 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 repository_name=repository.name,
                 repository_id=repository.id,
             )
-            return
+            return CollectPRsResult(prs_collected=[], prs_left=[pr["number"] for pr in prs_needs_update], prs_failed=[])
 
-        for pr in results:
+        counter = 0
+        ret = CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
+        for pr in prs_needs_update:
             pr_number = pr["number"]
-
-            if (
-                prs_we_already_have
-                and pr_number in prs_we_already_have
-                and parse_datetime(prs_we_already_have[pr_number]) == parse_datetime(pr["updated_at"])
-            ):
-                logger.debug("Skipping PR, not updated.", pr_number=pr_number, repository=repository.name)
-                continue
-
-            raw_data = self._collect_single_pr_data_raw(client, pr)
-            try:
-                pull_request = self._transform_to_pr(raw_data, repository=repository)
-                output.write(ExtractedKind.PULL_REQUEST, pull_request)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Failed to extract PR", pr_number=pr_number, raw_data=raw_data)
+            if counter >= limit:
+                ret.prs_left.append(pr_number)
+            else:
+                pr_data = self.collect_pull_request(repository, token, update_token, output, pr_number)
+                if pr_data:
+                    ret.prs_collected.append(pr_number)
+                else:
+                    ret.prs_failed.append(pr_number)
             counter += 1
-            if counter == limit:
-                logger.info(
-                    "Reached pr extraction limit, finishing",
-                    limit=limit,
-                    repository_name=repository.name,
-                    repo_id=repository.id,
-                )
-                break
 
-    def _collect_single_pr_data_raw(self, client, pr):
-        resp = client.get(pr["url"])
+        return ret
+
+    def collect_pull_request(
+        self, repository: RepositoryInDB, token: dict, update_token: Callable, output: OutputHandler, pr_number: int
+    ) -> Optional[PullRequestData]:
+        api_base_url = self.oauth_register()["api_base_url"]
+        pr_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls/{pr_number}"
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+
+        try:
+            raw_data = self._collect_single_pr_data_raw(client, pr_url)
+            pull_request = self._transform_to_pr(raw_data, repository=repository)
+            output.write(ExtractedKind.PULL_REQUEST, pull_request)
+            return PullRequestData(pr=pull_request, comments=[], commits=[], labels=[])
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Failed to extract PR", pr_number=pr_number, raw_data=raw_data)
+            return None
+        finally:
+            client.close()
+
+    def _collect_single_pr_data_raw(self, client, pr_url):
+        resp = client.get(pr_url)
         resp.raise_for_status()
         pr_details = resp.json()
-        commits = walk_next_link(client, pr["_links"]["commits"]["href"])
-        review_comments = walk_next_link(client, pr["_links"]["review_comments"]["href"])
+        commits = walk_next_link(client, pr_details["_links"]["commits"]["href"])
+        review_comments = walk_next_link(client, pr_details["_links"]["review_comments"]["href"])
         return {
             "pr": pr_details,
             "commits": commits,

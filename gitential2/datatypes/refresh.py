@@ -19,6 +19,7 @@ class RefreshWorkspaceParams(BaseModel):
     workspace_id: int
     strategy: RefreshStrategy = RefreshStrategy.parallel
     refresh_type: RefreshType = RefreshType.everything
+    force: bool = False
 
 
 class RefreshProjectParams(BaseModel):
@@ -26,6 +27,7 @@ class RefreshProjectParams(BaseModel):
     project_id: int
     strategy: RefreshStrategy = RefreshStrategy.parallel
     refresh_type: RefreshType = RefreshType.everything
+    force: bool = False
 
 
 class RefreshRepositoryParams(BaseModel):
@@ -33,3 +35,4 @@ class RefreshRepositoryParams(BaseModel):
     repository_id: int
     strategy: RefreshStrategy = RefreshStrategy.parallel
     refresh_type: RefreshType = RefreshType.everything
+    force: bool = False

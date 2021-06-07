@@ -1,6 +1,7 @@
 from typing import Optional, Tuple, List
 from datetime import datetime
 from enum import Enum
+
 from gitential2.datatypes.export import ExportableModel
 from .common import CoreModel, DateTimeModelMixin, ExtraFieldMixin
 
@@ -188,3 +189,10 @@ class PullRequestLabel(ExtraFieldMixin, DateTimeModelMixin, CoreModel, Exportabl
 
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request_label", "pull_request_labels")
+
+
+class PullRequestData(CoreModel):
+    pr: PullRequest
+    comments: List[PullRequestComment]
+    commits: List[PullRequestCommit]
+    labels: List[PullRequestLabel]

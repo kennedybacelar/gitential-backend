@@ -7,10 +7,10 @@ from pydantic.datetime_parse import parse_datetime
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 
 from gitential2.datatypes.extraction import ExtractedKind
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestState
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestState, PullRequestData
 from gitential2.extraction.output import OutputHandler
 from gitential2.utils import calc_repo_namespace
-from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
+from .base import BaseIntegration, CollectPRsResult, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error
 
 logger = get_logger(__name__)
@@ -74,41 +74,51 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
-        pr_list = _walk_paginated_results(
+        prs = _walk_paginated_results(
             client,
             f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED",
         )
-        counter = 0
-        for pr in pr_list:
-            pr_number = pr["id"]
+        client.close()
 
-            if (
-                prs_we_already_have
+        def _is_pr_up_to_date(pr: dict) -> bool:
+            pr_number = pr["id"]
+            return (
+                prs_we_already_have is not None
                 and pr_number in prs_we_already_have
                 and parse_datetime(prs_we_already_have[pr_number]) == parse_datetime(pr["updated_on"])
-            ):
-                logger.debug("Skipping PR, not updated.", pr_number=pr_number, repository=repository.name)
-                continue
+            )
 
+        prs_needs_update = [pr for pr in prs if not _is_pr_up_to_date(pr)]
+
+        counter = 0
+        ret = CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
+        for pr in prs_needs_update:
+            pr_number = pr["id"]
+            if counter >= limit:
+                ret.prs_left.append(pr_number)
+            else:
+                pr_data = self.collect_pull_request(repository, token, update_token, output, pr_number)
+                if pr_data:
+                    ret.prs_collected.append(pr_number)
+                else:
+                    ret.prs_failed.append(pr_number)
             counter += 1
-            if counter == limit:
-                logger.info(
-                    "Reached pr extraction limit, finishing",
-                    limit=limit,
-                    repository_name=repository.name,
-                    repo_id=repository.id,
-                )
-                break
+        return ret
 
+    def collect_pull_request(
+        self, repository: RepositoryInDB, token: dict, update_token: Callable, output: OutputHandler, pr_number: int
+    ) -> Optional[PullRequestData]:
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        try:
             raw_data = self._collect_single_pr_data_raw(client, repository, pr_number)
-
-            try:
-                pull_request = self._transform_to_pr(raw_data, repository=repository)
-                output.write(ExtractedKind.PULL_REQUEST, pull_request)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Failed to extract PR", repository=repository, pr_number=pr_number, raw_data=raw_data)
-
-        client.close()
+            pull_request = self._transform_to_pr(raw_data, repository=repository)
+            output.write(ExtractedKind.PULL_REQUEST, pull_request)
+            return PullRequestData(pr=pull_request, comments=[], commits=[], labels=[])
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Failed to extract PR", repository=repository, pr_number=pr_number, raw_data=raw_data)
+            return None
+        finally:
+            client.close()
 
     def _get_bitbucket_workspace_and_repo_slug(self, repositor: RepositoryInDB):
         clone_url = repositor.clone_url

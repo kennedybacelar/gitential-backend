@@ -15,6 +15,7 @@ def refresh_workspace_(
     workspace_id: int,
     strategy: RefreshStrategy = RefreshStrategy.parallel,
     refresh_type: RefreshType = RefreshType.everything,
+    force: bool = False,
     schedule: bool = False,
 ):
     g = get_context()
@@ -24,10 +25,10 @@ def refresh_workspace_(
         schedule_task(
             g,
             task_name="refresh_workspace",
-            params={"workspace_id": workspace_id, "strategy": strategy, "refresh_type": refresh_type},
+            params={"workspace_id": workspace_id, "strategy": strategy, "refresh_type": refresh_type, "force": force},
         )
     else:
-        refresh_workspace(g, workspace_id, strategy=strategy, refresh_type=refresh_type)
+        refresh_workspace(g, workspace_id, strategy=strategy, refresh_type=refresh_type, force=force)
 
 
 @app.command("project")
@@ -36,6 +37,7 @@ def refresh_project_(
     project_id: int,
     strategy: RefreshStrategy = RefreshStrategy.parallel,
     refresh_type: RefreshType = RefreshType.everything,
+    force: bool = False,
     schedule: bool = False,
 ):
     g = get_context()
@@ -49,10 +51,11 @@ def refresh_project_(
                 "project_id": project_id,
                 "strategy": strategy,
                 "refresh_type": refresh_type,
+                "force": force,
             },
         )
     else:
-        refresh_project(g, workspace_id, project_id, strategy=strategy, refresh_type=refresh_type)
+        refresh_project(g, workspace_id, project_id, strategy=strategy, refresh_type=refresh_type, force=force)
 
 
 @app.command("repository")
@@ -61,6 +64,7 @@ def refresh_repository_(
     repository_id: int,
     strategy: RefreshStrategy = RefreshStrategy.parallel,
     refresh_type: RefreshType = RefreshType.everything,
+    force: bool = False,
     schedule: bool = False,
 ):
     g = get_context()
@@ -74,6 +78,7 @@ def refresh_repository_(
                 "repository_id": repository_id,
                 "strategy": strategy,
                 "refresh_type": refresh_type,
+                "force": force,
             },
         )
-    refresh_repository(g, workspace_id, repository_id, strategy=strategy, refresh_type=refresh_type)
+    refresh_repository(g, workspace_id, repository_id, strategy=strategy, refresh_type=refresh_type, force=force)
