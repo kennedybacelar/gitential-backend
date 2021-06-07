@@ -372,7 +372,8 @@ def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
 
 def _to_jsonable_result(result: QueryResult) -> dict:
     ret = result.values.replace([np.inf, -np.inf], np.nan)
-    ret = ret.fillna(0)
+    ret = ret.where(pd.notnull(ret), None)
+    ret.replace()
     logger.debug("INDEX", index=ret.index)
     return ret.to_dict(orient="list")
 
@@ -398,14 +399,16 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         date_col = "date"
     for ts in all_timestamps:
         if True not in (result.values[date_col] == ts).values:
-            result.values = result.values.append(
-                _create_empty_row(ts, date_col, result.values.columns), ignore_index=True
-            )
+            if True in (result.values[date_col] > ts).values:
+                row = _create_empty_row(ts, date_col, result.values.columns, 0)
+            else:
+                row = _create_empty_row(ts, date_col, result.values.columns, None)
+            result.values = result.values.append(row, ignore_index=True)
     result.values = _sort_dataframe(result.values, query=result.query)
     return result
 
 
-def _create_empty_row(ts: int, date_column: str, column_list) -> dict:
+def _create_empty_row(ts: int, date_column: str, column_list, default_field_value: Optional[int]) -> dict:
     ret: dict = {}
     default_values: dict = {
         "language": "Others",
@@ -418,7 +421,7 @@ def _create_empty_row(ts: int, date_column: str, column_list) -> dict:
         elif col in default_values:
             ret[col] = default_values[col]
         else:
-            ret[col] = 0
+            ret[col] = default_field_value
     return ret
 
 

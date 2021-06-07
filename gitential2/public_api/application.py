@@ -11,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 from gitential2.logging import initialize_logging
 from gitential2.settings import GitentialSettings, load_settings
-from gitential2.exceptions import AuthenticationException, PermissionException
+from gitential2.exceptions import AuthenticationException, NotFoundException, PermissionException
 
 from gitential2.core.context import init_context_from_settings
 from gitential2.core.tasks import configure_celery
@@ -127,6 +127,8 @@ def _configure_error_handling(app: FastAPI):
             return RedirectResponse(url=_error_page(request, error_code))
         elif isinstance(exc, PermissionException):
             response = JSONResponse(content={"error": str(exc)}, status_code=403)
+        elif isinstance(exc, NotFoundException):
+            response = JSONResponse(content={"error": str(exc)}, status_code=404)
         else:
             response = JSONResponse(content={"error": "Something went wrong"}, status_code=500)
 
