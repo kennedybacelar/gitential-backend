@@ -23,7 +23,7 @@ from gitential2.core.credentials import (
     delete_credential_from_workspace,
     list_connected_repository_sources,
 )
-
+from gitential2.core.refresh_v2 import refresh_workspace
 from gitential2.core.workspace_common import create_workspace
 
 from ..dependencies import current_user, gitential_context
@@ -204,3 +204,14 @@ def search(
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     logger.info("searching for", q=q, entity_type=entity_type, workspace_id=workspace_id)
     return []
+
+
+@router.post("/workspaces/{workspace_id}/refresh")
+def refresh_workspace_(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.update, workspace_id=workspace_id)
+    refresh_workspace(g, workspace_id)
+    return True
