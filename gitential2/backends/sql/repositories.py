@@ -580,12 +580,16 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         return self.get_or_error(row_id)
 
     def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
-        query = self.table.update(EmailLogStatus.canceled).where(
-            and_(
-                self.table.c.user_id == user_id,
-                self.table.c.template_name == template,
-                self.table.c.status == EmailLogStatus.scheduled,
+        query = (
+            self.table.update(self.table.c.status)
+            .where(
+                and_(
+                    self.table.c.user_id == user_id,
+                    self.table.c.template_name == template,
+                    self.table.c.status == EmailLogStatus.scheduled,
+                )
             )
+            .values(EmailLogStatus.canceled)
         )
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [EmailLogInDB(**row) for row in rows]
