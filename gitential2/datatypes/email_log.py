@@ -20,7 +20,7 @@ class EmailLogTemplate(str, Enum):
 
 class EmailLogBase(CoreModel):
     user_id: int
-    template_name: str
+    template_name: EmailLogTemplate
     status: EmailLogStatus = EmailLogStatus.scheduled
     scheduled_at: datetime.datetime
     sent_at: Optional[datetime.datetime]
