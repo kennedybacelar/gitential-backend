@@ -103,15 +103,31 @@ async def login(
 
     if remote is None:
         raise HTTPException(404)
-    if request.app.state.settings.web.legacy_login:
-        if backend == "vsts":
-            redirect_uri = request.url_for("legacy_login")
-        else:
-            redirect_uri = request.url_for("legacy_login") + f"?source={backend}"
-    else:
-        redirect_uri = request.url_for("auth", backend=backend)
 
+    redirect_uri = _calculate_oauth_redirect_uri(request, backend)
     return await remote.authorize_redirect(request, redirect_uri)
+
+
+# pylint: disable=else-if-used
+def _calculate_oauth_redirect_uri(request: Request, backend: str) -> str:
+    if request.app.state.settings.web.enforce_base_url:
+        base_url: str = request.app.state.settings.web.base_url.rstrip("/")
+        if request.app.state.settings.web.legacy_login:
+            if backend == "vsts":
+                redirect_uri = base_url + "/login"
+            else:
+                redirect_uri = base_url + "/login" + f"?source={backend}"
+        else:
+            redirect_uri = base_url + f"/v2/auth/{backend}"
+    else:
+        if request.app.state.settings.web.legacy_login:
+            if backend == "vsts":
+                redirect_uri = request.url_for("legacy_login")
+            else:
+                redirect_uri = request.url_for("legacy_login") + f"?source={backend}"
+        else:
+            redirect_uri = request.url_for("auth", backend=backend)
+    return redirect_uri
 
 
 @router.get("/logout")
