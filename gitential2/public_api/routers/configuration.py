@@ -6,6 +6,14 @@ from gitential2.license import check_license
 router = APIRouter()
 
 
+def _calculate_login_url(request: Request, backend: str) -> str:
+    if request.app.state.settings.web.enforce_base_url:
+        base_url = request.app.state.settings.web.base_url.rstrip("/")
+        return base_url + f"/v2/login/{backend}"
+    else:
+        return request.url_for("login", backend=backend)
+
+
 @router.get("/configuration")
 def configuration(request: Request):
     license_ = check_license()
@@ -24,7 +32,7 @@ def configuration(request: Request):
                 "signup_text": settings.signup_text or f"Sign up with {display_name}",
                 "login_top_text": settings.login_top_text or None,
                 "type": settings.type_,
-                "url": request.url_for("login", backend=name),
+                "url": _calculate_login_url(request, name),
             }
         if settings.type_ not in [IntegrationType.linkedin, IntegrationType.dummy]:
             sources.append(
@@ -32,7 +40,7 @@ def configuration(request: Request):
                     "name": name,
                     "display_name": settings.display_name or name,
                     "type": settings.type_,
-                    "url": request.url_for("login", backend=name),
+                    "url": _calculate_login_url(request, name),
                 }
             )
     return {
