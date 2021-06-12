@@ -7,10 +7,12 @@ from .common import CoreModel, IDModelMixin, DateTimeModelMixin
 class EmailLogStatus(str, Enum):
     scheduled = "scheduled"
     sent = "sent"
+    canceled = "canceled"
 
 
 class EmailLogTemplate(str, Enum):
     free_trial_expiration = "free_trial_expiration"
+    free_trial_ended = "free_trial_ended"
     invite_member = "invite_member"
     request_free_trial = "request_free_trial"
     welcome = "welcome"
@@ -18,7 +20,7 @@ class EmailLogTemplate(str, Enum):
 
 class EmailLogBase(CoreModel):
     user_id: int
-    template_name: str
+    template_name: EmailLogTemplate
     status: EmailLogStatus = EmailLogStatus.scheduled
     scheduled_at: datetime.datetime
     sent_at: Optional[datetime.datetime]

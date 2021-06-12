@@ -34,7 +34,13 @@ from gitential2.datatypes.project_repositories import (
     ProjectRepositoryInDB,
 )
 from gitential2.datatypes.stats import IbisTables
-from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB, EmailLogStatus
+from gitential2.datatypes.email_log import (
+    EmailLogCreate,
+    EmailLogUpdate,
+    EmailLogInDB,
+    EmailLogStatus,
+    EmailLogTemplate,
+)
 from .base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
@@ -294,6 +300,9 @@ class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogC
         return None
 
     def get_emails_to_send(self) -> List[EmailLogInDB]:
+        return []
+
+    def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
         return []
 
 

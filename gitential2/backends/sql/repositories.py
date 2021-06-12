@@ -70,7 +70,13 @@ from gitential2.backends.base.repositories import (
     TeamMemberRepository,
 )
 
-from gitential2.datatypes.email_log import EmailLogCreate, EmailLogUpdate, EmailLogInDB, EmailLogStatus
+from gitential2.datatypes.email_log import (
+    EmailLogCreate,
+    EmailLogUpdate,
+    EmailLogInDB,
+    EmailLogStatus,
+    EmailLogTemplate,
+)
 
 from ..base import (
     IdType,
@@ -634,3 +640,18 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         query = self.table.update(self.table.c.status).where(self.table.c.id == row_id).values(status)
         self._execute_query(query)
         return self.get_or_error(row_id)
+
+    def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
+        query = (
+            self.table.update(self.table.c.status)
+            .where(
+                and_(
+                    self.table.c.user_id == user_id,
+                    self.table.c.template_name == template,
+                    self.table.c.status == EmailLogStatus.scheduled,
+                )
+            )
+            .values(EmailLogStatus.canceled)
+        )
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [EmailLogInDB(**row) for row in rows]
