@@ -9,7 +9,7 @@
 
 ## Development environment setup
 
-To start postgres, redis and pgadmin and install the python dependecies run the following commands:
+To start postgres, redis and pgadmin and install the python dependencies run the following commands:
 
 ```
 docker-compose up -d
@@ -33,7 +33,7 @@ poetry shell
 celery  -A gitential2.celery.main worker --loglevel=DEBUG
 ```
 
-Instead of using poetry shell you can always use the `poetry run [cmd]...`
+Instead of using poetry shell, you can always use the `poetry run [cmd]...`
 
 ## Running the linters
 
