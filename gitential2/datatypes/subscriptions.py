@@ -10,13 +10,9 @@ class SubscriptionType(str, Enum):
     free = "free"
 
 
-class StripeSubStatusType(str, Enum):
+class StripeSubStatus(CoreModel):
     active = "active"
     inactive = "inactive"
-
-
-class CreateSession(CoreModel):
-    number_of_developers: int
 
 
 class SubscriptionBase(CoreModel):
@@ -27,7 +23,7 @@ class SubscriptionBase(CoreModel):
     number_of_developers: int = 5
     stripe_customer_id: Optional[str]
     stripe_subscription_id: Optional[str]
-    stripe_subscription_status: StripeSubStatusType = StripeSubStatusType.inactive
+    stripe_subscription_status: StripeSubStatus = StripeSubStatus.inactive
 
 
 class SubscriptionCreate(SubscriptionBase):
