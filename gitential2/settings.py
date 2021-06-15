@@ -91,10 +91,12 @@ class RecaptchaSettings(BaseModel):
     site_key: str = ""
     secret_key: str = ""
 
+
 class StripeIntegration(BaseModel):
     publishable_key: str = ""
     private_key: str = ""
     price_id: str = ""
+
 
 class FrontendSettings(BaseModel):
     inject_html: List[HTMLInjection] = []
