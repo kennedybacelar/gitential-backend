@@ -51,6 +51,7 @@ class CalculatedCommit(CoreModel, ExportableModel):
     comp_d_outlier: Optional[int]
     loc_effort_c: Optional[int]
     uploc_c: Optional[int]
+    loc_effort_p: Optional[int]
 
     # work hour estimation
     hours_measured: Optional[float]

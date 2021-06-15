@@ -8,6 +8,7 @@ class MetricName(str, Enum):
     # Patch metrics
     sum_loc_test = "sum_loc_test"
     sum_loc_impl = "sum_loc_impl"
+    loc_effort_p = "loc_effort_p"
 
     # Commit metrics
     count_commits = "count_commits"
@@ -75,6 +76,7 @@ COMMIT_METRICS = [
 PATCH_METRICS = [
     MetricName.sum_loc_test,
     MetricName.sum_loc_impl,
+    MetricName.loc_effort_p,
 ]
 
 

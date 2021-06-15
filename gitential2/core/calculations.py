@@ -301,6 +301,7 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
     calculated_patches_df = calculated_patches_df.reset_index().rename(columns={"repo_id__commit": "repo_id"})
     calculated_patches_df = calculated_patches_df[calculated_patches_columns]
     calculated_patches_df = calculated_patches_df[calculated_patches_df["parent_commit_id"].notnull()]
+    calculated_patches_df["loc_effort_p"] = 1.0 * calculated_patches_df["loc_i"] + 0.2 * calculated_patches_df["loc_d"]
     return calculated_patches_df.set_index(["repo_id", "commit_id", "parent_commit_id", "newpath"])
 
 
