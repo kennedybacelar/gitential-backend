@@ -91,6 +91,10 @@ class RecaptchaSettings(BaseModel):
     site_key: str = ""
     secret_key: str = ""
 
+class StripeIntegration(BaseModel):
+    publishable_key: str = ""
+    private_key: str = ""
+    price_id: str = ""
 
 class FrontendSettings(BaseModel):
     inject_html: List[HTMLInjection] = []
@@ -152,6 +156,7 @@ class GitentialSettings(BaseModel):
     celery: CelerySettings = CelerySettings()
     frontend: FrontendSettings = FrontendSettings()
     contacts: ContactSettings = ContactSettings()
+    stripe: StripeIntegration = StripeIntegration()
 
     @validator("secret")
     def secret_validation(cls, v):

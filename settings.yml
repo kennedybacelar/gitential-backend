@@ -24,7 +24,10 @@ notifications:
 recaptcha:
   site_key: 6LftqHEaAAAAANgRbGA6Ew6nToApMx3TysEMYa-y
   secret_key: 6LftqHEaAAAAABt-WU7zTL9WHbv49GzWGuAjJiH8
-
+stripe:
+  publishable_key: ""
+  private_key: ""
+  price_id: ""
 # frontend:
 #   inject_html:
 #     - tag: script
