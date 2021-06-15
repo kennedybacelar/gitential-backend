@@ -246,6 +246,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("comp_d_outlier", sa.Integer(), nullable=True),
         sa.Column("loc_effort_c", sa.Integer(), nullable=True),
         sa.Column("uploc_c", sa.Integer(), default=0),  # unproductive line of code
+        sa.Column("loc_effort_p", sa.Integer(), nullable=True),
         # work hour estimation
         sa.Column("hours_measured", sa.Float(), nullable=True),
         sa.Column("hours_estimated", sa.Float(), nullable=True),
