@@ -128,18 +128,23 @@ def refresh_repository(
         return
 
     if refresh_type in [RefreshType.commits_only, RefreshType.everything]:
-        refresh_repository_commits(g, workspace_id, repository_id)
+        refresh_repository_commits(g, workspace_id, repository_id, force)
     if refresh_type in [RefreshType.prs_only, RefreshType.everything]:
         refresh_repository_pull_requests(g, workspace_id, repository_id, force)
     if refresh_type == RefreshType.commit_calculations_only:
         recalculate_repository_values(g, workspace_id, repository_id)
 
 
-def refresh_repository_commits(g: GitentialContext, workspace_id: int, repository_id: int):
+def refresh_repository_commits(g: GitentialContext, workspace_id: int, repository_id: int, force: bool = False):
     repository = g.backend.repositories.get_or_error(workspace_id, repository_id)
     refresh_status = get_repo_refresh_status(g, workspace_id, repository_id)
     _update_state = partial(update_repo_refresh_status, g=g, workspace_id=workspace_id, repository_id=repository_id)
-    if refresh_status.commits_in_progress:
+    if (
+        refresh_status.commits_in_progress
+        and refresh_status.commits_started
+        and g.current_time() - refresh_status.commits_started < timedelta(hours=8)
+        and not force
+    ):
         logger.info(
             "Skipping commits refresh, another job is already in progress",
             workspace_id=workspace_id,
@@ -152,6 +157,7 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
     if (
         refresh_status.commits_last_successful_run
         and g.current_time() - refresh_status.commits_last_successful_run < timedelta(minutes=30)
+        and not force
     ):
         logger.info(
             "Skipping commits refresh, last successful refresh was not at least 30 minute ago",

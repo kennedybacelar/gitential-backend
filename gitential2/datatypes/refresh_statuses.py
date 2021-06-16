@@ -97,16 +97,23 @@ class RepositoryRefreshStatus(CoreModel):
             "clone": clone,
             "extract": extract,
             "persist": persist,
-            "error": [self.commits_error_msg] if self.commits_error_msg else None,
-            "done": (not self.commits_in_progress and not self.commits_refresh_scheduled),
+            "error": [self.commits_error_msg or self.prs_error_msg]
+            if self.commits_error_msg or self.prs_error_msg
+            else None,
+            "done": (
+                not self.commits_in_progress
+                and not self.commits_refresh_scheduled
+                and not self.prs_in_progress
+                and not self.prs_refresh_scheduled
+            ),
         }
 
         return LegacyRepositoryRefreshStatus(**legacy_dict)
 
     def _calc_legacy_status(self):
-        if self.commits_in_progress:
+        if self.commits_in_progress or self.prs_in_progress:
             return LegacyRepositoryStatusStatus.in_progress
-        elif self.commits_refresh_scheduled:
+        elif self.commits_refresh_scheduled or self.prs_refresh_scheduled:
             return LegacyRepositoryStatusStatus.pending
         else:
             return LegacyRepositoryStatusStatus.finished
