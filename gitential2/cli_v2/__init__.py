@@ -15,6 +15,7 @@ from .usage_stats import app as usage_stats_app
 from .refresh import app as refresh_app
 from .tasks import app as tasks_app
 from .status import app as status_app
+from .query import app as query_app
 from .common import get_context
 
 logger = get_logger(__name__)
@@ -28,6 +29,7 @@ app.add_typer(usage_stats_app, name="usage-stats")
 app.add_typer(refresh_app, name="refresh")
 app.add_typer(tasks_app, name="tasks")
 app.add_typer(status_app, name="status")
+app.add_typer(query_app, name="query")
 
 
 @app.command("public-api")

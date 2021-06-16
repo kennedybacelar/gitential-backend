@@ -373,6 +373,8 @@ def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
 
 
 def _to_jsonable_result(result: QueryResult) -> dict:
+    if result.values.empty:
+        return {}
     ret = result.values.replace([np.inf, -np.inf], np.nan)
     ret = ret.where(pd.notnull(ret), None)
     logger.debug("INDEX", index=ret.index)
@@ -484,11 +486,16 @@ def _calculate_timestamps_between(
         current_ts = get_next(current_ts)
 
 
-def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
+def collect_stats_v2_raw(g: GitentialContext, workspace_id: int, query: Query) -> QueryResult:
     if any([m in PR_METRICS for m in query.metrics]) and any(
         [f in [FilterName.author_ids, FilterName.emails, FilterName.team_id] for f in query.filters.keys()]
     ):
         logger.warn("Author based filtering for PRs is not implemented", query=query)
-        return {}
+        return QueryResult(query=query, values=pd.DataFrame())
     result = _add_missing_timestamp_to_result(IbisQuery(g, workspace_id, query).execute())
+    return result
+
+
+def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
+    result = collect_stats_v2_raw(g, workspace_id, query)
     return _to_jsonable_result(result)

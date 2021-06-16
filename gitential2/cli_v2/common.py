@@ -5,6 +5,7 @@ from pprint import pprint
 import json
 from structlog import get_logger
 import pandas as pd
+import numpy as np
 import typer
 from tabulate import tabulate
 from pydantic import BaseModel
@@ -68,7 +69,7 @@ def _print_tabulate(
         )
         print(tabulate(jsonable_results, headers=header_dict, tablefmt="psql"))
     elif isinstance(results, pd.DataFrame):
-        print(tabulate(results, headers="keys"))
+        print(tabulate(results, headers="keys", tablefmt="psql"))
 
 
 def _print_json(
@@ -81,7 +82,12 @@ def _print_json(
         )
         print(json.dumps(jsonable_results, indent=2))
     elif isinstance(results, pd.DataFrame):
-        print(tabulate(results, headers="keys"))
+        if results.empty:
+            print({})
+        ret = results.replace([np.inf, -np.inf], np.nan)
+        ret = ret.where(pd.notnull(ret), None)
+        jsonable = ret.to_dict(orient="list")
+        print(json.dumps(jsonable, indent=2))
 
 
 def _fix_fields_ordering(results: list, fields: Optional[List[str]]) -> list:
