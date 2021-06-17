@@ -487,15 +487,15 @@ def _calculate_timestamps_between(
 
 
 def collect_stats_v2_raw(g: GitentialContext, workspace_id: int, query: Query) -> QueryResult:
-    if any([m in PR_METRICS for m in query.metrics]) and any(
-        [f in [FilterName.author_ids, FilterName.emails, FilterName.team_id] for f in query.filters.keys()]
-    ):
-        logger.warn("Author based filtering for PRs is not implemented", query=query)
-        return QueryResult(query=query, values=pd.DataFrame())
     result = _add_missing_timestamp_to_result(IbisQuery(g, workspace_id, query).execute())
     return result
 
 
 def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
+    if any([m in PR_METRICS for m in query.metrics]) and any(
+        [f in [FilterName.author_ids, FilterName.emails, FilterName.team_id] for f in query.filters.keys()]
+    ):
+        logger.warn("Author based filtering for PRs is not implemented", query=query)
+        return {}
     result = collect_stats_v2_raw(g, workspace_id, query)
     return _to_jsonable_result(result)

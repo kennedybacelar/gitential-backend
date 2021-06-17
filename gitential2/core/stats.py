@@ -72,8 +72,11 @@ def _get_commiters_count(g, workspace_id: int, repo_ids: List[int], active_autho
                 type=QueryType.aggregate,
             ),
         )
-        aids = [aid for aid in results["aid"] if aid in active_author_ids]
-        return len(aids)
+        if "aid" in results:
+            aids = [aid for aid in results["aid"] if aid in active_author_ids]
+            return len(aids)
+        else:
+            return 0
     else:
         return 0
 
