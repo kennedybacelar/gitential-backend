@@ -1,8 +1,12 @@
+from datetime import datetime
 from typing import Optional
 import typer
 from structlog import get_logger
+from gitential2.datatypes.email_log import EmailLogTemplate
+from gitential2.core.tasks import send_scheduled_emails, configure_celery
 
 from .common import get_context, OutputFormat, print_results
+
 
 app = typer.Typer()
 
@@ -17,3 +21,29 @@ def list_scheduled_emails(
     g = get_context()
     results = list(g.backend.email_log.all())
     print_results(results, format_=format_, fields=fields)
+
+
+@app.command("schedule")
+def schedule_(
+    user_id: int,
+    template_name: EmailLogTemplate,
+    scheduled_at: datetime = typer.Option(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")),
+):
+    g = get_context()
+    g.backend.email_log.schedule_email(user_id=user_id, template_name=template_name, scheduled_at=scheduled_at)
+
+
+@app.command("cancel")
+def cancel_(
+    user_id: int,
+    template_name: EmailLogTemplate,
+):
+    g = get_context()
+    g.backend.email_log.cancel_email(user_id=user_id, template=template_name)
+
+
+@app.command("trigger-sending")
+def run_cronjob():
+    g = get_context()
+    configure_celery(g.settings)
+    send_scheduled_emails.apply_async()
