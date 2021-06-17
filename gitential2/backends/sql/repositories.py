@@ -419,12 +419,30 @@ class SQLWorkspaceMemberRepository(
 class SQLProjectRepository(
     ProjectRepository, SQLWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]
 ):
-    pass
+    def search(self, workspace_id: int, q: str) -> List[ProjectInDB]:
+        query = self.table.select([
+            self.table.c.name
+        ]).where(
+            self.table.c.name.ilike(f'%{q}%')
+        )
+        rows = self._execute_query(query, workspace_id)
+        return [ProjectInDB(**row) for row in rows]
 
 
 class SQLRepositoryRepository(
     RepositoryRepository, SQLWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
 ):
+    def search(self, workspace_id: int, q: str) -> List[RepositoryInDB]:
+        query = self.table.select([
+            self.table.c.id,
+            self.table.c.name,
+            self.table.c.namespace
+        ]).where(
+            self.table.c.clone_url.ilike(f'%{q}%')
+        )
+        rows = self._execute_query(query, workspace_id)
+        return [RepositoryInDB(**row) for row in rows]
+
     def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
         query = self.table.select().where(self.table.c.clone_url == clone_url)
         row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
@@ -454,7 +472,16 @@ class SQLProjectRepositoryRepository(
 
 
 class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
-    pass
+    def search(self, workspace_id: int, q: str) -> List[AuthorInDB]:
+        query = self.table.select([
+            self.table.c.name,
+            self.table.c.email
+        ]).where(
+            self.table.c.clone_url.ilike(f'%{q}%')
+        )
+        rows = self._execute_query(query, workspace_id)
+        return [AuthorInDB(**row) for row in rows]
+
 
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
