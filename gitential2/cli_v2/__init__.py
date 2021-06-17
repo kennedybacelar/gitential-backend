@@ -16,6 +16,8 @@ from .refresh import app as refresh_app
 from .tasks import app as tasks_app
 from .status import app as status_app
 from .query import app as query_app
+from .emails import app as emails_app
+
 from .common import get_context
 
 logger = get_logger(__name__)
@@ -30,6 +32,7 @@ app.add_typer(refresh_app, name="refresh")
 app.add_typer(tasks_app, name="tasks")
 app.add_typer(status_app, name="status")
 app.add_typer(query_app, name="query")
+app.add_typer(emails_app, name="emails")
 
 
 @app.command("public-api")
