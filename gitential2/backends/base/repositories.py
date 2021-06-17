@@ -175,6 +175,11 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
     def reset_primary_key_id(self, workspace_id: int):
         pass
 
+    # TODO: Implement search for rest of the children -
+    # @abstractmethod
+    # def search(self, workspace_id: int, q: str) -> Iterable[InDBType]:
+    #     pass
+
 
 class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
@@ -233,12 +238,18 @@ class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, Works
 
 
 class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]):
-    pass
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> Dict[ProjectInDB]:
+        pass
 
 
 class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]):
     @abstractmethod
     def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
+        pass
+
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> Dict[RepositoryInDB]:
         pass
 
     def create_or_update_by_clone_url(
@@ -353,7 +364,9 @@ class PullRequestLabelRepository(
 
 
 class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
-    pass
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> Dict[AuthorInDB]:
+        pass
 
 
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
