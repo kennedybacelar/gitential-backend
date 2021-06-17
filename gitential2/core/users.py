@@ -175,9 +175,10 @@ def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optiona
         g.backend.email_log.schedule_email(
             user_id=user.id, template_name="free_trial_expiration", scheduled_at=(datetime.utcnow() + timedelta(days=7))
         )
-        g.backend.email_log.schedule_email(
-            user_id=user.id, template_name="free_trial_ended", scheduled_at=(datetime.utcnow() + timedelta(days=14))
-        )
+        # TEMPORARY DISABLED
+        # g.backend.email_log.schedule_email(
+        #     user_id=user.id, template_name="free_trial_ended", scheduled_at=(datetime.utcnow() + timedelta(days=14))
+        # )
         return g.backend.subscriptions.create(SubscriptionCreate.default_for_new_user(user.id))
 
 
