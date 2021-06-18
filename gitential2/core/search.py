@@ -24,10 +24,10 @@ class EntityType(str, Enum):
         ]
 
 
-def search_entity(g: GitentialContext, q: str, workspace_id: int, entity_type: str) -> List[str]:
+def search_entity(g: GitentialContext, q: str, workspace_id: int, entity_type: str) -> List[dict]:
     try:
         return [
-            item.json(include=EntityType.get_fields(entity_type))
+            item.dict(include=EntityType.get_fields(entity_type))
             for item in getattr(g.backend, EntityType.get_class(entity_type)).search(workspace_id, q)
         ]
     except AttributeError:

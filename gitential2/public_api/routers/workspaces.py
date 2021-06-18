@@ -201,7 +201,7 @@ def search(
     entity_type: str,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
-) -> List[str]:
+) -> List[dict]:
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     logger.info("searching for ", q=q, entity_type=entity_type, workspace_id=workspace_id)
     return search_entity(g, q, workspace_id, entity_type)
