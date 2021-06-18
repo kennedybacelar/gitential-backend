@@ -1,45 +1,30 @@
 from enum import Enum
+from typing import List, Set
 
-from typing import List, Dict, Tuple, Set
-
-from gitential2.backends.sql import SQLProjectRepository, SQLGitentialBackend
 from gitential2.core import GitentialContext
 
 
 class EntityType(str, Enum):
-    projects = 'projects'
-    repos = 'repos'
-    developers = 'developers'
+    projects = "projects"
+    repos = "repos"
+    developers = "developers"
 
     @classmethod
     def get_class(cls, entity: str) -> str:
-        return {
-            'projects': 'projects',
-            'repos': 'repositories',
-            'developers': 'authors'
-        }[entity]
+        return {"projects": "projects", "repos": "repositories", "developers": "authors"}[entity]
 
     @classmethod
     def get_fields(cls, entity: str) -> Set[str]:
-        return {
-            'projects': {'id', 'name'},
-            'repos': {'id', 'name', 'namespace'},
-            'developers': {'name', 'email'}
-        }[entity]
+        return {"projects": {"id", "name"}, "repos": {"id", "name", "namespace"}, "developers": {"name", "email"}}[
+            entity
+        ]
 
 
-def search_entity(
-        g: GitentialContext,
-        q: str,
-        workspace_id: int,
-        entity_type: str
-) -> List[str]:
+def search_entity(g: GitentialContext, q: str, workspace_id: int, entity_type: str) -> List[str]:
     try:
         return [
             item.json(include=EntityType.get_fields(entity_type))
-            for item in getattr(
-                g.backend, EntityType.get_class(entity_type)
-            ).search(workspace_id, q)
+            for item in getattr(g.backend, EntityType.get_class(entity_type)).search(workspace_id, q)
         ]
     except AttributeError:
         raise
