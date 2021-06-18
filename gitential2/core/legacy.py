@@ -121,6 +121,7 @@ def get_developers(
     workspace_id: int,
     project_id: Optional[int] = None,
     repo_id: Optional[int] = None,
+    team_id: Optional[int] = None,
     from_: Optional[str] = None,
     to_: Optional[str] = None,
 ) -> list:
@@ -132,9 +133,15 @@ def get_developers(
         dev_repo_commit_counts = _get_commit_counts_by_dev_and_repo(
             g, workspace_id, project_id=project_id, repo_id=repo_id, from_=from_, to_=to_
         )
-        print(dev_repo_commit_counts)
         ret = []
         aids = set(row["aid"] for row in dev_repo_commit_counts)
+        for aid in aids:
+            if aid in all_active_developers:
+                ret.append(all_active_developers[aid])
+        return ret
+    elif team_id:
+        ret = []
+        aids = set(g.backend.team_members.get_team_member_author_ids(workspace_id, team_id))
         for aid in aids:
             if aid in all_active_developers:
                 ret.append(all_active_developers[aid])

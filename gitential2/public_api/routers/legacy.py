@@ -114,7 +114,7 @@ def developers_repo_level(
 
 
 @router.get("/v2/workspaces/{workspace_id}/projects/{project_id}/developers")
-async def developers_project_level(
+def developers_project_level(
     orient: str,
     limit: int,
     workspace_id: int,
@@ -124,6 +124,19 @@ async def developers_project_level(
 ):  # pylint: disable=unused-argument
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return get_developers(g, workspace_id=workspace_id, project_id=project_id)
+
+
+@router.get("/v2/workspaces/{workspace_id}/teams/{team_id}/developers")
+def developers_for_team(
+    orient: str,
+    limit: int,
+    workspace_id: int,
+    team_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):  # pylint: disable=unused-argument
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return get_developers(g, workspace_id=workspace_id, team_id=team_id)
 
 
 @router.get("/v2/workspaces/{workspace_id}/dev_related_projects")
