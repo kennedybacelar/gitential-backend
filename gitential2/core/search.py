@@ -1,7 +1,11 @@
 from enum import Enum
 from typing import List, Set
 
+from structlog import get_logger
 from gitential2.core import GitentialContext
+
+
+logger = get_logger(__name__)
 
 
 class EntityType(str, Enum):
@@ -27,4 +31,5 @@ def search_entity(g: GitentialContext, q: str, workspace_id: int, entity_type: s
             for item in getattr(g.backend, EntityType.get_class(entity_type)).search(workspace_id, q)
         ]
     except AttributeError:
+        logger.info(f"Search failed for: entity_type: {entity_type}, workspace_id: {workspace_id}, query: {q}")
         raise

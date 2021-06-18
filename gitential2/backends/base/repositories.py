@@ -175,11 +175,6 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
     def reset_primary_key_id(self, workspace_id: int):
         pass
 
-    # TODO: Implement search for rest of the children -
-    # @abstractmethod
-    # def search(self, workspace_id: int, q: str) -> Iterable[InDBType]:
-    #     pass
-
 
 class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
