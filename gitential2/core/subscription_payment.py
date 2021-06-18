@@ -1,10 +1,11 @@
-from typing import List
 from structlog import get_logger
-import stripe  # pylint: disable=all
-from stripe.error import SignatureVerificationError  # pylint: disable=all
+import stripe
+from stripe.error import SignatureVerificationError
 from gitential2.datatypes.users import UserInDB
 
 from .context import GitentialContext
+
+PAYMENT_METHOD_TYPES = ["card"]
 
 logger = get_logger(__name__)
 
@@ -19,14 +20,13 @@ def create_checkout_session(
     price_id: str,
     quantity: int,
     user: UserInDB,
-    payment_method_type: List[str] = ("card",),
 ):
     domain_url = g.backend.settings.web.base_url
     try:
         checkout_session = stripe.checkout.Session.create(
             success_url=domain_url + "?payment=true&session_id={CHECKOUT_SESSION_ID}",
             cancel_url=domain_url + "?payment=false",
-            payment_method_types=[payment_method_type],
+            payment_method_types=PAYMENT_METHOD_TYPES,
             mode="subscription",
             line_items=[{"price": price_id, "quantity": quantity}],
             metadata={
