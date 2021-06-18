@@ -282,7 +282,10 @@ class InMemCredentialRepository(
 class InMemProjectRepository(
     ProjectRepository, InMemWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]
 ):
-    pass
+    def search(self, workspace_id: int, q: str) -> List[ProjectInDB]:
+        return [ProjectInDB(**item)
+                for item in self._state[workspace_id].values()
+                if q.capitalize() in item.name.capitalize()]
 
 
 class InMemRepositoryRepository(
@@ -293,6 +296,11 @@ class InMemRepositoryRepository(
             if o.clone_url == clone_url:
                 return o
         return None
+
+    def search(self, workspace_id: int, q: str) -> List[RepositoryInDB]:
+        return [RepositoryInDB(**item)
+                for item in self._state[workspace_id].values()
+                if q.capitalize() in item.clone_url.capitalize()]
 
 
 class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
