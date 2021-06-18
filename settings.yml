@@ -9,6 +9,7 @@ web:
   access_log: true
   session_https_only: false
   session_max_age: 86400
+  # base_url: https://590027f52278.ngrok.io
 
 secret: abcdABCDabcdABCDabcdABCDabcdABCD
 backend: sql
@@ -25,9 +26,11 @@ recaptcha:
   site_key: 6LftqHEaAAAAANgRbGA6Ew6nToApMx3TysEMYa-y
   secret_key: 6LftqHEaAAAAABt-WU7zTL9WHbv49GzWGuAjJiH8
 stripe:
-  publishable_key: ""
-  private_key: ""
-  price_id: ""
+  enabled: True
+  publishable_key: "pk_test_8NvkMx8TUGYMVgxgHda7Ly4400OqJK6Caz"
+  private_key: "sk_test_rTy8rIts8T5ePsU8Mu9G0tyG00zZWBqBSJ"
+  price_id: "price_1Ix7JAFFL0UUh0zz2fXVMjcj"
+  webhook_secret: "whsec_J3wwXzXQOklhlC5qS9iCFynVkiHzXZ9g"
 # frontend:
 #   inject_html:
 #     - tag: script

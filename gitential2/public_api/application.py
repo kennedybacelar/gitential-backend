@@ -31,6 +31,7 @@ from .routers import (
     authors,
     legacy,
     commits,
+    payment,
 )
 
 logger = get_logger(__name__)
@@ -97,6 +98,7 @@ def _configure_routes(app: FastAPI):
     app.include_router(stats.router, prefix="/v2")
     app.include_router(auth.router, prefix="/v2")
     app.include_router(users.router, prefix="/v2")
+    app.include_router(payment.router, prefix="/v2")
     app.include_router(commits.router, prefix="/v2")
 
 
