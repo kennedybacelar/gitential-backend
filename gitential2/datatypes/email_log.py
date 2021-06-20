@@ -10,17 +10,17 @@ class EmailLogStatus(str, Enum):
     canceled = "canceled"
 
 
-class EmailLogTemplate(str, Enum):
-    free_trial_expiration = "free_trial_expiration"
-    free_trial_ended = "free_trial_ended"
-    invite_member = "invite_member"
-    request_free_trial = "request_free_trial"
-    welcome = "welcome"
+# class EmailLogTemplate(str, Enum):
+#    free_trial_expiration = "free_trial_expiration"
+#    free_trial_ended = "free_trial_ended"
+#    invite_member = "invite_member"
+#    request_free_trial = "request_free_trial"
+#    welcome = "welcome"
 
 
 class EmailLogBase(CoreModel):
     user_id: int
-    template_name: EmailLogTemplate
+    template_name: str
     status: EmailLogStatus = EmailLogStatus.scheduled
     scheduled_at: datetime.datetime
     sent_at: Optional[datetime.datetime]

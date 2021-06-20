@@ -9,7 +9,7 @@ from celery.schedules import crontab
 from structlog import get_logger
 from gitential2.settings import GitentialSettings, load_settings
 from gitential2.logging import initialize_logging
-from gitential2.datatypes.email_log import EmailLogStatus, EmailLogTemplate
+from gitential2.datatypes.email_log import EmailLogStatus
 from gitential2.datatypes.refresh import RefreshProjectParams, RefreshRepositoryParams, RefreshWorkspaceParams
 from gitential2.exceptions import LockError
 
@@ -114,9 +114,9 @@ def send_scheduled_emails(settings: Optional[GitentialSettings] = None):
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
     for s in g.backend.email_log.get_emails_to_send():
-        if s.template_name == EmailLogTemplate.free_trial_expiration:
+        if s.template_name == "free_trial_expiration":
             send_trial_end_soon_emails(g, s.user_id)
-        elif s.template_name == EmailLogTemplate.free_trial_ended:
+        elif s.template_name == "free_trial_ended":
             send_trial_ended_emails(g, s.user_id)
         g.backend.email_log.email_log_status_update(s.id, EmailLogStatus.sent)
 

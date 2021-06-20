@@ -75,7 +75,6 @@ from gitential2.datatypes.email_log import (
     EmailLogUpdate,
     EmailLogInDB,
     EmailLogStatus,
-    EmailLogTemplate,
 )
 
 from ..base import (
@@ -689,7 +688,7 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         self._execute_query(query)
         return self.get_or_error(row_id)
 
-    def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
+    def cancel_email(self, user_id: int, template: str) -> Optional[List[EmailLogInDB]]:
         query = (
             self.table.update(self.table.c.status)
             .where(
