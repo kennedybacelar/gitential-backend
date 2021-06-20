@@ -59,7 +59,6 @@ from gitential2.datatypes.email_log import (
     EmailLogUpdate,
     EmailLogInDB,
     EmailLogStatus,
-    EmailLogTemplate,
 )
 
 IdType = TypeVar("IdType")
@@ -398,5 +397,5 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
         pass
 
     @abstractmethod
-    def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
+    def cancel_email(self, user_id: int, template: str) -> Optional[List[EmailLogInDB]]:
         pass
