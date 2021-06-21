@@ -14,7 +14,7 @@ from ..dependencies import gitential_context, current_user
 router = APIRouter(tags=["payment"])
 
 
-@router.post("/workspaces/{workspace_id}/payment/create-session/")
+@router.post("/workspaces/{workspace_id}/payment/createsession/")
 def create_checkout(
     createsession: CreateSession,
     workspace_id: int,
@@ -36,7 +36,7 @@ def customer_portal(
     return {}
 
 
-@router.get("/workspaces/{workspace_id}/payment/checkout-session/")
+@router.get("/workspaces/{workspace_id}/payment/checkoutsession/")
 def get_checkout(
     workspace_id: int,
     session_id: str,

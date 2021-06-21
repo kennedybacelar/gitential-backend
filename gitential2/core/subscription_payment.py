@@ -15,6 +15,12 @@ stripe.api_version = "2020-08-27"
 stripe.api_key = "sk_test_rTy8rIts8T5ePsU8Mu9G0tyG00zZWBqBSJ"
 
 
+def get_customer(customer_id: str):
+    return stripe.Customer.retrieve(customer_id)
+
+def create_customer():
+    pass
+
 def create_checkout_session(
     g: GitentialContext,
     price_id: str,
@@ -45,7 +51,6 @@ def _get_stripe_subscription(subscription_id) -> dict:
 
 def change_subscription(subscription_id: str, developer_num: int, pice_id: str):
     subscription = stripe.Subscription.retrieve(subscription_id)
-
     stripe.Subscription.modify(
         subscription.id,
         cancel_at_period_end=False,
@@ -67,6 +72,8 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
         return None
     if event.type == "customer.subscription.created":
         logger.info("new subscription created")
+        customer_id = event['data']['object']['customer']
+        uid = event['data']['object']['metadata']['user_id']
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
     else:
