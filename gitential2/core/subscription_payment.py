@@ -59,12 +59,28 @@ def delete_subscription(subs_id) -> dict:
     return {"status": "success"}
 
 
-def process_webhook(g: GitentialContext, input_data, signature):
+def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
     try:
-        event = stripe.Webhook.construct_event(
-            payload=input_data, sig_header=signature, secret=g.settings.stripe.webhook_secret
-        )
-        print(event)
+        event = stripe.Webhook.construct_event(input_data, signature, g.settings.stripe.webhook_secret)
     except (ValueError, SignatureVerificationError):
+        logger.info("Payload verification error")
         return None
-    return {}
+    if event.type == "customer.subscription.created":
+        logger.info("new subscription created")
+    elif event.type == "customer.subscription.deleted":
+        logger.info("new subscription deleted")
+    else:
+        logger.info("not handled stripe event", event_id=event.type)
+    return None
+
+
+def get_customer_portal_session(g: GitentialContext, user: UserInDB) -> dict:
+    domain_url = g.backend.settings.web.base_url
+    checkout_session = stripe.checkout.Session.retrieve(user)
+    session = stripe.billing_portal.Session.create(customer=checkout_session.customer, return_url=domain_url)
+    return {"url": session.url}
+
+
+def get_checkout_session(session_id: str):
+    checkout_session = stripe.checkout.Session.retrieve(session_id)
+    return checkout_session
