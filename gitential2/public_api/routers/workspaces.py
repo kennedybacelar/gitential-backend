@@ -27,6 +27,7 @@ from gitential2.core.refresh_v2 import refresh_workspace
 from gitential2.core.workspace_common import create_workspace
 
 from ..dependencies import current_user, gitential_context
+from ...core.search import search_entity
 
 logger = get_logger(__name__)
 
@@ -200,10 +201,10 @@ def search(
     entity_type: str,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
-):
+) -> List[dict]:
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    logger.info("searching for", q=q, entity_type=entity_type, workspace_id=workspace_id)
-    return []
+    logger.info("searching for ", q=q, entity_type=entity_type, workspace_id=workspace_id)
+    return search_entity(g, q, workspace_id, entity_type)
 
 
 @router.post("/workspaces/{workspace_id}/refresh")

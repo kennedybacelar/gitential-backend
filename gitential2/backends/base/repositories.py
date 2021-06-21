@@ -233,12 +233,18 @@ class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, Works
 
 
 class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]):
-    pass
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[ProjectInDB]:
+        pass
 
 
 class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]):
     @abstractmethod
     def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
+        pass
+
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[RepositoryInDB]:
         pass
 
     def create_or_update_by_clone_url(
@@ -353,7 +359,9 @@ class PullRequestLabelRepository(
 
 
 class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
-    pass
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[AuthorInDB]:
+        pass
 
 
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
