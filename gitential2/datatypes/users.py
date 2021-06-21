@@ -17,6 +17,8 @@ class UserBase(ExtraFieldMixin, CoreModel):
     registration_ready: bool = False
     login_ready: bool = False
     is_active: bool = True
+    stripe_customer_id: Optional[str] = None
+
 
     @classmethod
     def from_user_info(cls, user_info: UserInfoBase):
