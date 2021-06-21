@@ -7,6 +7,7 @@ from gitential2.datatypes.pull_requests import PullRequest, PullRequestState, Pu
 from gitential2.extraction.output import OutputHandler
 from .base import CollectPRsResult, OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
+from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
 
@@ -184,6 +185,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             first_reaction_at=_calc_first_reaction_at(raw_data["pr"], raw_data["review_comments"]),
             first_commit_authored_at=_calc_first_commit_authored_at(raw_data["commits"]),
             extra=raw_data,
+            is_bugfix=calculate_is_bugfix([], raw_data["pr"].get("title", "<missing title>")),
         )
 
     def list_available_private_repositories(

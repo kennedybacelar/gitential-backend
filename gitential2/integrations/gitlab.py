@@ -13,6 +13,7 @@ from gitential2.datatypes.pull_requests import (
 from gitential2.extraction.output import OutputHandler
 from .base import BaseIntegration, CollectPRsResult, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error, walk_next_link
+from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
 
@@ -233,6 +234,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             first_reaction_at=_calc_first_reaction_at(raw_data["mr_notes"]) or raw_data["mr"]["merged_at"],
             first_commit_authored_at=_calc_first_commit_authored_at(raw_data["mr_commits"]),
             extra=raw_data,
+            is_bugfix=calculate_is_bugfix([], raw_data["mr"].get("title", "<missing title>")),
         )
 
     def _write_pr_commits(

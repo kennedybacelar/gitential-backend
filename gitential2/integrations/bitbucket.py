@@ -12,6 +12,7 @@ from gitential2.extraction.output import OutputHandler
 from gitential2.utils import calc_repo_namespace
 from .base import BaseIntegration, CollectPRsResult, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error
+from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
 
@@ -195,6 +196,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             first_reaction_at=_calc_first_reaction_at(raw_data["pr"], raw_data["review_comments"]),
             first_commit_authored_at=_calc_first_commit_authored_at(raw_data["commits"]),
             extra=raw_data,
+            is_bugfix=calculate_is_bugfix([], raw_data["pr"].get("title", "<missing title>")),
         )
 
     def list_available_private_repositories(
