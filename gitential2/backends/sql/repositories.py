@@ -3,7 +3,7 @@ import datetime as dt
 import typing
 import sqlalchemy as sa
 import pandas as pd
-from sqlalchemy.sql import and_, select, desc
+from sqlalchemy.sql import and_, select, desc, or_
 from sqlalchemy.dialects.postgresql import insert
 from gitential2.exceptions import NotFoundException
 
@@ -463,7 +463,7 @@ class SQLProjectRepositoryRepository(
 
 class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
     def search(self, workspace_id: int, q: str) -> List[AuthorInDB]:
-        query = self.table.select().where(self.table.c.clone_url.ilike(f"%{q}%"))
+        query = self.table.select().where(or_(self.table.c.name.ilike(f"%{q}%"), self.table.c.email.ilike(f"%{q}%")))
         rows = self._execute_query(query, workspace_id)
         return [AuthorInDB(**row) for row in rows]
 
