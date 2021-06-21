@@ -1,13 +1,14 @@
 import datetime
 from typing import Optional
-from enum import Enum
+
+# from enum import Enum
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin
 
 
-class EmailLogStatus(str, Enum):
-    scheduled = "scheduled"
-    sent = "sent"
-    canceled = "canceled"
+# class EmailLogStatus(str, Enum):
+#    scheduled = "scheduled"
+#    sent = "sent"
+#    canceled = "canceled"
 
 
 # class EmailLogTemplate(str, Enum):
@@ -21,7 +22,7 @@ class EmailLogStatus(str, Enum):
 class EmailLogBase(CoreModel):
     user_id: int
     template_name: str
-    status: EmailLogStatus = EmailLogStatus.scheduled
+    status: str
     scheduled_at: datetime.datetime
     sent_at: Optional[datetime.datetime]
 
