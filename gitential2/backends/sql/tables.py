@@ -422,6 +422,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("first_reaction_at", sa.DateTime, nullable=True),
         sa.Column("first_commit_authored_at", sa.DateTime, nullable=True),
         sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("is_bugfix", sa.Boolean(), default=None),
         sa.PrimaryKeyConstraint("repo_id", "number"),
     )
 

@@ -282,6 +282,7 @@ def _prepare_filters(  # pylint: disable=too-complex
         TableName.pull_requests: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
             FilterName.day: lambda t: t.created_at.between,
+            FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
         },
         TableName.patches: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,

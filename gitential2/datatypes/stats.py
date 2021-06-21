@@ -95,6 +95,7 @@ class FilterName(str, Enum):
     account_id = "account_id"
     project_id = "project_id"
     team_id = "team_id"
+    is_bugfix = "is_bugfix"
 
 
 class DimensionName(str, Enum):
