@@ -247,6 +247,8 @@ def _prepare_filters_dict(
             filters_dict[FilterName.author_ids] = author_ids
         elif filter_name == FilterName.day:
             filters_dict[FilterName.day] = filter_params
+        elif filter_name == FilterName.is_bugfix:
+            filters_dict[FilterName.is_bugfix] = filter_params
         elif filter_name == FilterName.is_merge:
             filters_dict[FilterName.is_merge] = filter_params
         elif filter_name == FilterName.active:
