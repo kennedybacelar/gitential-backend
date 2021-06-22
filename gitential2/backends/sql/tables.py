@@ -5,7 +5,7 @@ from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_utils import IPAddressType
 
 from gitential2.datatypes import WorkspaceRole
-from gitential2.datatypes.subscriptions import SubscriptionType
+from gitential2.datatypes.subscriptions import SubscriptionType, StripeSubStatusType
 from gitential2.datatypes.repositories import GitProtocol
 from gitential2.datatypes.extraction import Langtype
 
@@ -63,7 +63,7 @@ subscriptions_table = sa.Table(
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("number_of_developers", sa.Integer(), nullable=False, default=5),
     sa.Column("stripe_subscription_id", sa.String(256), nullable=True),
-    sa.Column("stripe_subscription_status", sa.Boolean(), nullable=True),
+    sa.Column("stripe_subscription_status", sa.Enum(StripeSubStatusType), nullable=True),
 )
 
 user_infos_table = sa.Table(
