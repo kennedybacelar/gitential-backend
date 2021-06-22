@@ -19,7 +19,6 @@ class UserBase(ExtraFieldMixin, CoreModel):
     is_active: bool = True
     stripe_customer_id: Optional[str] = None
 
-
     @classmethod
     def from_user_info(cls, user_info: UserInfoBase):
         return cls(login=user_info.preferred_username or user_info.sub, email=user_info.email)

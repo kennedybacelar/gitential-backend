@@ -1,7 +1,9 @@
+from typing import cast
 from structlog import get_logger
 import stripe
 from stripe.error import SignatureVerificationError
-from gitential2.datatypes.users import UserInDB
+from gitential2.core.subscription import set_as_professional, set_as_free
+from gitential2.datatypes.users import UserInDB, UserUpdate
 
 from .context import GitentialContext
 
@@ -15,11 +17,10 @@ stripe.api_version = "2020-08-27"
 stripe.api_key = "sk_test_rTy8rIts8T5ePsU8Mu9G0tyG00zZWBqBSJ"
 
 
-def get_customer(customer_id: str):
-    return stripe.Customer.retrieve(customer_id)
+def get_user_by_customer(g: GitentialContext, customer_id: str) -> UserInDB:
+    customer = stripe.Customer.retrieve(customer_id)
+    return g.backend.users.get_by_email(customer.email)
 
-def create_customer():
-    pass
 
 def create_checkout_session(
     g: GitentialContext,
@@ -27,6 +28,18 @@ def create_checkout_session(
     quantity: int,
     user: UserInDB,
 ):
+    if user.stripe_customer_id is None:
+        customer = stripe.Customer.create(
+            name=user.first_name + user.last_name,
+            email=user.email,
+            metadata={"user_id": user.id,
+                      "number_of_developers": quantity},
+        )
+        user_copy = user.copy()
+        user_copy.stripe_customer_id = customer.id
+        g.backend.users.update(user.id, cast(UserUpdate, user_copy))
+        user = g.backend.users.get(user_copy.id)
+
     domain_url = g.backend.settings.web.base_url
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -34,6 +47,7 @@ def create_checkout_session(
             cancel_url=domain_url + "?payment=false",
             payment_method_types=PAYMENT_METHOD_TYPES,
             mode="subscription",
+            customer=user.stripe_customer_id,
             line_items=[{"price": price_id, "quantity": quantity}],
             metadata={
                 "user_id": user.id,
@@ -70,12 +84,16 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
     except (ValueError, SignatureVerificationError):
         logger.info("Payload verification error")
         return None
-    if event.type == "customer.subscription.created":
+    if event.type == "customer.subscription.updated":
         logger.info("new subscription created")
-        customer_id = event['data']['object']['customer']
-        uid = event['data']['object']['metadata']['user_id']
+        customer_id = event["data"]["object"]["customer"]
+        customer = stripe.Customer.retrieve(customer_id)
+        # user_with_subs = g.backend.users.get(uid)
+        set_as_professional(g, customer['metadata']['user_id'], customer['no_of_developers'])
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
+        uid = event["data"]["object"]["metadata"]["user_id"]
+        set_as_free(g, uid)
     else:
         logger.info("not handled stripe event", event_id=event.type)
     return None
