@@ -3,7 +3,13 @@ from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB, RepositoryCreate, GitProtocol
 from gitential2.datatypes.extraction import ExtractedKind
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestState, PullRequestData
+from gitential2.datatypes.pull_requests import (
+    PullRequest,
+    PullRequestState,
+    PullRequestData,
+    PullRequestCommit,
+    PullRequestComment,
+)
 from gitential2.extraction.output import OutputHandler
 from .base import CollectPRsResult, OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
@@ -121,12 +127,14 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         api_base_url = self.oauth_register()["api_base_url"]
         pr_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls/{pr_number}"
         client = self.get_oauth2_client(token=token, update_token=update_token)
-
+        raw_data = None
         try:
             raw_data = self._collect_single_pr_data_raw(client, pr_url)
             pull_request = self._transform_to_pr(raw_data, repository=repository)
+            commits = self._write_pr_commits(raw_data["commits"], raw_data, repository, output)
+            comments = self._write_pr_comments(raw_data["review_comments"], raw_data, repository, output)
             output.write(ExtractedKind.PULL_REQUEST, pull_request)
-            return PullRequestData(pr=pull_request, comments=[], commits=[], labels=[])
+            return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
         except Exception:  # pylint: disable=broad-except
             logger.exception("Failed to extract PR", pr_number=pr_number, raw_data=raw_data)
             return None
@@ -225,3 +233,66 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         else:
             log_api_error(response)
             return []
+
+    def _write_pr_commits(
+        self,
+        commits_raw: list,
+        raw_data: dict,
+        repository: RepositoryInDB,
+        output: OutputHandler,
+    ) -> List[PullRequestCommit]:
+        ret = []
+        for commit_raw in commits_raw:
+            # print(commit_raw)
+            # print("-----")
+            commit = PullRequestCommit(
+                repo_id=repository.id,
+                pr_number=raw_data["pr"]["number"],
+                commit_id=commit_raw["sha"],
+                # author data
+                author_name=commit_raw["commit"]["author"]["name"],
+                author_email=commit_raw["commit"]["author"].get("email", ""),
+                author_date=commit_raw["commit"]["author"]["date"],
+                author_login=commit_raw.get("author", {}).get("login", "") if commit_raw.get("author") else None,
+                # committer data
+                committer_name=commit_raw["commit"]["committer"]["name"],
+                committer_email=commit_raw["commit"]["committer"].get("email", ""),
+                committer_date=commit_raw["commit"]["committer"]["date"],
+                committer_login=commit_raw.get("committer", {}).get("login", "")
+                if commit_raw.get("commiter")
+                else None,
+                # general dates
+                created_at=commit_raw["commit"]["author"]["date"],
+                updated_at=commit_raw["commit"]["committer"]["date"],
+            )
+            output.write(ExtractedKind.PULL_REQUEST_COMMIT, commit)
+            ret.append(commit)
+        return ret
+
+    def _write_pr_comments(
+        self,
+        notes_raw: list,
+        raw_data: dict,
+        repository: RepositoryInDB,
+        output: OutputHandler,
+    ) -> List[PullRequestComment]:
+        ret = []
+        for note_raw in notes_raw:
+            # print(note_raw)
+            comment = PullRequestComment(
+                repo_id=repository.id,
+                pr_number=raw_data["pr"]["number"],
+                comment_type="review_comments",
+                comment_id=str(note_raw["id"]),
+                author_id_external=note_raw["user"]["id"] if note_raw.get("user") else None,
+                author_name_external=None,
+                author_username_external=note_raw["user"]["login"] if note_raw.get("user") else None,
+                author_aid=None,
+                content=note_raw["body"],
+                extra=note_raw,
+                created_at=note_raw["created_at"],
+                upated_at=note_raw["updated_at"],
+            )
+            output.write(ExtractedKind.PULL_REQUEST_COMMENT, comment)
+            ret.append(comment)
+        return ret
