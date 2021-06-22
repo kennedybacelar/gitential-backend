@@ -1,0 +1,58 @@
+from datetime import datetime
+from typing import Optional, List
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch
+
+from .context import GitentialContext
+
+# pylint: disable=too-many-arguments
+def get_commits(
+    g: GitentialContext,
+    workspace_id: int,
+    project_id: Optional[int] = None,
+    team_id: Optional[int] = None,
+    repo_ids: Optional[List[int]] = None,
+    author_ids: Optional[List[int]] = None,
+    author_email: Optional[str] = None,
+    from_: Optional[datetime] = None,
+    to_: Optional[datetime] = None,
+    is_merge: Optional[bool] = None,
+) -> List[CalculatedCommit]:
+
+    if project_id:
+        repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
+            workspace_id=workspace_id, project_id=project_id
+        )
+    if team_id:
+        author_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
+
+    if author_email:
+        author_id = _get_author_id_for_email(g, workspace_id, author_email)
+        if author_id:
+            author_ids = [author_id]
+        else:
+            return []
+    return list(
+        g.backend.calculated_commits.select(
+            workspace_id=workspace_id,
+            repository_ids=repo_ids,
+            author_ids=author_ids,
+            from_=from_,
+            to_=to_,
+            is_merge=is_merge,
+        )
+    )
+
+
+def get_patches_for_commit(
+    g: GitentialContext, workspace_id: int, repo_id: int, commit_hash: str
+) -> List[CalculatedPatch]:
+    return g.backend.calculated_patches.get_all_for_commit(
+        workspace_id=workspace_id, commit_id=CalculatedCommitId(repo_id=repo_id, commit_id=commit_hash)
+    )
+
+
+def _get_author_id_for_email(g: GitentialContext, workspace_id: int, email: str) -> Optional[int]:
+    for author in g.backend.authors.all(workspace_id):
+        if email in author.all_emails:
+            return author.id
+    return None

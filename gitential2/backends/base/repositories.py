@@ -318,14 +318,26 @@ class CalculatedCommitRepository(
     RepoDFMixin,
     BaseWorkspaceScopedRepository[CalculatedCommitId, CalculatedCommit, CalculatedCommit, CalculatedCommit],
 ):
-    pass
+    @abstractmethod
+    def select(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[datetime] = None,
+        to_: Optional[datetime] = None,
+        author_ids: Optional[List[int]] = None,
+        is_merge: Optional[bool] = None,
+    ) -> Iterable[CalculatedCommit]:
+        pass
 
 
 class CalculatedPatchRepository(
     RepoDFMixin,
     BaseWorkspaceScopedRepository[CalculatedPatchId, CalculatedPatch, CalculatedPatch, CalculatedPatch],
 ):
-    pass
+    @abstractmethod
+    def get_all_for_commit(self, workspace_id: int, commit_id: CalculatedCommitId) -> List[CalculatedPatch]:
+        pass
 
 
 class PullRequestRepository(

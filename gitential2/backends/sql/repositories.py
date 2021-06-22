@@ -559,6 +559,36 @@ class SQLCalculatedCommitRepository(
     def identity(self, id_: CalculatedCommitId):
         return and_(self.table.c.commit_id == id_.commit_id, self.table.c.repo_id == id_.repo_id)
 
+    def select(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[dt.datetime] = None,
+        to_: Optional[dt.datetime] = None,
+        author_ids: Optional[List[int]] = None,
+        is_merge: Optional[bool] = None,
+    ) -> Iterable[CalculatedCommit]:
+        query = self.table.select().order_by(self.table.c.date.desc())
+        if repository_ids:
+            query = query.where(self.table.c.repo_id.in_(repository_ids))
+        if author_ids:
+            query = query.where(self.table.c.aid.in_(author_ids))
+        if from_:
+            query = query.where(self.table.c.date >= from_)
+        if to_:
+            query = query.where(self.table.c.date < to_)
+        if is_merge is not None:
+            query = query.where(self.table.c.is_merge == is_merge)
+        with self._connection_with_schema(workspace_id) as connection:
+            proxy = connection.execution_options(stream_results=True).execute(query)
+            while True:
+                batch = proxy.fetchmany(10000)
+                if not batch:
+                    break
+                for row in batch:
+                    yield self.in_db_cls(**row)
+            proxy.close()
+
 
 class SQLCalculatedPatchRepository(
     SQLRepoDFMixin,
@@ -572,6 +602,13 @@ class SQLCalculatedPatchRepository(
             self.table.c.parent_commit_id == id_.parent_commit_id,
             self.table.c.newpath == id_.newpath,
         )
+
+    def get_all_for_commit(self, workspace_id: int, commit_id: CalculatedCommitId) -> List[CalculatedPatch]:
+        query = self.table.select().where(
+            and_(self.table.c.repo_id == commit_id.repo_id, self.table.c.commit_id == commit_id.commit_id)
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [CalculatedPatch(**row) for row in rows]
 
 
 class SQLPullRequestRepository(

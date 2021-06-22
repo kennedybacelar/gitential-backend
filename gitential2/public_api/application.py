@@ -1,6 +1,9 @@
-from typing import Optional
+from typing import Optional, Any
 from uuid import uuid4
+import json
 from structlog import get_logger
+import orjson
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 
@@ -27,13 +30,30 @@ from .routers import (
     users,
     authors,
     legacy,
+    commits,
 )
 
 logger = get_logger(__name__)
 
 
+class ORJSONResponse(JSONResponse):
+    media_type = "application/json"
+
+    def render(self, content: Any) -> bytes:
+        try:
+            return orjson.dumps(content)
+        except TypeError:
+            return json.dumps(
+                content,
+                ensure_ascii=False,
+                allow_nan=True,
+                indent=None,
+                separators=(",", ":"),
+            ).encode("utf-8")
+
+
 def create_app(settings: Optional[GitentialSettings] = None):
-    app = FastAPI(title="Gitential REST API", version="2.0.0")
+    app = FastAPI(title="Gitential REST API", version="2.0.0", default_response_class=ORJSONResponse)
     settings = settings or load_settings()
     initialize_logging(settings)
     app.state.settings = settings
@@ -77,6 +97,7 @@ def _configure_routes(app: FastAPI):
     app.include_router(stats.router, prefix="/v2")
     app.include_router(auth.router, prefix="/v2")
     app.include_router(users.router, prefix="/v2")
+    app.include_router(commits.router, prefix="/v2")
 
 
 def _configure_session(app: FastAPI, settings: GitentialSettings):
