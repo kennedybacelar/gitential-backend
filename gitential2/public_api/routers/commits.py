@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.context import GitentialContext
-from gitential2.core.commits import get_commits
+from gitential2.core.commits import get_commits, get_patches_for_commit
 from gitential2.core.permissions import check_permission
 
 from ..dependencies import gitential_context, current_user
@@ -25,6 +25,18 @@ def _convert_to_datetime(s: Optional[str], eod: bool = False) -> Optional[dateti
         else:
             return dt
     return None
+
+
+@router.get("/workspaces/{workspace_id}/repos/{repo_id}/commits/{commit_id}/patches")
+def get_patches_for_commit_(
+    workspace_id: int,
+    repo_id: int,
+    commit_id: str,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return get_patches_for_commit(g, workspace_id, repo_id, commit_hash=commit_id)
 
 
 @router.get("/workspaces/{workspace_id}/repos/{repo_id}/commits")
