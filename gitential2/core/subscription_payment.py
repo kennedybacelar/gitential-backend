@@ -25,20 +25,22 @@ def get_user_by_customer(g: GitentialContext, customer_id: str) -> UserInDB:
 def create_checkout_session(
     g: GitentialContext,
     price_id: str,
-    quantity: int,
+    number_of_developers: int,
     user: UserInDB,
 ):
     if user.stripe_customer_id is None:
         customer = stripe.Customer.create(
             name=user.first_name + user.last_name,
             email=user.email,
-            metadata={"user_id": user.id,
-                      "number_of_developers": quantity},
+            metadata={"user_id": user.id, "number_of_developers_requested": number_of_developers},
         )
         user_copy = user.copy()
         user_copy.stripe_customer_id = customer.id
         g.backend.users.update(user.id, cast(UserUpdate, user_copy))
         user = g.backend.users.get(user_copy.id)
+    else:
+        customer = stripe.Customer.retrieve(user.stripe_customer_id)  # checking
+        stripe.Customer.modify(customer.id, metadata={"number_of_developers_requested": number_of_developers})
 
     domain_url = g.backend.settings.web.base_url
     try:
@@ -48,7 +50,7 @@ def create_checkout_session(
             payment_method_types=PAYMENT_METHOD_TYPES,
             mode="subscription",
             customer=user.stripe_customer_id,
-            line_items=[{"price": price_id, "quantity": quantity}],
+            line_items=[{"price": price_id, "quantity": number_of_developers}],
             metadata={
                 "user_id": user.id,
             },
@@ -88,12 +90,32 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
         logger.info("new subscription created")
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
-        # user_with_subs = g.backend.users.get(uid)
-        set_as_professional(g, customer['metadata']['user_id'], customer['no_of_developers'])
+        subs_id = event["data"]["object"]["items"]["data"][0]["subscription"]
+        set_as_professional(
+            g,
+            int(customer["metadata"]["user_id"]),
+            int(customer["metadata"]["number_of_developers_requested"]),
+            subs_id,
+        )
+        stripe.Customer.modify(
+            customer.id,
+            metadata={
+                "number_of_developers_requested": 0,
+                "number_of_developers": customer["metadata"]["number_of_developers_requested"],
+            },
+        )
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
-        uid = event["data"]["object"]["metadata"]["user_id"]
-        set_as_free(g, uid)
+        customer_id = event["data"]["object"]["customer"]
+        customer = stripe.Customer.retrieve(customer_id)
+        stripe.Customer.modify(customer.id, metadata={"number_of_developers_requested": 0, "number_of_developers": 0})
+        set_as_free(g, customer["metadata"]["user_id"])
+    elif event.type == "customer.deleted":
+        logger.info("customer deleted")
+        email = event["data"]["object"]["email"]
+        user = g.backend.users.get_by_email(email)
+        user.stripe_customer_id = None
+        g.backend.users.update(user.id, cast(UserUpdate, user))
     else:
         logger.info("not handled stripe event", event_id=event.type)
     return None
