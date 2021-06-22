@@ -105,7 +105,7 @@ def set_as_free(g: GitentialContext, user_id: int, end_time: Optional[datetime] 
 
 
 def set_as_professional(
-    g: GitentialContext, user_id: int, number_of_developers: int, subscription_id: str = None
+    g: GitentialContext, user_id: int, number_of_developers: int, subscription_id: str = None, cancel_at: int = None
 ) -> SubscriptionInDB:
     user = g.backend.users.get_or_error(user_id)
     current_subs = _get_current_subscription_from_db(g, user_id=user.id)
@@ -113,6 +113,8 @@ def set_as_professional(
     if current_subs and current_subs.subscription_type == SubscriptionType.professional:
         su = SubscriptionUpdate(**current_subs.dict())
         su.number_of_developers = number_of_developers
+        if cancel_at:
+            su.subscription_end = datetime.utcfromtimestamp(int(cancel_at))
         new_sub = g.backend.subscriptions.update(current_subs.id, su)
     elif current_subs and current_subs.subscription_type != SubscriptionType.professional:
         su = SubscriptionUpdate(**current_subs.dict())
@@ -122,7 +124,7 @@ def set_as_professional(
         new_sub = _create_new_prof_subs(g, user_id, number_of_developers)
     else:
         new_sub = _create_new_prof_subs(g, user_id, number_of_developers)
-    if subscription_id:
+    if subscription_id and not new_sub.stripe_subscription_id:
         new_sub.stripe_subscription_id = subscription_id
         new_sub.stripe_subscription_status = StripeSubStatusType.active
         g.backend.subscriptions.update(new_sub.id, cast(SubscriptionUpdate, new_sub))
