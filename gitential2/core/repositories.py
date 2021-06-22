@@ -105,16 +105,18 @@ def search_public_repositories(g: GitentialContext, workspace_id: int, search: s
                 lambda ui: ui.integration_name == credential_.integration_name,  # pylint: disable=cell-var-from-loop
                 g.backend.user_infos.get_for_user(credential_.owner_id),
             )
-
-            with acquire_credential(g, credential_id=credential_.id) as credential:
-                integration = g.integrations[credential.integration_name]
-                token = credential.to_token_dict(fernet=g.fernet)
-                results += integration.search_public_repositories(
-                    query=search,
-                    token=token,
-                    update_token=get_update_token_callback(g, credential),
-                    provider_user_id=userinfo.sub if userinfo else None,
-                )
+            try:
+                with acquire_credential(g, credential_id=credential_.id) as credential:
+                    integration = g.integrations[credential.integration_name]
+                    token = credential.to_token_dict(fernet=g.fernet)
+                    results += integration.search_public_repositories(
+                        query=search,
+                        token=token,
+                        update_token=get_update_token_callback(g, credential),
+                        provider_user_id=userinfo.sub if userinfo else None,
+                    )
+            except:  # pylint: disable=bare-except
+                logger.exception("Error during public repo search")
 
     return sorted(results, key=lambda i: levenshtein(search, i.name))
 
