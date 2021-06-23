@@ -173,7 +173,14 @@ def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optiona
         return None
     else:
         g.backend.email_log.schedule_email(
-            user_id=user.id, template_name="first_steps", scheduled_at=(datetime.utcnow() + timedelta(days=2))
+            user_id=user.id,
+            template_name="getting_started_first_steps",
+            scheduled_at=(datetime.utcnow() + timedelta(days=2)),
+        )
+        g.backend.email_log.schedule_email(
+            user_id=user.id,
+            template_name="getting_started_metrics",
+            scheduled_at=(datetime.utcnow() + timedelta(days=4)),
         )
         g.backend.email_log.schedule_email(
             user_id=user.id, template_name="free_trial_expiration", scheduled_at=(datetime.utcnow() + timedelta(days=7))
@@ -208,5 +215,5 @@ def send_trial_ended_emails(g: GitentialContext, user_id: int):
     send_email_to_user(g, user=g.backend.users.get_or_error(user_id), template_name="free_trial_ended")
 
 
-def send_first_steps_emails(g: GitentialContext, user_id: int):
-    send_email_to_user(g, user=g.backend.users.get_or_error(user_id), template_name="first_steps")
+def send_getting_started_emails(g: GitentialContext, user_id: int, template_name):
+    send_email_to_user(g, user=g.backend.users.get_or_error(user_id), template_name=template_name)
