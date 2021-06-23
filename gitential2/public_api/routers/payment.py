@@ -4,7 +4,6 @@ from gitential2.core.subscription_payment import (
     create_checkout_session,
     process_webhook,
     get_checkout_session,
-    get_customer_portal_session,
 )
 from gitential2.datatypes.subscriptions import CreateSession
 from gitential2.core.permissions import check_permission

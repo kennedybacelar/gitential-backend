@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Optional
 from structlog import get_logger
 import stripe
 from stripe.error import SignatureVerificationError
@@ -17,7 +17,7 @@ stripe.api_version = "2020-08-27"
 stripe.api_key = "sk_test_rTy8rIts8T5ePsU8Mu9G0tyG00zZWBqBSJ"
 
 
-def get_user_by_customer(g: GitentialContext, customer_id: str) -> UserInDB:
+def get_user_by_customer(g: GitentialContext, customer_id: str) -> Optional[UserInDB]:
     customer = stripe.Customer.retrieve(customer_id)
     return g.backend.users.get_by_email(customer.email)
 
@@ -30,14 +30,12 @@ def create_checkout_session(
 ):
     if user.stripe_customer_id is None:
         customer = stripe.Customer.create(
-            name=user.first_name + user.last_name,
             email=user.email,
             metadata={"user_id": user.id, "number_of_developers_requested": number_of_developers},
         )
         user_copy = user.copy()
         user_copy.stripe_customer_id = customer.id
-        g.backend.users.update(user.id, cast(UserUpdate, user_copy))
-        user = g.backend.users.get(user_copy.id)
+        user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
     else:
         customer = stripe.Customer.retrieve(user.stripe_customer_id)  # checking
         stripe.Customer.modify(customer.id, metadata={"number_of_developers_requested": number_of_developers})
@@ -97,13 +95,9 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
             developers = int(customer["metadata"]["number_of_developers_requested"])
         else:
             developers = int(customer["metadata"]["number_of_developers"])
-        if event.data.object['status'] == "active":
+        if event.data.object["status"] == "active":
             set_as_professional(
-                g,
-                int(customer["metadata"]["user_id"]),
-                developers,
-                subs_id,
-                event['data']['object']['cancel_at']
+                g, int(customer["metadata"]["user_id"]), developers, subs_id, event["data"]["object"]["cancel_at"]
             )
             stripe.Customer.modify(
                 customer.id,
@@ -122,8 +116,9 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
         logger.info("customer deleted")
         email = event["data"]["object"]["email"]
         user = g.backend.users.get_by_email(email)
-        user.stripe_customer_id = None
-        g.backend.users.update(user.id, cast(UserUpdate, user))
+        if user:
+            user.stripe_customer_id = None
+            g.backend.users.update(user.id, cast(UserUpdate, user))
     else:
         logger.info("not handled stripe event", event_id=event.type)
     return None
