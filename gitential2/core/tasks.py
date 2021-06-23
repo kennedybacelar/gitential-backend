@@ -116,8 +116,10 @@ def send_scheduled_emails(settings: Optional[GitentialSettings] = None):
         if s.template_name == "free_trial_expiration":
             send_trial_end_soon_emails(g, s.user_id)
         elif s.template_name == "free_trial_ended":
+            g.backend.email_log.email_log_status_update(s.user_id, "free_trial_ended", "sent")
             send_trial_ended_emails(g, s.user_id)
-        g.backend.email_log.email_log_status_update(s.id, "sent")
+            # g.backend.email_log.email_log_status_update(s.id, s.user_id, "sent")
+        # g.backend.email_log.email_log_status_update(s.id, s.user_id, "sent")
 
 
 __all__ = ["schedule_task", "core_task", "configure_celery", "ping", "send_scheduled_emails"]
