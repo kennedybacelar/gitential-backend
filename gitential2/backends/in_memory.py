@@ -38,8 +38,6 @@ from gitential2.datatypes.email_log import (
     EmailLogCreate,
     EmailLogUpdate,
     EmailLogInDB,
-    EmailLogStatus,
-    EmailLogTemplate,
 )
 from .base import (
     BaseRepository,
@@ -308,14 +306,14 @@ class InMemRepositoryRepository(
 
 
 class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
-    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
+    def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:
         return None
 
     def get_emails_to_send(self) -> List[EmailLogInDB]:
         return []
 
-    def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
-        return []
+    def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
+        return None
 
 
 class InMemProjectRepositoryRepository(

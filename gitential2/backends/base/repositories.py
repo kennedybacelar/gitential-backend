@@ -58,8 +58,6 @@ from gitential2.datatypes.email_log import (
     EmailLogCreate,
     EmailLogUpdate,
     EmailLogInDB,
-    EmailLogStatus,
-    EmailLogTemplate,
 )
 
 IdType = TypeVar("IdType")
@@ -405,12 +403,15 @@ class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, 
 class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
     def schedule_email(self, user_id: int, template_name: str, scheduled_at: Optional[datetime] = None) -> EmailLogInDB:
         email_log_create = EmailLogCreate(
-            user_id=user_id, template_name=template_name, scheduled_at=scheduled_at or datetime.utcnow()
+            user_id=user_id,
+            template_name=template_name,
+            status="scheduled",
+            scheduled_at=scheduled_at or datetime.utcnow(),
         )
         return self.create(email_log_create)
 
     @abstractmethod
-    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
+    def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:
         pass
 
     @abstractmethod
@@ -418,5 +419,5 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
         pass
 
     @abstractmethod
-    def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
+    def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
         pass

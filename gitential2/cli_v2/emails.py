@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional
 import typer
 from structlog import get_logger
-from gitential2.datatypes.email_log import EmailLogTemplate
 from gitential2.core.tasks import send_scheduled_emails, configure_celery
 
 from .common import get_context, OutputFormat, print_results
@@ -26,7 +25,7 @@ def list_scheduled_emails(
 @app.command("schedule")
 def schedule_(
     user_id: int,
-    template_name: EmailLogTemplate,
+    template_name: str,
     scheduled_at: datetime = typer.Option(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")),
 ):
     g = get_context()
@@ -36,7 +35,7 @@ def schedule_(
 @app.command("cancel")
 def cancel_(
     user_id: int,
-    template_name: EmailLogTemplate,
+    template_name: str,
 ):
     g = get_context()
     g.backend.email_log.cancel_email(user_id=user_id, template=template_name)

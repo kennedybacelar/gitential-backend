@@ -12,7 +12,6 @@ from gitential2.datatypes.subscriptions import (
     SubscriptionUpdate,
 )
 from gitential2.datatypes.stats import FilterName
-from gitential2.datatypes.email_log import EmailLogTemplate
 
 from .context import GitentialContext
 
@@ -118,5 +117,5 @@ def _create_new_prof_subs(g: GitentialContext, user_id: int, number_of_developer
 
 
 def cancel_trial_emails(g: GitentialContext, user_id: int):
-    for template in [EmailLogTemplate.free_trial_expiration, EmailLogTemplate.free_trial_ended]:
+    for template in ["free_trial_expiration", "free_trial_ended"]:
         g.backend.email_log.cancel_email(user_id, template)

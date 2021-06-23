@@ -74,8 +74,6 @@ from gitential2.datatypes.email_log import (
     EmailLogCreate,
     EmailLogUpdate,
     EmailLogInDB,
-    EmailLogStatus,
-    EmailLogTemplate,
 )
 
 from ..base import (
@@ -684,22 +682,34 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [EmailLogInDB(**row) for row in rows]
 
-    def email_log_status_update(self, row_id: int, status: EmailLogStatus) -> Optional[EmailLogInDB]:
-        query = self.table.update(self.table.c.status).where(self.table.c.id == row_id).values(status)
-        self._execute_query(query)
-        return self.get_or_error(row_id)
-
-    def cancel_email(self, user_id: int, template: EmailLogTemplate) -> Optional[List[EmailLogInDB]]:
+    def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:
+        # query = self.table.update().where(self.table.c.id == id).values(status=status)
         query = (
-            self.table.update(self.table.c.status)
+            self.table.update()
+            .where(
+                and_(
+                    self.table.c.user_id == user_id,
+                    self.table.c.template_name.like("%" + template_name + "%"),
+                    self.table.c.status != "canceled",
+                )
+            )
+            .values(status="sent")
+        )
+        self._execute_query(query, callback_fn=fetchall_)
+        return self.get_or_error(user_id)
+
+    def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
+        query = (
+            self.table.update()
             .where(
                 and_(
                     self.table.c.user_id == user_id,
                     self.table.c.template_name == template,
-                    self.table.c.status == EmailLogStatus.scheduled,
+                    self.table.c.status == "scheduled",
                 )
             )
-            .values(EmailLogStatus.canceled)
+            .values(status="canceled")
         )
-        rows = self._execute_query(query, callback_fn=fetchall_)
-        return [EmailLogInDB(**row) for row in rows]
+        self._execute_query(query)
+        # return [EmailLogInDB(**row) for row in rows]
+        return self.get_or_error(user_id)
