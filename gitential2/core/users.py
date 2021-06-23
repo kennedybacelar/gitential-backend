@@ -203,3 +203,4 @@ def send_trial_end_soon_emails(g: GitentialContext, user_id: int):
 
 def send_trial_ended_emails(g: GitentialContext, user_id: int):
     send_email_to_user(g, user=g.backend.users.get_or_error(user_id), template_name="free_trial_ended")
+    g.backend.email_log.email_log_status_update(user_id, template_name="free_trial_ended", status="sent")

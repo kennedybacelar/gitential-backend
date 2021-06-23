@@ -391,7 +391,7 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
         return self.create(email_log_create)
 
     @abstractmethod
-    def email_log_status_update(self, row_id: int, status: str) -> Optional[EmailLogInDB]:
+    def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:
         pass
 
     @abstractmethod
@@ -399,5 +399,5 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
         pass
 
     @abstractmethod
-    def cancel_email(self, user_id: int, template: str) -> Optional[List[EmailLogInDB]]:
+    def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
         pass

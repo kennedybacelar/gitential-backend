@@ -634,15 +634,23 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [EmailLogInDB(**row) for row in rows]
 
-    def email_log_status_update(self, row_id: int, status: str) -> Optional[EmailLogInDB]:
-        # query = self.table.update(self.table.c.status).where(self.table.c.id == row_id).values(status)
-        # query = self.table.update().where(self.table.c.id == row_id).values(status = "sent")
-        #query = self.table.update().values(status="sent")
-        query = sa.update('email_log').values({status: "sent"})
+    def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:
+        # query = self.table.update().where(self.table.c.id == id).values(status=status)
+        query = (
+            self.table.update()
+            .where(
+                and_(
+                    self.table.c.user_id == user_id,
+                    self.table.c.template_name.like("%" + template_name + "%"),
+                    self.table.c.status != "canceled",
+                )
+            )
+            .values(status="sent")
+        )
         self._execute_query(query, callback_fn=fetchall_)
-        return self.get_or_error(row_id)
+        return self.get_or_error(user_id)
 
-    def cancel_email(self, user_id: int, template: str) -> Optional[List[EmailLogInDB]]:
+    def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
         query = (
             self.table.update()
             .where(
@@ -655,5 +663,5 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
             .values(status="canceled")
         )
         self._execute_query(query)
-        #return [EmailLogInDB(**row) for row in rows]
+        # return [EmailLogInDB(**row) for row in rows]
         return self.get_or_error(user_id)
