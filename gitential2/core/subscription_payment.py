@@ -97,20 +97,21 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
             developers = int(customer["metadata"]["number_of_developers_requested"])
         else:
             developers = int(customer["metadata"]["number_of_developers"])
-        set_as_professional(
-            g,
-            int(customer["metadata"]["user_id"]),
-            developers,
-            subs_id,
-            event['data']['object']['cancel_at']
-        )
-        stripe.Customer.modify(
-            customer.id,
-            metadata={
-                "number_of_developers_requested": "",
-                "number_of_developers": customer["metadata"]["number_of_developers_requested"],
-            },
-        )
+        if event.data.object['status'] == "active":
+            set_as_professional(
+                g,
+                int(customer["metadata"]["user_id"]),
+                developers,
+                subs_id,
+                event['data']['object']['cancel_at']
+            )
+            stripe.Customer.modify(
+                customer.id,
+                metadata={
+                    "number_of_developers_requested": "",
+                    "number_of_developers": customer["metadata"]["number_of_developers_requested"],
+                },
+            )
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
         customer_id = event["data"]["object"]["customer"]
