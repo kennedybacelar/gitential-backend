@@ -1,0 +1,262 @@
+name: getting_started_use_case_library
+subject: "Getting Started with Gitential"
+body_html: |
+  <div dir="ltr"><br><div class="gmail_quote"><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex"><div dir="ltr"><div class="gmail_quote"><div bgcolor="#FAFAFA" style="margin:0px;padding:0px;font-family:Verdana,sans-serif;font-size:15px;color:rgb(0,0,0);word-break:break-word"><div style="background-color:rgb(250,250,250)" bgcolor="#fafafa">
+        <table style="border-spacing:0px;border-collapse:collapse;margin:0px;padding:0px;width:100%;min-width:320px;height:100%" width="100%" height="100%" cellspacing="0" cellpadding="0">
+          <tbody><tr>
+            <td style="border-collapse:collapse;font-family:Verdana,sans-serif;font-size:15px;color:rgb(0,0,0);word-break:break-word" valign="top">
+              <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_main" style="color:inherit;font-size:inherit;line-height:inherit">  <div id="gmail-m_-6726270700861430419m_4199838364027291072section_1612212869581" style="padding-left:10px;padding-right:10px;padding-top:20px">
+        <div style="min-width:280px;max-width:600px;width:100%;margin-left:auto;margin-right:auto;border-collapse:collapse;border-spacing:0px;background-color:rgb(250,250,250)" bgcolor="#FAFAFA">
+
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072column_1612212869581_0">
+    <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module_16110932331971" style="color:inherit;font-size:inherit;line-height:inherit">
+    
+  <table style="border-spacing:0px;border-collapse:collapse" width="100%" cellspacing="0" cellpadding="0">
+      <tbody>
+          <tr>
+              <td style="border-collapse:collapse;font-family:Verdana,sans-serif;color:rgb(0,0,0);word-break:break-word;text-align:center;padding:20px;font-size:0px" valign="top" align="center">
+                  
+                  <img alt="gitential_logo_with_text_blackGreen" src="https://ci6.googleusercontent.com/proxy/LVDzAtMOS9RRkdPojtwaBgZruewSXarB2EFi5B6EyKiPi3ZVrW3Nwj3y6pDFCGgwtBg7uUF19p5Bbnx-YrhetVPecRZf0ypxUAlYa8R5lHnF6pbnOCincasEVTOMsTilo4eWk-ahydZJuHVbIEToV7hQhSjRNh7Mc7pccfu_edlwL5sPw9s_FUjoqBkMVZakPrBkgpqNoWRBwTH8eMBGtd-5aeR3pNunOFAkzZBxDBk1GOjEqRI=s0-d-e1-ft#https://hs-4326307.f.hubspotfree.net/hub/4326307/hubfs/gitential_logo_with_text_blackGreen.png?width=160&amp;upscale=true&amp;name=gitential_logo_with_text_blackGreen.png" style="outline: currentcolor none medium; text-decoration: none; max-width: 100%; font-size: 16px;" width="80" align="middle">
+                  
+              </td>
+          </tr>
+      </tbody>
+  </table>
+  </div>
+  </div>
+
+      </div>
+    
+    </div>
+    <div id="gmail-m_-6726270700861430419m_4199838364027291072section-4" style="padding-left:10px;padding-right:10px">
+
+        <div style="min-width:280px;max-width:600px;width:100%;margin-left:auto;margin-right:auto;border-collapse:collapse;border-spacing:0px;background-color:rgb(255,255,255)" bgcolor="#FFFFFF">
+
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072column_1611841649817_0">
+    <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module_16105269355194" style="color:inherit;font-size:inherit;line-height:inherit">
+    
+  <table style="border-spacing:0px;border-collapse:collapse" width="100%" cellspacing="0" cellpadding="0">
+      <tbody>
+          <tr>
+              <td style="border-collapse:collapse;font-family:Verdana,sans-serif;color:rgb(0,0,0);word-break:break-word;text-align:left;padding:20px 10px 20px 30px;font-size:0px" valign="top" align="left">
+                  
+                      <a href="https://hs-4326307.t.hubspotfree-hj.net/e2t/tc/VW--gC2nD2RGW8YRWVM5vzwVYW8Ny6Rt4s7dbzN3ypqF13lGmwV1-WJV7CgGGCN6cB25qL9b8CW2LSVqs1s8-rfVDh3122NqlSrMgYMqhNxhvzVxky1T7xY91KN2xdCvQD1CvmN1t6j9XmV7WrVrL8BH4C0K0ZVXyqkf5lm-DMVQ44rF6BCMg3W99Jt6F1zqt30W4BHhsN33n3xyW870tjd7JQcD0W3KJ5Dt64MVwfW4Ywt8y71Cs8gN551w_cDwTrcW2G-zWC8t1tqvW6Rnhnj6lwLxqW1WJNWt5FTX1QW95M2c795KgyK3gxG1" style="color:rgb(0,164,189)" target="_blank">
+                  
+                  <img alt="Gitential Crash Course" src="https://ci3.googleusercontent.com/proxy/FcpRP6x2f9NUT0VfnbvRKoJbdhRQvadgm_X-7nuk9_QKuHMGOo92adIAp0NyM5sLYYF1vpt4h5sh6Y3VXCjJFJr-2yT-tMbupkftfOPGAutefZ3wN6Pdb-2rtrMe7E3mCJWy-G0gZ3PxLfxMli57-rySo-9Xqv3QyfQPjNa2faInbKNP_-n5NyjoEvvTmy4lmdL6wpWVPTp_OW4xcc1cC7Fr8gsupKFRPro9Ul-Tew2GNEmYGvXK7A=s0-d-e1-ft#https://hs-4326307.f.hubspotfree.net/hub/4326307/hubfs/gitential-crash-course-header%20copy.png?width=300&amp;upscale=true&amp;name=gitential-crash-course-header%20copy.png" style="outline: currentcolor none medium; text-decoration: none; border: medium none; max-width: 100%; font-size: 16px;" width="150" align="middle">
+                  
+                      </a>
+                  
+              </td>
+          </tr>
+      </tbody>
+  </table>
+  </div>
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module_16110935994234" style="color:inherit;font-size:inherit;line-height:inherit">
+
+  <table style="min-width:20px;width:100%;max-width:100%;border-spacing:0px;border-collapse:collapse;font-size:1px" width="100%" border="0" align="center">
+    <tbody><tr>
+
+      <td style="border-collapse:collapse;font-family:Verdana,sans-serif;font-size:15px;color:rgb(0,0,0);word-break:break-word;line-height:0;border-color:transparent transparent rgb(238,238,238);border-style:none none solid;border-width:medium medium 1px" width="100%" valign="middle"> </td>
+
+    </tr>
+  </tbody></table>
+  </div>
+  <table style="border-spacing:0px;border-collapse:collapse" width="100%" cellspacing="0" cellpadding="0"><tbody><tr><td style="border-collapse:collapse;font-family:Verdana,sans-serif;font-size:15px;color:rgb(0,0,0);word-break:break-word;padding:30px"><div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module-4-3-1" style="color:inherit;font-size:inherit;line-height:inherit"><div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module-4-3-1_" style="color:inherit;font-size:inherit;line-height:inherit"><p style="font-size:13px;line-height:100%">Hi {FirstName|There},</p>
+  <p style="font-size:13px;line-height:175%">  <br></p>
+  <p style="line-height:100%"><span style="font-size:13px">When looking at git activity analytics there are multiple ways you can use them to improve and monitor team performance. Either you are focusing on resolving one particular challenge - like becoming more transparent during the ‘home-office era’ - or you would like to have an overview of everything that&#39;s happening within your team’s codebase. It&#39;s always good to know what else you can do to drive improvement within your company. </span></p>
+  <p style="line-height:100%"> </p>
+  <p style="line-height:100%"><span style="font-size:13px">Sharing is caring, and as we&#39;re passionate about helping others to grow, let us give you a couple of examples of how to use <a href="https://hs-4326307.t.hubspotfree-hj.net/e2t/tc/VW--gC2nD2RGW8YRWVM5vzwVYW8Ny6Rt4s7dbzN3ypqF13lGmwV1-WJV7Cg-9HW2sVB2G8FPkwtN2vnDyyp_BjRW7nYFWf1LZxskW6m9vh814Tnh-W4YHXfb60DYpPW8-5t5s68GSFvW9h_ckH5bTHhHW1VtNZk7fF1M7W81qkqg81vv9LW4J9LlZ3DMbbjW6DFt_d8BGKFlN6gRjgmY7NXYN3CD--6nW9NKW23dmyB7BmP1nW8zffP54XSGCdW4904Jf1BNWFjW68jQry6pwq8BW4fpf8y3B81WMW3wCchD74yNW6W1xPjWk3ZFyGT3h6n1" style="color:rgb(43,203,150)" target="_blank"><b>git</b><span style="color:rgb(0,0,0);text-decoration:underline">ential</span></a> to improve your team’s performance.</span></p>
+  <p style="line-height:100%"> </p>
+  <ul style="line-height:175%">
+  <li style="line-height:100%"><span style="font-size:13px"><span style="color:rgb(43,203,150)"><b>Identify the knowledge gap</b></span>: What coding languages your team is using the most? Do you have the right talent to work on those projects? Did anyone in your team introduce new technologies which require training? Get a quick look at what languages are used the most for your projects, and decide if your team needs a helping hand with extra training to improve their coding efficiency.</span></li>
+  <li style="line-height:100%"><span style="font-size:13px"><span style="color:rgb(43,203,150)"><b>Highlight potential burn-out</b></span>: Have you noticed early stages of burn-out within your team? The first sign is a drop in focus and efficiency. Unless you measure efficiency, you will hardly be able to spot burn-out signs ahead of time. Be a leader who understands and cares for their teams, and proactively supports them to go through rough times. </span></li>
+  <li style="line-height:100%"><span style="font-size:13px"><span style="color:rgb(43,203,150)"><b>Set a growth strategy based on individual performance</b></span>: How do you improve the velocity, quality, efficiency, and collaboration of your team? Do you track it properly to be able to improve these value drivers? Motivate your team by setting individual growth goals to contribute to the overall success of the company.</span></li>
+  <li style="line-height:100%"><span style="font-size:13px"><span style="color:rgb(43,203,150)"><b>Create a SWAT team</b></span>: Do you know who your top performers are? Do you know who likes working with whom? Do you know if people are working efficiently together? Find the best of your bests who motivate each other, so you can have SWAT teams who you can assign to solve any problem in the most efficient way. </span></li>
+  <li style="line-height:100%"><span style="font-size:13px"><span style="color:rgb(43,203,150)"><b>Reduce risks caused by complexity</b></span>: Is your software easy to maintain? Does it get more chaotic adding new features and newer technologies to it? Track your code complexity, and make sure that your team builds for the future.</span></li>
+  </ul>
+  <p style="line-height:100%"> </p>
+  <p style="font-size:13px;line-height:100%">Do you have a story to share? Help us to expand our<span style="color:rgb(0,255,255)"> <a href="https://views.paperflite.com/collections/603b523051131a632834ae01/sections/603b523051131a632834ae00">use case library</a></span> and <a href="https://hs-4326307.t.hubspotfree-hj.net/e2t/tc/VW--gC2nD2RGW8YRWVM5vzwVYW8Ny6Rt4s7dbzN3ypqGw3lGn_V1-WJV7CgX_hN8jCczbS79QZW8wqfc37nH4flW5wHV-Z3TKjFhW3McNSn1GYPQGW6G0PBK299r3TW43lSKC4nQqhVW815hpf8Vnn-DW2F8ZVF83fcr6N3LT1nwyqBhbW2lWFG820lff5W3mWKs460Zww5W7bCngK6Xq5lGW2qKpzW5vNKxrW6Yp4t16zLKw1W8FHmHk10fP0zW6h_BhZ3LhGYdW7rkPDn6STYfJVzM-4N3PK8jYVqX8VC1BvpKKW78KDMm762Z1nW44FkvB3V3pPVVj4XsT2QNby7W5J_kcv7T30VHW5ckb1f7KqHj4W1Sqm9185FjkHW6LTNJh56ScQZW58Fjc68L97FHW4ckWG-3TgQB4W4DmcsS7yrpn-W6gmLqb7MCvb63hnT1" style="color:rgb(43,203,150)" target="_blank">share your story here</a>.</p>
+  <p style="line-height:175%"> </p>
+  <p style="font-size:13px;line-height:100%">If you ever need assistance, let us know!</p><p style="font-size:13px;line-height:100%"><br></p><table style="color:rgb(0,0,0);font-family:Verdana,sans-serif;font-size:15px;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;font-weight:400;letter-spacing:normal;text-align:start;text-transform:none;white-space:normal;word-spacing:0px;background-color:rgb(255,255,255);text-decoration-style:initial;text-decoration-color:initial;border-collapse:collapse;border-spacing:0px" width="100%" cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;border-collapse:collapse;word-break:break-word;padding:30px"><div id="gmail-m_-6726270700861430419gmail-m_7687118570774661018m_-2668616634262838596gmail-m_-6921350605647338840gmail-m_8554113443914315550gmail-m_5806378927798551029gmail-m_5933190292461531324m_6681906547796327138gmail-m_-939169076405229087gmail-m_1957422703471691992gmail-m_7884818473543797831gmail-m_-5966236068569302858gmail-m_1681779430282187227gmail-m_-8462126456253743048m_-3721499381505346792gmail-m_1220962084562635490gmail-m_-6307489991783383120gmail-m_-4735665898146609854m_6442370870028847888hs_cos_wrapper_module-4-3-1" style="line-height:inherit"><div id="gmail-m_-6726270700861430419gmail-m_7687118570774661018m_-2668616634262838596gmail-m_-6921350605647338840gmail-m_8554113443914315550gmail-m_5806378927798551029gmail-m_5933190292461531324m_6681906547796327138gmail-m_-939169076405229087gmail-m_1957422703471691992gmail-m_7884818473543797831gmail-m_-5966236068569302858gmail-m_1681779430282187227gmail-m_-8462126456253743048m_-3721499381505346792gmail-m_1220962084562635490gmail-m_-6307489991783383120gmail-m_-4735665898146609854m_6442370870028847888hs_cos_wrapper_module-4-3-1_" style="line-height:inherit"><table style="color:inherit;font-family:Arial;font-size:16px;line-height:1.15" cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;vertical-align:top;padding-right:14px"><table style="width:65px" cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px"><img src="https://ci5.googleusercontent.com/proxy/nRwlFtv9CIa6H8V7zHjrtUyHCvkNeXJeVlQUhKzjp2VuUJ7DqoaaLwnWZlT8p1imhuHKnjM-vKNZXQn3XuWHFlfRI_XIA4ffnteWuIJHfsBNb0ORSfk686WknaPagGKCZgeXRKREH3JOwheqe9I7p4ItJbchRCZKj09s0Oze4AzrIdwJBrFq0hJucpE=s0-d-e1-ft#https://d36urhup7zbd7q.cloudfront.net/d7405a2d-a0d0-4d65-869f-ccfd553833a3/gitentialsocialpic.format_png.resize_200x.jpeg" style="width: 65px; vertical-align: initial; border-radius: 0px; display: block; height: 65px;" width="65" height="65"></td></tr></tbody></table></td><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;width:0px;border-right:2px solid rgb(189,189,189);height:1px;font-size:1pt" width="0" height="1"> </td><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;padding-left:14px;vertical-align:top" valign="top"><table cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;line-height:1.2;padding-bottom:12px"><span style="font-family:Arial;text-transform:initial;font-weight:bold"><span style="color:rgb(100,100,100);font-size:15.6px">The Gitential Team</span></span><br></td></tr><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;line-height:0"><table cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px"><table cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;line-height:0px;padding-bottom:6px"><table style="line-height:14px;font-size:12px;font-family:Arial" cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Arial;margin:0px"><font color="#212121"><span style="white-space:nowrap"><a href="mailto:support@gitential.com" style="color:rgb(17,85,204)" target="_blank">support@gitential.com</a></span></font></td></tr></tbody></table></td><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;line-height:0px;padding-bottom:6px"><br></td></tr></tbody></table></td></tr><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px"><table cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;line-height:0px;padding-bottom:6px"><table style="line-height:14px;font-size:12px;font-family:Arial" cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Arial;margin:0px"><span style="line-height:1.2;color:rgb(33,33,33);white-space:nowrap"><a href="http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=13117988&amp;l=f72b9ca7-adcb-4322-92a3-205fcc779f89&amp;r=0c866518-7503-4af6-84a0-28eb80e8921b" style="color:rgb(17,85,204)" target="_blank">gitential.com</a></span></td></tr></tbody></table></td><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;line-height:0px;padding-bottom:6px"><br></td></tr></tbody></table><br><br><br></td></tr></tbody></table></td></tr></tbody></table></td></tr></tbody></table><br></div><div id="gmail-m_-6726270700861430419gmail-m_7687118570774661018m_-2668616634262838596gmail-m_-6921350605647338840gmail-m_8554113443914315550gmail-m_5806378927798551029gmail-m_5933190292461531324m_6681906547796327138gmail-m_-939169076405229087gmail-m_1957422703471691992gmail-m_7884818473543797831gmail-m_-5966236068569302858gmail-m_1681779430282187227gmail-m_-8462126456253743048m_-3721499381505346792gmail-m_1220962084562635490gmail-m_-6307489991783383120gmail-m_-4735665898146609854m_6442370870028847888hs_cos_wrapper_module-4-3-1_" style="color:inherit;font-family:Verdana,sans-serif;line-height:inherit"><table style="font-size:16px;font-family:Arial;line-height:1.15" cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;padding-left:14px;vertical-align:top" valign="top"><table cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px;line-height:0"><table cellspacing="0" cellpadding="0"><tbody><tr><td style="font-family:Roboto,RobotoDraft,Helvetica,Arial,sans-serif;margin:0px"><a href="http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=13117988&amp;l=08f267a3-fe2d-463d-a7d9-274f2261ab2a&amp;r=0c866518-7503-4af6-84a0-28eb80e8921b" style="color:rgb(35,82,124);background-color:transparent;outline:currentcolor none 0px" target="_blank"><img alt="Facebook icon" src="https://ci5.googleusercontent.com/proxy/aVmduxn4HRi8QlvzWj_FORiDcq8dwbyDvG-6Qic2C_YqS07DUqVkilFNWIaZM7CQViC76_ffntwx1onNMolt7s-5QE41dwYmqx5A_n0D2P0vwKiihWnOaaGBBo4LDPIk26Y2q-GTfrqbyGU=s0-d-e1-ft#https://codetwocdn.azureedge.net/images/mail-signatures/generator-dm/elegant-logo/fb.png" style="border: 0px none; vertical-align: middle; height: 20px; width: 20px;" width="20" height="20" border="0"></a>  <span style="color:rgb(68,68,68);font-family:Arial,sans-serif;font-size:13.3333px"><a href="http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=13117988&amp;l=3ae59582-251f-4e4b-aaab-957df7824b0b&amp;r=0c866518-7503-4af6-84a0-28eb80e8921b" style="color:rgb(51,122,183);background-color:transparent" target="_blank"><img alt="LinkedIn icon" src="https://ci5.googleusercontent.com/proxy/oDt6cogq-0BpvQy8UrETTeOv-BEaBz6Lb-KLm74b8dWzE4ehq2MAdwM2IiGJ4ZNQpLtcWLVC4dt_wh3wzbTRS9XJ6Fe6-TH4hRY-HZh6u03tIArAvoRM4Ln8GTRgbZEMKEklspbW6fwnHyc=s0-d-e1-ft#https://codetwocdn.azureedge.net/images/mail-signatures/generator-dm/elegant-logo/ln.png" style="border: 0px none; vertical-align: middle; height: 20px; width: 20px;" width="20" height="20" border="0"></a>  </span><span style="color:rgb(68,68,68);font-family:Arial,sans-serif;font-size:13.3333px"><a href="http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=13117988&amp;l=9a2d963c-cc6a-4e20-b9c5-c08b5839c6f3&amp;r=0c866518-7503-4af6-84a0-28eb80e8921b" style="color:rgb(51,122,183);background-color:transparent" target="_blank"><img alt="Twitter icon" src="https://ci5.googleusercontent.com/proxy/IbpZELXwvO5f5TfOl2sX_cIlpuCOIdjTBeYFlSK92xGkYiD4BQxTD7-G-xiepFiCdKytU5Y9eH6kJePdY9Id3bD2R1FPMOfWRoow4EaC-5uF22svaVkxqzUu6Ixfaze74mHBeYMD7IfNpX0=s0-d-e1-ft#https://codetwocdn.azureedge.net/images/mail-signatures/generator-dm/elegant-logo/tt.png" style="border: 0px none; vertical-align: middle; height: 20px; width: 20px;" width="20" height="20" border="0"></a>  </span><span style="color:rgb(68,68,68);font-family:Arial,sans-serif;font-size:13.3333px"><a href="http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=13117988&amp;l=fb69b18b-a5e1-4a7c-84a1-1888f32e46a6&amp;r=0c866518-7503-4af6-84a0-28eb80e8921b" style="color:rgb(51,122,183);background-color:transparent" target="_blank"><img alt="Youtube icon" src="https://ci5.googleusercontent.com/proxy/oZi_RAlblDV1fV2LGL-xrClCQi_YoJNDLsg6JKniJOZ0osLenUTJypxqay8dm1V0lhUQvJ5_EM0QSgdmX4ChxzwaYIEctwaJxBQUex4WfiSDDRJsalGi6fmafe8oqMDuzlZy-jgiLFyejyw=s0-d-e1-ft#https://codetwocdn.azureedge.net/images/mail-signatures/generator-dm/elegant-logo/yt.png" style="border: 0px none; vertical-align: middle; height: 20px; width: 20px;" width="20" height="20" border="0"></a>  </span><span style="color:rgb(68,68,68);font-family:Arial,sans-serif;font-size:13.3333px"><a href="http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=13117988&amp;l=f2aca72f-9fd9-457e-b547-6b7642b79a91&amp;r=0c866518-7503-4af6-84a0-28eb80e8921b" style="color:rgb(51,122,183);background-color:transparent" target="_blank"><img alt="Instagram icon" src="https://ci6.googleusercontent.com/proxy/WqkFYbMtHHCH7blo4BVmB2V7GeQHLs91HTNdAz26aqSoIl2EqxR-W3DjJMb443V3a4UjkR9Mljw9AUENDgoWgJARuSxMv6jeuq_c2RP3qNvVAIre-ua5y7fs-IX12cxmAeLaFXGvpL_cg_k=s0-d-e1-ft#https://codetwocdn.azureedge.net/images/mail-signatures/generator-dm/elegant-logo/it.png" style="border: 0px none; vertical-align: middle; height: 20px; width: 20px;" width="20" height="20" border="0"></a>  </span><br></td></tr></tbody></table></td></tr></tbody></table></td></tr></tbody></table></div></div></td></tr></tbody></table><div id="gmail-m_-6726270700861430419gmail-m_7687118570774661018m_-2668616634262838596gmail-m_-6921350605647338840gmail-m_8554113443914315550gmail-m_5806378927798551029gmail-m_5933190292461531324m_6681906547796327138gmail-m_-939169076405229087gmail-m_1957422703471691992gmail-m_7884818473543797831gmail-m_-5966236068569302858gmail-m_1681779430282187227gmail-m_-8462126456253743048m_-3721499381505346792gmail-m_1220962084562635490gmail-m_-6307489991783383120gmail-m_-4735665898146609854m_6442370870028847888hs_cos_wrapper_module_16105272074196" style="color:inherit;font-family:Verdana,sans-serif;font-size:inherit;font-style:normal;font-variant-ligatures:normal;font-variant-caps:normal;font-weight:400;letter-spacing:normal;text-align:start;text-indent:0px;text-transform:none;white-space:normal;word-spacing:0px;background-color:rgb(255,255,255);text-decoration-style:initial;text-decoration-color:initial;line-height:inherit"><table style="border-collapse:collapse;border-spacing:0px" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
+
+  </tr></tbody></table><br></div></div></div></td></tr></tbody></table>
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module_161052770315911" style="color:inherit;font-size:inherit;line-height:inherit">
+    
+  <table style="border-spacing:0px;border-collapse:collapse" width="100%" cellspacing="0" cellpadding="0">
+      <tbody>
+          <tr>
+              <td style="border-collapse:collapse;font-family:Verdana,sans-serif;color:rgb(0,0,0);word-break:break-word;text-align:center;padding:10px 20px;font-size:0px" valign="top" align="center">
+                  
+                  <img alt="git-platforms" src="https://ci3.googleusercontent.com/proxy/Sj27idcSUV6QhRWOogHqNJm95jcgzQSqNt2y4bCudOqkxweMWwVjn2CU1SnsCepAwTYnKoRvsUkf8-A1v47NwttcuybgwgDqMjYYz5-aQP8Z3V2OwMnoRE45WX69G4Pz8984MXKvtdH0StgLV9iJ1U_RxMtfofHVUU7aIcfwFSm7t9HejkoKwX0=s0-d-e1-ft#https://hs-4326307.f.hubspotfree.net/hub/4326307/hubfs/git-platforms.png?width=500&amp;upscale=true&amp;name=git-platforms.png" style="outline: currentcolor none medium; text-decoration: none; max-width: 100%; font-size: 16px;" width="250" align="middle">
+                  
+              </td>
+          </tr>
+      </tbody>
+  </table>
+  </div>
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module_16105272074196" style="color:inherit;font-size:inherit;line-height:inherit">
+    
+  <table style="border-spacing:0px;border-collapse:collapse" width="100%" cellspacing="0" cellpadding="0">
+      <tbody>
+          <tr>
+              <td style="border-collapse:collapse;font-family:Verdana,sans-serif;color:rgb(0,0,0);word-break:break-word;text-align:center;padding:10px 20px 20px;font-size:0px" valign="top" align="center">
+                  
+                      <a href="https://hs-4326307.t.hubspotfree-hj.net/e2t/tc/VW--gC2nD2RGW8YRWVM5vzwVYW8Ny6Rt4s7dbzN3ypqFk3lGmQV1-WJV7CgSpDW9h8Vjw5YXNmrW2mXt4L5cXlydW8GljLn2B1NyMVyBXJ_7nvcfmW2rkqPN58fcsTW5hCm1z9l7mGTW1tfzm46X-y_FW1GrP8d4g2cDqN5PhQdJFCTHBW1rYDMv7kJKC3W6GkK9m1R_C2lW59bCP52FCqzYW2LG_Zx2f1WFkW81bxd38x7PnJW3KLZX130CNZRW3mv91R7BPpjLN8XlqgBm7ngwW5-xqSs5M86SSN8YBv7_Sms0LW2dVx8V25VDQBVx7mSr2ZfbngW8czyxb2sXl8-39Wt1" style="color:rgb(0,164,189)" target="_blank">
+                  
+                  <img alt="schedule-consulation" src="https://ci5.googleusercontent.com/proxy/_buWZixbkBOYPUAxA82O_71rerTNJrnNPnDXdGAhAiSjq3DoQtNFwdNaohAGLFMRtUR8h4w4MAsd9S8lPpwRsMs4riE6gCJk64RllGvevwekhW7ShTLr3lXnEr8-n8adTa7OJs3qUvTanV-PCSv2cSl21-tRCxW69taPo2fWgyPP1vBZUbYOKwX17Pa3crcjiundHweZTe8=s0-d-e1-ft#https://hs-4326307.f.hubspotfree.net/hub/4326307/hubfs/schedule-consulation.png?width=400&amp;upscale=true&amp;name=schedule-consulation.png" style="outline: currentcolor none medium; text-decoration: none; border: medium none; max-width: 100%; font-size: 16px;" width="200" align="middle">
+                  
+                      </a>
+                  
+              </td>
+          </tr>
+      </tbody>
+  </table>
+  </div>
+  </div>
+
+      </div>
+    
+    </div>
+    <div id="gmail-m_-6726270700861430419m_4199838364027291072section-7" style="padding-left:10px;padding-right:10px">
+
+        <div style="min-width:280px;max-width:600px;width:100%;margin-left:auto;margin-right:auto;border-collapse:collapse;border-spacing:0px;background-color:rgb(250,250,250);padding-bottom:20px;padding-top:30px" bgcolor="#FAFAFA">
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072column-7-1">
+    <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module-7-1-1" style="color:inherit;font-size:inherit;line-height:inherit">
+  <table style="border-spacing:0px;border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px;line-height:135%;color:rgb(35,73,109);margin-bottom:0px;padding:0px" width="100%" cellspacing="0" cellpadding="0">
+      <tbody>
+          <tr>
+              <td style="border-collapse:collapse;font-family:Verdana,sans-serif;font-size:15px;color:rgb(0,0,0);word-break:break-word;text-align:center;margin-bottom:0px;line-height:135%;padding:10px 20px" valign="top" align="center">
+                  <p style="font-family:Verdana,sans-serif;font-size:12px;font-weight:normal;text-decoration:none;font-style:normal;color:rgb(7,19,34)" dir="lrt">
+                    Gitential.com Inc., 874 Walker Rd Suite C, Dover, Delaware DE 19904, USA
+                  </p>
+                  <p>
+                    
+                    <a href="https://hs-4326307.s.hubspotfree.net/email-unsubscribe/email?product=emailStarter&amp;checkSubscriptions=all&amp;d=VncJJt4ZqmJsVPhql83zd6lyW2m40mF3K78gSW3zd18V43T2K_N1fkvKFkFG9DW8SgX2n7DP-KxW8YCvdL5m6Ks3W7KkLVG61qXVSW1KVcpz7jDJDWW4FS2q-3yc7nXW52vz8W4xSC-Df4yjKfr04&amp;v=2&amp;email=natalia%40gitential.com&amp;utm_source=hs_email&amp;utm_medium=email&amp;utm_content=2&amp;_hsenc=p2ANqtz-8cDqLkdU8sIFb18BepYJQymzpGbwaEj9G4WRiFBh6KYvRH2JlpKpURm1EVPcsbG5_GMFikOICLjtXFSqZXyadkhabIgg&amp;_hsmi=2" style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:rgb(43,203,150);font-weight:normal;text-decoration:underline;font-style:normal" target="_blank">Unsubscribe</a>
+                    
+                    
+                  </p>
+              </td>
+          </tr>
+      </tbody>
+  </table>
+  </div>
+  </div>
+      </div>
+    </div>
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072section_hubspot_brand" style="padding-left:10px;padding-right:10px">
+      
+        <div width="100%" style="min-width:280px;max-width:600px;width:100%;margin-left:auto;margin-right:auto;border-collapse:collapse;border-spacing:0px;padding-bottom:20px;padding-top:20px">
+  <div id="gmail-m_-6726270700861430419m_4199838364027291072column_hubspot_brand">
+    <div id="gmail-m_-6726270700861430419m_4199838364027291072hs_cos_wrapper_module_hubspot_brand">
+    <table style="border-spacing:0px;border-collapse:collapse" width="100%" cellspacing="0" cellpadding="0">
+        <tbody>
+        <tr><td style="border-collapse:collapse;font-family:Verdana,sans-serif;font-size:15px;color:rgb(0,0,0);word-break:break-word" align="center"><br></td></tr>
+        </tbody>
+    </table>
+  </div>
+  </div>
+
+  </div>
+  </div>
+  </div>
+            </td>
+          </tr>
+        </tbody></table>
+      </div>
+  <img src="https://ci4.googleusercontent.com/proxy/kt-cSQmYXZvoX5zKbyjTcIf0kf-KTmK8Jh5CQBje55I6SVeMTmzWjhLGjXDa8qSf6TZBm6bVc-ptfrdgrjuS8rc14Q5yoY3vt6z_CMUZOPUx1CwxoUTfD5H2R-4UFVpkoBGlcn0qrfCLNY2fySLphFLMmo7PIWgW=s0-d-e1-ft#https://hs-4326307.t.hubspotfree-hj.net/e2t/to/VW--gC2nD2RGW8YRWVM5vzwVYW8Ny6Rt4s7dbzW3ypqpr1glFns122" alt="" style="display: none; min-height: 1px; width: 1px; border-width: 0px; margin: 0px; padding: 0px;" width="1" height="1" border="0"></div></div></div>
+  </blockquote></div></div>
+body_plaintext: |
+  Hi {{ user.first_name }},
+
+  When looking at git activity analytics there are multiple ways you can use
+  them to improve and monitor team performance. Either you are focusing on
+  resolving one particular challenge - like becoming more transparent during
+  the home-office era - or you would like to have an overview of everything
+  that's happening within your team=E2=80=99s codebase. It's always good toknow what
+  else you can do to drive improvement within your company.
+
+  Sharing is caring, and as we're passionate about helping others to grow,
+  let us give you a couple of examples of how to use *git*ential
+  <https://hs-4326307.t.hubspotfree-hj.net/e2t/tc/VW--gC2nD2RGW8YRWVM5vzwVY=
+  W8Ny6Rt4s7dbzN3ypqF13lGmwV1-WJV7Cg-9HW2sVB2G8FPkwtN2vnDyyp_BjRW7nYFWf1LZxsk=
+  W6m9vh814Tnh-W4YHXfb60DYpPW8-5t5s68GSFvW9h_ckH5bTHhHW1VtNZk7fF1M7W81qkqg81v=
+  v9LW4J9LlZ3DMbbjW6DFt_d8BGKFlN6gRjgmY7NXYN3CD--6nW9NKW23dmyB7BmP1nW8zffP54X=
+  SGCdW4904Jf1BNWFjW68jQry6pwq8BW4fpf8y3B81WMW3wCchD74yNW6W1xPjWk3ZFyGT3h6n1>
+  to improve your team=E2=80=99s performance.
+  
+  - *Identify the knowledge gap*: What coding languages your team is using the most? Do you have the right talent to work on those projects? 
+    Did anyone in your team introduce new technologies which require training?
+    Get a quick look at what languages are used the most for your projects, and decide if your team needs a helping hand with extra training to improve their coding efficiency.
+  - *Highlight potential burn-out*: Have you noticed early stages of burn-out within your team? The first sign is a drop in focus and
+    efficiency. Unless you measure efficiency, you will hardly be able to spot burn-out signs ahead of time. Be a leader who understands and cares for
+    their teams, and proactively supports them to go through rough times.
+  - *Set a growth strategy based on individual performance*: How do you improve the velocity, quality, efficiency, and collaboration of your team?
+    Do you track it properly to be able to improve these value drivers?
+    Motivate your team by setting individual growth goals to contribute to the overall success of the company.
+  - *Create a SWAT team*: Do you know who your top performers are? 
+    Do you know who likes working with whom? Do you know if people are working efficiently together? 
+    Find the best of your bests who motivate each other, so you can have SWAT teams who you can assign to solve any problem in the most efficient way.
+  - *Reduce risks caused by complexity*: Is your software easy to maintain? 
+    Does it get more chaotic adding new features and newer technologies to it? 
+    Track your code complexity, and make sure that your team builds for the future.
+
+  Do you have a story to share? Help us to expand our use case library
+  <https://views.paperflite.com/collections/603b523051131a632834ae01/sections/603b523051131a632834ae00>
+  and share your story here
+  <https://hs-4326307.t.hubspotfree-hj.net/e2t/tc/VW--gC2nD2RGW8YRWVM5vzwVY=
+  W8Ny6Rt4s7dbzN3ypqGw3lGn_V1-WJV7CgX_hN8jCczbS79QZW8wqfc37nH4flW5wHV-Z3TKjFh=
+  W3McNSn1GYPQGW6G0PBK299r3TW43lSKC4nQqhVW815hpf8Vnn-DW2F8ZVF83fcr6N3LT1nwyqB=
+  hbW2lWFG820lff5W3mWKs460Zww5W7bCngK6Xq5lGW2qKpzW5vNKxrW6Yp4t16zLKw1W8FHmHk1=
+  0fP0zW6h_BhZ3LhGYdW7rkPDn6STYfJVzM-4N3PK8jYVqX8VC1BvpKKW78KDMm762Z1nW44FkvB=
+  3V3pPVVj4XsT2QNby7W5J_kcv7T30VHW5ckb1f7KqHj4W1Sqm9185FjkHW6LTNJh56ScQZW58Fj=
+  c68L97FHW4ckWG-3TgQB4W4DmcsS7yrpn-W6gmLqb7MCvb63hnT1>.
+
+  If you ever need assistance, let us know!
+
+  The Gitential Team
+  support@gitential.com
+  gitential.com
+  <http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=3D13117988=
+  &l=3Df72b9ca7-adcb-4322-92a3-205fcc779f89&r=3D0c866518-7503-4af6-84a0-28eb8=
+  0e8921b>
+
+  [image: Facebook icon]
+  <http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=3D13117988=
+  &l=3D08f267a3-fe2d-463d-a7d9-274f2261ab2a&r=3D0c866518-7503-4af6-84a0-28eb8=
+  0e8921b>
+  [image: LinkedIn icon]
+  <http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=3D13117988=
+  &l=3D3ae59582-251f-4e4b-aaab-957df7824b0b&r=3D0c866518-7503-4af6-84a0-28eb8=
+  0e8921b>
+  [image: Twitter icon]
+  <http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=3D13117988=
+  &l=3D9a2d963c-cc6a-4e20-b9c5-c08b5839c6f3&r=3D0c866518-7503-4af6-84a0-28eb8=
+  0e8921b>
+  [image: Youtube icon]
+  <http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=3D13117988=
+  &l=3Dfb69b18b-a5e1-4a7c-84a1-1888f32e46a6&r=3D0c866518-7503-4af6-84a0-28eb8=
+  0e8921b>
+  [image: Instagram icon]
+  <http://ec2-52-26-194-35.us-west-2.compute.amazonaws.com/x/d?c=3D13117988=
+  &l=3Df2aca72f-9fd9-457e-b547-6b7642b79a91&r=3D0c866518-7503-4af6-84a0-28eb8=
+  0e8921b>
+
+  [image: git-platforms]
+  [image: schedule-consulation]
+  <https://hs-4326307.t.hubspotfree-hj.net/e2t/tc/VW--gC2nD2RGW8YRWVM5vzwVY=
+  W8Ny6Rt4s7dbzN3ypqFk3lGmQV1-WJV7CgSpDW9h8Vjw5YXNmrW2mXt4L5cXlydW8GljLn2B1Ny=
+  MVyBXJ_7nvcfmW2rkqPN58fcsTW5hCm1z9l7mGTW1tfzm46X-y_FW1GrP8d4g2cDqN5PhQdJFCT=
+  HBW1rYDMv7kJKC3W6GkK9m1R_C2lW59bCP52FCqzYW2LG_Zx2f1WFkW81bxd38x7PnJW3KLZX13=
+  0CNZRW3mv91R7BPpjLN8XlqgBm7ngwW5-xqSs5M86SSN8YBv7_Sms0LW2dVx8V25VDQBVx7mSr2=
+  ZfbngW8czyxb2sXl8-39Wt1>
+
+  Gitential.com Inc., 874 Walker Rd Suite C, Dover, Delaware DE 19904, USA
+
+  Unsubscribe
+  <https://hs-4326307.s.hubspotfree.net/email-unsubscribe/email?product=3De=
+  mailStarter&checkSubscriptions=3Dall&d=3DVncJJt4ZqmJsVPhql83zd6lyW2m40mF3K7=
+  8gSW3zd18V43T2K_N1fkvKFkFG9DW8SgX2n7DP-KxW8YCvdL5m6Ks3W7KkLVG61qXVSW1KVcpz7=
+  jDJDWW4FS2q-3yc7nXW52vz8W4xSC-Df4yjKfr04&v=3D2&email=3Dnatalia%40gitential.=
+  com&utm_source=3Dhs_email&utm_medium=3Demail&utm_content=3D2&_hsenc=3Dp2ANq=
+  tz-8cDqLkdU8sIFb18BepYJQymzpGbwaEj9G4WRiFBh6KYvRH2JlpKpURm1EVPcsbG5_GMFikOI=
+  CLjtXFSqZXyadkhabIgg&_hsmi=3D2>
