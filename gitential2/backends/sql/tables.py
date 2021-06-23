@@ -320,6 +320,8 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("outlier", sa.Integer()),
         sa.Column("anomaly", sa.Integer()),
         sa.Column("loc_effort_p", sa.Integer(), nullable=True),
+        sa.Column("is_collaboration", sa.Boolean()),
+        sa.Column("is_new_code", sa.Boolean()),
         sa.PrimaryKeyConstraint("repo_id", "commit_id", "parent_commit_id", "newpath"),
         sa.Index("idx_repo_id_commit_id", "repo_id", "commit_id"),
         sa.Index("idx_lang", "lang"),

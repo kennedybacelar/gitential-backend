@@ -302,6 +302,25 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
     calculated_patches_df = calculated_patches_df[calculated_patches_columns]
     calculated_patches_df = calculated_patches_df[calculated_patches_df["parent_commit_id"].notnull()]
     calculated_patches_df["loc_effort_p"] = 1.0 * calculated_patches_df["loc_i"] + 0.2 * calculated_patches_df["loc_d"]
+    # is_new_code: True if the patch has at least 10 lines addition and the added lines are at least 2x the deleted lines.
+    calculated_patches_df["is_new_code"] = (calculated_patches_df["loc_i"] >= 10) & (
+        (calculated_patches_df["loc_i"] / calculated_patches_df["loc_d"]) >= 2
+    )
+    # is_collaboration: True if there is another patch for the same file in the same repository between +/- 3 weeks but with a different author.
+    calculated_patches_df["is_collaboration"] = calculated_patches_df.apply(
+        lambda x: not calculated_patches_df[
+            (calculated_patches_df["repo_id"] == x["repo_id"])
+            & (
+                (calculated_patches_df["newpath"] == x["newpath"])
+                | (calculated_patches_df["oldpath"] == x["newpath"])
+                | (calculated_patches_df["newpath"] == x["oldpath"])
+            )
+            & (calculated_patches_df["date"] >= x["date"] - pd.Timedelta("21 days"))
+            & (calculated_patches_df["date"] <= x["date"] + pd.Timedelta("21 days"))
+            & (calculated_patches_df["aid"] != x["aid"])
+        ].empty,
+        axis=1,
+    )
     return calculated_patches_df.set_index(["repo_id", "commit_id", "parent_commit_id", "newpath"])
 
 

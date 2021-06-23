@@ -251,6 +251,10 @@ def _prepare_filters_dict(
             filters_dict[FilterName.is_bugfix] = filter_params
         elif filter_name == FilterName.is_merge:
             filters_dict[FilterName.is_merge] = filter_params
+        elif filter_name == FilterName.is_new_code:
+            filters_dict[FilterName.is_new_code] = filter_params
+        elif filter_name == FilterName.is_collaboration:
+            filters_dict[FilterName.is_collaboration] = filter_params
         elif filter_name == FilterName.active:
             filters_dict[FilterName.active] = filter_params
         else:
@@ -292,6 +296,8 @@ def _prepare_filters(  # pylint: disable=too-complex
             FilterName.emails: lambda t: t.aemail.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
+            FilterName.is_collaboration: lambda t: t.is_collaboration.__eq__,
+            FilterName.is_new_code: lambda t: t.is_new_code.__eq__,
         },
     }
 

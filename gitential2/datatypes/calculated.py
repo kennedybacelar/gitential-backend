@@ -116,6 +116,9 @@ class CalculatedPatch(CoreModel, ExportableModel):
     outlier: int
     anomaly: int
 
+    is_collaboration: bool
+    is_new_code: bool
+
     @property
     def id_(self):
         return CalculatedPatchId(
