@@ -120,7 +120,7 @@ def send_scheduled_emails(settings: Optional[GitentialSettings] = None):
             send_trial_ended_emails(g, s.user_id)
         else:
             send_getting_started_emails(g, s.user_id, s.template_name)
-        g.backend.email_log.email_log_status_update(s.id, EmailLogStatus.sent)
+        g.backend.email_log.email_log_status_update(s.user_id, s.template_name, "sent")
 
 
 __all__ = ["schedule_task", "core_task", "configure_celery", "ping", "send_scheduled_emails"]
