@@ -175,17 +175,17 @@ def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optiona
         g.backend.email_log.schedule_email(
             user_id=user.id,
             template_name="getting_started_first_steps",
-            scheduled_at=(datetime.utcnow() + timedelta(days=2)),
+            scheduled_at=(datetime.utcnow() + timedelta(days=1)),
         )
         g.backend.email_log.schedule_email(
             user_id=user.id,
             template_name="getting_started_metrics",
-            scheduled_at=(datetime.utcnow() + timedelta(days=4)),
+            scheduled_at=(datetime.utcnow() + timedelta(days=3)),
         )
         g.backend.email_log.schedule_email(
             user_id=user.id,
             template_name="getting_started_use_case_library",
-            scheduled_at=(datetime.utcnow() + timedelta(days=6)),
+            scheduled_at=(datetime.utcnow() + timedelta(days=5)),
         )
         g.backend.email_log.schedule_email(
             user_id=user.id, template_name="free_trial_expiration", scheduled_at=(datetime.utcnow() + timedelta(days=7))
