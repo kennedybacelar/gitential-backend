@@ -109,7 +109,7 @@ def core_task(task_name: str, params: Dict[str, Union[int, str, float, bool]]):
 def send_scheduled_emails(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.core import init_context_from_settings
-    from gitential2.core.users import send_trial_end_soon_emails, send_trial_ended_emails
+    from gitential2.core.users import send_trial_end_soon_emails, send_trial_ended_emails, send_first_steps_emails
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
@@ -118,6 +118,8 @@ def send_scheduled_emails(settings: Optional[GitentialSettings] = None):
             send_trial_end_soon_emails(g, s.user_id)
         elif s.template_name == EmailLogTemplate.free_trial_ended:
             send_trial_ended_emails(g, s.user_id)
+        elif s.template_name == "first_steps":
+            send_first_steps_emails(g, s.user_id)
         g.backend.email_log.email_log_status_update(s.id, EmailLogStatus.sent)
 
 
