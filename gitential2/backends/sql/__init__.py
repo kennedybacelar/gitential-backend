@@ -240,6 +240,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_aid INTEGER;"
             f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS loc_effort_p INTEGER;"
             f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS is_bugfix BOOLEAN;"
+            f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_collaboration BOOLEAN;"
+            f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_new_code BOOLEAN;"
         ]
         for migration_query_ in migration_steps:
             self._engine.execute(migration_query_)
