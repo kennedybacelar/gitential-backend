@@ -76,6 +76,7 @@ def initialize_logging(settings: GitentialSettings):
         processors=[
             structlog.stdlib.filter_by_level,
             *shared_processors,
+            _add_filename,
             structlog.stdlib.PositionalArgumentsFormatter(),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
@@ -89,3 +90,11 @@ def initialize_logging(settings: GitentialSettings):
     )
 
     logging.config.dictConfig(logging_config_dict(settings))
+
+
+#  pylint: disable=unused-argument
+def _add_filename(logger, method_name, event_dict):
+    # pylint: disable=protected-access
+    frame, module_str = structlog._frames._find_first_app_frame_and_name(additional_ignores=[__name__])
+    event_dict["filename"] = f"{module_str}:{frame.f_lineno}"
+    return event_dict
