@@ -281,6 +281,7 @@ def _prepare_filters(  # pylint: disable=too-complex
             "name": lambda t: t.aname.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
+            FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
             # "keyword": t.message.lower().re_search,
             # "outlier": t.outlier.__eq__,
             # "commit_msg": t.message.lower().re_search,
