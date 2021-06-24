@@ -62,6 +62,8 @@ class CalculatedCommit(CoreModel, ExportableModel):
     velocity_measured: Optional[float]
     velocity: Optional[float]
 
+    is_bugfix: Optional[bool]
+
     @property
     def id_(self):
         return CalculatedCommitId(repo_id=self.repo_id, commit_id=self.commit_id)

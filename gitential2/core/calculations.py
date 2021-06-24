@@ -8,6 +8,7 @@ from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias
 from .authors import get_or_create_author_for_alias
 from .context import GitentialContext
+from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
 
@@ -265,6 +266,9 @@ def _calculate_commit_level(prepared_commits_df: pd.DataFrame, commits_patches_d
     calculated_commits["velocity_measured"] = calculated_commits["loc_i_c"] / calculated_commits["hours_measured"]
     calculated_commits = _add_estimate_hours(_median_measured_velocity(calculated_commits))
     calculated_commits["velocity"] = calculated_commits["loc_i_c"] / calculated_commits["hours"]
+    calculated_commits["is_bugfix"] = calculated_commits.apply(
+        lambda x: calculate_is_bugfix(labels=[], title=x["message"]), axis=1
+    )
     return calculated_commits
 
 
