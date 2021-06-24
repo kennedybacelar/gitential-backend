@@ -188,6 +188,21 @@ def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optiona
             scheduled_at=(datetime.utcnow() + timedelta(days=5)),
         )
         g.backend.email_log.schedule_email(
+            user_id=user.id,
+            template_name="getting_started_level_up_your_developers",
+            scheduled_at=(datetime.utcnow() + timedelta(days=9)),
+        )
+        g.backend.email_log.schedule_email(
+            user_id=user.id,
+            template_name="getting_started_best_coding_practices",
+            scheduled_at=(datetime.utcnow() + timedelta(days=11)),
+        )
+        g.backend.email_log.schedule_email(
+            user_id=user.id,
+            template_name="getting_started_explore_more_as_a_professional",
+            scheduled_at=(datetime.utcnow() + timedelta(days=13)),
+        )
+        g.backend.email_log.schedule_email(
             user_id=user.id, template_name="free_trial_expiration", scheduled_at=(datetime.utcnow() + timedelta(days=7))
         )
         # TEMPORARY DISABLED
