@@ -118,8 +118,8 @@ class CalculatedPatch(CoreModel, ExportableModel):
     outlier: int
     anomaly: int
 
-    is_collaboration: bool
-    is_new_code: bool
+    is_collaboration: Optional[bool]
+    is_new_code: Optional[bool]
 
     @property
     def id_(self):
