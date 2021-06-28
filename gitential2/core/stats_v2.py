@@ -17,6 +17,7 @@ from gitential2.datatypes.stats import (
     DimensionName,
     FilterName,
     QueryType,
+    RELATIVE_DATE_DIMENSIONS,
     TableDef,
     TableName,
     DATE_DIMENSIONS,
@@ -49,6 +50,7 @@ def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table
     return ret
 
 
+# pylint: disable=too-many-return-statements
 def _prepare_dimension(
     dimension: DimensionName, table_def: TableDef, ibis_tables: IbisTables, ibis_table
 ):  # pylint: disable=too-complex
@@ -66,6 +68,19 @@ def _prepare_dimension(
             return (ibis_table[date_field_name].date().truncate("W").epoch_seconds() * 1000).name("date")
         elif dimension == DimensionName.month:
             return (ibis_table[date_field_name].date().truncate("M").epoch_seconds() * 1000).name("date")
+        elif dimension == DimensionName.hour:
+            return (ibis_table[date_field_name].truncate("H").epoch_seconds() * 1000).name("date")
+
+    elif dimension in RELATIVE_DATE_DIMENSIONS:
+        if TableName.pull_requests in table_def:
+            date_field_name = "created_at"
+        else:
+            date_field_name = "date"
+
+        if dimension == DimensionName.day_of_week:
+            return (ibis_table[date_field_name].date().day_of_week.index()).name("day_of_week")
+        elif dimension == DimensionName.hour_of_day:
+            return (ibis_table[date_field_name].hour()).name("hour_of_day")
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
@@ -410,6 +425,7 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         date_col = "datetime"
     elif "date" in result.values.columns:
         date_col = "date"
+    print(result.values.columns)
     for ts in all_timestamps:
         if True not in (result.values[date_col] == ts).values:
             if True in (result.values[date_col] > ts).values:
