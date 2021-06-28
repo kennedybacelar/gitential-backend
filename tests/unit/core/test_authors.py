@@ -11,7 +11,7 @@ from gitential2.core.authors import tokenize_alias, aliases_matching
         (AuthorAlias(email="mail@example.com"), []),
         (
             AuthorAlias(name="László, ANDRÁSI", email="laco@la.co.hu", login="andrasilaco"),
-            ["andrasi laszlo", "laco", "andrasilaco"],
+            ["andrasi laszlo", "andrasilaco"],
         ),
         (AuthorAlias(name="Александр Панченко"), ["aleksandr panchenko"]),
         (AuthorAlias(email="loverboy1984@gmail.com"), ["loverboy1984"]),
