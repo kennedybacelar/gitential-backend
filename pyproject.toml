@@ -43,6 +43,7 @@ tabulate = "^0.8.9"
 azure-devops = {version = "^6.0.0-beta.4", allow-prereleases = true}
 orjson = "^3.5.3"
 Unidecode = "^1.2.0"
+stripe = "^2.58.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
