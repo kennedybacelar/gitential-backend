@@ -380,8 +380,8 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def get_extracted_dataframes(
         self, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     def save_calculated_dataframes(
         self,

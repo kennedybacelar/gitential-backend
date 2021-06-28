@@ -243,6 +243,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_collaboration BOOLEAN;"
             f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_new_code BOOLEAN;"
             f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_bugfix BOOLEAN;"
+            f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_exists BOOLEAN;"
+            f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_open BOOLEAN;"
+            f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_closed BOOLEAN;"
         ]
         for migration_query_ in migration_steps:
             self._engine.execute(migration_query_)
@@ -262,7 +265,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def get_extracted_dataframes(
         self, workspace_id: int, repository_id: int, from_: datetime, to_: datetime
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
         # def _filter_by_repo(df, repo_id):
         #     return df[df["repo_id"] == repo_id]
@@ -272,6 +275,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         extracted_commits_table = workspace_metadata.tables[f"{schema_name}.extracted_commits"]
         extracted_patches_table = workspace_metadata.tables[f"{schema_name}.extracted_patches"]
         extracted_patch_rewrites_table = workspace_metadata.tables[f"{schema_name}.extracted_patch_rewrites"]
+        pull_request_commits_table = workspace_metadata.tables[f"{schema_name}.pull_request_commits"]
+        pull_requests_table = workspace_metadata.tables[f"{schema_name}.pull_requests"]
 
         schema_name = self._workspace_schema_name(workspace_id)
         extracted_commits_df = pd.read_sql_query(
@@ -320,9 +325,29 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             #                schema=schema_name,
             con=self._engine,
         )
-        # print("megy a select", extracted_commits_df)
 
-        return extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df
+        pull_requests_join_ = pull_request_commits_table.join(
+            pull_requests_table,
+            and_(
+                pull_requests_table.c.repo_id == pull_request_commits_table.c.repo_id,
+                pull_requests_table.c.number == pull_request_commits_table.c.pr_number,
+            ),
+        )
+
+        pull_request_commits_df = pd.read_sql_query(
+            select([pull_request_commits_table, pull_requests_table])
+            .select_from(pull_requests_join_)
+            .where(
+                and_(
+                    pull_request_commits_table.c.created_at >= from_,
+                    pull_request_commits_table.c.created_at < to_,
+                    pull_request_commits_table.c.repo_id == repository_id,
+                )
+            ),
+            con=self._engine,
+        )
+
+        return extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df, pull_request_commits_df
 
     def get_ibis_tables(self, workspace_id: int) -> Any:
         with self._ibis_lock:

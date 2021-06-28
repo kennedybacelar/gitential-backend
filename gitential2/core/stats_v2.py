@@ -270,6 +270,12 @@ def _prepare_filters_dict(
             filters_dict[FilterName.is_new_code] = filter_params
         elif filter_name == FilterName.is_collaboration:
             filters_dict[FilterName.is_collaboration] = filter_params
+        elif filter_name == FilterName.is_pr_open:
+            filters_dict[FilterName.is_pr_open] = filter_params
+        elif filter_name == FilterName.is_pr_closed:
+            filters_dict[FilterName.is_pr_closed] = filter_params
+        elif filter_name == FilterName.is_pr_exists:
+            filters_dict[FilterName.is_pr_exists] = filter_params
         elif filter_name == FilterName.active:
             filters_dict[FilterName.active] = filter_params
         else:
@@ -297,6 +303,9 @@ def _prepare_filters(  # pylint: disable=too-complex
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
             FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
+            FilterName.is_pr_open: lambda t: t.is_pr_open.__eq__,
+            FilterName.is_pr_closed: lambda t: t.is_pr_closed.__eq__,
+            FilterName.is_pr_exists: lambda t: t.is_pr_exists.__eq__,
             # "keyword": t.message.lower().re_search,
             # "outlier": t.outlier.__eq__,
             # "commit_msg": t.message.lower().re_search,
