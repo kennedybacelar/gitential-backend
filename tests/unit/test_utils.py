@@ -1,6 +1,6 @@
 import pytest
 
-from gitential2.utils import calc_repo_namespace
+from gitential2.utils import calc_repo_namespace, levenshtein_ratio
 
 
 @pytest.mark.parametrize(
@@ -19,3 +19,17 @@ from gitential2.utils import calc_repo_namespace
 )
 def test_calc_repo_namespace(clone_url, namespace):
     assert calc_repo_namespace(clone_url) == namespace
+
+
+@pytest.mark.parametrize(
+    "s1,s2,ratio",
+    [
+        ("test", "test", 1),
+        ("test", "best", 0.75),
+        ("abcde", "abcdF", 0.8),
+        ("abcde", "fghij", 0),
+        ("long string", "another list of characters", 0.1923076),
+    ],
+)
+def test_levenshtein_ratio(s1, s2, ratio):
+    assert pytest.approx(levenshtein_ratio(s1, s2), ratio)

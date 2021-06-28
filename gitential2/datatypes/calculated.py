@@ -64,6 +64,10 @@ class CalculatedCommit(CoreModel, ExportableModel):
 
     is_bugfix: Optional[bool]
 
+    is_pr_exists: Optional[bool]
+    is_pr_open: Optional[bool]
+    is_pr_closed: Optional[bool]
+
     @property
     def id_(self):
         return CalculatedCommitId(repo_id=self.repo_id, commit_id=self.commit_id)
@@ -118,8 +122,8 @@ class CalculatedPatch(CoreModel, ExportableModel):
     outlier: int
     anomaly: int
 
-    is_collaboration: bool
-    is_new_code: bool
+    is_collaboration: Optional[bool]
+    is_new_code: Optional[bool]
 
     @property
     def id_(self):

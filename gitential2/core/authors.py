@@ -1,6 +1,9 @@
+import re
 from typing import Iterable, Dict, List
-
+from itertools import product
+from unidecode import unidecode
 from gitential2.datatypes.authors import AuthorAlias, AuthorInDB, AuthorCreate, AuthorUpdate
+from gitential2.utils import levenshtein_ratio
 from .context import GitentialContext
 
 
@@ -42,7 +45,8 @@ def _build_email_author_id_map(author_list: Iterable[AuthorInDB]) -> Dict[str, i
     ret = {}
     for author in author_list:
         for alias in author.aliases or []:
-            ret[alias.email] = author.id
+            if alias.email:
+                ret[alias.email] = author.id
         if author.email:
             ret[author.email] = author.id
     return ret
@@ -50,3 +54,42 @@ def _build_email_author_id_map(author_list: Iterable[AuthorInDB]) -> Dict[str, i
 
 def _new_author_from_alias(alias: AuthorAlias) -> AuthorCreate:
     return AuthorCreate(active=True, name=alias.name, email=alias.email, aliases=[alias])
+
+
+def aliases_matching(first: AuthorAlias, second: AuthorAlias) -> bool:
+    for first_token, second_token in product(tokenize_alias(first), tokenize_alias(second)):
+        if levenshtein_ratio(first_token, second_token) > 0.8:
+            return True
+    return False
+
+
+def tokenize_alias(alias: AuthorAlias) -> List[str]:
+    def _tokenize_str(s: str) -> str:
+        _lower_ascii = unidecode(s.lower())
+        _replaced_special = re.sub(r"\W+", " ", _lower_ascii)
+        _splitted = _replaced_special.split()
+        return " ".join(sorted(_splitted))
+
+    def _remove_duplicates(l: List[str]) -> List[str]:
+        ret = []
+        for s in l:
+            if s not in ret:
+                ret.append(s)
+        return ret
+
+    def _remove_common_words(l: List[str]) -> List[str]:
+        return [s for s in l if s not in _COMMON_WORDS]
+
+    ret = []
+    if alias.name:
+        ret.append(_tokenize_str(alias.name))
+    if alias.email:
+        email_first_part = _tokenize_str(alias.email.split("@")[0])
+        if len(email_first_part) >= 10:
+            ret.append(email_first_part)
+    if alias.login:
+        ret.append(_tokenize_str(alias.login))
+    return _remove_common_words(_remove_duplicates(ret))
+
+
+_COMMON_WORDS = ["mail", "info", "noreply", "email", "user", "test"]

@@ -249,6 +249,9 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("loc_effort_c", sa.Integer(), nullable=True),
         sa.Column("uploc_c", sa.Integer(), default=0, comment="unproductive line of code"),
         sa.Column("is_bugfix", sa.Boolean(), default=None),
+        sa.Column("is_pr_exists", sa.Boolean(), default=None),
+        sa.Column("is_pr_open", sa.Boolean(), default=None),
+        sa.Column("is_pr_closed", sa.Boolean(), default=None),
         # work hour estimation
         sa.Column("hours_measured", sa.Float(), nullable=True),
         sa.Column("hours_estimated", sa.Float(), nullable=True),

@@ -114,6 +114,8 @@ def commits_team_level(
     g: GitentialContext = Depends(gitential_context),
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
+    author_email: Optional[str] = Query(None, alias="email"),
+    is_merge: Optional[bool] = Query(None),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return get_commits(
@@ -122,4 +124,6 @@ def commits_team_level(
         team_id=team_id,
         from_=_convert_to_datetime(from_),
         to_=_convert_to_datetime(to_, eod=True),
+        author_email=author_email,
+        is_merge=is_merge,
     )

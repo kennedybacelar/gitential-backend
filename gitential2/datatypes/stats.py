@@ -98,6 +98,9 @@ class FilterName(str, Enum):
     is_bugfix = "is_bugfix"
     is_collaboration = "is_collaboration"
     is_new_code = "is_new_code"
+    is_pr_exists = "is_pr_exists"
+    is_pr_open = "is_pr_open"
+    is_pr_closed = "is_pr_closed"
 
 
 class DimensionName(str, Enum):
@@ -125,6 +128,10 @@ class DimensionName(str, Enum):
     # pr dimensions
     pr_state = "pr_state"
 
+    # relative date dimensions
+    day_of_week = "day_of_week"
+    hour_of_day = "hour_of_day"
+
 
 AUTHOR_DIMENSIONS = [DimensionName.name, DimensionName.email, DimensionName.aid]
 
@@ -138,6 +145,11 @@ DATE_DIMENSIONS = [
     DimensionName.week,
     DimensionName.month,
     DimensionName.hour,
+]
+
+RELATIVE_DATE_DIMENSIONS = [
+    DimensionName.day_of_week,
+    DimensionName.hour_of_day,
 ]
 
 

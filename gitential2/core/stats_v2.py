@@ -17,6 +17,7 @@ from gitential2.datatypes.stats import (
     DimensionName,
     FilterName,
     QueryType,
+    RELATIVE_DATE_DIMENSIONS,
     TableDef,
     TableName,
     DATE_DIMENSIONS,
@@ -49,6 +50,7 @@ def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table
     return ret
 
 
+# pylint: disable=too-many-return-statements
 def _prepare_dimension(
     dimension: DimensionName, table_def: TableDef, ibis_tables: IbisTables, ibis_table
 ):  # pylint: disable=too-complex
@@ -66,6 +68,19 @@ def _prepare_dimension(
             return (ibis_table[date_field_name].date().truncate("W").epoch_seconds() * 1000).name("date")
         elif dimension == DimensionName.month:
             return (ibis_table[date_field_name].date().truncate("M").epoch_seconds() * 1000).name("date")
+        elif dimension == DimensionName.hour:
+            return (ibis_table[date_field_name].truncate("H").epoch_seconds() * 1000).name("date")
+
+    elif dimension in RELATIVE_DATE_DIMENSIONS:
+        if TableName.pull_requests in table_def:
+            date_field_name = "created_at"
+        else:
+            date_field_name = "date"
+
+        if dimension == DimensionName.day_of_week:
+            return (ibis_table[date_field_name].date().day_of_week.index()).name("day_of_week")
+        elif dimension == DimensionName.hour_of_day:
+            return (ibis_table[date_field_name].hour()).name("hour_of_day")
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
@@ -255,6 +270,12 @@ def _prepare_filters_dict(
             filters_dict[FilterName.is_new_code] = filter_params
         elif filter_name == FilterName.is_collaboration:
             filters_dict[FilterName.is_collaboration] = filter_params
+        elif filter_name == FilterName.is_pr_open:
+            filters_dict[FilterName.is_pr_open] = filter_params
+        elif filter_name == FilterName.is_pr_closed:
+            filters_dict[FilterName.is_pr_closed] = filter_params
+        elif filter_name == FilterName.is_pr_exists:
+            filters_dict[FilterName.is_pr_exists] = filter_params
         elif filter_name == FilterName.active:
             filters_dict[FilterName.active] = filter_params
         else:
@@ -282,6 +303,9 @@ def _prepare_filters(  # pylint: disable=too-complex
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
             FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
+            FilterName.is_pr_open: lambda t: t.is_pr_open.__eq__,
+            FilterName.is_pr_closed: lambda t: t.is_pr_closed.__eq__,
+            FilterName.is_pr_exists: lambda t: t.is_pr_exists.__eq__,
             # "keyword": t.message.lower().re_search,
             # "outlier": t.outlier.__eq__,
             # "commit_msg": t.message.lower().re_search,
@@ -410,6 +434,7 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         date_col = "datetime"
     elif "date" in result.values.columns:
         date_col = "date"
+    print(result.values.columns)
     for ts in all_timestamps:
         if True not in (result.values[date_col] == ts).values:
             if True in (result.values[date_col] > ts).values:

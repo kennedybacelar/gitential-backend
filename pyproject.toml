@@ -41,7 +41,8 @@ jinja2 = "^2.11.3"
 typer = "^0.3.2"
 tabulate = "^0.8.9"
 azure-devops = {version = "^6.0.0-beta.4", allow-prereleases = true}
-stripe = "^2.58.0"
+orjson = "^3.5.3"
+Unidecode = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
@@ -60,3 +61,4 @@ target-version = ['py38']
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
+

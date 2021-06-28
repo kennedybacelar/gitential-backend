@@ -5,8 +5,9 @@ from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
 class AuthorAlias(CoreModel):
-    name: str
-    email: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    login: Optional[str] = None
 
 
 class AuthorBase(ExtraFieldMixin, CoreModel):
@@ -17,7 +18,7 @@ class AuthorBase(ExtraFieldMixin, CoreModel):
 
     @property
     def all_emails(self) -> Set[str]:
-        emails = {a.email for a in self.aliases}
+        emails = {a.email for a in self.aliases if a.email}
         if self.email not in emails and self.email:
             emails.add(self.email)
         return emails
