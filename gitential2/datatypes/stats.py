@@ -98,6 +98,9 @@ class FilterName(str, Enum):
     is_bugfix = "is_bugfix"
     is_collaboration = "is_collaboration"
     is_new_code = "is_new_code"
+    is_pr_exists = "is_pr_exists"
+    is_pr_open = "is_pr_open"
+    is_pr_closed = "is_pr_closed"
 
 
 class DimensionName(str, Enum):

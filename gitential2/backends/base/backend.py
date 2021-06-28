@@ -167,7 +167,7 @@ class GitentialBackend(ABC):
     @abstractmethod
     def get_extracted_dataframes(
         self, workspace_id: int, repository_id: int, from_: datetime, to_: datetime
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         pass
 
     @abstractmethod

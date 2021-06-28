@@ -32,7 +32,12 @@ def recalculate_repository_values(
 
         from_, to_ = intervals
 
-        extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df = g.backend.get_extracted_dataframes(
+        (
+            extracted_commits_df,
+            extracted_patches_df,
+            extracted_patch_rewrites_df,
+            pull_request_commits_df,
+        ) = g.backend.get_extracted_dataframes(
             workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
         )
         logger.info(
@@ -75,7 +80,9 @@ def recalculate_repository_values(
         commits_patches_df = _prepare_commits_patches_df(prepared_commits_df, prepared_patches_df, uploc_df)
         outlier_df = _calc_outlier_detection_df(prepared_patches_df)
 
-        calculated_commits_df = _calculate_commit_level(prepared_commits_df, commits_patches_df, outlier_df)
+        calculated_commits_df = _calculate_commit_level(
+            prepared_commits_df, commits_patches_df, outlier_df, pull_request_commits_df
+        )
         calculated_patches_df = _calculate_patch_level(commits_patches_df)
 
         logger.info(
@@ -242,7 +249,12 @@ def _measure_hours(prepared_commits_df: pd.DataFrame) -> pd.DataFrame:
     return (measured.min(axis=1, skipna=True) / 3600).to_frame(name="hours_measured")
 
 
-def _calculate_commit_level(prepared_commits_df: pd.DataFrame, commits_patches_df: pd.DataFrame, outlier_df):
+def _calculate_commit_level(
+    prepared_commits_df: pd.DataFrame,
+    commits_patches_df: pd.DataFrame,
+    outlier_df: pd.DataFrame,
+    pull_request_commits_df: pd.DataFrame,
+):
     calculated_commits = prepared_commits_df.join(
         commits_patches_df.groupby("commit_id")
         .agg({"loc_i": "sum", "loc_d": "sum", "comp_i": "sum", "comp_d": "sum", "uploc": "sum", "aid": "count"})
@@ -268,6 +280,30 @@ def _calculate_commit_level(prepared_commits_df: pd.DataFrame, commits_patches_d
     calculated_commits["velocity"] = calculated_commits["loc_i_c"] / calculated_commits["hours"]
     calculated_commits["is_bugfix"] = calculated_commits.apply(
         lambda x: calculate_is_bugfix(labels=[], title=x["message"]), axis=1
+    )
+    calculated_commits["is_pr_exists"] = calculated_commits.apply(
+        lambda x: len(pull_request_commits_df[pull_request_commits_df["commit_id"] == x.name]) > 0, axis=1
+    )
+    calculated_commits["is_pr_open"] = calculated_commits.apply(
+        lambda x: x["is_pr_exists"]
+        and len(
+            pull_request_commits_df[
+                (pull_request_commits_df["commit_id"] == x.name) & (pull_request_commits_df["state"] == "open")
+            ]
+        )
+        > 0,
+        axis=1,
+    )
+    calculated_commits["is_pr_closed"] = calculated_commits.apply(
+        lambda x: x["is_pr_exists"]
+        and len(pull_request_commits_df[pull_request_commits_df["commit_id"] == x.name])
+        == len(
+            pull_request_commits_df[
+                (pull_request_commits_df["commit_id"] == x.name) & (pull_request_commits_df["state"] == "closed")
+            ]
+        )
+        > 0,
+        axis=1,
     )
     return calculated_commits
 
