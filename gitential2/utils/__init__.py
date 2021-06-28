@@ -21,6 +21,11 @@ def levenshtein(s1: str, s2: str):
     return previous_row[-1]
 
 
+def levenshtein_ratio(s1: str, s2: str) -> float:
+    distance = levenshtein(s1, s2)
+    return 1.0 - (distance / max(len(s1), len(s2)))
+
+
 def find_first(predicate, iterable):
     for i in iterable:
         if predicate(i):
