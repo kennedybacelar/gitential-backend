@@ -10,7 +10,6 @@ from gitential2.datatypes.subscriptions import (
     SubscriptionCreate,
     SubscriptionType,
     SubscriptionUpdate,
-    StripeSubStatusType,
 )
 from gitential2.datatypes.stats import FilterName
 
@@ -93,7 +92,6 @@ def set_as_free(g: GitentialContext, user_id: int, end_time: Optional[datetime] 
     current_subs = _get_current_subscription_from_db(g, user_id=user.id)
     if current_subs and current_subs.subscription_type == SubscriptionType.professional:
         su = SubscriptionUpdate(**current_subs.dict())
-        su.stripe_subscription_status = StripeSubStatusType.inactive
         if end_time is not None:
             su.subscription_end = end_time
         else:
@@ -105,7 +103,7 @@ def set_as_free(g: GitentialContext, user_id: int, end_time: Optional[datetime] 
 
 
 def set_as_professional(
-    g: GitentialContext, user_id: int, number_of_developers: int, subscription_id: str = None, stripe_event: dict = None
+    g: GitentialContext, user_id: int, number_of_developers: int, stripe_event: dict = None
 ) -> SubscriptionInDB:
     user = g.backend.users.get_or_error(user_id)
     current_subs = _get_current_subscription_from_db(g, user_id=user.id)

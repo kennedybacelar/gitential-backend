@@ -10,7 +10,6 @@ class SubscriptionType(str, Enum):
     free = "free"
 
 
-
 class SubscriptionBase(CoreModel):
     user_id: int
     subscription_start: datetime.datetime
