@@ -93,7 +93,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             settings.connections.database_url, json_serializer=json_dumps, pool_pre_ping=True
         )
         self._metadata = metadata
-        self._metadata.create_all(self._engine)
+        self.initialize()
 
         self._users = SQLUserRepository(table=users_table, engine=self._engine, in_db_cls=UserInDB)
         self._access_logs = SQLAccessLogRepository(table=access_log_table, engine=self._engine)
@@ -221,12 +221,26 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def _workspace_schema_name(self, workspace_id: int) -> str:
         return f"ws_{workspace_id}"
 
+    def initialize(self):
+        self._metadata.create_all(self._engine)
+
     def initialize_workspace(self, workspace_id: int):
         schema_name = self._workspace_schema_name(workspace_id)
         self._engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
         workspace_metadata, _ = get_workspace_metadata(schema_name)
         workspace_metadata.create_all(self._engine)
 
+    def migrate(self):
+        migration_steps = [
+            # users
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(256);"
+            # subscriptions
+        ]
+        for migration_query_ in migration_steps:
+            self._engine.execute(migration_query_)
+
+    def migrate_workspace(self, workspace_id: int):
+        schema_name = self._workspace_schema_name(workspace_id)
         # add missing fields to existing tables, temporary
         migration_steps = [
             f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_id_external VARCHAR(64);"
@@ -238,6 +252,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_name_external VARCHAR(128);"
             f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_username_external VARCHAR(128);"
             f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_aid INTEGER;"
+            # calculated_patches & pull_requests & calculated_commits
             f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS loc_effort_p INTEGER;"
             f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS is_bugfix BOOLEAN;"
             f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_collaboration BOOLEAN;"
