@@ -39,7 +39,6 @@ def create_checkout_session(
     else:
         customer = stripe.Customer.retrieve(user.stripe_customer_id)  # checking
         stripe.Customer.modify(customer.id, metadata={"number_of_developers_requested": number_of_developers})
-
     domain_url = g.backend.settings.web.base_url
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -48,7 +47,12 @@ def create_checkout_session(
             payment_method_types=PAYMENT_METHOD_TYPES,
             mode="subscription",
             customer=user.stripe_customer_id,
-            line_items=[{"price": price_id, "quantity": number_of_developers}],
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": number_of_developers,
+                }
+            ],
             metadata={
                 "user_id": user.id,
             },

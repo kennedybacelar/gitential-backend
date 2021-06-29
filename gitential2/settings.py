@@ -96,7 +96,8 @@ class StripeIntegration(BaseModel):
     enabled: bool = False
     publishable_key: str = ""
     private_key: str = ""
-    price_id: str = ""
+    price_id_monthly: str = ""
+    price_id_yearly: str = ""
     webhook_secret: str = ""
 
 

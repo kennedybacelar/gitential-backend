@@ -19,8 +19,9 @@ class SubscriptionBase(CoreModel):
     stripe_subscription_id: Optional[str]
 
 
-class CreateSession(CoreModel):
+class CreateCheckoutSession(CoreModel):
     number_of_developers: int
+    is_monthly: bool
 
 
 class SubscriptionCreate(SubscriptionBase):

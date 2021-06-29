@@ -5,7 +5,7 @@ from gitential2.core.subscription_payment import (
     process_webhook,
     get_checkout_session,
 )
-from gitential2.datatypes.subscriptions import CreateSession
+from gitential2.datatypes.subscriptions import CreateCheckoutSession
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["payment"])
@@ -13,11 +13,18 @@ router = APIRouter(tags=["payment"])
 
 @router.post("/payment/checkout-session")
 def create_checkout(
-    createsession: CreateSession,
+    create_session: CreateCheckoutSession,
     g: GitentialContext = Depends(gitential_context),
     current_user=Depends(current_user),
 ):
-    return create_checkout_session(g, g.settings.stripe.price_id, createsession.number_of_developers, current_user)
+    if create_session.is_monthly:
+        return create_checkout_session(
+            g, g.settings.stripe.price_id_monthly, create_session.number_of_developers, current_user
+        )
+    else:
+        return create_checkout_session(
+            g, g.settings.stripe.price_id_yearly, create_session.number_of_developers, current_user
+        )
 
 
 @router.post("/payment/customer-portal")
