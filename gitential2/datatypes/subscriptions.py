@@ -10,10 +10,6 @@ class SubscriptionType(str, Enum):
     free = "free"
 
 
-class StripeSubStatusType(str, Enum):
-    active = "active"
-    inactive = "inactive"
-
 
 class SubscriptionBase(CoreModel):
     user_id: int
@@ -22,7 +18,6 @@ class SubscriptionBase(CoreModel):
     subscription_type: SubscriptionType = SubscriptionType.trial
     number_of_developers: int = 5
     stripe_subscription_id: Optional[str]
-    stripe_subscription_status: StripeSubStatusType = StripeSubStatusType.inactive
 
 
 class CreateSession(CoreModel):
