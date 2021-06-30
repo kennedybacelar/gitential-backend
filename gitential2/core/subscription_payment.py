@@ -28,17 +28,26 @@ def create_checkout_session(
     number_of_developers: int,
     user: UserInDB,
 ):
-    if user.stripe_customer_id is None:
+    def create_stripe_customer(user: UserInDB):
         customer = stripe.Customer.create(
             email=user.email,
             metadata={"user_id": user.id, "number_of_developers_requested": number_of_developers},
         )
         user_copy = user.copy()
         user_copy.stripe_customer_id = customer.id
-        user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
+        user_new = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
+        return customer, user_new
+
+    if user.stripe_customer_id is None:
+        stripe_customer, user = create_stripe_customer(user)
     else:
-        customer = stripe.Customer.retrieve(user.stripe_customer_id)  # checking
-        stripe.Customer.modify(customer.id, metadata={"number_of_developers_requested": number_of_developers})
+        stripe_customer = stripe.Customer.retrieve(user.stripe_customer_id)  # checking
+        if 'deleted' in stripe_customer:
+            logger.info(
+                "missing customer but we have stripe customer id, fixing...", customer_id=user.stripe_customer_id
+            )
+            stripe_customer, user = create_stripe_customer(user)
+    stripe.Customer.modify(stripe_customer.id, metadata={"number_of_developers_requested": number_of_developers})
     domain_url = g.backend.settings.web.base_url
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -58,8 +67,9 @@ def create_checkout_session(
             },
         )
         return {"session_id": checkout_session["id"]}
-    except Exception:  # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
         print("error")
+        print(e)
 
 
 def _get_stripe_subscription(subscription_id) -> dict:
@@ -94,11 +104,11 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
         logger.info("new subscription modified")
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
-        if "number_of_developers_requested" in customer["metadata"]:
-            developers = int(customer["metadata"]["number_of_developers_requested"])
-        else:
-            developers = int(customer["metadata"]["number_of_developers"])
         if event.data.object["status"] == "active":
+            if "number_of_developers_requested" in customer["metadata"]:
+                developers = int(customer["metadata"]["number_of_developers_requested"])
+            else:
+                developers = int(customer["metadata"]["number_of_developers"])
             set_as_professional(g, int(customer["metadata"]["user_id"]), developers, event)
             stripe.Customer.modify(
                 customer.id,

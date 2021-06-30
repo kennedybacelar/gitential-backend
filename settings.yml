@@ -29,8 +29,8 @@ stripe:
   enabled: True
   publishable_key: "pk_test_8NvkMx8TUGYMVgxgHda7Ly4400OqJK6Caz"
   private_key: "sk_test_rTy8rIts8T5ePsU8Mu9G0tyG00zZWBqBSJ"
-  price_id_monthly: "price_1Ix7JAFFL0UUh0zz2fXVMjcj"
-  price_id_yearly: "price_1J7jcpFFL0UUh0zzP4ucd9Gn"
+  price_id_monthly: "price_1J7jq1FFL0UUh0zzZ8CGCq6Q"
+  price_id_yearly: "price_1J82xGFFL0UUh0zzjbQL9w1j"
   webhook_secret: "whsec_J3wwXzXQOklhlC5qS9iCFynVkiHzXZ9g"
 # frontend:
 #   inject_html:
