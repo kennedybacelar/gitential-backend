@@ -1,9 +1,10 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Tuple, List
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel
 from gitential2.datatypes.common import CoreModel
+from .export import ExportableModel
 
 
 class LocalGitRepository(BaseModel):
@@ -26,7 +27,7 @@ class ExtractedCommitId(CoreModel):
     commit_id: str
 
 
-class ExtractedCommit(CoreModel):
+class ExtractedCommit(CoreModel, ExportableModel):
     repo_id: int
     commit_id: str
     atime: datetime
@@ -42,6 +43,12 @@ class ExtractedCommit(CoreModel):
     @property
     def id_(self):
         return ExtractedCommitId(repo_id=self.repo_id, commit_id=self.commit_id)
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("extracted_commit", "extracted_commits")
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)
 
 
 class Langtype(Enum):
@@ -59,7 +66,7 @@ class ExtractedPatchId(CoreModel):
     newpath: str
 
 
-class ExtractedPatch(CoreModel):
+class ExtractedPatch(CoreModel, ExportableModel):
     repo_id: int
     commit_id: str
     parent_commit_id: str
@@ -91,6 +98,12 @@ class ExtractedPatch(CoreModel):
             repo_id=self.repo_id, commit_id=self.commit_id, parent_commit_id=self.parent_commit_id, newpath=self.newpath
         )
 
+    def export_names(self) -> Tuple[str, str]:
+        return ("extracted_patch", "extracted_patches")
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)
+
 
 class ExtractedPatchRewriteId(CoreModel):
     repo_id: int
@@ -99,7 +112,7 @@ class ExtractedPatchRewriteId(CoreModel):
     rewritten_commit_id: str
 
 
-class ExtractedPatchRewrite(CoreModel):
+class ExtractedPatchRewrite(CoreModel, ExportableModel):
     repo_id: int
     commit_id: str
     atime: datetime
@@ -118,3 +131,9 @@ class ExtractedPatchRewrite(CoreModel):
             newpath=self.newpath,
             rewritten_commit_id=self.rewritten_commit_id,
         )
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("extracted_patch_rewrite", "extracted_patch_rewrites")
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)

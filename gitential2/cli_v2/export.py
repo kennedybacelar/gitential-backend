@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import cast
 import typer
 from structlog import get_logger
-from gitential2.export.exporters import Exporter, CSVExporter, JSONExporter
+from gitential2.export.exporters import Exporter, CSVExporter, JSONExporter, SQLiteExporter
 from gitential2.backends.base.repositories import BaseWorkspaceScopedRepository
 
 from .common import get_context, validate_directory_exists
@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 class ExportFormat(str, Enum):
     csv = "csv"
     json = "json"
+    sqlite = "sqlite"
 
 
 @app.command("full-workspace")
@@ -34,6 +35,9 @@ def export_full_workspace(
         ("team_members", g.backend.team_members),
         ("calculated_commits", g.backend.calculated_commits),
         ("calculated_patches", g.backend.calculated_patches),
+        ("extracted_commits", g.backend.extracted_commits),
+        ("extracted_patches", g.backend.extracted_patches),
+        ("extracted_patch_rewrites", g.backend.extracted_patch_rewrites),
         ("pull_requests", g.backend.pull_requests),
         ("pull_request_commits", g.backend.pull_request_commits),
         ("pull_request_comments", g.backend.pull_request_comments),
@@ -69,4 +73,6 @@ def _get_exporter(export_format: ExportFormat, destination_directory: Path, work
         return CSVExporter(destination_directory, prefix)
     elif export_format == ExportFormat.json:
         return JSONExporter(destination_directory, prefix)
+    elif export_format == ExportFormat.sqlite:
+        return SQLiteExporter(destination_directory, prefix)
     raise ValueError("Invalid export format")
