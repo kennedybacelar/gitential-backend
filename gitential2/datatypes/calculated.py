@@ -51,7 +51,6 @@ class CalculatedCommit(CoreModel, ExportableModel):
     comp_d_outlier: Optional[int]
     loc_effort_c: Optional[int]
     uploc_c: Optional[int]
-    loc_effort_p: Optional[int]
 
     # work hour estimation
     hours_measured: Optional[float]
@@ -124,6 +123,8 @@ class CalculatedPatch(CoreModel, ExportableModel):
 
     is_collaboration: Optional[bool]
     is_new_code: Optional[bool]
+
+    loc_effort_p: Optional[int]
 
     @property
     def id_(self):
