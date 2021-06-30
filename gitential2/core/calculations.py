@@ -9,6 +9,7 @@ from gitential2.datatypes.authors import AuthorAlias
 from .authors import get_or_create_author_for_alias
 from .context import GitentialContext
 from ..utils.is_bugfix import calculate_is_bugfix
+from ..utils.timer import LogTimeIt, time_it_log
 
 logger = get_logger(__name__)
 
@@ -32,14 +33,15 @@ def recalculate_repository_values(
 
         from_, to_ = intervals
 
-        (
-            extracted_commits_df,
-            extracted_patches_df,
-            extracted_patch_rewrites_df,
-            pull_request_commits_df,
-        ) = g.backend.get_extracted_dataframes(
-            workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
-        )
+        with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
+            (
+                extracted_commits_df,
+                extracted_patches_df,
+                extracted_patch_rewrites_df,
+                pull_request_commits_df,
+            ) = g.backend.get_extracted_dataframes(
+                workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
+            )
         logger.info(
             "Extracted commits info",
             from_=from_,
@@ -104,6 +106,7 @@ def recalculate_repository_values(
     # return prepared_commits_df, prepared_patches_df, commits_patches_df, calculated_commits_df
 
 
+@time_it_log(logger)
 def _prepare_extracted_commits_df(
     g: GitentialContext, workspace_id: int, extracted_commits_df: pd.DataFrame, parents_df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -118,6 +121,7 @@ def _prepare_extracted_commits_df(
     return ret.join(hourse_measured_df)
 
 
+@time_it_log(logger)
 def _prepare_extracted_patches_df(extracted_patches_df: pd.DataFrame) -> pd.DataFrame:
     def _calc_is_test(row):
         return row["langtype"] == "PROGRAMMING" and "test" in row["newpath"]
@@ -143,6 +147,7 @@ def _prepare_extracted_patches_df(extracted_patches_df: pd.DataFrame) -> pd.Data
     return extracted_patches_df.set_index(["commit_id"])
 
 
+@time_it_log(logger)
 def _calculate_age_df(extracted_commit_df: pd.DataFrame, parents_df: pd.DataFrame) -> pd.DataFrame:
     author_times = extracted_commit_df.set_index(["commit_id"])[["atime"]].to_dict()["atime"]
 
@@ -158,6 +163,7 @@ def _calculate_age_df(extracted_commit_df: pd.DataFrame, parents_df: pd.DataFram
     return parents_df.groupby("commit_id").min()["age"].to_frame()
 
 
+@time_it_log(logger)
 def _calculate_uploc_df(
     extracted_commits_df, extracted_patch_rewrites_df
 ):  # pylint: disable=compare-to-zero,singleton-comparison
@@ -186,6 +192,7 @@ def _calculate_uploc_df(
         return pd.DataFrame()
 
 
+@time_it_log(logger)
 def _prepare_commits_patches_df(
     prepared_commits_df: pd.DataFrame, prepared_patches_df: pd.DataFrame, uploc_df: pd.DataFrame
 ):
@@ -210,6 +217,7 @@ def _prepare_commits_patches_df(
     return df_with_uploc
 
 
+@time_it_log(logger)
 def _get_or_create_authors_from_commits(g: GitentialContext, workspace_id, extracted_commits_df):
     authors_df = (
         extracted_commits_df[["aname", "aemail"]]
@@ -240,6 +248,7 @@ def _get_or_create_authors_from_commits(g: GitentialContext, workspace_id, extra
     return email_aid_map
 
 
+@time_it_log(logger)
 def _measure_hours(prepared_commits_df: pd.DataFrame) -> pd.DataFrame:
     atime = prepared_commits_df[["aid", "atime"]].sort_values(by=["aid", "atime"], ascending=True).atime
 
@@ -249,6 +258,7 @@ def _measure_hours(prepared_commits_df: pd.DataFrame) -> pd.DataFrame:
     return (measured.min(axis=1, skipna=True) / 3600).to_frame(name="hours_measured")
 
 
+@time_it_log(logger)
 def _calculate_commit_level(
     prepared_commits_df: pd.DataFrame,
     commits_patches_df: pd.DataFrame,
@@ -308,6 +318,7 @@ def _calculate_commit_level(
     return calculated_commits
 
 
+@time_it_log(logger)
 def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
     calculated_patches_columns = [
         "repo_id",
@@ -342,25 +353,29 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
     calculated_patches_df = calculated_patches_df[calculated_patches_columns]
     calculated_patches_df = calculated_patches_df[calculated_patches_df["parent_commit_id"].notnull()]
     calculated_patches_df["loc_effort_p"] = 1.0 * calculated_patches_df["loc_i"] + 0.2 * calculated_patches_df["loc_d"]
+
     # is_new_code: True if the patch has at least 10 lines addition and the added lines are at least 2x the deleted lines.
     calculated_patches_df["is_new_code"] = (calculated_patches_df["loc_i"] >= 10) & (
         (calculated_patches_df["loc_i"] / calculated_patches_df["loc_d"]) >= 2
     )
+
     # is_collaboration: True if there is another patch for the same file in the same repository between +/- 3 weeks but with a different author.
-    calculated_patches_df["is_collaboration"] = calculated_patches_df.apply(
-        lambda x: not calculated_patches_df[
-            (calculated_patches_df["repo_id"] == x["repo_id"])
-            & (
-                (calculated_patches_df["newpath"] == x["newpath"])
-                | (calculated_patches_df["oldpath"] == x["newpath"])
-                | (calculated_patches_df["newpath"] == x["oldpath"])
-            )
-            & (calculated_patches_df["date"] >= x["date"] - pd.Timedelta("21 days"))
-            & (calculated_patches_df["date"] <= x["date"] + pd.Timedelta("21 days"))
-            & (calculated_patches_df["aid"] != x["aid"])
-        ].empty,
-        axis=1,
-    )
+    with LogTimeIt("calculating is_collaboration", logger):
+        calculated_patches_df["is_collaboration"] = calculated_patches_df.apply(
+            lambda _: None
+            # lambda x: not calculated_patches_df[
+            #     (calculated_patches_df["repo_id"] == x["repo_id"])
+            #     & (
+            #         (calculated_patches_df["newpath"] == x["newpath"])
+            #         | (calculated_patches_df["oldpath"] == x["newpath"])
+            #         | (calculated_patches_df["newpath"] == x["oldpath"])
+            #     )
+            #     & (calculated_patches_df["date"] >= x["date"] - pd.Timedelta("21 days"))
+            #     & (calculated_patches_df["date"] <= x["date"] + pd.Timedelta("21 days"))
+            #     & (calculated_patches_df["aid"] != x["aid"])
+            # ].empty,
+            # axis=1,
+        )
     return calculated_patches_df.set_index(["repo_id", "commit_id", "parent_commit_id", "newpath"])
 
 
