@@ -1,6 +1,6 @@
 import pytest
-from gitential2.datatypes.authors import AuthorAlias
-from gitential2.core.authors import tokenize_alias, aliases_matching
+from gitential2.datatypes.authors import AuthorAlias, AuthorInDB
+from gitential2.core.authors import alias_matching_author, authors_matching, tokenize_alias, aliases_matching
 
 
 @pytest.mark.parametrize(
@@ -32,3 +32,80 @@ def test_tokenize_alias(test_input, expected):
 )
 def test_aliases_matching(first, second, expected):
     assert aliases_matching(first, second) == expected
+
+
+@pytest.mark.parametrize(
+    "alias,author,expected",
+    [
+        (
+            AuthorAlias(name="James Bond"),
+            AuthorInDB(id=0, active=True, aliases=[AuthorAlias(name="John Doe")]),
+            False,
+        ),
+        (
+            AuthorAlias(name="John Doe"),
+            AuthorInDB(id=0, active=True, aliases=[AuthorAlias(name="John Doe")]),
+            True,
+        ),
+        (
+            AuthorAlias(name="John Doe"),
+            AuthorInDB(id=0, active=True, aliases=[AuthorAlias(email="john.doe@gitential.com")]),
+            True,
+        ),
+        (
+            AuthorAlias(login="john.doe"),
+            AuthorInDB(id=0, active=True, aliases=[AuthorAlias(email="john.doe@gitential.com")]),
+            True,
+        ),
+        (
+            AuthorAlias(login="james007"),
+            AuthorInDB(id=0, active=True, aliases=[AuthorAlias(email="john.doe@gitential.com")]),
+            False,
+        ),
+    ],
+)
+def test_alias_matching_author(alias, author, expected):
+    assert alias_matching_author(alias, author) == expected
+
+
+@pytest.mark.parametrize(
+    "first,second,expected",
+    [
+        (
+            AuthorInDB(
+                id=1,
+                active=True,
+                aliases=[AuthorAlias(login="James Bond")],
+            ),
+            AuthorInDB(
+                id=2,
+                active=True,
+                aliases=[
+                    AuthorAlias(
+                        email="john.doe@gitential.com",
+                    )
+                ],
+            ),
+            False,
+        ),
+        (
+            AuthorInDB(
+                id=1,
+                active=True,
+                aliases=[AuthorAlias(login="John Doe"), AuthorAlias(email="another.email.for@testuser.com")],
+            ),
+            AuthorInDB(
+                id=2,
+                active=True,
+                aliases=[
+                    AuthorAlias(
+                        email="john.doe@gitential.com",
+                    )
+                ],
+            ),
+            True,
+        ),
+    ],
+)
+def test_authors_matching(first, second, expected):
+    assert authors_matching(first, second) == expected

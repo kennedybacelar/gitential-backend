@@ -1,12 +1,13 @@
 from typing import List
 from fastapi import APIRouter, Depends
 from gitential2.core.context import GitentialContext
-from gitential2.core.authors import list_authors, update_author, deduplicate_authors, delete_author, create_author
+from gitential2.core.authors import list_authors, update_author, delete_author, create_author, list_active_authors
+from gitential2.core.deduplication import deduplicate_authors
 from gitential2.core.permissions import check_permission
 from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.legacy import authors_in_projects
-from gitential2.core.authors import list_active_authors
+
 
 from ..dependencies import current_user, gitential_context
 
@@ -68,8 +69,7 @@ def run_deduplicator(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.update, workspace_id=workspace_id)
-    deduplicate_authors(g, workspace_id)
-    return {"ok": True}
+    return deduplicate_authors(g, workspace_id)
 
 
 @router.get("/workspaces/{workspace_id}/developers-with-projects")

@@ -6,6 +6,8 @@ from gitential2.settings import load_settings
 from gitential2.logging import initialize_logging
 from gitential2.core.users import get_user
 from gitential2.core.emails import send_email_to_user
+from gitential2.core.tasks import configure_celery
+from gitential2.core.deduplication import deduplicate_authors
 
 from .export import app as export_app
 from .users import app as users_app
@@ -18,7 +20,7 @@ from .status import app as status_app
 from .query import app as query_app
 from .emails import app as emails_app
 
-from .common import get_context
+from .common import OutputFormat, get_context, print_results
 
 logger = get_logger(__name__)
 
@@ -62,6 +64,19 @@ def send_email_to_user_(
     user = get_user(g, user_id=user_id)
     if user:
         send_email_to_user(g, user, template_name)
+
+
+@app.command("deduplicate-authors")
+def deduplicate_authors_(worspace_id: int, dry_run: bool = False):
+    g = get_context()
+    configure_celery(g.settings)
+
+    results = deduplicate_authors(g, worspace_id, dry_run)
+
+    for result in results:
+
+        print_results(result, format_=OutputFormat.tabulate, fields=["id", "name", "email", "aliases", "active"])
+        print()
 
 
 def main(prog_name: Optional[str] = None):

@@ -54,7 +54,6 @@ from .authors import (
     list_authors,
     get_or_create_author_for_alias,
     update_author,
-    deduplicate_authors,
     delete_author,
     create_author,
 )

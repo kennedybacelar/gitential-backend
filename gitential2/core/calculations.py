@@ -95,15 +95,15 @@ def recalculate_repository_values(
             to_=to_,
         )
 
-        g.backend.save_calculated_dataframes(
-            workspace_id=workspace_id,
-            repository_id=repository_id,
-            calculated_commits_df=calculated_commits_df,
-            calculated_patches_df=calculated_patches_df,
-            from_=from_,
-            to_=to_,
-        )
-    # return prepared_commits_df, prepared_patches_df, commits_patches_df, calculated_commits_df
+        with LogTimeIt("save_calculated_dataframes", logger, threshold_ms=1000):
+            g.backend.save_calculated_dataframes(
+                workspace_id=workspace_id,
+                repository_id=repository_id,
+                calculated_commits_df=calculated_commits_df,
+                calculated_patches_df=calculated_patches_df,
+                from_=from_,
+                to_=to_,
+            )
 
 
 @time_it_log(logger)
