@@ -42,12 +42,12 @@ def create_checkout_session(
         stripe_customer, user = create_stripe_customer(user)
     else:
         stripe_customer = stripe.Customer.retrieve(user.stripe_customer_id)  # checking
-        if 'deleted' in stripe_customer:
+        if "deleted" in stripe_customer:
             logger.info(
                 "missing customer but we have stripe customer id, fixing...", customer_id=user.stripe_customer_id
             )
             stripe_customer, user = create_stripe_customer(user)
-    stripe.Customer.modify(stripe_customer.id, metadata={"number_of_developers_requested": number_of_developers})
+    stripe.Customer.modify(stripe_customer.id, metadata={"number_of_developers": number_of_developers})
     domain_url = g.backend.settings.web.base_url
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -105,23 +105,13 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
         if event.data.object["status"] == "active":
-            if "number_of_developers_requested" in customer["metadata"]:
-                developers = int(customer["metadata"]["number_of_developers_requested"])
-            else:
-                developers = int(customer["metadata"]["number_of_developers"])
+            developers = int(customer["metadata"]["number_of_developers"])
             set_as_professional(g, int(customer["metadata"]["user_id"]), developers, event)
-            stripe.Customer.modify(
-                customer.id,
-                metadata={
-                    "number_of_developers_requested": "",
-                    "number_of_developers": customer["metadata"]["number_of_developers_requested"],
-                },
-            )
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
-        stripe.Customer.modify(customer.id, metadata={"number_of_developers_requested": "", "number_of_developers": ""})
+        stripe.Customer.modify(customer.id, metadata={"number_of_developers": ""})
         set_as_free(g, customer["metadata"]["user_id"])
     elif event.type == "customer.deleted":
         logger.info("customer deleted")
@@ -137,11 +127,14 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
 
 def get_customer_portal_session(g: GitentialContext, user: UserInDB) -> dict:
     domain_url = g.backend.settings.web.base_url
-    checkout_session = stripe.checkout.Session.retrieve(user)
-    session = stripe.billing_portal.Session.create(customer=checkout_session.customer, return_url=domain_url)
+    session = stripe.billing_portal.Session.create(customer=user.stripe_customer_id, return_url=domain_url)
     return {"url": session.url}
 
 
 def get_checkout_session(session_id: str):
-    checkout_session = stripe.checkout.Session.retrieve(session_id)
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+    except stripe.error.InvalidRequestError:
+        logger.error("error get checkout session", session_id=session_id)
+        raise
     return checkout_session

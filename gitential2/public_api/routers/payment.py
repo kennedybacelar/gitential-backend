@@ -4,7 +4,9 @@ from gitential2.core.subscription_payment import (
     create_checkout_session,
     process_webhook,
     get_checkout_session,
+    get_customer_portal_session,
 )
+from gitential2.exceptions import NotImplementedException
 from gitential2.datatypes.subscriptions import CreateCheckoutSession
 from ..dependencies import gitential_context, current_user
 
@@ -17,23 +19,29 @@ def create_checkout(
     g: GitentialContext = Depends(gitential_context),
     current_user=Depends(current_user),
 ):
-    if create_session.is_monthly:
-        return create_checkout_session(
-            g, g.settings.stripe.price_id_monthly, create_session.number_of_developers, current_user
-        )
+    if g.license.is_on_premises:
+        NotImplementedException("disabled.")
     else:
-        return create_checkout_session(
-            g, g.settings.stripe.price_id_yearly, create_session.number_of_developers, current_user
-        )
+        if create_session.is_monthly:
+            return create_checkout_session(
+                g, g.settings.stripe.price_id_monthly, create_session.number_of_developers, current_user
+            )
+        else:
+            return create_checkout_session(
+                g, g.settings.stripe.price_id_yearly, create_session.number_of_developers, current_user
+            )
+
 
 
 @router.post("/payment/customer-portal")
 def customer_portal(
-    # g: GitentialContext = Depends(gitential_context),
-    # current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+    current_user=Depends(current_user),
 ):
-    # return get_customer_portal_session(g, current_user)
-    return {}
+    if g.license.is_on_premises:
+        NotImplementedException("disabled.")
+    else:
+        return get_customer_portal_session(g, current_user)
 
 
 @router.get("/payment/checkout-session")
@@ -47,10 +55,13 @@ def get_checkout(
 async def webhook_call(
     request: Request, g: GitentialContext = Depends(gitential_context), stripe_signature: str = Header(None)
 ):
-    payload = await request.body()
-    process_webhook(
-        g,
-        payload,
-        stripe_signature,
-    )
-    return {}
+    if g.license.is_on_premises:
+        NotImplementedException("disabled.")
+    else:
+        payload = await request.body()
+        process_webhook(
+            g,
+            payload,
+            stripe_signature,
+        )
+        return {}
