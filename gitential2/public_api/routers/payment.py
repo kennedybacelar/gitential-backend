@@ -21,16 +21,14 @@ def create_checkout(
 ):
     if g.license.is_on_premises:
         NotImplementedException("disabled.")
+    if create_session.is_monthly:
+        return create_checkout_session(
+            g, g.settings.stripe.price_id_monthly, create_session.number_of_developers, current_user
+        )
     else:
-        if create_session.is_monthly:
-            return create_checkout_session(
-                g, g.settings.stripe.price_id_monthly, create_session.number_of_developers, current_user
-            )
-        else:
-            return create_checkout_session(
-                g, g.settings.stripe.price_id_yearly, create_session.number_of_developers, current_user
-            )
-
+        return create_checkout_session(
+            g, g.settings.stripe.price_id_yearly, create_session.number_of_developers, current_user
+        )
 
 
 @router.post("/payment/customer-portal")
@@ -40,8 +38,7 @@ def customer_portal(
 ):
     if g.license.is_on_premises:
         NotImplementedException("disabled.")
-    else:
-        return get_customer_portal_session(g, current_user)
+    return get_customer_portal_session(g, current_user)
 
 
 @router.get("/payment/checkout-session")
