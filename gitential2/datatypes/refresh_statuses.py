@@ -91,7 +91,7 @@ class RepositoryRefreshStatus(CoreModel):
             "id": self.repository_id,
             "name": self.repository_name,
             "started_at": self.commits_started,
-            "finished_at": self.commits_last_successful_run,
+            "finished_at": self.commits_last_run,
             "status": self._calc_legacy_status(),
             "phase": phase,
             "clone": clone,
