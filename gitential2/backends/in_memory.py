@@ -372,7 +372,16 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     #             )
     #     return ret
 
+    def initialize(self):
+        pass
+
     def initialize_workspace(self, workspace_id: int):
+        pass
+
+    def migrate(self):
+        pass
+
+    def migrate_workspace(self, workspace_id: int):
         pass
 
     def output_handler(self, workspace_id: int) -> OutputHandler:

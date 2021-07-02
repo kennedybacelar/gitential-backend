@@ -16,6 +16,12 @@ class SubscriptionBase(CoreModel):
     subscription_end: Optional[datetime.datetime]
     subscription_type: SubscriptionType = SubscriptionType.trial
     number_of_developers: int = 5
+    stripe_subscription_id: Optional[str]
+
+
+class CreateCheckoutSession(CoreModel):
+    number_of_developers: int
+    is_monthly: bool
 
 
 class SubscriptionCreate(SubscriptionBase):

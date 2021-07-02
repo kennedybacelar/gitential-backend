@@ -153,7 +153,19 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
+    def initialize(self):
+        pass
+
+    @abstractmethod
     def initialize_workspace(self, workspace_id: int):
+        pass
+
+    @abstractmethod
+    def migrate(self):
+        pass
+
+    @abstractmethod
+    def migrate_workspace(self, workspace_id: int):
         pass
 
     @abstractmethod

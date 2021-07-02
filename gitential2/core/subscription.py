@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 from datetime import datetime, timedelta
 
 from structlog import get_logger
@@ -87,22 +87,49 @@ def limit_filter_time(ws_id: int, query: Query) -> Query:
     return query
 
 
-def set_as_professional(g: GitentialContext, user_id: int, number_of_developers: int) -> SubscriptionInDB:
+def set_as_free(g: GitentialContext, user_id: int, end_time: Optional[datetime] = None) -> Optional[bool]:
+    user = g.backend.users.get_or_error(user_id)
+    current_subs = _get_current_subscription_from_db(g, user_id=user.id)
+    if current_subs and current_subs.subscription_type == SubscriptionType.professional:
+        su = SubscriptionUpdate(**current_subs.dict())
+        if end_time is not None:
+            su.subscription_end = end_time
+        else:
+            su.subscription_end = datetime.utcnow()
+        g.backend.subscriptions.update(current_subs.id, su)
+        return True
+    else:
+        return False
+
+
+def set_as_professional(
+    g: GitentialContext, user_id: int, number_of_developers: int, stripe_event: dict = None
+) -> SubscriptionInDB:
     user = g.backend.users.get_or_error(user_id)
     current_subs = _get_current_subscription_from_db(g, user_id=user.id)
 
     if current_subs and current_subs.subscription_type == SubscriptionType.professional:
         su = SubscriptionUpdate(**current_subs.dict())
         su.number_of_developers = number_of_developers
-        return g.backend.subscriptions.update(current_subs.id, su)
+        if stripe_event and "cancel_at" in stripe_event["data"]["object"]:
+            su.subscription_end = datetime.utcfromtimestamp(int(stripe_event["data"]["object"]["cancel_at"]))
+        new_sub = g.backend.subscriptions.update(current_subs.id, su)
     elif current_subs and current_subs.subscription_type != SubscriptionType.professional:
         su = SubscriptionUpdate(**current_subs.dict())
         su.subscription_end = datetime.utcnow()
         g.backend.subscriptions.update(current_subs.id, su)
         cancel_trial_emails(g, user_id)
-        return _create_new_prof_subs(g, user_id, number_of_developers)
+        new_sub = _create_new_prof_subs(g, user_id, number_of_developers)
     else:
-        return _create_new_prof_subs(g, user_id, number_of_developers)
+        new_sub = _create_new_prof_subs(g, user_id, number_of_developers)
+    if (
+        stripe_event
+        and "subscription" in stripe_event["data"]["object"]["items"]["data"][0]
+        and not new_sub.stripe_subscription_id
+    ):
+        new_sub.stripe_subscription_id = stripe_event["data"]["object"]["items"]["data"][0]["subscription"]
+        g.backend.subscriptions.update(new_sub.id, cast(SubscriptionUpdate, new_sub))
+    return new_sub
 
 
 def _create_new_prof_subs(g: GitentialContext, user_id: int, number_of_developers: int) -> SubscriptionInDB:

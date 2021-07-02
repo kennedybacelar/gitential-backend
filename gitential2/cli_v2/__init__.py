@@ -49,10 +49,13 @@ def public_api(
 @app.command("initialize-database")
 def initialize_database():
     g = get_context()
+    g.backend.initialize()
+    g.backend.migrate()
     workspaces = g.backend.workspaces.all()
     for w in workspaces:
         logger.info("Initializing workspace schema", workspace_id=w.id)
         g.backend.initialize_workspace(w.id)
+        g.backend.migrate_workspace(w.id)
 
 
 @app.command("send-email-to-user")

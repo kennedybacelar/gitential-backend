@@ -30,6 +30,7 @@ users_table = sa.Table(
     sa.Column("login_ready", sa.Boolean, default=False, nullable=False),
     sa.Column("is_active", sa.Boolean, default=False, nullable=False),
     sa.Column("extra", sa.JSON, nullable=True),
+    sa.Column("stripe_customer_id", sa.String(256), nullable=True),
 )
 
 access_log_table = sa.Table(
@@ -61,6 +62,7 @@ subscriptions_table = sa.Table(
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("number_of_developers", sa.Integer(), nullable=False, default=5),
+    sa.Column("stripe_subscription_id", sa.String(256), nullable=True),
 )
 
 user_infos_table = sa.Table(
