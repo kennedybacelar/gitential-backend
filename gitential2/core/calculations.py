@@ -361,20 +361,40 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
 
     # is_collaboration: True if there is another patch for the same file in the same repository between +/- 3 weeks but with a different author.
     with LogTimeIt("calculating is_collaboration", logger):
+        collaboration_df = calculated_patches_df[["repo_id", "newpath", "date", "aid"]]
+
+        patches_map = dict()
+
+        def _is_collaboration(collaboration_df: pd.DataFrame, x: pd.DataFrame) -> bool:
+            if x["newpath"] not in patches_map:
+                sub_df = collaboration_df[
+                    (collaboration_df["repo_id"] == x["repo_id"]) & (collaboration_df["newpath"] == x["newpath"])
+                ]
+                sub_df.sort_values(["date"])
+                patches_map[x["newpath"]] = sub_df
+
+            sub_df = patches_map[x["newpath"]]
+
+            result = False
+
+            from_date = x["date"] - pd.Timedelta("21 days")
+            to_date = x["date"] + pd.Timedelta("21 days")
+
+            # pylint: disable=unused-variable
+            for index, row in sub_df.iterrows():
+                if row["date"] < from_date:
+                    continue
+                elif row["date"] > to_date:
+                    break
+                elif row["aid"] != x["aid"]:
+                    result = True
+                    break
+
+            return result
+
         calculated_patches_df["is_collaboration"] = calculated_patches_df.apply(
-            lambda _: None
-            # lambda x: not calculated_patches_df[
-            #     (calculated_patches_df["repo_id"] == x["repo_id"])
-            #     & (
-            #         (calculated_patches_df["newpath"] == x["newpath"])
-            #         | (calculated_patches_df["oldpath"] == x["newpath"])
-            #         | (calculated_patches_df["newpath"] == x["oldpath"])
-            #     )
-            #     & (calculated_patches_df["date"] >= x["date"] - pd.Timedelta("21 days"))
-            #     & (calculated_patches_df["date"] <= x["date"] + pd.Timedelta("21 days"))
-            #     & (calculated_patches_df["aid"] != x["aid"])
-            # ].empty,
-            # axis=1,
+            lambda x: _is_collaboration(collaboration_df, x),
+            axis=1,
         )
     return calculated_patches_df.set_index(["repo_id", "commit_id", "parent_commit_id", "newpath"])
 
