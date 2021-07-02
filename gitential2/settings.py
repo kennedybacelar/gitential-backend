@@ -93,7 +93,6 @@ class RecaptchaSettings(BaseModel):
 
 
 class StripeIntegration(BaseModel):
-    enabled: bool = False
     publishable_key: str = ""
     private_key: str = ""
     price_id_monthly: str = ""
