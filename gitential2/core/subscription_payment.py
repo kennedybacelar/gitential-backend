@@ -31,7 +31,7 @@ def create_checkout_session(
     def create_stripe_customer(user: UserInDB):
         customer = stripe.Customer.create(
             email=user.email,
-            metadata={"user_id": user.id, "number_of_developers_requested": number_of_developers},
+            metadata={"user_id": user.id},
         )
         user_copy = user.copy()
         user_copy.stripe_customer_id = customer.id
@@ -105,8 +105,9 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
         if event.data.object["status"] == "active":
-            developers = int(customer["metadata"]["number_of_developers"])
+            developers = event.data.object["quantity"]
             set_as_professional(g, int(customer["metadata"]["user_id"]), developers, event)
+            stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers})
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
         customer_id = event["data"]["object"]["customer"]
