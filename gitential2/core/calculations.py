@@ -407,7 +407,7 @@ def _median_measured_velocity(calculated_commits: pd.DataFrame) -> pd.DataFrame:
     )
     medians = calculated_commits[accurates].groupby("aid").agg({"velocity_measured": "median"})
     medians.columns = ["median_velocity_measured"]
-    df = calculated_commits.merge(medians, left_on="aid", right_index=True)
+    df = calculated_commits.merge(medians, left_on="aid", right_index=True, how="left")
     return df
 
 
