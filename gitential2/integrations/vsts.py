@@ -79,13 +79,20 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         token: dict,
         update_token: Callable,
         output: OutputHandler,
+        author_callback: Callable,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
     ) -> CollectPRsResult:
         return CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
 
     def collect_pull_request(
-        self, repository: RepositoryInDB, token: dict, update_token: Callable, output: OutputHandler, pr_number: int
+        self,
+        repository: RepositoryInDB,
+        token: dict,
+        update_token: Callable,
+        output: OutputHandler,
+        author_callback: Callable,
+        pr_number: int,
     ) -> Optional[PullRequestData]:
         return None
 

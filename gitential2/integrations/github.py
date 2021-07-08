@@ -76,6 +76,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         token: dict,
         update_token: Callable,
         output: OutputHandler,
+        author_callback: Callable,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
     ) -> CollectPRsResult:
@@ -112,7 +113,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             if counter >= limit:
                 ret.prs_left.append(pr_number)
             else:
-                pr_data = self.collect_pull_request(repository, token, update_token, output, pr_number)
+                pr_data = self.collect_pull_request(repository, token, update_token, output, author_callback, pr_number)
                 if pr_data:
                     ret.prs_collected.append(pr_number)
                 else:
@@ -122,7 +123,13 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return ret
 
     def collect_pull_request(
-        self, repository: RepositoryInDB, token: dict, update_token: Callable, output: OutputHandler, pr_number: int
+        self,
+        repository: RepositoryInDB,
+        token: dict,
+        update_token: Callable,
+        output: OutputHandler,
+        author_callback: Callable,
+        pr_number: int,
     ) -> Optional[PullRequestData]:
         api_base_url = self.oauth_register()["api_base_url"]
         pr_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls/{pr_number}"

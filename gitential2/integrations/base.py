@@ -59,6 +59,7 @@ class GitProviderMixin(ABC):
         token: dict,
         update_token: Callable,
         output: OutputHandler,
+        author_callback: Callable,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
     ) -> CollectPRsResult:
@@ -71,9 +72,21 @@ class GitProviderMixin(ABC):
         token: dict,
         update_token: Callable,
         output: OutputHandler,
+        author_callback: Callable,
         pr_number: int,
     ) -> Optional[PullRequestData]:
         pass
+
+    # @abstractmethod
+    # def recalculate_pull_request(
+    #     self,
+    #     pr: PullRequest,
+    #     repository: RepositoryInDB,
+    #     token: dict,
+    #     update_token: Callable,
+    #     output: OutputHandler,
+    # ) -> CollectPRsResult:
+    #     pass
 
     @abstractmethod
     def list_available_private_repositories(

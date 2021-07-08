@@ -4,6 +4,7 @@ from functools import partial
 from typing import Callable, Optional
 
 from structlog import get_logger
+from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase
 from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
@@ -15,6 +16,7 @@ from gitential2.exceptions import LockError
 
 from .calculations import recalculate_repository_values
 from .context import GitentialContext
+from .authors import get_or_create_optional_author_for_alias
 from .tasks import schedule_task
 from .credentials import acquire_credential, get_update_token_callback
 from .refresh_statuses import get_repo_refresh_status, update_repo_refresh_status
@@ -300,6 +302,7 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
     repository = g.backend.repositories.get_or_error(workspace_id, repository_id)
     prs_we_already_have = g.backend.pull_requests.get_prs_updated_at(workspace_id, repository_id) if not force else []
     _update_state = partial(update_repo_refresh_status, g=g, workspace_id=workspace_id, repository_id=repository_id)
+    _author_callback_partial = partial(_author_callback, g=g, workspace_id=workspace_id)
 
     def _end_processing_no_error():
         current_time = g.current_time()
@@ -356,6 +359,7 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
                     token=token,
                     update_token=get_update_token_callback(g, credential),
                     output=output,
+                    author_callback=_author_callback_partial,
                     prs_we_already_have=prs_we_already_have,
                     limit=200,
                 )
@@ -392,3 +396,15 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
             prs_error_msg=traceback.format_exc(limit=1),
             prs_last_run=g.current_time(),
         )
+
+
+def _author_callback(
+    alias: AuthorAlias,
+    g: GitentialContext,
+    workspace_id: int,
+) -> Optional[int]:
+    author = get_or_create_optional_author_for_alias(g, workspace_id, alias)
+    if author:
+        return author.id
+    else:
+        return None

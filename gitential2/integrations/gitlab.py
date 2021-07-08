@@ -10,6 +10,8 @@ from gitential2.datatypes.pull_requests import (
     PullRequestData,
     PullRequestState,
 )
+from gitential2.datatypes.authors import AuthorAlias
+
 from gitential2.extraction.output import OutputHandler
 from .base import BaseIntegration, CollectPRsResult, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error, walk_next_link
@@ -102,6 +104,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         token: dict,
         update_token: Callable,
         output: OutputHandler,
+        author_callback: Callable,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
     ):
@@ -128,7 +131,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 if counter >= limit:
                     ret.prs_left.append(iid)
                 else:
-                    pr_data = self.collect_pull_request(repository, token, update_token, output, iid)
+                    pr_data = self.collect_pull_request(repository, token, update_token, output, author_callback, iid)
                     if pr_data:
                         ret.prs_collected.append(iid)
                     else:
@@ -137,7 +140,13 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return ret
 
     def collect_pull_request(
-        self, repository: RepositoryInDB, token: dict, update_token: Callable, output: OutputHandler, pr_number: int
+        self,
+        repository: RepositoryInDB,
+        token: dict,
+        update_token: Callable,
+        output: OutputHandler,
+        author_callback: Callable,
+        pr_number: int,
     ) -> Optional[PullRequestData]:
         if repository.extra and "id" in repository.extra:
             client = self.get_oauth2_client(token=token, update_token=update_token)
@@ -145,8 +154,10 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             raw_data = self._collect_single_pr_data_raw(client, project_id, pr_number)
             try:
                 commits = self._write_pr_commits(raw_data["mr_commits"], raw_data, repository, output)
-                comments = self._write_pr_comments(raw_data["mr_notes"], raw_data, repository, output)
-                pull_request = self._transform_to_pr(raw_data, repository=repository)
+                comments = self._write_pr_comments(
+                    raw_data["mr_notes"], raw_data, repository, output, author_callback=author_callback
+                )
+                pull_request = self._transform_to_pr(raw_data, repository=repository, author_callback=author_callback)
                 output.write(ExtractedKind.PULL_REQUEST, pull_request)
                 return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
             except Exception:  # pylint: disable=broad-except
@@ -180,7 +191,12 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "mr_notes": merge_request_notes,
         }
 
-    def _transform_to_pr(self, raw_data: dict, repository: RepositoryInDB) -> PullRequest:
+    def _transform_to_pr(
+        self,
+        raw_data: dict,
+        repository: RepositoryInDB,
+        author_callback: Callable,
+    ) -> PullRequest:
         def _calc_first_reaction_at(raw_notes):
             human_note_creation_times = [note["created_at"] for note in raw_notes if not note["system"]]
             human_note_creation_times.sort()
@@ -207,6 +223,16 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
         additions, deletions, changed_files = _calc_addition_and_deletion_changed_files(raw_data["mr_changes"])
 
+        user_author_id = author_callback(
+            AuthorAlias(name=raw_data["mr"]["author"]["name"], login=raw_data["mr"]["author"]["username"])
+        )
+        merged_by_author_id = (
+            author_callback(
+                AuthorAlias(name=raw_data["mr"]["merged_by"]["name"], login=raw_data["mr"]["merged_by"]["username"])
+            )
+            if raw_data["mr"]["merged_by"]
+            else None
+        )
         return PullRequest(
             repo_id=repository.id,
             number=raw_data["iid"],
@@ -228,9 +254,10 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             user_id_external=str(raw_data["mr"]["author"]["id"]),
             user_name_external=raw_data["mr"]["author"]["name"],
             user_username_external=raw_data["mr"]["author"]["username"],
-            user_aid=None,
+            user_aid=user_author_id,
             commits=len(raw_data["mr_commits"]),
             merged_by=raw_data["mr"]["merged_by"]["username"] if raw_data["mr"]["merged_by"] else None,
+            merged_by_aid=merged_by_author_id,
             first_reaction_at=_calc_first_reaction_at(raw_data["mr_notes"]) or raw_data["mr"]["merged_at"],
             first_commit_authored_at=_calc_first_commit_authored_at(raw_data["mr_commits"]),
             extra=raw_data,
@@ -271,10 +298,14 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         raw_data: dict,
         repository: RepositoryInDB,
         output: OutputHandler,
+        author_callback: Callable,
     ) -> List[PullRequestComment]:
         ret = []
         for note_raw in notes_raw:
             # print(note_raw)
+            author_aid = author_callback(
+                AuthorAlias(name=note_raw["author"]["name"], login=note_raw["author"]["username"])
+            )
             comment = PullRequestComment(
                 repo_id=repository.id,
                 pr_number=raw_data["iid"],
@@ -283,7 +314,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 author_id_external=note_raw["author"]["id"],
                 author_name_external=note_raw["author"]["name"],
                 author_username_external=note_raw["author"]["username"],
-                author_aid=None,
+                author_aid=author_aid,
                 content=note_raw["body"],
                 extra=note_raw,
             )

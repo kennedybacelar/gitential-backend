@@ -69,6 +69,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         token: dict,
         update_token: Callable,
         output: OutputHandler,
+        author_callback: Callable,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
     ):
@@ -98,7 +99,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             if counter >= limit:
                 ret.prs_left.append(pr_number)
             else:
-                pr_data = self.collect_pull_request(repository, token, update_token, output, pr_number)
+                pr_data = self.collect_pull_request(repository, token, update_token, output, author_callback, pr_number)
                 if pr_data:
                     ret.prs_collected.append(pr_number)
                 else:
@@ -107,7 +108,13 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return ret
 
     def collect_pull_request(
-        self, repository: RepositoryInDB, token: dict, update_token: Callable, output: OutputHandler, pr_number: int
+        self,
+        repository: RepositoryInDB,
+        token: dict,
+        update_token: Callable,
+        output: OutputHandler,
+        author_callback: Callable,
+        pr_number: int,
     ) -> Optional[PullRequestData]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         try:

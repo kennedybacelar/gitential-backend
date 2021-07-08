@@ -1,10 +1,13 @@
 import re
-from typing import Iterable, Dict, List
+from typing import Iterable, Dict, List, Optional
 from itertools import product
 from unidecode import unidecode
+from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias, AuthorInDB, AuthorCreate, AuthorUpdate
 from gitential2.utils import levenshtein_ratio
 from .context import GitentialContext
+
+logger = get_logger(__name__)
 
 
 def list_active_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
@@ -39,16 +42,36 @@ def create_author(g: GitentialContext, workspace_id: int, author_create: AuthorC
 
 
 def get_or_create_author_for_alias(g: GitentialContext, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
-    all_authors = g.backend.authors.all(workspace_id)
+    all_authors = list(g.backend.authors.all(workspace_id))
 
     email_author_id_map = _build_email_author_id_map(all_authors)
-    if alias.email in email_author_id_map:
-        return g.backend.authors.get_or_error(workspace_id, email_author_id_map[alias.email])
+    if alias.email and alias.email in email_author_id_map:
+        author = g.backend.authors.get_or_error(workspace_id, email_author_id_map[alias.email])
+        logger.debug(
+            "Matching author for alias by email address", alias=alias, author=author, workspace_id=workspace_id
+        )
+        return author
     else:
         for author in all_authors:
             if alias_matching_author(alias, author):
+                logger.debug(
+                    "Matching author for alias by L-distance", alias=alias, author=author, workspace_id=workspace_id
+                )
                 return add_alias_to_author(g, workspace_id, author, alias)
-        return g.backend.authors.create(workspace_id, _new_author_from_alias(alias))
+
+        new_author = g.backend.authors.create(workspace_id, _new_author_from_alias(alias))
+        logger.debug("Creating new author for alias", alias=alias, author=new_author)
+        return new_author
+
+
+def get_or_create_optional_author_for_alias(
+    g: GitentialContext, workspace_id: int, alias: AuthorAlias
+) -> Optional[AuthorInDB]:
+    if alias.name or alias.email or alias.login:
+        return get_or_create_author_for_alias(g, workspace_id, alias)
+    else:
+        logger.debug("Skipping author matching, empty alias")
+        return None
 
 
 def add_alias_to_author(g: GitentialContext, workspace_id: int, author: AuthorInDB, alias: AuthorAlias) -> AuthorInDB:
@@ -78,6 +101,8 @@ def alias_matching_author(alias: AuthorAlias, author: AuthorInDB):
 
 def aliases_matching(first: AuthorAlias, second: AuthorAlias) -> bool:
     if first.email and second.email and first.email == second.email:
+        return True
+    elif first.login and second.login and first.login == second.login:
         return True
     for first_token, second_token in product(tokenize_alias(first), tokenize_alias(second)):
         if levenshtein_ratio(first_token, second_token) > 0.8:
@@ -118,7 +143,9 @@ def tokenize_alias(alias: AuthorAlias) -> List[str]:
             ret.append(email_first_part)
     if alias.login:
         ret.append(_tokenize_str(alias.login))
-    return _remove_common_words(_remove_duplicates(ret))
+    ret = _remove_common_words(_remove_duplicates(ret))
+    # logger.debug("Tokenized alias", alias=alias, tokens=ret)
+    return ret
 
 
 def _remove_duplicate_aliases(aliases: List[AuthorAlias]) -> List[AuthorAlias]:
