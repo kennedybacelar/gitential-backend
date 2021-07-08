@@ -44,8 +44,9 @@ def customer_portal(
 @router.get("/payment/checkout-session")
 def get_checkout(
     session_id: str,
+    g: GitentialContext = Depends(gitential_context),
 ):
-    return get_checkout_session(session_id)
+    return get_checkout_session(g, session_id)
 
 
 @router.post("/payment/webhook")

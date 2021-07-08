@@ -14,10 +14,10 @@ logger = get_logger(__name__)
 
 stripe.set_app_info("gitential", version="0.0.1", url="https://teszt")
 stripe.api_version = "2020-08-27"
-stripe.api_key = "sk_test_rTy8rIts8T5ePsU8Mu9G0tyG00zZWBqBSJ"
 
 
 def get_user_by_customer(g: GitentialContext, customer_id: str) -> Optional[UserInDB]:
+    stripe.api_key = g.settings.stripe.api_key
     customer = stripe.Customer.retrieve(customer_id)
     return g.backend.users.get_by_email(customer.email)
 
@@ -28,6 +28,8 @@ def create_checkout_session(
     number_of_developers: int,
     user: UserInDB,
 ):
+    stripe.api_key = g.settings.stripe.api_key
+
     def create_stripe_customer(user: UserInDB):
         customer = stripe.Customer.create(
             email=user.email,
@@ -72,12 +74,14 @@ def create_checkout_session(
         print(e)
 
 
-def _get_stripe_subscription(subscription_id) -> dict:
+def _get_stripe_subscription(g: GitentialContext, subscription_id) -> dict:
+    stripe.api_key = g.settings.stripe.api_key
     subscription = stripe.Subscription.retrieve(subscription_id)
     return subscription
 
 
-def change_subscription(subscription_id: str, developer_num: int, pice_id: str):
+def change_subscription(g: GitentialContext, subscription_id: str, developer_num: int, pice_id: str):
+    stripe.api_key = g.settings.stripe.api_key
     subscription = stripe.Subscription.retrieve(subscription_id)
     stripe.Subscription.modify(
         subscription.id,
@@ -87,12 +91,14 @@ def change_subscription(subscription_id: str, developer_num: int, pice_id: str):
     )
 
 
-def delete_subscription(subs_id) -> dict:
+def delete_subscription(g: GitentialContext, subs_id) -> dict:
+    stripe.api_key = g.settings.stripe.api_key
     stripe.Subscription.delete(subs_id)
     return {"status": "success"}
 
 
 def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
+    stripe.api_key = g.settings.stripe.api_key
     try:
         event = stripe.Webhook.construct_event(input_data, signature, g.settings.stripe.webhook_secret)
     except (ValueError, SignatureVerificationError):
@@ -127,12 +133,14 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
 
 
 def get_customer_portal_session(g: GitentialContext, user: UserInDB) -> dict:
+    stripe.api_key = g.settings.stripe.api_key
     domain_url = g.backend.settings.web.base_url
     session = stripe.billing_portal.Session.create(customer=user.stripe_customer_id, return_url=domain_url)
     return {"url": session.url}
 
 
-def get_checkout_session(session_id: str):
+def get_checkout_session(g: GitentialContext, session_id: str):
+    stripe.api_key = g.settings.stripe.api_key
     try:
         checkout_session = stripe.checkout.Session.retrieve(session_id)
     except stripe.error.InvalidRequestError:
