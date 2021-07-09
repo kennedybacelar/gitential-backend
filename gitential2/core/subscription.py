@@ -111,7 +111,11 @@ def set_as_professional(
     if current_subs and current_subs.subscription_type == SubscriptionType.professional:
         su = SubscriptionUpdate(**current_subs.dict())
         su.number_of_developers = number_of_developers
-        if stripe_event and "cancel_at" in stripe_event["data"]["object"]:
+        if (
+            stripe_event
+            and "cancel_at" in stripe_event["data"]["object"]
+            and stripe_event["data"]["object"]["cancel_at"]
+        ):
             su.subscription_end = datetime.utcfromtimestamp(int(stripe_event["data"]["object"]["cancel_at"]))
         new_sub = g.backend.subscriptions.update(current_subs.id, su)
     elif current_subs and current_subs.subscription_type != SubscriptionType.professional:
