@@ -266,6 +266,8 @@ def _prepare_filters_dict(
             filters_dict[FilterName.is_bugfix] = filter_params
         elif filter_name == FilterName.is_merge:
             filters_dict[FilterName.is_merge] = filter_params
+        elif filter_name == FilterName.ismerge:
+            filters_dict[FilterName.is_merge] = filter_params
         elif filter_name == FilterName.is_new_code:
             filters_dict[FilterName.is_new_code] = filter_params
         elif filter_name == FilterName.is_collaboration:
@@ -302,6 +304,7 @@ def _prepare_filters(  # pylint: disable=too-complex
             "name": lambda t: t.aname.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
+            FilterName.ismerge: lambda t: t.is_merge.__eq__,
             FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
             FilterName.is_pr_open: lambda t: t.is_pr_open.__eq__,
             FilterName.is_pr_closed: lambda t: t.is_pr_closed.__eq__,
@@ -321,6 +324,7 @@ def _prepare_filters(  # pylint: disable=too-complex
             FilterName.emails: lambda t: t.aemail.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
+            FilterName.ismerge: lambda t: t.ismerge.__eq__,
             FilterName.is_collaboration: lambda t: t.is_collaboration.__eq__,
             FilterName.is_new_code: lambda t: t.is_new_code.__eq__,
         },
@@ -434,7 +438,7 @@ def _add_missing_timestamp_to_result(result: QueryResult):
         date_col = "datetime"
     elif "date" in result.values.columns:
         date_col = "date"
-    print(result.values.columns)
+    # print(result.values.columns)
     for ts in all_timestamps:
         if True not in (result.values[date_col] == ts).values:
             if True in (result.values[date_col] > ts).values:

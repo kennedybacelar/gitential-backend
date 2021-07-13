@@ -69,9 +69,8 @@ def create_checkout_session(
             },
         )
         return {"session_id": checkout_session["id"]}
-    except Exception as e:  # pylint: disable=broad-except
-        print("error")
-        print(e)
+    except:  # pylint: disable=bare-except
+        logger.exception("Failed to create checkout session", price_id=price_id, user_id=user.id)
 
 
 def _get_stripe_subscription(g: GitentialContext, subscription_id) -> dict:
