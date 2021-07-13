@@ -47,23 +47,24 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
         result_backend=settings.celery.result_backend_url or settings.connections.redis_url,
         imports=("gitential2.core.tasks",),
     )
-    celery_app.conf.beat_schedule = {
-        # TEMPORARY DISABLED
-        # Executes every day at Noon (UTC).
-        # "send_scheduled_emails": {
-        #     "task": "tasks.send_scheduled_emails",
-        #     "schedule": crontab(minute=0, hour=12),
-        #     "args": (settings),
-        # },
-    }
+
+    beat_scheduled_conf = {}
+
+    # TEMPORARY DISABLED
+    # beat_scheduled_conf["send_scheduled_emails"] = {
+    #     "task": "gitential2.core.tasks.send_scheduled_emails",
+    #     "schedule": crontab(minute=0, hour=12),
+    #     "args": (settings),
+    # }
 
     if settings.refresh.hourly_maintenance_enabled:
-        celery_app.conf.beat_schedule["hourly_maintenance"] = {
+        beat_scheduled_conf["hourly_maintenance"] = {
             "task": "gitential2.core.tasks.hourly_maintenance",
             "schedule": crontab(minute=0),
             "args": (),
         }
 
+    celery_app.conf.beat_schedule = beat_scheduled_conf
     return celery_app
 
 
