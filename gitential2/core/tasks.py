@@ -155,8 +155,8 @@ def hourly_maintenance(settings: Optional[GitentialSettings] = None):
         subscription = get_workspace_subscription(g, workspace_id)
         return (
             subscription.subscription_type in [SubscriptionType.professional, SubscriptionType.trial]
-            and subscription.subscription_start < g.current_time()
-            and (subscription.subscription_end is None or subscription.subscription_end > g.current_time())
+            and (subscription.subscription_start < g.current_time())
+            and ((subscription.subscription_end is None) or (subscription.subscription_end > g.current_time()))
         )
 
     def _should_schedule_maintenance(workspace_id):
