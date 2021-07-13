@@ -130,6 +130,11 @@ class ExtractionSettings(BaseModel):
     show_progress: bool = False
 
 
+class RefreshSettings(BaseModel):
+    hourly_maintenance_enabled: bool = True
+    interval_minutes: int = 60 * 24
+
+
 class MaintenanceSettings(BaseModel):
     enabled: bool = False
     message: str = ""
@@ -154,6 +159,7 @@ class GitentialSettings(BaseModel):
     notifications: NotificationSettings = NotificationSettings()
     web: WebSettings = WebSettings()
     extraction: ExtractionSettings = ExtractionSettings()
+    refresh: RefreshSettings = RefreshSettings()
     recaptcha: RecaptchaSettings = RecaptchaSettings()
     integrations: Dict[str, IntegrationSettings]
     backend: BackendType = BackendType.in_memory

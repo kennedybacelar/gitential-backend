@@ -22,6 +22,10 @@ class RefreshWorkspaceParams(BaseModel):
     force: bool = False
 
 
+class MaintainWorkspaceParams(BaseModel):
+    workspace_id: int
+
+
 class RefreshProjectParams(BaseModel):
     workspace_id: int
     project_id: int

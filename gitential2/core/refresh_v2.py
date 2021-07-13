@@ -19,6 +19,7 @@ from .context import GitentialContext
 from .authors import get_or_create_optional_author_for_alias
 from .tasks import schedule_task
 from .credentials import acquire_credential, get_update_token_callback
+from .repositories import list_project_repositories
 from .refresh_statuses import get_repo_refresh_status, update_repo_refresh_status
 
 logger = get_logger(__name__)
@@ -47,7 +48,71 @@ def refresh_workspace(
             )
     else:
         for p in projects:
-            refresh_project(g, workspace_id=workspace_id, project_id=p.id, strategy=strategy, refresh_type=refresh_type)
+            refresh_project(
+                g, workspace_id=workspace_id, project_id=p.id, strategy=strategy, refresh_type=refresh_type, force=force
+            )
+
+
+def maintain_workspace(
+    g: GitentialContext,
+    workspace_id: int,
+):
+    projects = g.backend.projects.all(workspace_id)
+    repositories = []
+    repositories_processed = []
+    refresh_interval = timedelta(minutes=g.settings.refresh.interval_minutes)
+
+    for project in projects:
+        repositories += list_project_repositories(g, workspace_id, project.id)
+
+    for repository in repositories:
+        if repository.id not in repositories_processed:
+            logger.debug(
+                "Running maintanance task for repository", workspace_id=workspace_id, repository_id=repository.id
+            )
+            repository_status = get_repo_refresh_status(g, workspace_id, repository.id)
+
+            if repository_status.prs_last_run and g.current_time() - repository_status.prs_last_run > refresh_interval:
+                logger.info(
+                    "Scheduling repository prs refresh",
+                    workspace_id=workspace_id,
+                    repository_id=repository.id,
+                    repository_name=repository.name,
+                )
+                schedule_task(
+                    g,
+                    task_name="refresh_repository",
+                    params={
+                        "workspace_id": workspace_id,
+                        "repository_id": repository.id,
+                        "strategy": RefreshStrategy.one_by_one,
+                        "refresh_type": RefreshType.prs_only,
+                        "force": False,
+                    },
+                )
+            if (
+                repository_status.commits_last_run
+                and g.current_time() - repository_status.commits_last_run > refresh_interval
+            ):
+                logger.info(
+                    "Scheduling repository commits refresh",
+                    workspace_id=workspace_id,
+                    repository_id=repository.id,
+                    repository_name=repository.name,
+                )
+                schedule_task(
+                    g,
+                    task_name="refresh_repository",
+                    params={
+                        "workspace_id": workspace_id,
+                        "repository_id": repository.id,
+                        "strategy": RefreshStrategy.one_by_one,
+                        "refresh_type": RefreshType.commits_only,
+                        "force": False,
+                    },
+                )
+
+            repositories_processed.append(repository.id)
 
 
 def refresh_project(
