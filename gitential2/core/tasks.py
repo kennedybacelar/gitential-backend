@@ -3,6 +3,7 @@ from typing import Callable, Optional, Dict, Union
 from importlib import import_module
 
 from celery import Celery
+from celery.app.task import Task
 from celery.schedules import crontab
 from structlog import get_logger
 from gitential2.settings import GitentialSettings, load_settings
@@ -13,7 +14,6 @@ from gitential2.datatypes.refresh import (
     RefreshWorkspaceParams,
     MaintainWorkspaceParams,
 )
-from gitential2.datatypes.subscriptions import SubscriptionType
 
 from gitential2.exceptions import LockError
 
@@ -21,7 +21,16 @@ from .context import GitentialContext
 
 logger = get_logger(__name__)
 
-celery_app = Celery()
+
+# pylint: disable=abstract-method
+class CeleryTask(Task):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        logger.exception("Unhandled exception in task", task_id=task_id, exc=exc, args=args, kwargs=kwargs)
+        return super().on_failure(exc, task_id, args, kwargs, einfo)
+
+
+celery_app = Celery(task_cls="gitential2.core.tasks:CeleryTask")
+
 
 # pylint: disable=unused-argument
 def schedule_task(
@@ -146,28 +155,8 @@ __all__ = ["schedule_task", "core_task", "configure_celery", "ping", "send_sched
 def hourly_maintenance(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.core.context import init_context_from_settings
-    from gitential2.core.workspaces import get_workspace_subscription
+    from gitential2.core.maintenance import maintenance
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
-
-    def _is_pro_or_trial_subscription(workspace_id):
-        subscription = get_workspace_subscription(g, workspace_id)
-        return (
-            subscription.subscription_type in [SubscriptionType.professional, SubscriptionType.trial]
-            and (subscription.subscription_start < g.current_time())
-            and ((subscription.subscription_end is None) or (subscription.subscription_end > g.current_time()))
-        )
-
-    def _should_schedule_maintenance(workspace_id):
-        return g.license.is_valid() and (g.license.is_on_premises or _is_pro_or_trial_subscription(workspace_id))
-
-    for workspace in g.backend.workspaces.all():
-        if _should_schedule_maintenance(workspace.id):
-            schedule_task(
-                g,
-                task_name="maintain_workspace",
-                params={
-                    "workspace_id": workspace.id,
-                },
-            )
+    maintenance(g)

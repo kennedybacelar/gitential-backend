@@ -8,6 +8,7 @@ from gitential2.core.users import get_user
 from gitential2.core.emails import send_email_to_user
 from gitential2.core.tasks import configure_celery
 from gitential2.core.deduplication import deduplicate_authors
+from gitential2.core.maintenance import maintenance
 
 from .export import app as export_app
 from .users import app as users_app
@@ -67,6 +68,13 @@ def send_email_to_user_(
     user = get_user(g, user_id=user_id)
     if user:
         send_email_to_user(g, user, template_name)
+
+
+@app.command("maintenance")
+def maintenance_():
+    g = get_context()
+    configure_celery(g.settings)
+    maintenance(g)
 
 
 @app.command("deduplicate-authors")
