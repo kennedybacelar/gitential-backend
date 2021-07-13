@@ -246,21 +246,42 @@ def _get_protocol_and_clone_url(clone_links):
     return GitProtocol.https if href.startswith("https") else GitProtocol.ssh, href
 
 
+# def _walk_paginated_results(client, starting_url, acc=None):
+#     response = client.get(starting_url)
+#     acc = acc or []
+
+#     if response.status_code != 200:
+#         log_api_error(response)
+#         return acc
+
+#     data = response.json()
+#     if "values" in data:
+#         acc += data["values"]
+#     if "next" in data:
+#         return _walk_paginated_results(client, data["next"], acc)
+#     else:
+#         return acc
+
+
 def _walk_paginated_results(client, starting_url, acc=None):
-    response = client.get(starting_url)
     acc = acc or []
+    next_url = starting_url
+    while True:
+        response = client.get(next_url)
 
-    if response.status_code != 200:
-        log_api_error(response)
-        return acc
+        if response.status_code != 200:
+            log_api_error(response)
+            break
+        data = response.json()
+        if "values" in data:
+            acc += data["values"]
 
-    data = response.json()
-    if "values" in data:
-        acc += data["values"]
-    if "next" in data:
-        return _walk_paginated_results(client, data["next"], acc)
-    else:
-        return acc
+        if "next" in data:
+            next_url = data["next"]
+        else:
+            break
+
+    return acc
 
 
 def _get_profile(data):
