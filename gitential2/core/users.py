@@ -172,44 +172,49 @@ def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optiona
     if subscriptions:
         return None
     else:
-        g.backend.email_log.schedule_email(
-            user_id=user.id,
-            template_name="getting_started_first_steps",
-            scheduled_at=(datetime.utcnow() + timedelta(days=1)),
-        )
-        g.backend.email_log.schedule_email(
-            user_id=user.id,
-            template_name="getting_started_metrics",
-            scheduled_at=(datetime.utcnow() + timedelta(days=3)),
-        )
-        g.backend.email_log.schedule_email(
-            user_id=user.id,
-            template_name="getting_started_use_case_library",
-            scheduled_at=(datetime.utcnow() + timedelta(days=5)),
-        )
-        g.backend.email_log.schedule_email(
-            user_id=user.id,
-            template_name="getting_started_level_up_your_developers",
-            scheduled_at=(datetime.utcnow() + timedelta(days=9)),
-        )
-        g.backend.email_log.schedule_email(
-            user_id=user.id,
-            template_name="getting_started_best_coding_practices",
-            scheduled_at=(datetime.utcnow() + timedelta(days=11)),
-        )
-        g.backend.email_log.schedule_email(
-            user_id=user.id,
-            template_name="getting_started_explore_more_as_a_professional",
-            scheduled_at=(datetime.utcnow() + timedelta(days=13)),
-        )
-        g.backend.email_log.schedule_email(
-            user_id=user.id, template_name="free_trial_expiration", scheduled_at=(datetime.utcnow() + timedelta(days=7))
-        )
         # TEMPORARY DISABLED
-        # g.backend.email_log.schedule_email(
-        #     user_id=user.id, template_name="free_trial_ended", scheduled_at=(datetime.utcnow() + timedelta(days=14))
-        # )
+        # _schedule_marketing_emails(g, user)
         return g.backend.subscriptions.create(SubscriptionCreate.default_for_new_user(user.id))
+
+
+def _schedule_marketing_emails(g: GitentialContext, user: UserInDB):
+    g.backend.email_log.schedule_email(
+        user_id=user.id,
+        template_name="getting_started_first_steps",
+        scheduled_at=(datetime.utcnow() + timedelta(days=1)),
+    )
+    g.backend.email_log.schedule_email(
+        user_id=user.id,
+        template_name="getting_started_metrics",
+        scheduled_at=(datetime.utcnow() + timedelta(days=3)),
+    )
+    g.backend.email_log.schedule_email(
+        user_id=user.id,
+        template_name="getting_started_use_case_library",
+        scheduled_at=(datetime.utcnow() + timedelta(days=5)),
+    )
+    g.backend.email_log.schedule_email(
+        user_id=user.id,
+        template_name="getting_started_level_up_your_developers",
+        scheduled_at=(datetime.utcnow() + timedelta(days=9)),
+    )
+    g.backend.email_log.schedule_email(
+        user_id=user.id,
+        template_name="getting_started_best_coding_practices",
+        scheduled_at=(datetime.utcnow() + timedelta(days=11)),
+    )
+    g.backend.email_log.schedule_email(
+        user_id=user.id,
+        template_name="getting_started_explore_more_as_a_professional",
+        scheduled_at=(datetime.utcnow() + timedelta(days=13)),
+    )
+    g.backend.email_log.schedule_email(
+        user_id=user.id, template_name="free_trial_expiration", scheduled_at=(datetime.utcnow() + timedelta(days=7))
+    )
+    # TEMPORARY DISABLED
+    # g.backend.email_log.schedule_email(
+    #     user_id=user.id, template_name="free_trial_ended", scheduled_at=(datetime.utcnow() + timedelta(days=14))
+    # )
 
 
 def set_as_admin(g: GitentialContext, user_id: int, is_admin: bool = True) -> UserInDB:
