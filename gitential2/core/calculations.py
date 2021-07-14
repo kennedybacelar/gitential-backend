@@ -6,10 +6,12 @@ import pandas as pd
 import numpy as np
 from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias
-from .authors import get_or_create_author_for_alias
-from .context import GitentialContext
+from ..utils import split_timerange
 from ..utils.is_bugfix import calculate_is_bugfix
 from ..utils.timer import LogTimeIt, time_it_log
+
+from .authors import get_or_create_author_for_alias
+from .context import GitentialContext
 
 logger = get_logger(__name__)
 
@@ -30,18 +32,44 @@ def recalculate_repository_values(
     logger.info("Recalculating repository commit values", workspace_id=workspace_id, repository_id=repository_id)
 
     for intervals in _get_time_intervals():
-
         from_, to_ = intervals
+        recalculate_repo_values_in_interval(g, workspace_id, repository_id, from_, to_)
 
-        with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
-            (
-                extracted_commits_df,
-                extracted_patches_df,
-                extracted_patch_rewrites_df,
-                pull_request_commits_df,
-            ) = g.backend.get_extracted_dataframes(
-                workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
-            )
+
+def recalculate_repo_values_in_interval(
+    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=20000
+):
+    with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
+        (
+            extracted_commits_df,
+            extracted_patches_df,
+            extracted_patch_rewrites_df,
+            pull_request_commits_df,
+        ) = g.backend.get_extracted_dataframes(
+            workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
+        )
+
+    if extracted_commits_df.size > commit_limit:
+        logger.warning(
+            "Extraced commits dataframe is too large for calculation, splitting time interval to half",
+            workspace_id=workspace_id,
+            repository_id=repository_id,
+            commit_count=extracted_commits_df.size,
+            from_=from_,
+            to_=to_,
+        )
+        del (
+            extracted_commits_df,
+            extracted_patches_df,
+            extracted_patch_rewrites_df,
+            pull_request_commits_df,
+        )  # free up some memory, pls
+
+        intervals = split_timerange(from_, to_)
+        for (from__, to__) in intervals:
+            recalculate_repo_values_in_interval(g, workspace_id, repository_id, from__, to__, commit_limit=commit_limit)
+    else:
+
         logger.info(
             "Extracted commits info",
             from_=from_,
@@ -51,6 +79,7 @@ def recalculate_repository_values(
             size=extracted_commits_df.size,
             mem=extracted_commits_df.memory_usage(deep=True).sum(),
         )
+
         logger.info(
             "Extracted patches info",
             from_=from_,
@@ -69,9 +98,9 @@ def recalculate_repository_values(
             size=extracted_patch_rewrites_df.size,
             mem=extracted_patch_rewrites_df.memory_usage(deep=True).sum(),
         )
-        # print(extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df)
+
         if extracted_patches_df.empty or extracted_commits_df.empty:
-            continue
+            return
 
         parents_df = extracted_patches_df.reset_index()[["commit_id", "parent_commit_id"]].drop_duplicates()
 

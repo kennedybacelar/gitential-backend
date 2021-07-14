@@ -1,3 +1,4 @@
+from datetime import datetime
 from urllib.parse import urlparse
 
 
@@ -60,3 +61,15 @@ def calc_repo_namespace(clone_url: str) -> str:
     else:
         _, path = clone_url.split(":")
         return _remove_last_part(path)
+
+
+def split_timerange(from_: datetime, to_: datetime, parts: int = 2):
+    time_delta = to_ - from_
+    step = time_delta / parts
+    start_dt = from_
+    end_dt = from_ + step
+    yield start_dt, end_dt
+    while to_ - end_dt > step:
+        start_dt, end_dt = end_dt, end_dt + step
+        yield start_dt, end_dt
+    yield end_dt, to_

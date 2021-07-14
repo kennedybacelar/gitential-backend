@@ -1,6 +1,7 @@
+from datetime import datetime
 import pytest
 
-from gitential2.utils import calc_repo_namespace, levenshtein_ratio
+from gitential2.utils import calc_repo_namespace, levenshtein_ratio, split_timerange
 
 
 @pytest.mark.parametrize(
@@ -33,3 +34,32 @@ def test_calc_repo_namespace(clone_url, namespace):
 )
 def test_levenshtein_ratio(s1, s2, ratio):
     assert pytest.approx(levenshtein_ratio(s1, s2), ratio)
+
+
+@pytest.mark.parametrize(
+    "from_,to_,parts,intervals",
+    [
+        (
+            datetime(2021, 1, 1),
+            datetime(2021, 1, 31, 23, 59),
+            2,
+            [
+                (datetime(2021, 1, 1, 0, 0), datetime(2021, 1, 16, 11, 59, 30)),
+                (datetime(2021, 1, 16, 11, 59, 30), datetime(2021, 1, 31, 23, 59)),
+            ],
+        ),
+        (
+            datetime(2021, 1, 1),
+            datetime(2021, 1, 31, 23, 59),
+            3,
+            [
+                (datetime(2021, 1, 1, 0, 0), datetime(2021, 1, 11, 7, 59, 40)),
+                (datetime(2021, 1, 11, 7, 59, 40), datetime(2021, 1, 21, 15, 59, 20)),
+                (datetime(2021, 1, 21, 15, 59, 20), datetime(2021, 1, 31, 23, 59)),
+            ],
+        ),
+    ],
+)
+def test_split_timerange(from_, to_, parts, intervals):
+    assert list(split_timerange(from_, to_, parts)) == intervals
+    # assert pytest.approx(levenshtein_ratio(s1, s2), ratio)
