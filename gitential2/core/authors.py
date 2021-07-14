@@ -28,12 +28,15 @@ def merge_authors(g: GitentialContext, workspace_id: int, authors: List[AuthorIn
     author_update = AuthorUpdate(**first.dict())
     for other in rest:
         author_update.aliases += other.aliases  # pylint: disable=no-member
-        g.backend.authors.delete(workspace_id, other.id)
+        delete_author(g, workspace_id, other.id)
     author_update.aliases = _remove_duplicate_aliases(author_update.aliases)
     return g.backend.authors.update(workspace_id, first.id, author_update)
 
 
 def delete_author(g: GitentialContext, workspace_id: int, author_id: int) -> int:
+    team_ids = g.backend.team_members.get_author_team_ids(workspace_id, author_id)
+    for team_id in team_ids:
+        g.backend.team_members.remove_members_from_team(workspace_id, team_id, [author_id])
     return g.backend.authors.delete(workspace_id, author_id)
 
 
