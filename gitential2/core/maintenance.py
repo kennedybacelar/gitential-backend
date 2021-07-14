@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from structlog import get_logger
 
 from gitential2.datatypes.subscriptions import SubscriptionType
-
+from gitential2.exceptions import InvalidStateException
 from .context import GitentialContext
 from .workspaces import get_workspace_subscription
 from .tasks import schedule_task
@@ -30,11 +30,14 @@ def maintenance(g: GitentialContext):
         return g.license.is_valid() and (g.license.is_on_premises or _is_pro_or_trial_subscription(workspace_id))
 
     for workspace in g.backend.workspaces.all():
-        if _should_schedule_maintenance(workspace.id):
-            schedule_task(
-                g,
-                task_name="maintain_workspace",
-                params={
-                    "workspace_id": workspace.id,
-                },
-            )
+        try:
+            if _should_schedule_maintenance(workspace.id):
+                schedule_task(
+                    g,
+                    task_name="maintain_workspace",
+                    params={
+                        "workspace_id": workspace.id,
+                    },
+                )
+        except InvalidStateException:
+            logger.warning("Skipping workspace, no owner?", workspace_id=workspace.id)
