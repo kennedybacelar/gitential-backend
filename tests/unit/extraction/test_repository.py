@@ -15,6 +15,7 @@ from gitential2.extraction.repository import (
     extract_commit_patches,
     blame_porcelain,
     extract_incremental,
+    extract_commit_branches,
 )
 
 TEST_PUBLIC_REPOSITORY = "https://github.com/laco/hostname.git"
@@ -188,3 +189,20 @@ def test_extract_incremental(settings, test_repositories):
     assert isinstance(result, GitRepositoryState)
     assert "master" in result.branches
     assert "extracted_commit" in output.values and len(output.values["extracted_commit"]) >= 2
+
+
+@pytest.mark.slow
+def test_extract_commit_branches(test_repositories):
+    output = DataCollector()
+    # https://github.com/pallets/flask/commit/dc11cdb4a4627b9f8c79e47e39aa7e1357151896
+    commit_id = "253570784cdcc85d82142128ce33e3b9d8f8db14"
+
+    result = extract_commit_branches(
+        repository=test_repositories["flask"],
+        output=output,
+        commit_id=commit_id,
+    )
+    extracted_commit_branches = output.values["extracted_commit_branch"]
+    assert len(extracted_commit_branches) >= 4
+    assert "main" in [x.branch for x in output.values["extracted_commit_branch"]]
+    assert "origin/main" in [x.branch for x in output.values["extracted_commit_branch"]]

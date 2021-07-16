@@ -15,13 +15,14 @@ from gitential2.datatypes.extraction import (
     ExtractedPatch,
     ExtractedPatchRewrite,
     ExtractedKind,
+    ExtractedCommitBranch,
 )
 from gitential2.datatypes.credentials import UserPassCredential, KeypairCredential, RepositoryCredential
 from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import OutputHandler
 from gitential2.extraction.langdetection import detect_lang
 from gitential2.utils.tempdir import TemporaryDirectory
-from gitential2.utils.timer import Timer
+from gitential2.utils.timer import Timer, time_it_log
 from gitential2.utils.executors import create_executor
 from gitential2.utils.ignorespec import IgnoreSpec, default_ignorespec
 
@@ -73,6 +74,7 @@ def extract_incremental_local(
 def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler, ignore_spec: IgnoreSpec):
     extract_commit(local_repo, commit_id, output)
     extract_commit_patches(local_repo, commit_id, output, ignore_spec)
+    # extract_commit_branches(local_repo, commit_id, output)
     return output
 
 
@@ -220,6 +222,40 @@ def extract_commit_patches(
             patch_count += 1
     # logger.debug("patch count", patch_count=patch_count, repository=repository, commit_id=commit_id)
     return patch_count
+
+
+@time_it_log(logger)
+def extract_branches(settings: GitentialSettings, repository: LocalGitRepository, output: OutputHandler):
+    logger.info("Getting commits from", local_repo=repository)
+    commits = get_commits(
+        repository,
+    )
+    logger.info("Getting commit branches from", local_repo=repository)
+
+    executor = create_executor(settings, local_repo=repository, output=output, description="Extracting commit branches")
+
+    executor.map(fn=_extract_single_commit_branches, items=commits)
+
+    logger.info("Finished commit branches extraction from", local_repo=repository)
+
+
+def _extract_single_commit_branches(commit_id: str, local_repo: LocalGitRepository, output: OutputHandler):
+    extract_commit_branches(local_repo, commit_id, output)
+    return output
+
+
+def extract_commit_branches(repository: LocalGitRepository, commit_id: str, output: OutputHandler):
+    g2_repo = _git2_repo(repository)
+    commit = g2_repo.get(commit_id)
+    atime = _utc_timestamp_for(commit.author)
+
+    branches = list(g2_repo.branches.with_commit(commit=commit))
+    for branch in branches:
+        output.write(
+            ExtractedKind.EXTRACTED_COMMIT_BRANCH.value,
+            ExtractedCommitBranch(repo_id=repository.repo_id, commit_id=commit.id.hex, atime=atime, branch=branch),
+        )
+    return output
 
 
 def _extract_patch(commit, parent, patch, g2_repo, output, repo_id):

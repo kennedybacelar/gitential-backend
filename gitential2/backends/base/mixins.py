@@ -22,6 +22,7 @@ from .repositories import (
     WorkspaceMemberRepository,
     CredentialRepository,
     ProjectRepository,
+    ExtractedCommitBranchRepository,
 )
 
 
@@ -41,6 +42,7 @@ class WithRepositoriesMixin:
     _subscriptions: SubscriptionRepository
     _extracted_commits: ExtractedCommitRepository
     _extracted_patches: ExtractedPatchRepository
+    _extracted_commit_branches: ExtractedCommitBranchRepository
     _extracted_patch_rewrites: ExtractedPatchRewriteRepository
     _calculated_commits: CalculatedCommitRepository
     _calculated_patches: CalculatedPatchRepository
@@ -102,6 +104,10 @@ class WithRepositoriesMixin:
     @property
     def extracted_patches(self) -> ExtractedPatchRepository:
         return self._extracted_patches
+
+    @property
+    def extracted_commit_branches(self) -> ExtractedCommitBranchRepository:
+        return self._extracted_commit_branches
 
     @property
     def extracted_patch_rewrites(self) -> ExtractedPatchRewriteRepository:

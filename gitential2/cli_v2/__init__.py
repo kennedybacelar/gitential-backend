@@ -1,27 +1,29 @@
 from typing import Optional
+
 import typer
 import uvicorn
 from structlog import get_logger
-from gitential2.settings import load_settings
-from gitential2.logging import initialize_logging
-from gitential2.core.users import get_user
-from gitential2.core.emails import send_email_to_user
-from gitential2.core.tasks import configure_celery
-from gitential2.core.deduplication import deduplicate_authors
-from gitential2.core.maintenance import maintenance
 
-from .export import app as export_app
-from .users import app as users_app
-from .projects import app as projects_app
-from .repositories import app as repositories_app
-from .usage_stats import app as usage_stats_app
-from .refresh import app as refresh_app
-from .tasks import app as tasks_app
-from .status import app as status_app
-from .query import app as query_app
-from .emails import app as emails_app
+from gitential2.core.deduplication import deduplicate_authors
+from gitential2.core.emails import send_email_to_user
+from gitential2.core.maintenance import maintenance
+from gitential2.core.tasks import configure_celery
+from gitential2.core.users import get_user
+from gitential2.logging import initialize_logging
+from gitential2.settings import load_settings
 
 from .common import OutputFormat, get_context, print_results
+from .emails import app as emails_app
+from .export import app as export_app
+from .extract import app as extraction_app
+from .projects import app as projects_app
+from .query import app as query_app
+from .refresh import app as refresh_app
+from .repositories import app as repositories_app
+from .status import app as status_app
+from .tasks import app as tasks_app
+from .usage_stats import app as usage_stats_app
+from .users import app as users_app
 
 logger = get_logger(__name__)
 
@@ -36,6 +38,7 @@ app.add_typer(tasks_app, name="tasks")
 app.add_typer(status_app, name="status")
 app.add_typer(query_app, name="query")
 app.add_typer(emails_app, name="emails")
+app.add_typer(extraction_app, name="extract")
 
 
 @app.command("public-api")

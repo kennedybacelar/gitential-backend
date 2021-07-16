@@ -53,6 +53,8 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchId,
     ExtractedPatchRewrite,
     ExtractedPatchRewriteId,
+    ExtractedCommitBranch,
+    ExtractedCommitBranchId,
 )
 from gitential2.datatypes.email_log import (
     EmailLogCreate,
@@ -299,6 +301,15 @@ class ExtractedCommitRepository(
 
 class ExtractedPatchRepository(
     RepoDFMixin, BaseWorkspaceScopedRepository[ExtractedPatchId, ExtractedPatch, ExtractedPatch, ExtractedPatch]
+):
+    pass
+
+
+class ExtractedCommitBranchRepository(
+    RepoDFMixin,
+    BaseWorkspaceScopedRepository[
+        ExtractedCommitBranchId, ExtractedCommitBranch, ExtractedCommitBranch, ExtractedCommitBranch
+    ],
 ):
     pass
 
