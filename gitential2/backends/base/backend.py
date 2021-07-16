@@ -30,6 +30,7 @@ from .repositories import (
     PullRequestCommentRepository,
     PullRequestLabelRepository,
     EmailLogRepository,
+    ExtractedCommitBranchRepository,
 )
 
 
@@ -110,6 +111,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def extracted_patches(self) -> ExtractedPatchRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def extracted_commit_branches(self) -> ExtractedCommitBranchRepository:
         pass
 
     @property

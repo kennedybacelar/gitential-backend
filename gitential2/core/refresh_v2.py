@@ -11,7 +11,7 @@ from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
 from gitential2.datatypes.extraction import LocalGitRepository
 
 from gitential2.utils.tempdir import TemporaryDirectory
-from gitential2.extraction.repository import extract_incremental_local, clone_repository
+from gitential2.extraction.repository import extract_incremental_local, clone_repository, extract_branches
 from gitential2.exceptions import LockError
 
 from .calculations import recalculate_repository_values
@@ -461,6 +461,45 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
             prs_error_msg=traceback.format_exc(limit=1),
             prs_last_run=g.current_time(),
         )
+
+
+def extract_project_branches(
+    g: GitentialContext,
+    workspace_id: int,
+    project_id: int,
+    strategy: RefreshStrategy = RefreshStrategy.parallel,
+):
+    for repo in list_project_repositories(g=g, workspace_id=workspace_id, project_id=project_id):
+        if strategy == RefreshStrategy.parallel:
+            schedule_task(
+                g,
+                task_name="extract_repository_branches",
+                params={
+                    "workspace_id": workspace_id,
+                    "repository_id": repo.id,
+                },
+            )
+        else:
+            extract_repository_branches(g, workspace_id, repo.id)
+
+
+def extract_repository_branches(g: GitentialContext, workspace_id: int, repository_id: int):
+    repo = g.backend.repositories.get_or_error(workspace_id, repository_id)
+    with TemporaryDirectory() as workdir:
+        with acquire_credential(
+            g,
+            credential_id=repo.credential_id,
+            workspace_id=workspace_id,
+            integration_name=repo.integration_name,
+            blocking_timeout_seconds=30,
+        ) as credential:
+            local_repo = clone_repository(
+                repo,
+                destination_path=workdir.path,
+                credentials=credential.to_repository_credential(g.fernet) if credential else None,
+            )
+            output = g.backend.output_handler(workspace_id)
+            extract_branches(g.settings, local_repo, output)
 
 
 def _author_callback(

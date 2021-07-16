@@ -28,6 +28,8 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchId,
     ExtractedPatchRewriteId,
     ExtractedPatchRewrite,
+    ExtractedCommitBranchId,
+    ExtractedCommitBranch,
 )
 from gitential2.datatypes.pull_requests import (
     PullRequest,
@@ -68,6 +70,7 @@ from gitential2.backends.base.repositories import (
     PullRequestCommentRepository,
     PullRequestLabelRepository,
     TeamMemberRepository,
+    ExtractedCommitBranchRepository,
 )
 
 from gitential2.datatypes.email_log import (
@@ -517,6 +520,21 @@ class SQLExtractedCommitRepository(
 ):
     def identity(self, id_: ExtractedCommitId):
         return and_(self.table.c.commit_id == id_.commit_id, self.table.c.repo_id == id_.repo_id)
+
+
+class SQLExtractedCommitBranchRepository(
+    SQLRepoDFMixin,
+    ExtractedCommitBranchRepository,
+    SQLWorkspaceScopedRepository[
+        ExtractedCommitBranchId, ExtractedCommitBranch, ExtractedCommitBranch, ExtractedCommitBranch
+    ],
+):
+    def identity(self, id_: ExtractedCommitBranchId):
+        return and_(
+            self.table.c.commit_id == id_.commit_id,
+            self.table.c.repo_id == id_.repo_id,
+            self.table.c.branch == id_.branch,
+        )
 
 
 class SQLExtractedPatchRepository(

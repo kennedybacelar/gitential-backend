@@ -16,6 +16,7 @@ class ExtractedKind(str, Enum):
     EXTRACTED_COMMIT = "extracted_commit"
     EXTRACTED_PATCH = "extracted_patch"
     EXTRACTED_PATCH_REWRITE = "extracted_patch_rewrite"
+    EXTRACTED_COMMIT_BRANCH = "extracted_commit_branch"
     PULL_REQUEST = "pull_request"
     PULL_REQUEST_COMMIT = "pull_request_commit"
     PULL_REQUEST_COMMENT = "pull_request_comment"
@@ -134,6 +135,33 @@ class ExtractedPatchRewrite(CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_patch_rewrite", "extracted_patch_rewrites")
+
+    def export_fields(self) -> List[str]:
+        return list(self.fields)
+
+
+class ExtractedCommitBranchId(CoreModel):
+    repo_id: int
+    commit_id: str
+    branch: str
+
+
+class ExtractedCommitBranch(CoreModel, ExportableModel):
+    repo_id: int
+    commit_id: str
+    atime: datetime
+    branch: str
+
+    @property
+    def id_(self):
+        return ExtractedCommitBranchId(
+            repo_id=self.repo_id,
+            commit_id=self.commit_id,
+            branch=self.branch,
+        )
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("extracted_commit_branch", "extracted_commit_branches")
 
     def export_fields(self) -> List[str]:
         return list(self.fields)

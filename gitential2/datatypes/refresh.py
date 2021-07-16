@@ -40,3 +40,14 @@ class RefreshRepositoryParams(BaseModel):
     strategy: RefreshStrategy = RefreshStrategy.parallel
     refresh_type: RefreshType = RefreshType.everything
     force: bool = False
+
+
+class ExtractProjectBranchesParams(BaseModel):
+    workspace_id: int
+    project_id: int
+    strategy: RefreshStrategy = RefreshStrategy.parallel
+
+
+class ExtractRepositoryBranchesParams(BaseModel):
+    workspace_id: int
+    repository_id: int

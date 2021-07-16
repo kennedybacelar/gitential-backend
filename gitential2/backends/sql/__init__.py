@@ -14,6 +14,7 @@ from gitential2.datatypes.extraction import (
     ExtractedKind,
     ExtractedPatch,
     ExtractedPatchRewrite,
+    ExtractedCommitBranch,
 )
 from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
@@ -75,6 +76,7 @@ from .repositories import (
     SQLProjectRepository,
     SQLExtractedCommitRepository,
     SQLExtractedPatchRepository,
+    SQLExtractedCommitBranchRepository,
     SQLExtractedPatchRewriteRepository,
     SQLCalculatedCommitRepository,
 )
@@ -161,6 +163,12 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ExtractedPatch,
+        )
+        self._extracted_commit_branches = SQLExtractedCommitBranchRepository(
+            table=self._workspace_tables.tables["extracted_commit_branches"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ExtractedCommitBranch,
         )
 
         self._extracted_patch_rewrites = SQLExtractedPatchRewriteRepository(
@@ -451,6 +459,8 @@ class SQLOutputHandler(OutputHandler):
             return self.backend.extracted_patches
         elif kind == ExtractedKind.EXTRACTED_PATCH_REWRITE:
             return self.backend.extracted_patch_rewrites
+        elif kind == ExtractedKind.EXTRACTED_COMMIT_BRANCH:
+            return self.backend.extracted_commit_branches
 
         else:
             raise ValueError("invalid kind")

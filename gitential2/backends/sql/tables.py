@@ -490,6 +490,16 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.PrimaryKeyConstraint("repo_id", "pr_number", "name"),
     )
 
+    extracted_commit_branches = sa.Table(
+        "extracted_commit_branches",
+        metadata,
+        sa.Column("repo_id", sa.Integer()),
+        sa.Column("commit_id", sa.String(40)),
+        sa.Column("atime", sa.DateTime()),
+        sa.Column("branch", sa.String(1000)),
+        sa.PrimaryKeyConstraint("repo_id", "commit_id", "branch"),
+    )
+
     return metadata, {
         "projects": projects,
         "repositories": repositories,
@@ -506,4 +516,5 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "pull_request_commits": pull_request_commits,
         "pull_request_comments": pull_request_comments,
         "pull_request_labels": pull_request_labels,
+        "extracted_commit_branches": extracted_commit_branches,
     }
