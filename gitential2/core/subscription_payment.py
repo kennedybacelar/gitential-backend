@@ -12,7 +12,7 @@ PAYMENT_METHOD_TYPES = ["card"]
 logger = get_logger(__name__)
 
 
-stripe.set_app_info("gitential", version="0.0.1", url="https://teszt")
+stripe.set_app_info("gitential", version="0.0.1", url="https://gitential.com")
 stripe.api_version = "2020-08-27"
 
 
@@ -27,37 +27,21 @@ def create_checkout_session(
     price_id: str,
     number_of_developers: int,
     user: UserInDB,
-):
+) -> dict:
     stripe.api_key = g.settings.stripe.api_key
-
-    def create_stripe_customer(user: UserInDB):
-        customer = stripe.Customer.create(
-            email=user.email,
-            metadata={"user_id": user.id},
-        )
-        user_copy = user.copy()
-        user_copy.stripe_customer_id = customer.id
-        user_new = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
-        return customer, user_new
-
-    if user.stripe_customer_id is None:
-        stripe_customer, user = create_stripe_customer(user)
-    else:
-        stripe_customer = stripe.Customer.retrieve(user.stripe_customer_id)  # checking
-        if "deleted" in stripe_customer:
-            logger.info(
-                "missing customer but we have stripe customer id, fixing...", customer_id=user.stripe_customer_id
-            )
-            stripe_customer, user = create_stripe_customer(user)
-    stripe.Customer.modify(stripe_customer.id, metadata={"number_of_developers": number_of_developers})
     domain_url = g.backend.settings.web.base_url
+    stripe_customer = None
+    if user.stripe_customer_id:
+        stripe_customer = stripe.Customer.retrieve(user.stripe_customer_id)
+
     try:
-        checkout_session = stripe.checkout.Session.create(
+        params = dict(
             success_url=domain_url + "?payment=true&session_id={CHECKOUT_SESSION_ID}",
             cancel_url=domain_url + "?payment=false",
             payment_method_types=PAYMENT_METHOD_TYPES,
+            billing_address_collection="required",
             mode="subscription",
-            customer=user.stripe_customer_id,
+            customer_email=user.email,
             line_items=[
                 {
                     "price": price_id,
@@ -68,9 +52,14 @@ def create_checkout_session(
                 "user_id": user.id,
             },
         )
+        if stripe_customer:
+            params.pop("customer_email", None)
+            params["customer"] = stripe_customer.stripe_id
+        checkout_session = stripe.checkout.Session.create(**params)
         return {"session_id": checkout_session["id"]}
     except:  # pylint: disable=bare-except
         logger.exception("Failed to create checkout session", price_id=price_id, user_id=user.id)
+        raise
 
 
 def _get_stripe_subscription(g: GitentialContext, subscription_id) -> dict:
@@ -96,7 +85,7 @@ def delete_subscription(g: GitentialContext, subs_id) -> dict:
     return {"status": "success"}
 
 
-def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
+def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> None:
     stripe.api_key = g.settings.stripe.api_key
     try:
         event = stripe.Webhook.construct_event(input_data, signature, g.settings.stripe.webhook_secret)
@@ -109,10 +98,17 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str):
         logger.info("new subscription modified")
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
+        user = g.backend.users.get_by_email(customer["email"])
+        if user:
+            user_copy = user.copy()
+            user_copy.stripe_customer_id = customer.id
+            user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
+        else:
+            return None
         if event.data.object["status"] == "active":
             developers = event.data.object["quantity"]
-            set_as_professional(g, int(customer["metadata"]["user_id"]), developers, event)
-            stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers})
+            set_as_professional(g, user.id, developers, event)
+            stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers, "user_id": user.id})
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
         customer_id = event["data"]["object"]["customer"]
