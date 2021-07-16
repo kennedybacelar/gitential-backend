@@ -57,7 +57,12 @@ def acquire_credential(
                     )
                     if is_refreshed:
                         credential = g.backend.credentials.get_or_error(credential.id)
-
+            logger.info(
+                "Giving credential",
+                credential_id=credential.id,
+                credential_name=credential.name,
+                owner_id=credential.owner_id,
+            )
             yield credential
 
 

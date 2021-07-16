@@ -52,6 +52,9 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
     celery_app.conf.update(
         result_expires=120,
         task_acks_late=True,
+        worker_prefetch_multiplier=settings.celery.worker_prefetch_multiplier,
+        worker_max_tasks_per_child=settings.celery.worker_max_tasks_per_child,
+        worker_max_memory_per_child=settings.celery.worker_max_memory_per_child,
         broker_url=settings.celery.broker_url or settings.connections.redis_url,
         result_backend=settings.celery.result_backend_url or settings.connections.redis_url,
         imports=("gitential2.core.tasks",),

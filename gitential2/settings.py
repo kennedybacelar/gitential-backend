@@ -65,6 +65,9 @@ class KeyValueStoreType(str, Enum):
 class CelerySettings(BaseModel):
     broker_url: Optional[str] = None
     result_backend_url: Optional[str] = None
+    worker_prefetch_multiplier: int = 1
+    worker_max_tasks_per_child: int = 5
+    worker_max_memory_per_child: int = 512 * 1024  # in kbytes
 
 
 class ConnectionSettings(BaseModel):

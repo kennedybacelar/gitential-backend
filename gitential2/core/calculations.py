@@ -37,7 +37,7 @@ def recalculate_repository_values(
 
 
 def recalculate_repo_values_in_interval(
-    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=20000
+    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=10000
 ):
     with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
         (
