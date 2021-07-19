@@ -95,19 +95,15 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
     except (ValueError, SignatureVerificationError):
         logger.info("Payload verification error")
         return None
-    if event.type == "customer.subscription.created":
-        logger.info("new subscription created")
-    if event.type == "customer.subscription.updated":
-        logger.info("new subscription modified")
+    if event.type == "customer.subscription.updated" or event.type == "customer.subscription.created":
+        logger.info("new subscription mod/update", type=event.type)
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
         user = g.backend.users.get_by_email(customer["email"])
-        if user:
+        if user and user.stripe_customer_id is None:
             user_copy = user.copy()
             user_copy.stripe_customer_id = customer.id
             user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
-        else:
-            return None
         if event.data.object["status"] == "active":
             developers = event.data.object["quantity"]
             set_as_professional(g, user.id, developers, event)
