@@ -132,7 +132,11 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
 
 def get_customer_portal_session(g: GitentialContext, user: UserInDB) -> dict:
     stripe.api_key = g.settings.stripe.api_key
-    domain_url = g.backend.settings.web.base_url
+
+    domain_url = g.backend.settings.web.frontend_url
+    if not domain_url.endswith("/"):
+        domain_url = domain_url + "/"
+
     session = stripe.billing_portal.Session.create(customer=user.stripe_customer_id, return_url=domain_url)
     return {"url": session.url}
 
