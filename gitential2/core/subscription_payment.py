@@ -29,7 +29,10 @@ def create_checkout_session(
     user: UserInDB,
 ) -> dict:
     stripe.api_key = g.settings.stripe.api_key
-    domain_url = g.backend.settings.web.base_url
+    domain_url = g.backend.settings.web.frontend_url
+    if not domain_url.endswith("/"):
+        domain_url = domain_url + "/"
+
     stripe_customer = None
     if user.stripe_customer_id:
         stripe_customer = stripe.Customer.retrieve(user.stripe_customer_id)

@@ -118,6 +118,7 @@ class EmailSettings(BaseModel):
 
 class WebSettings(BaseModel):
     base_url: str = "http://localhost:7998"
+    frontend_url: str = "http://localhost:7999"
     enforce_base_url: bool = False
     session_cookie: str = "gitential"
     session_same_site: str = "None"
