@@ -101,14 +101,15 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
         user = g.backend.users.get_by_email(customer["email"])
-        if user and user.stripe_customer_id is None:
-            user_copy = user.copy()
-            user_copy.stripe_customer_id = customer.id
-            user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
-        if event.data.object["status"] == "active":
-            developers = event.data.object["quantity"]
-            set_as_professional(g, user.id, developers, event)
-            stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers, "user_id": user.id})
+        if user:
+            if user.stripe_customer_id is None:
+                user_copy = user.copy()
+                user_copy.stripe_customer_id = customer.id
+                user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
+            if event.data.object["status"] == "active":
+                developers = event.data.object["quantity"]
+                set_as_professional(g, user.id, developers, event)
+                stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers, "user_id": user.id})
     elif event.type == "customer.subscription.deleted":
         logger.info("new subscription deleted")
         customer_id = event["data"]["object"]["customer"]
