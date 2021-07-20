@@ -63,6 +63,7 @@ def extract_incremental_local(
         current_state=current_state,
         commits_we_already_have=commits_we_already_have,
     )
+
     executor = create_executor(
         settings, local_repo=local_repo, output=output, description="Extracting commits", ignore_spec=ignore_spec
     )
@@ -72,9 +73,11 @@ def extract_incremental_local(
 
 
 def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: OutputHandler, ignore_spec: IgnoreSpec):
-    extract_commit(local_repo, commit_id, output)
-    extract_commit_patches(local_repo, commit_id, output, ignore_spec)
+    g2_repo = _git2_repo(local_repo)
+    extract_commit(local_repo, commit_id, output, g2_repo=g2_repo)
+    extract_commit_patches(local_repo, commit_id, output, ignore_spec, g2_repo=g2_repo)
     # extract_commit_branches(local_repo, commit_id, output)
+    del g2_repo
     return output
 
 
@@ -144,7 +147,7 @@ def get_commits(
     commits_already_yielded = commits_we_already_have or set()
 
     for head in heads:
-        walker = g2_repo.walk(head, pygit2.GIT_SORT_TOPOLOGICAL)  #  | pygit2.GIT_SORT_REVERSE)
+        walker = g2_repo.walk(head, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE)
 
         # Ignore the tails and ancestors
         for tail in tails:
@@ -168,8 +171,8 @@ def get_commits(
                 yield str(commit.id)
 
 
-def extract_commit(repository: LocalGitRepository, commit_id: str, output: OutputHandler):
-    g2_repo = _git2_repo(repository)
+def extract_commit(repository: LocalGitRepository, commit_id: str, output: OutputHandler, **kwargs):
+    g2_repo = kwargs.get("g2_repo") or _git2_repo(repository)
     commit = g2_repo.get(commit_id)
     atime = _utc_timestamp_for(commit.author)
     ctime = _utc_timestamp_for(commit.committer)

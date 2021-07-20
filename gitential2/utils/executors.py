@@ -8,6 +8,8 @@ from billiard import Pool  # pylint: disable=no-name-in-module
 from gitential2.settings import GitentialSettings, Executor as ExecutorSettings
 from gitential2.extraction.output import DataCollector
 
+from .logging import log_memory_usage
+
 
 logger = get_logger(__name__)
 
@@ -62,15 +64,24 @@ class ProcessPoolExecutor(Executor):
         pool = Pool(self.pool_size)  # pylint: disable=not-callable
         counter = 0
         for output in pool.imap_unordered(fn_partial, items):
-            for kind, value in output:
+            # We use pop() to avoid memory leak using double generators + pydantic
+            for kind, value in output.pop():
                 self.original_output.write(kind, value)
+            # For safety we're running a clear and deleting the object too
+            output.clear()
+            del output
+
             progress_bar.update(1)
             counter += 1
-        if not self._show_progress:
-            if counter % 100 == 0:  # pylint: disable=compare-to-zero
-                logger.info("Extracting commits", counter=counter)
+            if not self._show_progress:
+                if counter % 1000 == 0:  # pylint: disable=compare-to-zero
+                    logger.info("Process pool counter", counter=counter)
+                    log_memory_usage(f"Process pool counter at {counter}")
+
         pool.close()
         pool.join()
+        logger.info("Process pool imap_unordered finished", counter=counter)
+        log_memory_usage("Process pool imap_unordered finished")
 
 
 def create_executor(settings: GitentialSettings, **kwargs) -> Executor:

@@ -54,6 +54,7 @@ sqlalchemy-stubs = "^0.4"
 flower = {git = "https://github.com/avikam/flower.git"}
 jupyter = "^1.0.0"
 notebook = "^6.3.0"
+Pympler = "^0.9"
 
 [tool.black]
 line-length = 120
