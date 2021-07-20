@@ -382,7 +382,11 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
 
     try:
         current_state = get_repo_refresh_status(g, workspace_id, repository_id)
-        if current_state.prs_in_progress:
+        if (
+            current_state.prs_in_progress
+            and (not current_state.prs_started or (g.current_time() - current_state.prs_started) < timedelta(hours=4))
+            and not force
+        ):
             logger.info(
                 "Skipping PR refresh, another process in progress",
                 workspace_id=workspace_id,

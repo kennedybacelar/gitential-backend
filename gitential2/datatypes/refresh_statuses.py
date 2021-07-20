@@ -56,6 +56,7 @@ class RepositoryRefreshStatus(CoreModel):
     prs_refresh_scheduled: bool = False
 
     prs_last_successful_run: Optional[datetime] = None
+    prs_started: Optional[datetime] = None
     prs_last_run: Optional[datetime] = None
     prs_in_progress: bool = False
     prs_error: bool = False
