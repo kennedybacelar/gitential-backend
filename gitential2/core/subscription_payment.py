@@ -110,12 +110,21 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
                 developers = event.data.object["quantity"]
                 set_as_professional(g, user.id, developers, event)
                 stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers, "user_id": user.id})
+            elif (
+                event.data.object["status"] == "incomplete"
+                or event.data.object["status"] == "incomplete_expired"
+                or event.data.object["status"] == "past_due"
+                or event.data.object["status"] == "canceled"
+                or event.data.object["status"] == "unpaid"
+            ):
+                logger.info("subscription obsoleted", status=event.data.object["status"])
+                _set_as_free_everywhere(event, g, customer)
+            else:
+                pass
     elif event.type == "customer.subscription.deleted":
-        logger.info("new subscription deleted")
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
-        stripe.Customer.modify(customer.id, metadata={"number_of_developers": ""})
-        set_as_free(g, customer["metadata"]["user_id"])
+        _set_as_free_everywhere(event, g, customer)
     elif event.type == "customer.deleted":
         logger.info("customer deleted")
         email = event["data"]["object"]["email"]
@@ -126,6 +135,12 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
     else:
         logger.info("not handled stripe event", event_id=event.type)
     return None
+
+
+def _set_as_free_everywhere(event: dict, g: GitentialContext, customer) -> None:
+    logger.info("subscription deleted")
+    stripe.Customer.modify(customer.id, metadata={"number_of_developers": ""})
+    set_as_free(g, customer["metadata"]["user_id"])
 
 
 def get_customer_portal_session(g: GitentialContext, user: UserInDB) -> dict:
