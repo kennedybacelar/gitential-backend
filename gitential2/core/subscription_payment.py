@@ -89,7 +89,7 @@ def delete_subscription(g: GitentialContext, subs_id) -> dict:
     return {"status": "success"}
 
 
-def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> None:
+def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> None:  # pylint: disable=too-complex
     stripe.api_key = g.settings.stripe.api_key
     try:
         event = stripe.Webhook.construct_event(input_data, signature, g.settings.stripe.webhook_secret)
@@ -118,13 +118,13 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
                 or event.data.object["status"] == "unpaid"
             ):
                 logger.info("subscription obsoleted", status=event.data.object["status"])
-                _set_as_free_everywhere(event, g, customer)
+                _set_as_free_everywhere(g, customer)
             else:
                 pass
     elif event.type == "customer.subscription.deleted":
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
-        _set_as_free_everywhere(event, g, customer)
+        _set_as_free_everywhere(g, customer)
     elif event.type == "customer.deleted":
         logger.info("customer deleted")
         email = event["data"]["object"]["email"]
@@ -137,7 +137,7 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
     return None
 
 
-def _set_as_free_everywhere(event: dict, g: GitentialContext, customer) -> None:
+def _set_as_free_everywhere(g: GitentialContext, customer) -> None:
     logger.info("subscription deleted")
     stripe.Customer.modify(customer.id, metadata={"number_of_developers": ""})
     set_as_free(g, customer["metadata"]["user_id"])
