@@ -45,6 +45,7 @@ def create_checkout_session(
             billing_address_collection="required",
             mode="subscription",
             customer_email=user.email,
+            allow_promotion_codes=True,
             line_items=[
                 {
                     "price": price_id,
@@ -88,36 +89,42 @@ def delete_subscription(g: GitentialContext, subs_id) -> dict:
     return {"status": "success"}
 
 
-def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> None:
+def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> None:  # pylint: disable=too-complex
     stripe.api_key = g.settings.stripe.api_key
     try:
         event = stripe.Webhook.construct_event(input_data, signature, g.settings.stripe.webhook_secret)
     except (ValueError, SignatureVerificationError):
         logger.info("Payload verification error")
         return None
-    if event.type == "customer.subscription.created":
-        logger.info("new subscription created")
-    if event.type == "customer.subscription.updated":
-        logger.info("new subscription modified")
+    if event.type == "customer.subscription.updated" or event.type == "customer.subscription.created":
+        logger.info("new subscription mod/update", type=event.type)
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
         user = g.backend.users.get_by_email(customer["email"])
         if user:
-            user_copy = user.copy()
-            user_copy.stripe_customer_id = customer.id
-            user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
-        else:
-            return None
-        if event.data.object["status"] == "active":
-            developers = event.data.object["quantity"]
-            set_as_professional(g, user.id, developers, event)
-            stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers, "user_id": user.id})
+            if user.stripe_customer_id is None:
+                user_copy = user.copy()
+                user_copy.stripe_customer_id = customer.id
+                user = g.backend.users.update(user.id, cast(UserUpdate, user_copy))
+            if event.data.object["status"] == "active":
+                developers = event.data.object["quantity"]
+                set_as_professional(g, user.id, developers, event)
+                stripe.Customer.modify(customer.id, metadata={"number_of_developers": developers, "user_id": user.id})
+            elif (
+                event.data.object["status"] == "incomplete"
+                or event.data.object["status"] == "incomplete_expired"
+                or event.data.object["status"] == "past_due"
+                or event.data.object["status"] == "canceled"
+                or event.data.object["status"] == "unpaid"
+            ):
+                logger.info("subscription obsoleted", status=event.data.object["status"])
+                _set_as_free_everywhere(g, customer)
+            else:
+                pass
     elif event.type == "customer.subscription.deleted":
-        logger.info("new subscription deleted")
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)
-        stripe.Customer.modify(customer.id, metadata={"number_of_developers": ""})
-        set_as_free(g, customer["metadata"]["user_id"])
+        _set_as_free_everywhere(g, customer)
     elif event.type == "customer.deleted":
         logger.info("customer deleted")
         email = event["data"]["object"]["email"]
@@ -128,6 +135,12 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
     else:
         logger.info("not handled stripe event", event_id=event.type)
     return None
+
+
+def _set_as_free_everywhere(g: GitentialContext, customer) -> None:
+    logger.info("subscription deleted")
+    stripe.Customer.modify(customer.id, metadata={"number_of_developers": ""})
+    set_as_free(g, customer["metadata"]["user_id"])
 
 
 def get_customer_portal_session(g: GitentialContext, user: UserInDB) -> dict:
