@@ -3,6 +3,7 @@ workflow:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH == "master"
+    - if: '$CI_COMMIT_BRANCH =~ /^pilot/'
 
 variables:
   IMAGE_NAME: "backend"
@@ -37,6 +38,9 @@ stages:
         export SKIP_PUSH=""
         export DESTINATION_REGISTRY=$DESTINATION_REGISTRY_STABLE
       elif [ "$CI_COMMIT_BRANCH" == "master" ]; then
+        export SKIP_PUSH=""
+        export DESTINATION_REGISTRY=$DESTINATION_REGISTRY_INTERNAL
+      elif [[ "$CI_COMMIT_BRANCH" =~ ^pilot.* ]]; then
         export SKIP_PUSH=""
         export DESTINATION_REGISTRY=$DESTINATION_REGISTRY_INTERNAL
       else
