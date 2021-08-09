@@ -198,7 +198,7 @@ def _prepare_patch_metric(metric: MetricName, ibis_table):
     elif metric == MetricName.sum_loc_impl:
         return ibis_table.loc_i.sum(where=ibis_table.is_test == False).name("sum_loc_impl")
     elif metric == MetricName.loc_effort_p:
-        return ibis_table.loc_effort_p.sum().name("loc_effort_p")
+        return ibis_table.loc_effort_p.sum().name("loc_effort_p")  # TODO: rename this to sum_loc_effort
     else:
         return None
 
