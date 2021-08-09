@@ -82,7 +82,11 @@ PATCH_METRICS = [
 
 class FilterName(str, Enum):
     repo_ids = "repo_ids"
+
+    # author ids and developer ids are the same, we have both for backward compatibility
     author_ids = "author_ids"
+    developer_ids = "developer_ids"
+
     emails = "emails"
     name = "name"
     day = "day"
@@ -105,10 +109,12 @@ class FilterName(str, Enum):
 
 class DimensionName(str, Enum):
     repo_id = "repo_id"
+
+    # author/developer dimensions
     aid = "aid"
-    # author dimensions
     name = "name"
     email = "email"
+    developer_id = "developer_id"
 
     # date dimensions
     day = "day"

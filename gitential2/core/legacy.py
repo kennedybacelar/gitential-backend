@@ -46,19 +46,17 @@ def _get_commit_counts_by_dev_and_repo(
 
 def get_repo_top_devs(g: GitentialContext, workspace_id: int) -> dict:
     dev_repo_commit_counts = _get_commit_counts_by_dev_and_repo(g, workspace_id)
-    author_emails_names = {
-        author.id: (author.email, author.name) for author in g.backend.authors.all(workspace_id) if author.active
-    }
-    results: dict = defaultdict(lambda: {"emails": [], "names": []})
+    author_names = {author.id: author.name for author in g.backend.authors.all(workspace_id) if author.active}
+    results: dict = defaultdict(lambda: {"developer_ids": [], "names": []})
 
     for row in dev_repo_commit_counts:
-        if row["aid"] in author_emails_names:
-            email, name = author_emails_names[row["aid"]]
+        if row["aid"] in author_names:
+            name = author_names[row["aid"]]
 
-            results[row["repo_id"]]["emails"].append(email)
+            results[row["repo_id"]]["developer_ids"].append(row["aid"])
             results[row["repo_id"]]["names"].append(name)
 
-    return _to_categories_series_response(results, series_names=["emails", "names"])
+    return _to_categories_series_response(results, series_names=["developer_ids", "names"])
 
 
 def get_dev_top_repos(g: GitentialContext, workspace_id: int) -> dict:

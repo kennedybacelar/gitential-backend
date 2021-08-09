@@ -95,6 +95,10 @@ def _prepare_dimension(
         return ibis_table["repo_id"].name("repo_id")
     elif dimension == DimensionName.aid and TableName.pull_requests not in table_def:
         return ibis_table["aid"].name("aid")
+    elif dimension == DimensionName.developer_id and TableName.pull_requests not in table_def:
+        return ibis_table["aid"].name("developer_id")
+    elif dimension == DimensionName.developer_id and TableName.pull_requests in table_def:
+        return ibis_table["user_aid"].name("developer_id")
     return None
 
 
@@ -239,7 +243,7 @@ def _prepare_filters_dict(
     for filter_name, filter_params in filters.items():
         if filter_name == FilterName.emails:
             author_ids = _get_author_ids_from_emails(g, workspace_id, filter_params)
-            filters_dict[FilterName.author_ids] = author_ids
+            filters_dict[FilterName.developer_ids] = author_ids
         if filter_name == FilterName.account_id:
             continue
         elif filter_name == FilterName.project_id:
@@ -252,6 +256,8 @@ def _prepare_filters_dict(
             filters_dict[FilterName.repo_ids] = repo_ids
         elif filter_name == FilterName.repo_ids:
             filters_dict[FilterName.repo_ids] = filter_params
+        elif filter_name == FilterName.author_ids:
+            filters_dict[FilterName.developer_ids] = author_ids
         elif filter_name == FilterName.team_id:
             if filter_params:
                 author_ids = g.backend.team_members.get_team_member_author_ids(
@@ -259,7 +265,7 @@ def _prepare_filters_dict(
                 )
             else:
                 author_ids = []
-            filters_dict[FilterName.author_ids] = author_ids
+            filters_dict[FilterName.developer_ids] = author_ids
         elif filter_name == FilterName.day:
             filters_dict[FilterName.day] = filter_params
         elif filter_name == FilterName.is_bugfix:
@@ -299,6 +305,7 @@ def _prepare_filters(  # pylint: disable=too-complex
         TableName.commits: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
             FilterName.author_ids: lambda t: t.aid.isin,
+            FilterName.developer_ids: lambda t: t.aid.isin,
             FilterName.emails: lambda t: t.aemail.isin,
             "aids": lambda t: t.aid.isin,
             "name": lambda t: t.aname.isin,
@@ -317,10 +324,12 @@ def _prepare_filters(  # pylint: disable=too-complex
             FilterName.repo_ids: lambda t: t.repo_id.isin,
             FilterName.day: lambda t: t.created_at.between,
             FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
+            FilterName.developer_ids: lambda t: t.user_aid.isin,
         },
         TableName.patches: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
             FilterName.author_ids: lambda t: t.aid.isin,
+            FilterName.developer_ids: lambda t: t.aid.isin,
             FilterName.emails: lambda t: t.aemail.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
