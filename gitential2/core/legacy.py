@@ -126,7 +126,9 @@ def get_developers(
     to_: Optional[str] = None,
 ) -> list:
     all_active_developers = {
-        dev.id: {"name": dev.name, "email": dev.email} for dev in g.backend.authors.all(workspace_id) if dev.active
+        dev.id: {"name": dev.name, "email": dev.email, "id": dev.id}
+        for dev in g.backend.authors.all(workspace_id)
+        if dev.active
     }
 
     if project_id or repo_id:
