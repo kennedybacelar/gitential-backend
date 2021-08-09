@@ -257,7 +257,7 @@ def _prepare_filters_dict(
         elif filter_name == FilterName.repo_ids:
             filters_dict[FilterName.repo_ids] = filter_params
         elif filter_name == FilterName.author_ids:
-            filters_dict[FilterName.developer_ids] = author_ids
+            filters_dict[FilterName.developer_ids] = filter_params
         elif filter_name == FilterName.team_id:
             if filter_params:
                 author_ids = g.backend.team_members.get_team_member_author_ids(
