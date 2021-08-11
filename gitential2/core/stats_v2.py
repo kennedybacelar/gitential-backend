@@ -286,6 +286,8 @@ def _prepare_filters_dict(
             filters_dict[FilterName.is_pr_exists] = filter_params
         elif filter_name == FilterName.active:
             filters_dict[FilterName.active] = filter_params
+        elif filter_name == FilterName.developer_ids:
+            filters_dict[FilterName.developer_ids] = filter_params
         else:
             logger.warning("Unhandled filter name", filter_name=filter_name, filter_params=filter_params)
 
