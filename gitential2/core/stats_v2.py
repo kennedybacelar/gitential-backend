@@ -11,7 +11,6 @@ import ibis
 
 from gitential2.datatypes.stats import (
     IbisTables,
-    PR_METRICS,
     Query,
     MetricName,
     DimensionName,
@@ -542,10 +541,6 @@ def collect_stats_v2_raw(g: GitentialContext, workspace_id: int, query: Query) -
 
 
 def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
-    if any([m in PR_METRICS for m in query.metrics]) and any(
-        [f in [FilterName.author_ids, FilterName.emails, FilterName.team_id] for f in query.filters.keys()]
-    ):
-        logger.warn("Author based filtering for PRs is not implemented", query=query)
-        return {}
+
     result = collect_stats_v2_raw(g, workspace_id, query)
     return _to_jsonable_result(result)
