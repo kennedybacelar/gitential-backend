@@ -19,7 +19,7 @@ class EntityType(str, Enum):
 
     @classmethod
     def get_fields(cls, entity: str) -> Set[str]:
-        return {"projects": {"id", "name"}, "repos": {"id", "name", "namespace"}, "developers": {"name", "email"}}[
+        return {"projects": {"id", "name"}, "repos": {"id", "name", "namespace"}, "developers": {"name", "id"}}[
             entity
         ]
 
