@@ -100,6 +100,8 @@ def _prepare_dimension(
         return ibis_table["aid"].name("developer_id")
     elif dimension == DimensionName.developer_id and TableName.pull_requests in table_def:
         return ibis_table["user_aid"].name("developer_id")
+    elif dimension == DimensionName.istest:
+        return ibis_table["is_test"].name("istest")
     return None
 
 
@@ -512,7 +514,7 @@ def _simplify_filters(g: GitentialContext, workspace_id: int, filters: Dict[Filt
         # simplify to developer_ids
 
         if filter_name == FilterName.team_id:
-            team_id = filter_value
+            team_id = int(filter_value)
             team_member_developer_ids = g.backend.team_members.get_team_member_author_ids(
                 workspace_id=workspace_id, team_id=team_id
             )
