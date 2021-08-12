@@ -378,8 +378,16 @@ def _add_missing_timestamp_to_result(result: QueryResult):
     if not date_dimension or not day_filter:
         return result
 
-    from_date = datetime.strptime(day_filter[0], "%Y-%m-%d").date()
-    to_date = datetime.strptime(day_filter[1], "%Y-%m-%d").date()
+    from_date = (
+        day_filter[0].date()
+        if isinstance(day_filter[0], datetime)
+        else datetime.strptime(day_filter[0], "%Y-%m-%d").date()
+    )
+    to_date = (
+        day_filter[1].date()
+        if isinstance(day_filter[1], datetime)
+        else datetime.strptime(day_filter[1], "%Y-%m-%d").date()
+    )
 
     all_timestamps = [
         int(ts.timestamp()) * 1000 for ts in _calculate_timestamps_between(date_dimension, from_date, to_date)
@@ -532,11 +540,24 @@ def _simplify_filters(g: GitentialContext, workspace_id: int, filters: Dict[Filt
         elif filter_name == FilterName.account_id:
             continue
 
+        # ismerge vs is_merge LOL
         elif filter_name == FilterName.ismerge:
             ret[FilterName.is_merge] = filter_value
+
+        elif filter_name == FilterName.day:
+            start, end = filter_value
+            ret[FilterName.day] = [_as_timestamp(start), _as_timestamp(end, end_of_day=True)]
 
         # Other filters kept as is
         else:
             ret[filter_name] = filter_value
 
     return ret
+
+
+def _as_timestamp(date_str, end_of_day=False):
+    d = date.fromisoformat(date_str)
+    if not end_of_day:
+        return datetime(d.year, d.month, d.day)
+    else:
+        return datetime(d.year, d.month, d.day, 23, 59, 59)
