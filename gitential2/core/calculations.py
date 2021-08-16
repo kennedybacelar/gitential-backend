@@ -144,6 +144,9 @@ def _prepare_extracted_commits_df(
     extracted_commits_df["cid"] = extracted_commits_df.apply(lambda row: email_author_map.get(row["cemail"]), axis=1)
     extracted_commits_df["date"] = extracted_commits_df["atime"]
     extracted_commits_df["is_merge"] = extracted_commits_df["nparents"] > 1
+    extracted_commits_df["is_bugfix"] = extracted_commits_df.apply(
+        lambda x: calculate_is_bugfix(labels=[], title=x["message"]), axis=1
+    )
     age_df = _calculate_age_df(extracted_commits_df, parents_df)
     ret = extracted_commits_df.set_index(["commit_id"]).join(age_df)
     hourse_measured_df = _measure_hours(ret)
@@ -317,9 +320,9 @@ def _calculate_commit_level(
     calculated_commits["velocity_measured"] = calculated_commits["loc_i_c"] / calculated_commits["hours_measured"]
     calculated_commits = _add_estimate_hours(_median_measured_velocity(calculated_commits))
     calculated_commits["velocity"] = calculated_commits["loc_i_c"] / calculated_commits["hours"]
-    calculated_commits["is_bugfix"] = calculated_commits.apply(
-        lambda x: calculate_is_bugfix(labels=[], title=x["message"]), axis=1
-    )
+    # calculated_commits["is_bugfix"] = calculated_commits.apply(
+    #     lambda x: calculate_is_bugfix(labels=[], title=x["message"]), axis=1
+    # )
     calculated_commits["is_pr_exists"] = calculated_commits.apply(
         lambda x: len(pull_request_commits_df[pull_request_commits_df["commit_id"] == x.name]) > 0, axis=1
     )
@@ -376,6 +379,7 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
         "uploc",
         "outlier",
         "anomaly",
+        "is_bugfix",
     ]
 
     calculated_patches_df = calculated_patches_df.reset_index().rename(columns={"repo_id__commit": "repo_id"})

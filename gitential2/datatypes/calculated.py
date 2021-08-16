@@ -125,6 +125,7 @@ class CalculatedPatch(CoreModel, ExportableModel):
     is_new_code: Optional[bool]
 
     loc_effort_p: Optional[int]
+    is_bugfix: Optional[bool]
 
     @property
     def id_(self):

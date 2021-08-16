@@ -105,6 +105,7 @@ class FilterName(str, Enum):
     is_pr_exists = "is_pr_exists"
     is_pr_open = "is_pr_open"
     is_pr_closed = "is_pr_closed"
+    is_test = "is_test"
 
 
 class DimensionName(str, Enum):
@@ -238,7 +239,7 @@ class Query(BaseModel):
                 from_date = from_.date()
 
             elapsed = to_date - from_date
-            return 8 * elapsed.days * 5 / 7
+            return 8 * max(elapsed.days * 5 / 7, 1)
         else:
             return 1
 

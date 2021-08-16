@@ -236,7 +236,7 @@ def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: 
     return ret
 
 
-def _prepare_filters(  # pylint: disable=too-complex
+def _prepare_filters(  # pylint: disable=too-complex,unused-argument
     g: GitentialContext,
     workspace_id: int,
     filters: Dict[FilterName, Any],
@@ -248,14 +248,9 @@ def _prepare_filters(  # pylint: disable=too-complex
     _ibis_filters: dict = {
         TableName.commits: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
-            # FilterName.author_ids: lambda t: t.aid.isin,
             FilterName.developer_ids: lambda t: t.aid.isin,
-            # FilterName.emails: lambda t: t.aemail.isin,
-            "aids": lambda t: t.aid.isin,
-            "name": lambda t: t.aname.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
-            FilterName.ismerge: lambda t: t.is_merge.__eq__,
             FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
             FilterName.is_pr_open: lambda t: t.is_pr_open.__eq__,
             FilterName.is_pr_closed: lambda t: t.is_pr_closed.__eq__,
@@ -272,14 +267,13 @@ def _prepare_filters(  # pylint: disable=too-complex
         },
         TableName.patches: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
-            # FilterName.author_ids: lambda t: t.aid.isin,
             FilterName.developer_ids: lambda t: t.aid.isin,
-            # FilterName.emails: lambda t: t.aemail.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
-            FilterName.ismerge: lambda t: t.ismerge.__eq__,
             FilterName.is_collaboration: lambda t: t.is_collaboration.__eq__,
             FilterName.is_new_code: lambda t: t.is_new_code.__eq__,
+            FilterName.is_test: lambda t: t.is_test.__eq__,
+            FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
         },
     }
 
@@ -529,7 +523,7 @@ def _simplify_filters(g: GitentialContext, workspace_id: int, filters: Dict[Filt
 
         # simplify to repo_ids
 
-        if filter_name == FilterName.project_id:
+        elif filter_name == FilterName.project_id:
             project_id = filter_value
             repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
                 workspace_id=workspace_id, project_id=project_id

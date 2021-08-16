@@ -1,7 +1,9 @@
 from typing import Callable, Optional, List
+from functools import lru_cache
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB, RepositoryCreate, GitProtocol
+
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.pull_requests import (
     PullRequest,
@@ -10,6 +12,7 @@ from gitential2.datatypes.pull_requests import (
     PullRequestCommit,
     PullRequestComment,
 )
+from gitential2.datatypes.authors import AuthorAlias
 from gitential2.extraction.output import OutputHandler
 from .base import CollectPRsResult, OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
@@ -134,12 +137,22 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         api_base_url = self.oauth_register()["api_base_url"]
         pr_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls/{pr_number}"
         client = self.get_oauth2_client(token=token, update_token=update_token)
+        user_getter = make_user_getter(client=client)
         raw_data = None
         try:
             raw_data = self._collect_single_pr_data_raw(client, pr_url)
-            pull_request = self._transform_to_pr(raw_data, repository=repository)
+            pull_request = self._transform_to_pr(
+                raw_data, repository=repository, author_callback=author_callback, user_getter=user_getter
+            )
             commits = self._write_pr_commits(raw_data["commits"], raw_data, repository, output)
-            comments = self._write_pr_comments(raw_data["review_comments"], raw_data, repository, output)
+            comments = self._write_pr_comments(
+                raw_data["review_comments"],
+                raw_data,
+                repository,
+                output,
+                author_callback=author_callback,
+                user_getter=user_getter,
+            )
             output.write(ExtractedKind.PULL_REQUEST, pull_request)
             return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
         except Exception:  # pylint: disable=broad-except
@@ -160,7 +173,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "review_comments": review_comments,
         }
 
-    def _transform_to_pr(self, raw_data, repository):
+    def _transform_to_pr(self, raw_data, repository, author_callback: Callable, user_getter: Callable):
         def _calc_first_commit_authored_at(raw_commits):
             author_times = [c["commit"]["author"]["date"] for c in raw_commits]
             author_times.sort()
@@ -174,6 +187,23 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 if human_note_creation_times
                 else raw_pr.get("merged_at", raw_pr.get("closed_at"))
             )
+
+        # print("*******", raw_data["pr"]["user"])
+
+        user_data = user_getter(raw_data["pr"]["user"]["url"])
+
+        user_author_id = author_callback(
+            AuthorAlias(
+                name=user_data.get("name"),
+                login=raw_data["pr"]["user"]["login"],
+            )
+        )
+
+        merged_by_author_id = (
+            author_callback(AuthorAlias(login=raw_data["pr"]["merged_by"]["login"]))
+            if "merged_by" in raw_data["pr"] and raw_data["pr"]["merged_by"] is not None
+            else None
+        )
 
         return PullRequest(
             repo_id=repository.id,
@@ -193,10 +223,14 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             changed_files=raw_data["pr"]["changed_files"],
             draft=raw_data["pr"]["draft"],
             user=raw_data["pr"]["user"]["login"],
+            user_name_external=user_data.get("name"),
+            user_username_external=raw_data["pr"]["user"]["login"],
+            user_aid=user_author_id,
             commits=len(raw_data["commits"]),
             merged_by=raw_data["pr"]["merged_by"]["login"]
             if "merged_by" in raw_data["pr"] and raw_data["pr"]["merged_by"] is not None
             else None,
+            merged_by_aid=merged_by_author_id,
             first_reaction_at=_calc_first_reaction_at(raw_data["pr"], raw_data["review_comments"]),
             first_commit_authored_at=_calc_first_commit_authored_at(raw_data["commits"]),
             extra=raw_data,
@@ -282,19 +316,30 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         raw_data: dict,
         repository: RepositoryInDB,
         output: OutputHandler,
+        author_callback: Callable,
+        user_getter: Callable,
     ) -> List[PullRequestComment]:
         ret = []
         for note_raw in notes_raw:
             # print(note_raw)
+            if note_raw.get("user"):
+                user_data = user_getter(note_raw["user"]["url"])
+                # print("!!!***!!!", note_raw["user"])
+                author_name_external = user_data.get("name")
+                author_aid = author_callback(AuthorAlias(name=user_data.get("name"), login=note_raw["user"]["login"]))
+            else:
+                author_name_external = None
+                author_aid = None
+
             comment = PullRequestComment(
                 repo_id=repository.id,
                 pr_number=raw_data["pr"]["number"],
                 comment_type="review_comments",
                 comment_id=str(note_raw["id"]),
                 author_id_external=note_raw["user"]["id"] if note_raw.get("user") else None,
-                author_name_external=None,
+                author_name_external=author_name_external,
                 author_username_external=note_raw["user"]["login"] if note_raw.get("user") else None,
-                author_aid=None,
+                author_aid=author_aid,
                 content=note_raw["body"],
                 extra=note_raw,
                 created_at=note_raw["created_at"],
@@ -303,3 +348,13 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             output.write(ExtractedKind.PULL_REQUEST_COMMENT, comment)
             ret.append(comment)
         return ret
+
+
+def make_user_getter(client):
+    @lru_cache(100)
+    def get_user(user_url):
+        logger.debug("Getting GitHub user", user_url=user_url)
+        response = client.get(user_url)
+        return response.json()
+
+    return get_user
