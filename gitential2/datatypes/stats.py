@@ -105,6 +105,7 @@ class FilterName(str, Enum):
     is_pr_exists = "is_pr_exists"
     is_pr_open = "is_pr_open"
     is_pr_closed = "is_pr_closed"
+    is_test = "is_test"
 
 
 class DimensionName(str, Enum):
@@ -230,10 +231,15 @@ class Query(BaseModel):
 
         from_, to_ = self.filters.get("day", self.filters.get("month", [None, None]))
         if from_ and to_:
-            to_date = datetime.strptime(to_, "%Y-%m-%d").date()
-            from_date = datetime.strptime(from_, "%Y-%m-%d").date()
+            if isinstance(from_, str) and isinstance(to_, str):
+                to_date = datetime.strptime(to_, "%Y-%m-%d").date()
+                from_date = datetime.strptime(from_, "%Y-%m-%d").date()
+            elif isinstance(from_, datetime) and isinstance(to_, datetime):
+                to_date = to_.date()
+                from_date = from_.date()
+
             elapsed = to_date - from_date
-            return 8 * elapsed.days * 5 / 7
+            return 8 * max(elapsed.days * 5 / 7, 1)
         else:
             return 1
 

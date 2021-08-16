@@ -12,7 +12,7 @@ def get_commits(
     team_id: Optional[int] = None,
     repo_ids: Optional[List[int]] = None,
     author_ids: Optional[List[int]] = None,
-    author_email: Optional[str] = None,
+    developer_id: Optional[int] = None,
     from_: Optional[datetime] = None,
     to_: Optional[datetime] = None,
     is_merge: Optional[bool] = None,
@@ -24,13 +24,8 @@ def get_commits(
         )
     if team_id:
         author_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
-
-    if author_email:
-        author_id = _get_author_id_for_email(g, workspace_id, author_email)
-        if author_id:
-            author_ids = [author_id]
-        else:
-            return []
+    if developer_id:
+        author_ids = [developer_id]
     return list(
         g.backend.calculated_commits.select(
             workspace_id=workspace_id,

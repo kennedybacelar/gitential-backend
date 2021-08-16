@@ -1,4 +1,5 @@
 # pylint: disable=too-complex,too-many-branches
+
 from typing import Generator, List, Any, Dict, Optional
 from datetime import datetime, date, timedelta, timezone
 
@@ -8,10 +9,10 @@ import pandas as pd
 import numpy as np
 import ibis
 
+from gitential2.utils import common_elements_if_not_none
 
 from gitential2.datatypes.stats import (
     IbisTables,
-    PR_METRICS,
     Query,
     MetricName,
     DimensionName,
@@ -99,6 +100,8 @@ def _prepare_dimension(
         return ibis_table["aid"].name("developer_id")
     elif dimension == DimensionName.developer_id and TableName.pull_requests in table_def:
         return ibis_table["user_aid"].name("developer_id")
+    elif dimension == DimensionName.istest:
+        return ibis_table["is_test"].name("istest")
     return None
 
 
@@ -233,87 +236,21 @@ def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: 
     return ret
 
 
-def _prepare_filters_dict(
-    g: GitentialContext,
-    workspace_id: int,
-    filters: Dict[FilterName, Any],
-):
-    filters_dict: dict = {}
-
-    for filter_name, filter_params in filters.items():
-        if filter_name == FilterName.emails:
-            author_ids = _get_author_ids_from_emails(g, workspace_id, filter_params)
-            filters_dict[FilterName.developer_ids] = author_ids
-        if filter_name == FilterName.account_id:
-            continue
-        elif filter_name == FilterName.project_id:
-            if filter_params:
-                repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
-                    workspace_id=workspace_id, project_id=filter_params
-                )
-            else:
-                repo_ids = []
-            filters_dict[FilterName.repo_ids] = repo_ids
-        elif filter_name == FilterName.repo_ids:
-            filters_dict[FilterName.repo_ids] = filter_params
-        elif filter_name == FilterName.author_ids:
-            filters_dict[FilterName.developer_ids] = filter_params
-        elif filter_name == FilterName.team_id:
-            if filter_params:
-                author_ids = g.backend.team_members.get_team_member_author_ids(
-                    workspace_id=workspace_id, team_id=filter_params
-                )
-            else:
-                author_ids = []
-            filters_dict[FilterName.developer_ids] = author_ids
-        elif filter_name == FilterName.day:
-            filters_dict[FilterName.day] = filter_params
-        elif filter_name == FilterName.is_bugfix:
-            filters_dict[FilterName.is_bugfix] = filter_params
-        elif filter_name == FilterName.is_merge:
-            filters_dict[FilterName.is_merge] = filter_params
-        elif filter_name == FilterName.ismerge:
-            filters_dict[FilterName.is_merge] = filter_params
-        elif filter_name == FilterName.is_new_code:
-            filters_dict[FilterName.is_new_code] = filter_params
-        elif filter_name == FilterName.is_collaboration:
-            filters_dict[FilterName.is_collaboration] = filter_params
-        elif filter_name == FilterName.is_pr_open:
-            filters_dict[FilterName.is_pr_open] = filter_params
-        elif filter_name == FilterName.is_pr_closed:
-            filters_dict[FilterName.is_pr_closed] = filter_params
-        elif filter_name == FilterName.is_pr_exists:
-            filters_dict[FilterName.is_pr_exists] = filter_params
-        elif filter_name == FilterName.active:
-            filters_dict[FilterName.active] = filter_params
-        elif filter_name == FilterName.developer_ids:
-            filters_dict[FilterName.developer_ids] = filter_params
-        else:
-            logger.warning("Unhandled filter name", filter_name=filter_name, filter_params=filter_params)
-
-    return filters_dict
-
-
-def _prepare_filters(  # pylint: disable=too-complex
+def _prepare_filters(  # pylint: disable=too-complex,unused-argument
     g: GitentialContext,
     workspace_id: int,
     filters: Dict[FilterName, Any],
     table_def: TableDef,
     ibis_table,
 ) -> list:
-    filters_dict = _prepare_filters_dict(g, workspace_id, filters)
+    filters_dict = filters
 
     _ibis_filters: dict = {
         TableName.commits: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
-            FilterName.author_ids: lambda t: t.aid.isin,
             FilterName.developer_ids: lambda t: t.aid.isin,
-            FilterName.emails: lambda t: t.aemail.isin,
-            "aids": lambda t: t.aid.isin,
-            "name": lambda t: t.aname.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
-            FilterName.ismerge: lambda t: t.is_merge.__eq__,
             FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
             FilterName.is_pr_open: lambda t: t.is_pr_open.__eq__,
             FilterName.is_pr_closed: lambda t: t.is_pr_closed.__eq__,
@@ -330,14 +267,13 @@ def _prepare_filters(  # pylint: disable=too-complex
         },
         TableName.patches: {
             FilterName.repo_ids: lambda t: t.repo_id.isin,
-            FilterName.author_ids: lambda t: t.aid.isin,
             FilterName.developer_ids: lambda t: t.aid.isin,
-            FilterName.emails: lambda t: t.aemail.isin,
             FilterName.day: lambda t: t.date.between,
             FilterName.is_merge: lambda t: t.is_merge.__eq__,
-            FilterName.ismerge: lambda t: t.ismerge.__eq__,
             FilterName.is_collaboration: lambda t: t.is_collaboration.__eq__,
             FilterName.is_new_code: lambda t: t.is_new_code.__eq__,
+            FilterName.is_test: lambda t: t.is_test.__eq__,
+            FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
         },
     }
 
@@ -438,8 +374,16 @@ def _add_missing_timestamp_to_result(result: QueryResult):
     if not date_dimension or not day_filter:
         return result
 
-    from_date = datetime.strptime(day_filter[0], "%Y-%m-%d").date()
-    to_date = datetime.strptime(day_filter[1], "%Y-%m-%d").date()
+    from_date = (
+        day_filter[0].date()
+        if isinstance(day_filter[0], datetime)
+        else datetime.strptime(day_filter[0], "%Y-%m-%d").date()
+    )
+    to_date = (
+        day_filter[1].date()
+        if isinstance(day_filter[1], datetime)
+        else datetime.strptime(day_filter[1], "%Y-%m-%d").date()
+    )
 
     all_timestamps = [
         int(ts.timestamp()) * 1000 for ts in _calculate_timestamps_between(date_dimension, from_date, to_date)
@@ -537,15 +481,79 @@ def _calculate_timestamps_between(
 
 
 def collect_stats_v2_raw(g: GitentialContext, workspace_id: int, query: Query) -> QueryResult:
-    result = _add_missing_timestamp_to_result(IbisQuery(g, workspace_id, query).execute())
+    prepared_query = prepare_query(g, workspace_id, query)
+    result = _add_missing_timestamp_to_result(IbisQuery(g, workspace_id, prepared_query).execute())
     return result
 
 
 def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
-    if any([m in PR_METRICS for m in query.metrics]) and any(
-        [f in [FilterName.author_ids, FilterName.emails, FilterName.team_id] for f in query.filters.keys()]
-    ):
-        logger.warn("Author based filtering for PRs is not implemented", query=query)
-        return {}
     result = collect_stats_v2_raw(g, workspace_id, query)
     return _to_jsonable_result(result)
+
+
+def prepare_query(g: GitentialContext, workspace_id: int, query: Query) -> Query:
+    return Query(
+        metrics=query.metrics,
+        dimensions=query.dimensions,
+        filters=_simplify_filters(g, workspace_id, query.filters),
+        sort_by=query.sort_by,
+        type=query.type,
+    )
+
+
+def _simplify_filters(g: GitentialContext, workspace_id: int, filters: Dict[FilterName, Any]) -> Dict[FilterName, Any]:
+    ret: Dict[FilterName, Any] = {}
+    for filter_name, filter_value in filters.items():
+
+        # simplify to developer_ids
+
+        if filter_name == FilterName.team_id:
+            team_id = int(filter_value)
+            team_member_developer_ids = g.backend.team_members.get_team_member_author_ids(
+                workspace_id=workspace_id, team_id=team_id
+            )
+            ret[FilterName.developer_ids] = common_elements_if_not_none(
+                ret.get(FilterName.developer_ids), team_member_developer_ids
+            )
+        elif filter_name == FilterName.emails:
+            author_ids = _get_author_ids_from_emails(g, workspace_id, filter_value)
+            ret[FilterName.developer_ids] = common_elements_if_not_none(ret.get(FilterName.developer_ids), author_ids)
+        elif filter_name in [FilterName.author_ids, FilterName.developer_ids]:
+            ret[FilterName.developer_ids] = common_elements_if_not_none(ret.get(FilterName.developer_ids), filter_value)
+
+        # simplify to repo_ids
+
+        elif filter_name == FilterName.project_id:
+            project_id = filter_value
+            repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
+                workspace_id=workspace_id, project_id=project_id
+            )
+            ret[FilterName.repo_ids] = common_elements_if_not_none(ret.get(FilterName.repo_ids), repo_ids)
+        elif filter_name == FilterName.repo_ids:
+            ret[FilterName.repo_ids] = common_elements_if_not_none(ret.get(FilterName.repo_ids), filter_value)
+
+        # skip account_id, not needed anymore
+        elif filter_name == FilterName.account_id:
+            continue
+
+        # ismerge vs is_merge LOL
+        elif filter_name == FilterName.ismerge:
+            ret[FilterName.is_merge] = filter_value
+
+        elif filter_name == FilterName.day:
+            start, end = filter_value
+            ret[FilterName.day] = [_as_timestamp(start), _as_timestamp(end, end_of_day=True)]
+
+        # Other filters kept as is
+        else:
+            ret[filter_name] = filter_value
+
+    return ret
+
+
+def _as_timestamp(date_str, end_of_day=False):
+    d = date.fromisoformat(date_str)
+    if not end_of_day:
+        return datetime(d.year, d.month, d.day)
+    else:
+        return datetime(d.year, d.month, d.day, 23, 59, 59)

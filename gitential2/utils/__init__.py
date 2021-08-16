@@ -1,3 +1,4 @@
+from typing import Optional
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -73,3 +74,16 @@ def split_timerange(from_: datetime, to_: datetime, parts: int = 2):
         start_dt, end_dt = end_dt, end_dt + step
         yield start_dt, end_dt
     yield end_dt, to_
+
+
+def common_elements_if_not_none(l1: Optional[list], l2: Optional[list]) -> Optional[list]:
+    if l1 is None:
+        return l2
+    elif l2 is None:
+        return l1
+    else:
+        ret = []
+        for e in l1 + l2:
+            if (e in l1) and (e in l2):
+                ret.append(e)
+        return ret

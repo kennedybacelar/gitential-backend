@@ -47,7 +47,7 @@ def commits_repo_level(
     g: GitentialContext = Depends(gitential_context),
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
-    author_email: Optional[str] = Query(None, alias="email"),
+    developer_id: Optional[int] = Query(None, alias="developer_id"),
     is_merge: Optional[bool] = Query(None),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
@@ -57,7 +57,7 @@ def commits_repo_level(
         repo_ids=[repo_id],
         from_=_convert_to_datetime(from_),
         to_=_convert_to_datetime(to_, eod=True),
-        author_email=author_email,
+        developer_id=developer_id,
         is_merge=is_merge,
     )
 
@@ -69,7 +69,7 @@ def commits_workspace_level(
     g: GitentialContext = Depends(gitential_context),
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
-    author_email: Optional[str] = Query(None, alias="email"),
+    developer_id: Optional[int] = Query(None, alias="developer_id"),
     is_merge: Optional[bool] = Query(None),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
@@ -78,7 +78,7 @@ def commits_workspace_level(
         workspace_id=workspace_id,
         from_=_convert_to_datetime(from_),
         to_=_convert_to_datetime(to_, eod=True),
-        author_email=author_email,
+        developer_id=developer_id,
         is_merge=is_merge,
     )
 
@@ -91,7 +91,7 @@ def commits_project_level(
     g: GitentialContext = Depends(gitential_context),
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
-    author_email: Optional[str] = Query(None, alias="email"),
+    developer_id: Optional[int] = Query(None, alias="developer_id"),
     is_merge: Optional[bool] = Query(None),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
@@ -101,7 +101,7 @@ def commits_project_level(
         project_id=project_id,
         from_=_convert_to_datetime(from_),
         to_=_convert_to_datetime(to_, eod=True),
-        author_email=author_email,
+        developer_id=developer_id,
         is_merge=is_merge,
     )
 
@@ -114,7 +114,7 @@ def commits_team_level(
     g: GitentialContext = Depends(gitential_context),
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
-    author_email: Optional[str] = Query(None, alias="email"),
+    developer_id: Optional[int] = Query(None, alias="developer_id"),
     is_merge: Optional[bool] = Query(None),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
@@ -124,6 +124,6 @@ def commits_team_level(
         team_id=team_id,
         from_=_convert_to_datetime(from_),
         to_=_convert_to_datetime(to_, eod=True),
-        author_email=author_email,
+        developer_id=developer_id,
         is_merge=is_merge,
     )
