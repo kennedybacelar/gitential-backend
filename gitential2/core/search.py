@@ -19,9 +19,7 @@ class EntityType(str, Enum):
 
     @classmethod
     def get_fields(cls, entity: str) -> Set[str]:
-        return {"projects": {"id", "name"}, "repos": {"id", "name", "namespace"}, "developers": {"name", "id"}}[
-            entity
-        ]
+        return {"projects": {"id", "name"}, "repos": {"id", "name", "namespace"}, "developers": {"name", "id"}}[entity]
 
 
 def search_entity(g: GitentialContext, q: str, workspace_id: int, entity_type: str) -> List[dict]:
