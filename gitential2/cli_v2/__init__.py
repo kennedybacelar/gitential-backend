@@ -11,7 +11,7 @@ from gitential2.core.tasks import configure_celery
 from gitential2.core.users import get_user
 from gitential2.logging import initialize_logging
 from gitential2.settings import load_settings
-
+from gitential2.core.quick_login import generate_quick_login
 from .common import OutputFormat, get_context, print_results
 from .emails import app as emails_app
 from .export import app as export_app
@@ -93,6 +93,13 @@ def deduplicate_authors_(worspace_id: int, dry_run: bool = False):
 
         print_results(result, format_=OutputFormat.tabulate, fields=["id", "name", "email", "aliases", "active"])
         print()
+
+
+@app.command("quick-login")
+def quick_login(user_id):
+    g = get_context()
+    login_hash = generate_quick_login(g, user_id)
+    print("Login hash:", login_hash)
 
 
 def main(prog_name: Optional[str] = None):

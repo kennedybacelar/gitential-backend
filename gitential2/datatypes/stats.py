@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, validator
+from pydantic import BaseModel  # , validator
 
 
 class MetricName(str, Enum):
@@ -176,30 +176,44 @@ class QueryType(str, Enum):
 class TableName(str, Enum):
     # simple tables
     commits = "commits"
-    patches = "calculated_patches"
+    patches = "patches"
     pull_requests = "pull_requests"
+    pull_request_comments = "pull_request_comments"
     authors = "authors"
 
 
 TableDef = List[TableName]
 
 
+class AggregationFunction(str, Enum):
+    MEAN = "mean"
+    SUM = "sum"
+    COUNT = "count"
+
+
+class MetricDef(BaseModel):
+    aggregation: AggregationFunction
+    field: str
+    name: Optional[str] = None
+
+
 class Query(BaseModel):
-    metrics: List[MetricName]
+    metrics: List[Union[MetricName, MetricDef]]
     dimensions: Optional[List[DimensionName]] = None
     filters: Dict[FilterName, Any]
     sort_by: Optional[List[Any]] = None
     type: QueryType
+    table: Optional[TableName] = None
 
-    @validator("metrics")
-    def mixed_metrics(cls, v):
-        if all(m in PR_METRICS for m in v) or all(m in COMMIT_METRICS for m in v) or all(m in PATCH_METRICS for m in v):
-            return v
-        else:
-            raise ValueError("Cannot mix PR, PATCH and COMMIT metrics.")
+    # @validator("metrics")
+    # def mixed_metrics(cls, v):
+    #     if all(m in PR_METRICS for m in v) or all(m in COMMIT_METRICS for m in v) or all(m in PATCH_METRICS for m in v):
+    #         return v
+    #     else:
+    #         raise ValueError("Cannot mix PR, PATCH and COMMIT metrics.")
 
     @property
-    def table(self) -> TableDef:
+    def table_def(self) -> TableDef:
         if all(m in PR_METRICS for m in self.metrics):
             return [TableName.pull_requests]
         elif all(m in PATCH_METRICS for m in self.metrics):
@@ -216,6 +230,8 @@ class Query(BaseModel):
             if any(d in AUTHOR_DIMENSIONS for d in self.dimensions or []):
                 ret.append(TableName.authors)
             return ret
+        elif self.table is not None:
+            return [self.table]
         else:
             raise ValueError("Cannot mix PR, PATCH and COMMIT metrics.")
 
@@ -263,6 +279,7 @@ class IbisTables:
     commits: Any
     patches: Any
     authors: Any
+    pull_request_comments: Any
 
     def get_table(self, table_def: TableDef) -> Any:
         # commits_columns = columns = [col for col in self.commits.columns if col not in ["is_test"]]
@@ -300,6 +317,8 @@ class IbisTables:
 
         if table_def == [TableName.pull_requests]:
             return self.pull_requests
+        elif table_def == [TableName.pull_request_comments]:
+            return self.pull_request_comments
         elif table_def == [TableName.commits]:
             return self.commits
         elif table_def == [TableName.patches]:
