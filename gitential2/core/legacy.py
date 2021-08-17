@@ -68,8 +68,8 @@ def get_dev_top_repos(g: GitentialContext, workspace_id: int) -> dict:
 
     for row in dev_repo_commit_counts:
         if row["aid"] in author_emails and row["repo_id"] in repository_names:
-            results[author_emails[row["aid"]]]["repo_ids"].append(row["repo_id"])
-            results[author_emails[row["aid"]]]["repo_names"].append(repository_names[row["repo_id"]])
+            results[row["aid"]]["repo_ids"].append(row["repo_id"])
+            results[row["aid"]]["repo_names"].append(repository_names[row["repo_id"]])
 
     return _to_categories_series_response(results, series_names=["repo_ids", "repo_names"])
 
@@ -89,9 +89,9 @@ def authors_in_projects(g: GitentialContext, workspace_id: int) -> dict:
         if row["aid"] in author_emails and row["repo_id"] in repos_to_projects:
             project_ids = repos_to_projects[row["repo_id"]]
             for project_id in project_ids:
-                if project_id not in results[author_emails[row["aid"]]]["project_ids"] and project_id in project_names:
-                    results[author_emails[row["aid"]]]["project_ids"].append(project_id)
-                    results[author_emails[row["aid"]]]["project_names"].append(project_names[project_id])
+                if project_id not in results[row["aid"]]["project_ids"] and project_id in project_names:
+                    results[row["aid"]]["project_ids"].append(project_id)
+                    results[row["aid"]]["project_names"].append(project_names[project_id])
     return results
 
 
