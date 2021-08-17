@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, validator
+from pydantic import BaseModel  # , validator
 
 
 class MetricName(str, Enum):
@@ -178,6 +178,7 @@ class TableName(str, Enum):
     commits = "commits"
     patches = "patches"
     pull_requests = "pull_requests"
+    pull_request_comments = "pull_request_comments"
     authors = "authors"
 
 
@@ -193,6 +194,7 @@ class AggregationFunction(str, Enum):
 class MetricDef(BaseModel):
     aggregation: AggregationFunction
     field: str
+    name: Optional[str] = None
 
 
 class Query(BaseModel):
@@ -277,6 +279,7 @@ class IbisTables:
     commits: Any
     patches: Any
     authors: Any
+    pull_request_comments: Any
 
     def get_table(self, table_def: TableDef) -> Any:
         # commits_columns = columns = [col for col in self.commits.columns if col not in ["is_test"]]
@@ -314,6 +317,8 @@ class IbisTables:
 
         if table_def == [TableName.pull_requests]:
             return self.pull_requests
+        elif table_def == [TableName.pull_request_comments]:
+            return self.pull_request_comments
         elif table_def == [TableName.commits]:
             return self.commits
         elif table_def == [TableName.patches]:

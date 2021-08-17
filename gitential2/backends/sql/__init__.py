@@ -383,6 +383,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             ret.commits = ibis_schema.calculated_commits
             ret.patches = ibis_schema.calculated_patches
             ret.authors = ibis_schema.authors
+            ret.pull_request_comments = ibis_schema.pull_request_comments
             return ret
 
     def _get_ibis_conn(self):

@@ -98,10 +98,13 @@ def _prepare_dimension(
         return ibis_table["repo_id"].name("repo_id")
     elif dimension == DimensionName.aid and TableName.pull_requests not in table_def:
         return ibis_table["aid"].name("aid")
-    elif dimension == DimensionName.developer_id and TableName.pull_requests not in table_def:
-        return ibis_table["aid"].name("developer_id")
-    elif dimension == DimensionName.developer_id and TableName.pull_requests in table_def:
-        return ibis_table["user_aid"].name("developer_id")
+    elif dimension == DimensionName.developer_id:
+        if (TableName.commits in table_def) or (TableName.patches in table_def):
+            return ibis_table["aid"].name("developer_id")
+        elif TableName.pull_requests in table_def:
+            return ibis_table["user_aid"].name("developer_id")
+        elif TableName.pull_request_comments in table_def:
+            return ibis_table["author_aid"].name("developer_id")
     elif dimension == DimensionName.istest:
         return ibis_table["is_test"].name("istest")
     return None
@@ -112,13 +115,13 @@ def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table, q: Q
     for metric in metrics:
         if isinstance(metric, MetricDef):
             res = _prepare_generic_metric(metric, ibis_table)
-        else:
-            if TableName.commits in table_def:
-                res = _prepare_commits_metric(metric, ibis_table, q)
-            elif TableName.pull_requests in table_def:
-                res = _prepare_prs_metric(metric, ibis_tables)
-            elif TableName.patches in table_def:
-                res = _prepare_patch_metric(metric, ibis_table)
+        elif TableName.commits in table_def:
+            res = _prepare_commits_metric(metric, ibis_table, q)
+        elif TableName.pull_requests in table_def:
+            res = _prepare_prs_metric(metric, ibis_tables)
+        elif TableName.patches in table_def:
+            res = _prepare_patch_metric(metric, ibis_table)
+
         if res is not None:
             ret.append(res)
     return ret
@@ -131,11 +134,16 @@ def _prepare_generic_metric(metric: MetricDef, ibis_table):
         base_field = ibis_table[metric.field]
 
     if metric.aggregation == AggregationFunction.MEAN:
-        return base_field.mean().name(f"{metric.aggregation}_{metric.field}")
+        field = base_field.mean()
     elif metric.aggregation == AggregationFunction.COUNT:
-        return base_field.count().name(f"{metric.aggregation}_{metric.field}")
+        field = base_field.count()
     elif metric.aggregation == AggregationFunction.SUM:
-        return base_field.sum().name(f"{metric.aggregation}_{metric.field}")
+        field = base_field.sum()
+
+    if metric.name:
+        return field.name(metric.name)
+    else:
+        return field.name(f"{metric.aggregation}_{metric.field}")
 
 
 def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
@@ -293,6 +301,11 @@ def _prepare_filters(  # pylint: disable=too-complex,unused-argument
             FilterName.is_new_code: lambda t: t.is_new_code.__eq__,
             FilterName.is_test: lambda t: t.is_test.__eq__,
             FilterName.is_bugfix: lambda t: t.is_bugfix.__eq__,
+        },
+        TableName.pull_request_comments: {
+            FilterName.repo_ids: lambda t: t.repo_id.isin,
+            FilterName.developer_ids: lambda t: t.author_aid.isin,
+            FilterName.day: lambda t: t.published_at.between,
         },
     }
 
