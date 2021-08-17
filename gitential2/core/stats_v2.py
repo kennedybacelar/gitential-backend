@@ -12,7 +12,9 @@ import ibis
 from gitential2.utils import common_elements_if_not_none
 
 from gitential2.datatypes.stats import (
+    AggregationFunction,
     IbisTables,
+    MetricDef,
     Query,
     MetricName,
     DimensionName,
@@ -108,15 +110,27 @@ def _prepare_dimension(
 def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table, q: Query):
     ret = []
     for metric in metrics:
-        if TableName.commits in table_def:
-            res = _prepare_commits_metric(metric, ibis_table, q)
-        elif TableName.pull_requests in table_def:
-            res = _prepare_prs_metric(metric, ibis_tables)
-        elif TableName.patches in table_def:
-            res = _prepare_patch_metric(metric, ibis_table)
+        if isinstance(metric, MetricDef):
+            res = _prepare_generic_metric(metric, ibis_table)
+        else:
+            if TableName.commits in table_def:
+                res = _prepare_commits_metric(metric, ibis_table, q)
+            elif TableName.pull_requests in table_def:
+                res = _prepare_prs_metric(metric, ibis_tables)
+            elif TableName.patches in table_def:
+                res = _prepare_patch_metric(metric, ibis_table)
         if res is not None:
             ret.append(res)
     return ret
+
+
+def _prepare_generic_metric(metric: MetricDef, ibis_table):
+    if metric.aggregation == AggregationFunction.MEAN:
+        return ibis_table[metric.field].mean().name(f"{metric.aggregation}_{metric.field}")
+    elif metric.aggregation == AggregationFunction.COUNT:
+        return ibis_table[metric.field].count().name(f"{metric.aggregation}_{metric.field}")
+    elif metric.aggregation == AggregationFunction.SUM:
+        return ibis_table[metric.field].sum().name(f"{metric.aggregation}_{metric.field}")
 
 
 def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
@@ -315,15 +329,15 @@ class IbisQuery:
     def execute(self) -> QueryResult:
         logger.debug("Executing query", query=self.query, workspace_id=self.workspace_id)
         ibis_tables = self.g.backend.get_ibis_tables(self.workspace_id)
-        ibis_table = ibis_tables.get_table(self.query.table)
-        ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table, ibis_tables, ibis_table, self.query)
+        ibis_table = ibis_tables.get_table(self.query.table_def)
+        ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table_def, ibis_tables, ibis_table, self.query)
         ibis_dimensions = (
-            _prepare_dimensions(self.query.dimensions, self.query.table, ibis_tables, ibis_table)
+            _prepare_dimensions(self.query.dimensions, self.query.table_def, ibis_tables, ibis_table)
             if self.query.dimensions
             else None
         )
         # ibis_dimensions = None
-        ibis_filters = _prepare_filters(self.g, self.workspace_id, self.query.filters, self.query.table, ibis_table)
+        ibis_filters = _prepare_filters(self.g, self.workspace_id, self.query.filters, self.query.table_def, ibis_table)
 
         if ibis_metrics:
             if self.query.type == QueryType.aggregate:
@@ -498,6 +512,7 @@ def prepare_query(g: GitentialContext, workspace_id: int, query: Query) -> Query
         filters=_simplify_filters(g, workspace_id, query.filters),
         sort_by=query.sort_by,
         type=query.type,
+        table=query.table,
     )
 
 
