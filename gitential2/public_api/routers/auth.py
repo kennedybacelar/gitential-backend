@@ -9,7 +9,7 @@ from gitential2.exceptions import AuthenticationException
 from gitential2.core.context import GitentialContext
 from gitential2.core.users import handle_authorize, register_user, get_user, get_profile_picture
 from gitential2.core.subscription import get_current_subscription
-
+from gitential2.core.quick_login import get_quick_login_user
 
 from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token, api_access_log
 
@@ -177,3 +177,15 @@ def registration(
     user, _ = register_user(g, registration_data, current_user=current_user)
     request.session["current_user_id"] = user.id
     return {}
+
+
+@router.get("/quick-login/{login_hash}")
+def quick_login(
+    login_hash: str,
+    request: Request,
+    g: GitentialContext = Depends(gitential_context),
+):
+    user = get_quick_login_user(g, login_hash)
+    if user:
+        request.session["current_user_id"] = user.id
+    return RedirectResponse(url="/")
