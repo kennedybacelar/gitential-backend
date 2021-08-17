@@ -394,7 +394,10 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
 
     # is_collaboration: True if there is another patch for the same file in the same repository between +/- 3 weeks but with a different author.
     with LogTimeIt("calculating is_collaboration", logger):
-        collaboration_df = calculated_patches_df[["repo_id", "newpath", "date", "aid"]]
+        # pylint: disable=singleton-comparison,compare-to-zero
+        collaboration_df = calculated_patches_df[calculated_patches_df["is_merge"] == False][
+            ["repo_id", "newpath", "date", "aid"]
+        ]
 
         patches_map = dict()
 
