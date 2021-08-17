@@ -125,12 +125,17 @@ def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table, q: Q
 
 
 def _prepare_generic_metric(metric: MetricDef, ibis_table):
+    if metric.field == "ploc":
+        base_field = ibis_table["loc_i"].nullif(0) - ibis_table["uploc"].nullif(0)
+    else:
+        base_field = ibis_table[metric.field]
+
     if metric.aggregation == AggregationFunction.MEAN:
-        return ibis_table[metric.field].mean().name(f"{metric.aggregation}_{metric.field}")
+        return base_field.mean().name(f"{metric.aggregation}_{metric.field}")
     elif metric.aggregation == AggregationFunction.COUNT:
-        return ibis_table[metric.field].count().name(f"{metric.aggregation}_{metric.field}")
+        return base_field.count().name(f"{metric.aggregation}_{metric.field}")
     elif metric.aggregation == AggregationFunction.SUM:
-        return ibis_table[metric.field].sum().name(f"{metric.aggregation}_{metric.field}")
+        return base_field.sum().name(f"{metric.aggregation}_{metric.field}")
 
 
 def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
