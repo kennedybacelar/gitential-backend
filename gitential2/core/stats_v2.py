@@ -77,6 +77,8 @@ def _prepare_dimension(
     elif dimension in RELATIVE_DATE_DIMENSIONS:
         if TableName.pull_requests in table_def:
             date_field_name = "created_at"
+        elif TableName.pull_request_comments in table_def:
+            date_field_name = "published_at"
         else:
             date_field_name = "date"
 

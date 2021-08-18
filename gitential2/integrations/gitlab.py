@@ -317,6 +317,9 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 author_aid=author_aid,
                 content=note_raw["body"],
                 extra=note_raw,
+                created_at=note_raw["created_at"],
+                updated_at=note_raw["updated_at"],
+                published_at=note_raw["updated_at"],
             )
             output.write(ExtractedKind.PULL_REQUEST_COMMENT, comment)
             ret.append(comment)
