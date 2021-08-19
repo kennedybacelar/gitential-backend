@@ -84,6 +84,6 @@ def developers_with_projects(
     ret = []
     for author in authors:
         author_dict = author.dict()
-        author_dict["projects"] = authors_and_projects.get(author.email, {}).get("project_ids", [])
+        author_dict["projects"] = authors_and_projects.get(author.id, {}).get("project_ids", [])
         ret.append(author_dict)
     return ret
