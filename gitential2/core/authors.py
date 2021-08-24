@@ -1,5 +1,5 @@
 import re
-from typing import Iterable, Dict, List, Optional
+from typing import Iterable, Dict, List, Optional, cast
 from itertools import product
 from unidecode import unidecode
 from structlog import get_logger
@@ -12,6 +12,15 @@ logger = get_logger(__name__)
 
 def list_active_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
     return [author for author in list_authors(g, workspace_id) if author.active]
+
+
+def list_active_author_ids(g: GitentialContext, workspace_id: int) -> List[int]:
+    ret = cast(list, g.kvstore.get_value(f"active-authors-{workspace_id}"))
+    if not ret:
+        ret = [author.id for author in list_active_authors(g, workspace_id=workspace_id)]
+        g.kvstore.set_value(f"active-authors-{workspace_id}", ret, 60)
+
+    return ret
 
 
 def list_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:

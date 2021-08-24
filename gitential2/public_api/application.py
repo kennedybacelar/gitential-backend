@@ -30,7 +30,7 @@ from .routers import (
     users,
     authors,
     legacy,
-    commits,
+    commits_and_prs,
     payment,
 )
 
@@ -99,7 +99,7 @@ def _configure_routes(app: FastAPI):
     app.include_router(auth.router, prefix="/v2")
     app.include_router(users.router, prefix="/v2")
     app.include_router(payment.router, prefix="/v2")
-    app.include_router(commits.router, prefix="/v2")
+    app.include_router(commits_and_prs.router, prefix="/v2")
 
 
 def _configure_session(app: FastAPI, settings: GitentialSettings):

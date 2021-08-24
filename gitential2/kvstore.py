@@ -10,7 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from gitential2.settings import GitentialSettings, KeyValueStoreType
 from gitential2.exceptions import SettingsException, LockError
 
-JsonableType = Union[dict, str, int, float]
+JsonableType = Union[dict, str, int, float, list]
 
 logger = get_logger(__name__)
 

@@ -28,7 +28,7 @@ from gitential2.datatypes.stats import (
 from gitential2.datatypes.pull_requests import PullRequestState
 
 from .context import GitentialContext
-
+from .authors import list_active_author_ids
 
 logger = get_logger(__name__)
 
@@ -447,6 +447,7 @@ def _create_empty_row(ts: int, date_column: str, column_list, default_field_valu
         "language": "Others",
         "name": "",
         "email": "",
+        "developer_id": None,
     }
     for col in column_list:
         if col == date_column:
@@ -528,14 +529,28 @@ def collect_stats_v2(g: GitentialContext, workspace_id: int, query: Query):
 
 
 def prepare_query(g: GitentialContext, workspace_id: int, query: Query) -> Query:
-    return Query(
-        metrics=query.metrics,
-        dimensions=query.dimensions,
-        filters=_simplify_filters(g, workspace_id, query.filters),
-        sort_by=query.sort_by,
-        type=query.type,
-        table=query.table,
+    return _add_developer_ids_to_filter(
+        g,
+        workspace_id,
+        Query(
+            metrics=query.metrics,
+            dimensions=query.dimensions,
+            filters=_simplify_filters(g, workspace_id, query.filters),
+            sort_by=query.sort_by,
+            type=query.type,
+            table=query.table,
+        ),
     )
+
+
+def _add_developer_ids_to_filter(g: GitentialContext, workspace_id: int, query: Query) -> Query:
+    ret = query.copy()
+    if query.dimensions and DimensionName.developer_id in query.dimensions:
+        ret.filters[FilterName.developer_ids] = common_elements_if_not_none(
+            ret.filters.get(FilterName.developer_ids), list_active_author_ids(g, workspace_id)
+        )
+        print(ret)
+    return ret
 
 
 def _simplify_filters(g: GitentialContext, workspace_id: int, filters: Dict[FilterName, Any]) -> Dict[FilterName, Any]:
@@ -557,6 +572,10 @@ def _simplify_filters(g: GitentialContext, workspace_id: int, filters: Dict[Filt
             ret[FilterName.developer_ids] = common_elements_if_not_none(ret.get(FilterName.developer_ids), author_ids)
         elif filter_name in [FilterName.author_ids, FilterName.developer_ids]:
             ret[FilterName.developer_ids] = common_elements_if_not_none(ret.get(FilterName.developer_ids), filter_value)
+
+        elif filter_name == FilterName.active:
+            author_ids = list_active_author_ids(g, workspace_id)
+            ret[FilterName.developer_ids] = common_elements_if_not_none(ret.get(FilterName.developer_ids), author_ids)
 
         # simplify to repo_ids
 

@@ -357,6 +357,17 @@ class PullRequestRepository(
     def get_prs_updated_at(self, workspace_id: int, repository_id: int) -> Dict[int, datetime]:
         pass
 
+    @abstractmethod
+    def select(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[datetime] = None,
+        to_: Optional[datetime] = None,
+        developer_ids: Optional[List[int]] = None,
+    ) -> Iterable[PullRequest]:
+        pass
+
 
 class PullRequestCommitRepository(
     RepoDFMixin,

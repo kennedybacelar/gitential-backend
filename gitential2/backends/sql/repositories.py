@@ -646,6 +646,34 @@ class SQLPullRequestRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return {row["number"]: _add_utc_timezone(row["updated_at"]) for row in rows}
 
+    def select(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[dt.datetime] = None,
+        to_: Optional[dt.datetime] = None,
+        developer_ids: Optional[List[int]] = None,
+    ) -> Iterable[PullRequest]:
+        query = self.table.select().order_by(self.table.c.date.desc())
+        if repository_ids:
+            query = query.where(self.table.c.repo_id.in_(repository_ids))
+        if developer_ids:
+            query = query.where(self.table.c.author_aid.in_(developer_ids))
+        if from_:
+            query = query.where(self.table.c.created_at >= from_)
+        if to_:
+            query = query.where(self.table.c.created_at < to_)
+
+        with self._connection_with_schema(workspace_id) as connection:
+            proxy = connection.execution_options(stream_results=True).execute(query)
+            while True:
+                batch = proxy.fetchmany(10000)
+                if not batch:
+                    break
+                for row in batch:
+                    yield self.in_db_cls(**row)
+            proxy.close()
+
 
 class SQLPullRequestCommitRepository(
     SQLRepoDFMixin,

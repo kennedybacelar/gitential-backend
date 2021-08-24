@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch
+from gitential2.datatypes.pull_requests import PullRequest
 
 from .context import GitentialContext
 
@@ -46,8 +47,38 @@ def get_patches_for_commit(
     )
 
 
-def _get_author_id_for_email(g: GitentialContext, workspace_id: int, email: str) -> Optional[int]:
-    for author in g.backend.authors.all(workspace_id):
-        if email in author.all_emails:
-            return author.id
-    return None
+# def _get_author_id_for_email(g: GitentialContext, workspace_id: int, email: str) -> Optional[int]:
+#     for author in g.backend.authors.all(workspace_id):
+#         if email in author.all_emails:
+#             return author.id
+#     return None
+
+
+def get_pull_requests(
+    g: GitentialContext,
+    workspace_id: int,
+    project_id: Optional[int] = None,
+    team_id: Optional[int] = None,
+    repo_ids: Optional[List[int]] = None,
+    developer_ids: Optional[List[int]] = None,
+    developer_id: Optional[int] = None,
+    from_: Optional[datetime] = None,
+    to_: Optional[datetime] = None,
+) -> List[PullRequest]:
+    if project_id:
+        repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
+            workspace_id=workspace_id, project_id=project_id
+        )
+    if team_id:
+        developer_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
+    if developer_id:
+        developer_ids = [developer_id]
+    return list(
+        g.backend.pull_requests.select(
+            workspace_id=workspace_id,
+            repository_ids=repo_ids,
+            developer_ids=developer_ids,
+            from_=from_,
+            to_=to_,
+        )
+    )
