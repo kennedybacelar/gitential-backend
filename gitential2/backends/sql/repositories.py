@@ -654,7 +654,7 @@ class SQLPullRequestRepository(
         to_: Optional[dt.datetime] = None,
         developer_ids: Optional[List[int]] = None,
     ) -> Iterable[PullRequest]:
-        query = self.table.select().order_by(self.table.c.date.desc())
+        query = self.table.select().order_by(self.table.c.created_at.desc())
         if repository_ids:
             query = query.where(self.table.c.repo_id.in_(repository_ids))
         if developer_ids:
