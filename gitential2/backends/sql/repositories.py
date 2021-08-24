@@ -658,7 +658,7 @@ class SQLPullRequestRepository(
         if repository_ids:
             query = query.where(self.table.c.repo_id.in_(repository_ids))
         if developer_ids:
-            query = query.where(self.table.c.author_aid.in_(developer_ids))
+            query = query.where(self.table.c.user_aid.in_(developer_ids))
         if from_:
             query = query.where(self.table.c.created_at >= from_)
         if to_:
