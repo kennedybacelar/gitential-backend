@@ -5,9 +5,12 @@ extraction:
   show_progress: false
   executor: process_pool
 web:
+  base_url: https://localhost:8443
+  enforce_base_url: true
   legacy_login: false
   access_log: true
-  session_https_only: false
+  session_https_only: true
+  session_same_site: "Lax"
   session_max_age: 86400
   # base_url: https://590027f52278.ngrok.io
 
@@ -130,12 +133,12 @@ integrations:
   vsts:
     type: vsts
     oauth:
-      client_id: C195AA32-A678-41FD-B946-199D94DD8B4F
-      client_secret: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Im9PdmN6NU1fN3AtSGpJS2xGWHo5M3VfVjBabyJ9.eyJjaWQiOiJjMTk1YWEzMi1hNjc4LTQxZmQtYjk0Ni0xOTlkOTRkZDhiNGYiLCJjc2kiOiJmZDNkNTc0Yy00MWUyLTQzZjctOTkxOS1lNjFkM2MzMzI3N2UiLCJuYW1laWQiOiI4ZjdjZjliOS01NzdmLTZiMmQtOTk4YS0wYTA3Yjk4MzVmMjEiLCJpc3MiOiJhcHAudnN0b2tlbi52aXN1YWxzdHVkaW8uY29tIiwiYXVkIjoiYXBwLnZzdG9rZW4udmlzdWFsc3R1ZGlvLmNvbSIsIm5iZiI6MTYxNjQ1OTI2OCwiZXhwIjoxNzc0MjI1NjY4fQ.jhp3udifEIXf964WhxtG9oN9oUWlfCfglmCOHiysKXGP0Gtc5gWLv_HJz2UBqtxfx68gpIrxj_CZuON4f4uUdYlJsYNvdECq1YrZKYD5Y-a3aOh0TRzZbW03aZkduxm0iuLNjpdG6ZPbiAwlgIDnst5ad_bpcTaas4yNFp_5N6r1Q8LIHekJf_1oC-AUK_1SNYG46HCGijOEMIjiPuSCu6n3-gJNsxAHGtaipY2a1UZ5NTqH5wktgfrPw6UcVlJYvTiFfCsMZFQBf6quGF0KLWV7IlVNgNgT36CsAZmMKNtFbUmDGZDjzlRoht4AQ1871h3o1AcQGQbXdnJG_gOZoQ
+      client_id: 6621D0FB-1961-4699-B0CD-A11919C42599
+      client_secret: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Im9PdmN6NU1fN3AtSGpJS2xGWHo5M3VfVjBabyJ9.eyJjaWQiOiI2NjIxZDBmYi0xOTYxLTQ2OTktYjBjZC1hMTE5MTljNDI1OTkiLCJjc2kiOiI4YjZjOTY2YS1iZDI1LTQ4ODEtYWQ4Mi0xNmYxNzlhZDc2N2UiLCJuYW1laWQiOiJiNjE5MmMxYy0zODk4LTY1YzItODc2NC1kYTg5NGRhZDQ5ODIiLCJpc3MiOiJhcHAudnN0b2tlbi52aXN1YWxzdHVkaW8uY29tIiwiYXVkIjoiYXBwLnZzdG9rZW4udmlzdWFsc3R1ZGlvLmNvbSIsIm5iZiI6MTYyMDA1MjI0MSwiZXhwIjoxNzc3ODE4NjQxfQ.TN1pQBHPxIITX1eKtwpsd-nQby1u-vncHAWyOnCpB_Ny98SNK4I2GILO2wofIY736ik9mJ0lZWLSc-Be4za2_nUHm3NjiWIMiRTXJmvJlC9yBu_GduKlyPTmPvTdjzzaopOllr9vuieR-6chGmsrDBqvyEzzdZNxVUYZIV6pizkUSHbjFomgaW5mjyrQeSfrdEUTK0-YWIweTxx4tUrWosEHkCVtRHbsVG7Omqid0AKw-8Jr6qxa860Kmx6E85Q7ZM1B9p7USm3Bav3Vrab2wfFw_aCWNEGsdBUqFvnzgkBlkR0E__51BsJOPTRhZzkLH5in6fAumLueXMU6Oc1_vA
     login: true
     display_name: "Azure DevOps"
     options:
-      redirect_url: https://laco.ngrok.io/login
+      redirect_url: https://localhost:8443/v2/auth/vsts
 
   linkedin:
     type: linkedin

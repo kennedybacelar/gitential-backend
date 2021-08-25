@@ -33,6 +33,9 @@ services:
       - redis-data:/data
     ports:
       - "6379:6379"
+  nginx:
+    build: nginx/
+    network_mode: host
 
 volumes:
   db-data:
