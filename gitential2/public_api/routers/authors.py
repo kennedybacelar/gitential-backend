@@ -1,7 +1,14 @@
 from typing import List
 from fastapi import APIRouter, Depends
 from gitential2.core.context import GitentialContext
-from gitential2.core.authors import list_authors, update_author, delete_author, create_author, list_active_authors
+from gitential2.core.authors import (
+    list_authors,
+    update_author,
+    delete_author,
+    create_author,
+    list_active_authors,
+    get_author,
+)
 from gitential2.core.deduplication import deduplicate_authors
 from gitential2.core.permissions import check_permission
 from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate
@@ -49,6 +56,17 @@ def update_author_(
     check_permission(g, current_user, Entity.author, Action.update, workspace_id=workspace_id)
 
     return update_author(g, workspace_id, author_id, author_update)
+
+
+@router.get("/workspaces/{workspace_id}/authors/{author_id}", response_model=AuthorPublic)
+def get_author_(
+    workspace_id: int,
+    author_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    return get_author(g, workspace_id, author_id)
 
 
 @router.delete("/workspaces/{workspace_id}/authors/{author_id}")

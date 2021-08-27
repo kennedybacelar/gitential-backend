@@ -53,6 +53,10 @@ def create_author(g: GitentialContext, workspace_id: int, author_create: AuthorC
     return g.backend.authors.create(workspace_id, author_create)
 
 
+def get_author(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorInDB]:
+    return g.backend.authors.get(workspace_id, author_id)
+
+
 def get_or_create_author_for_alias(g: GitentialContext, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
     all_authors = list(g.backend.authors.all(workspace_id))
 
