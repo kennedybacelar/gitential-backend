@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch
 from gitential2.datatypes.pull_requests import PullRequest
 
@@ -17,7 +17,9 @@ def get_commits(
     from_: Optional[datetime] = None,
     to_: Optional[datetime] = None,
     is_merge: Optional[bool] = None,
-) -> List[CalculatedCommit]:
+    limit: int = 100,
+    offset: int = 0,
+) -> Tuple[int, List[CalculatedCommit]]:
 
     if project_id:
         repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
@@ -27,15 +29,27 @@ def get_commits(
         author_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
     if developer_id:
         author_ids = [developer_id]
-    return list(
-        g.backend.calculated_commits.select(
+    return (
+        g.backend.calculated_commits.count(
             workspace_id=workspace_id,
             repository_ids=repo_ids,
             author_ids=author_ids,
             from_=from_,
             to_=to_,
             is_merge=is_merge,
-        )
+        ),
+        list(
+            g.backend.calculated_commits.select(
+                workspace_id=workspace_id,
+                repository_ids=repo_ids,
+                author_ids=author_ids,
+                from_=from_,
+                to_=to_,
+                is_merge=is_merge,
+                limit=limit,
+                offset=offset,
+            )
+        ),
     )
 
 
@@ -64,7 +78,9 @@ def get_pull_requests(
     developer_id: Optional[int] = None,
     from_: Optional[datetime] = None,
     to_: Optional[datetime] = None,
-) -> List[PullRequest]:
+    limit: int = 100,
+    offset: int = 0,
+) -> Tuple[int, List[PullRequest]]:
     if project_id:
         repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
             workspace_id=workspace_id, project_id=project_id
@@ -73,12 +89,24 @@ def get_pull_requests(
         developer_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
     if developer_id:
         developer_ids = [developer_id]
-    return list(
-        g.backend.pull_requests.select(
+
+    return (
+        g.backend.pull_requests.count(
             workspace_id=workspace_id,
             repository_ids=repo_ids,
             developer_ids=developer_ids,
             from_=from_,
             to_=to_,
-        )
+        ),
+        list(
+            g.backend.pull_requests.select(
+                workspace_id=workspace_id,
+                repository_ids=repo_ids,
+                developer_ids=developer_ids,
+                from_=from_,
+                to_=to_,
+                limit=limit,
+                offset=offset,
+            )
+        ),
     )

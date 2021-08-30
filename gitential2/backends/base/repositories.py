@@ -336,7 +336,21 @@ class CalculatedCommitRepository(
         to_: Optional[datetime] = None,
         author_ids: Optional[List[int]] = None,
         is_merge: Optional[bool] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> Iterable[CalculatedCommit]:
+        pass
+
+    @abstractmethod
+    def count(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[datetime] = None,
+        to_: Optional[datetime] = None,
+        author_ids: Optional[List[int]] = None,
+        is_merge: Optional[bool] = None,
+    ) -> int:
         pass
 
 
@@ -365,7 +379,20 @@ class PullRequestRepository(
         from_: Optional[datetime] = None,
         to_: Optional[datetime] = None,
         developer_ids: Optional[List[int]] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> Iterable[PullRequest]:
+        pass
+
+    @abstractmethod
+    def count(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[datetime] = None,
+        to_: Optional[datetime] = None,
+        developer_ids: Optional[List[int]] = None,
+    ) -> int:
         pass
 
 

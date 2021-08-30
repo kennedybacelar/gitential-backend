@@ -583,8 +583,45 @@ class SQLCalculatedCommitRepository(
         to_: Optional[dt.datetime] = None,
         author_ids: Optional[List[int]] = None,
         is_merge: Optional[bool] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> Iterable[CalculatedCommit]:
-        query = self.table.select().order_by(self.table.c.date.desc())
+        query = self.table.select().order_by(self.table.c.date.desc()).limit(limit).offset(offset)
+        query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge)
+        with self._connection_with_schema(workspace_id) as connection:
+            proxy = connection.execution_options(stream_results=True).execute(query)
+            while True:
+                batch = proxy.fetchmany(10000)
+                if not batch:
+                    break
+                for row in batch:
+                    yield self.in_db_cls(**row)
+            proxy.close()
+
+    def count(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[dt.datetime] = None,
+        to_: Optional[dt.datetime] = None,
+        author_ids: Optional[List[int]] = None,
+        is_merge: Optional[bool] = None,
+    ) -> int:
+        query = self.table.count()
+        query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge)
+        with self._connection_with_schema(workspace_id) as connection:
+            result = connection.execute(query)
+            return result.fetchone()[0]
+
+    def _build_filters(
+        self,
+        query,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[dt.datetime] = None,
+        to_: Optional[dt.datetime] = None,
+        author_ids: Optional[List[int]] = None,
+        is_merge: Optional[bool] = None,
+    ):
         if repository_ids:
             query = query.where(self.table.c.repo_id.in_(repository_ids))
         if author_ids:
@@ -595,15 +632,7 @@ class SQLCalculatedCommitRepository(
             query = query.where(self.table.c.date < to_)
         if is_merge is not None:
             query = query.where(self.table.c.is_merge == is_merge)
-        with self._connection_with_schema(workspace_id) as connection:
-            proxy = connection.execution_options(stream_results=True).execute(query)
-            while True:
-                batch = proxy.fetchmany(10000)
-                if not batch:
-                    break
-                for row in batch:
-                    yield self.in_db_cls(**row)
-            proxy.close()
+        return query
 
 
 class SQLCalculatedPatchRepository(
@@ -653,17 +682,11 @@ class SQLPullRequestRepository(
         from_: Optional[dt.datetime] = None,
         to_: Optional[dt.datetime] = None,
         developer_ids: Optional[List[int]] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> Iterable[PullRequest]:
-        query = self.table.select().order_by(self.table.c.created_at.desc())
-        if repository_ids:
-            query = query.where(self.table.c.repo_id.in_(repository_ids))
-        if developer_ids:
-            query = query.where(self.table.c.user_aid.in_(developer_ids))
-        if from_:
-            query = query.where(self.table.c.created_at >= from_)
-        if to_:
-            query = query.where(self.table.c.created_at < to_)
-
+        query = self.table.select().order_by(self.table.c.created_at.desc()).limit(limit).offset(offset)
+        query = self._build_filters(query, repository_ids, from_, to_, developer_ids)
         with self._connection_with_schema(workspace_id) as connection:
             proxy = connection.execution_options(stream_results=True).execute(query)
             while True:
@@ -673,6 +696,39 @@ class SQLPullRequestRepository(
                 for row in batch:
                     yield self.in_db_cls(**row)
             proxy.close()
+
+    def count(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[dt.datetime] = None,
+        to_: Optional[dt.datetime] = None,
+        developer_ids: Optional[List[int]] = None,
+    ) -> int:
+        query = self.table.count()
+        query = self._build_filters(query, repository_ids, from_, to_, developer_ids)
+
+        with self._connection_with_schema(workspace_id) as connection:
+            result = connection.execute(query)
+            return result.fetchone()[0]
+
+    def _build_filters(
+        self,
+        query,
+        repository_ids: Optional[List[int]],
+        from_: Optional[dt.datetime],
+        to_: Optional[dt.datetime],
+        developer_ids: Optional[List[int]],
+    ):
+        if repository_ids:
+            query = query.where(self.table.c.repo_id.in_(repository_ids))
+        if developer_ids:
+            query = query.where(self.table.c.user_aid.in_(developer_ids))
+        if from_:
+            query = query.where(self.table.c.created_at >= from_)
+        if to_:
+            query = query.where(self.table.c.created_at < to_)
+        return query
 
 
 class SQLPullRequestCommitRepository(
