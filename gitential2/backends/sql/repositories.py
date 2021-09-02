@@ -46,6 +46,11 @@ from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate
 from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
 
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
+from gitential2.datatypes.workspace_invitations import (
+    WorkspaceInvitationCreate,
+    WorkspaceInvitationUpdate,
+    WorkspaceInvitationInDB,
+)
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
 from gitential2.datatypes.project_repositories import (
@@ -58,32 +63,6 @@ from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, T
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.backends.base.repositories import (
-    AccessLogRepository,
-    AuthorRepository,
-    CalculatedCommitRepository,
-    CalculatedPatchRepository,
-    ExtractedCommitRepository,
-    ExtractedPatchRepository,
-    ExtractedPatchRewriteRepository,
-    PullRequestRepository,
-    PullRequestCommitRepository,
-    PullRequestCommentRepository,
-    PullRequestLabelRepository,
-    TeamMemberRepository,
-    ExtractedCommitBranchRepository,
-)
-
-from gitential2.datatypes.email_log import (
-    EmailLogCreate,
-    EmailLogUpdate,
-    EmailLogInDB,
-)
-
-from ..base import (
-    IdType,
-    CreateType,
-    UpdateType,
-    InDBType,
     BaseRepository,
     BaseWorkspaceScopedRepository,
     UserRepository,
@@ -97,6 +76,33 @@ from ..base import (
     ProjectRepositoryRepository,
     TeamRepository,
     EmailLogRepository,
+    AccessLogRepository,
+    AuthorRepository,
+    CalculatedCommitRepository,
+    CalculatedPatchRepository,
+    ExtractedCommitRepository,
+    ExtractedPatchRepository,
+    ExtractedPatchRewriteRepository,
+    PullRequestRepository,
+    PullRequestCommitRepository,
+    PullRequestCommentRepository,
+    PullRequestLabelRepository,
+    TeamMemberRepository,
+    ExtractedCommitBranchRepository,
+    WorkspaceInvitationRepository,
+)
+
+from gitential2.datatypes.email_log import (
+    EmailLogCreate,
+    EmailLogUpdate,
+    EmailLogInDB,
+)
+
+from ..base import (
+    IdType,
+    CreateType,
+    UpdateType,
+    InDBType,
 )
 
 fetchone_ = lambda result: result.fetchone()
@@ -393,6 +399,21 @@ class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCr
         query = self.table.select().where(self.table.c.id.in_(workspace_ids))
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [WorkspaceInDB(**row) for row in rows]
+
+
+class SQLWorkspaceInvitationRepository(
+    WorkspaceInvitationRepository,
+    SQLRepository[int, WorkspaceInvitationCreate, WorkspaceInvitationUpdate, WorkspaceInvitationInDB],
+):
+    def get_invitations_for_workspace(self, workspace_id: int) -> List[WorkspaceInvitationInDB]:
+        query = self.table.select().where(self.table.c.workspace_id == workspace_id)
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [WorkspaceInvitationInDB(**row) for row in rows]
+
+    def get_invitation_by_code(self, invitation_code: str) -> Optional[WorkspaceInvitationInDB]:
+        query = self.table.select().where(self.table.c.invitation_code == invitation_code)
+        row = self._execute_query(query, callback_fn=fetchone_)
+        return WorkspaceInvitationInDB(**row) if row else None
 
 
 class SQLWorkspaceMemberRepository(

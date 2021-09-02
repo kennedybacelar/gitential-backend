@@ -31,6 +31,7 @@ class EntityType(str, Enum):
     user = "user"
     subscription = "subscription"
     workspace = "workspace"
+    workspace_invitation = "workspace_invitation"
     workspace_member = "workspace_member"
     credential = "credential"
 
@@ -47,6 +48,7 @@ global_entitites = [
     EntityType.user,
     EntityType.subscription,
     EntityType.workspace,
+    EntityType.workspace_invitation,
     EntityType.workspace_member,
     EntityType.credential,
 ]
@@ -58,6 +60,7 @@ def _repositories(g: GitentialContext):
         EntityType.user: g.backend.users,
         EntityType.subscription: g.backend.subscriptions,
         EntityType.workspace: g.backend.workspaces,
+        EntityType.workspace_invitation: g.backend.workspace_invitations,
         EntityType.workspace_member: g.backend.workspace_members,
         EntityType.credential: g.backend.credentials,
         # workspace scoped

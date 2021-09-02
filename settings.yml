@@ -6,6 +6,7 @@ extraction:
   executor: process_pool
 web:
   base_url: https://localhost:8443
+  frontend_url: https://localhost:8443
   enforce_base_url: true
   legacy_login: false
   access_log: true

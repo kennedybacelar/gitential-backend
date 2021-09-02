@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from structlog import get_logger
 from gitential2.datatypes.workspaces import WorkspacePublic, WorkspaceCreate, WorkspaceUpdate
-from gitential2.datatypes.workspacemember import MemberInvite
+
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.credentials import CredentialCreate, CredentialInDB, CredentialType
 from gitential2.core.context import GitentialContext
@@ -12,7 +12,6 @@ from gitential2.core.workspaces import (
     get_workspace,
     get_members,
     remove_member,
-    invite_members,
     update_workspace,
     delete_workspace,
     get_workspace_subscription,
@@ -119,17 +118,6 @@ def list_workspace_members(
 ):
     check_permission(g, current_user, Entity.membership, Action.read, workspace_id=workspace_id)
     return get_members(g, workspace_id=workspace_id)
-
-
-@router.post("/workspaces/{workspace_id}/members")
-def invite_workspace_members(
-    invitations: List[MemberInvite],
-    workspace_id: int,
-    current_user=Depends(current_user),
-    g: GitentialContext = Depends(gitential_context),
-):
-    check_permission(g, current_user, Entity.membership, Action.create, workspace_id=workspace_id)
-    return invite_members(g, workspace_id=workspace_id, current_user=current_user, invitations=invitations)
 
 
 @router.delete("/workspaces/{workspace_id}/members/{workspace_member_id}")

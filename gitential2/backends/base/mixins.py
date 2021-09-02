@@ -19,6 +19,7 @@ from .repositories import (
     SubscriptionRepository,
     UserInfoRepository,
     WorkspaceRepository,
+    WorkspaceInvitationRepository,
     WorkspaceMemberRepository,
     CredentialRepository,
     ProjectRepository,
@@ -31,6 +32,7 @@ class WithRepositoriesMixin:
     _users: UserRepository
     _user_infos: UserInfoRepository
     _workspaces: WorkspaceRepository
+    _workspace_invitations: WorkspaceInvitationRepository
     _workspace_members: WorkspaceMemberRepository
     _credentials: CredentialRepository
     _projects: ProjectRepository
@@ -72,6 +74,10 @@ class WithRepositoriesMixin:
     @property
     def workspaces(self) -> WorkspaceRepository:
         return self._workspaces
+
+    @property
+    def workspace_invitations(self) -> WorkspaceInvitationRepository:
+        return self._workspace_invitations
 
     @property
     def workspace_members(self) -> WorkspaceMemberRepository:
