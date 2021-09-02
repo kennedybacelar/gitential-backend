@@ -32,6 +32,7 @@ from .routers import (
     legacy,
     commits_and_prs,
     payment,
+    invitations,
 )
 
 logger = get_logger(__name__)
@@ -87,19 +88,22 @@ def _configure_routes(app: FastAPI):
     app.include_router(
         legacy.router,
     )
-
-    app.include_router(ping.router, prefix="/v2")
-    app.include_router(configuration.router, prefix="/v2")
-    app.include_router(workspaces.router, prefix="/v2")
-    app.include_router(projects.router, prefix="/v2")
-    app.include_router(teams.router, prefix="/v2")
-    app.include_router(authors.router, prefix="/v2")
-    app.include_router(repositories.router, prefix="/v2")
-    app.include_router(stats.router, prefix="/v2")
-    app.include_router(auth.router, prefix="/v2")
-    app.include_router(users.router, prefix="/v2")
-    app.include_router(payment.router, prefix="/v2")
-    app.include_router(commits_and_prs.router, prefix="/v2")
+    for router in [
+        ping.router,
+        configuration.router,
+        workspaces.router,
+        projects.router,
+        teams.router,
+        authors.router,
+        repositories.router,
+        stats.router,
+        auth.router,
+        users.router,
+        payment.router,
+        commits_and_prs.router,
+        invitations.router,
+    ]:
+        app.include_router(router, prefix="/v2")
 
 
 def _configure_session(app: FastAPI, settings: GitentialSettings):

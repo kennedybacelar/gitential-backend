@@ -132,6 +132,19 @@ workspace_members_table = sa.Table(
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
 )
 
+workspace_invitations_table = sa.Table(
+    "workspace_invitations",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("invitation_by", sa.Integer, nullable=True),
+    sa.Column("workspace_id", sa.Integer, sa.ForeignKey("workspaces.id"), nullable=False),
+    sa.Column("email", sa.String(128)),
+    sa.Column("invitation_code", sa.String(128)),
+    sa.Column("status", sa.String(128)),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+)
+
 email_log_table = sa.Table(
     "email_log",
     metadata,

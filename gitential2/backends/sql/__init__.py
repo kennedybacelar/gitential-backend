@@ -19,6 +19,7 @@ from gitential2.datatypes.extraction import (
 from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
 from gitential2.extraction.output import OutputHandler
+from gitential2.datatypes.workspace_invitations import WorkspaceInvitationInDB
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
 from gitential2.datatypes.stats import IbisTables
@@ -33,6 +34,7 @@ from gitential2.datatypes import (
     WorkspaceMemberInDB,
     AuthorInDB,
 )
+
 from gitential2.datatypes.email_log import EmailLogInDB
 
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
@@ -48,6 +50,7 @@ from .tables import (
     user_infos_table,
     credentials_table,
     workspaces_table,
+    workspace_invitations_table,
     workspace_members_table,
     metadata,
     subscriptions_table,
@@ -72,6 +75,7 @@ from .repositories import (
     SQLUserInfoRepository,
     SQLCredentialRepository,
     SQLWorkspaceRepository,
+    SQLWorkspaceInvitationRepository,
     SQLWorkspaceMemberRepository,
     SQLProjectRepository,
     SQLExtractedCommitRepository,
@@ -107,6 +111,11 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             table=credentials_table, engine=self._engine, in_db_cls=CredentialInDB
         )
         self._workspaces = SQLWorkspaceRepository(table=workspaces_table, engine=self._engine, in_db_cls=WorkspaceInDB)
+
+        self._workspace_invitations = SQLWorkspaceInvitationRepository(
+            table=workspace_invitations_table, engine=self._engine, in_db_cls=WorkspaceInvitationInDB
+        )
+
         self._workspace_members = SQLWorkspaceMemberRepository(
             table=workspace_members_table, engine=self._engine, in_db_cls=WorkspaceMemberInDB
         )

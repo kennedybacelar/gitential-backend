@@ -166,7 +166,7 @@ body_html: |
                                                         <td align="center" valign="middle" bgcolor="#663fcc"
                                                           style="border-collapse:collapse;font-family:Verdana,sans-serif;word-break:break-word;border-radius:4px;background-color:rgb(102,63,204)">
 
-                                                          <a href="{{ settings.web.base_url }}"
+                                                          <a href="{{ settings.web.frontend_url }}/?invitation_code={{ invitation.invitation_code }}"
                                                             style="color:rgb(0,164,189);font-size:14px;font-family:Arial,sans-serif;margin:0px;text-decoration-line:none;padding:12px 18px;display:block">
                                                             <strong style="color:rgb(255,255,255)">Accept
                                                               invitation</strong>
@@ -463,7 +463,8 @@ body_plaintext: |
   performance based on up-to-date activity metrics.
 
   *Accept invitation*
-  {{ settings.web.base_url }}
+  {{ settings.web.frontend_url }}/?invitation_code={{ invitation.invitation_code }}
+
 
   To get started check out our onboarding docs
   <https://views.paperflite.com/collections/603b5120c8035e1903f9791a> on how

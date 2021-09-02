@@ -44,7 +44,11 @@ from gitential2.datatypes.project_repositories import (
 from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB
 from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
 from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
-
+from gitential2.datatypes.workspace_invitations import (
+    WorkspaceInvitationCreate,
+    WorkspaceInvitationUpdate,
+    WorkspaceInvitationInDB,
+)
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.extraction import (
     ExtractedCommit,
@@ -215,6 +219,18 @@ class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdat
 class WorkspaceRepository(BaseRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
     @abstractmethod
     def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+        pass
+
+
+class WorkspaceInvitationRepository(
+    BaseRepository[int, WorkspaceInvitationCreate, WorkspaceInvitationUpdate, WorkspaceInvitationInDB]
+):
+    @abstractmethod
+    def get_invitations_for_workspace(self, workspace_id: int) -> List[WorkspaceInvitationInDB]:
+        pass
+
+    @abstractmethod
+    def get_invitation_by_code(self, invitation_code: str) -> Optional[WorkspaceInvitationInDB]:
         pass
 
 

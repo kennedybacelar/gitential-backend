@@ -20,6 +20,7 @@ from .repositories import (
     UserInfoRepository,
     SubscriptionRepository,
     CredentialRepository,
+    WorkspaceInvitationRepository,
     WorkspaceRepository,
     WorkspaceMemberRepository,
     ProjectRepository,
@@ -66,6 +67,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def workspaces(self) -> WorkspaceRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def workspace_invitations(self) -> WorkspaceInvitationRepository:
         pass
 
     @property

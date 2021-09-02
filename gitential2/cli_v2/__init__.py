@@ -25,6 +25,7 @@ from .tasks import app as tasks_app
 from .usage_stats import app as usage_stats_app
 from .users import app as users_app
 from .crud import app as crud_app
+from .invitation import app as invitation_app
 
 logger = get_logger(__name__)
 
@@ -41,6 +42,7 @@ app.add_typer(query_app, name="query")
 app.add_typer(emails_app, name="emails")
 app.add_typer(extraction_app, name="extract")
 app.add_typer(crud_app, name="crud")
+app.add_typer(invitation_app, name="invitation")
 
 
 @app.command("public-api")
