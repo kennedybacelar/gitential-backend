@@ -55,7 +55,7 @@ def delete_workspace_invitation_(
     delete_invitation(g, workspace_id, invitation_id)
 
 
-@router.get("/invitations/{invitation_code}/accept", response_model=List[WorkspaceInvitationInDB])
+@router.get("/invitations/{invitation_code}/accept")
 def accept_invitation_(
     invitation_code: str,
     current_user=Depends(current_user),
