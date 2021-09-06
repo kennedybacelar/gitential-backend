@@ -72,11 +72,17 @@ def _create_invitation(
 def send_invitation_email(g: GitentialContext, invitation: WorkspaceInvitationInDB):
     workspace = g.backend.workspaces.get_or_error(invitation.workspace_id)
     invitation_sender = g.backend.users.get_or_error(invitation.invitation_by) if invitation.invitation_by else None
+    invitation_url = (
+        g.settings.web.frontend_url.strip("/")
+        + "/?invitation_code="
+        + (invitation.invitation_code or "missing-invitation-code")
+    )
     return send_email_to_address(
         g,
         email=invitation.email,
         template_name="invite_member",
         invitation_sender=invitation_sender,
+        invitation_url=invitation_url,
         workspace=workspace,
         invitation=invitation,
     )
