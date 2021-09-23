@@ -4,7 +4,7 @@ from typing import Optional, cast
 from datetime import datetime
 
 from pydantic.dataclasses import dataclass
-
+from pydantic.datetime_parse import parse_datetime
 from gitential2.secrets import Fernet
 from .common import IDModelMixin, DateTimeModelMixin, CoreModel, ExtraFieldMixin
 
@@ -105,6 +105,11 @@ class CredentialBase(CredentialBasePublic, CredentialBaseSecret):
             return ret
         else:
             return None
+
+    def update_token(self, token: dict, fernet: Fernet):
+        self.token = fernet.encrypt_string(token["access_token"]).encode()
+        self.refresh_token = fernet.encrypt_string(cast(str, token.get("refresh_token"))).encode()
+        self.expires_at = parse_datetime(token["expires_at"]) if "expires_at" in token else None
 
 
 class CredentialCreate(CredentialBase):

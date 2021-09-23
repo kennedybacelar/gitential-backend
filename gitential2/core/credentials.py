@@ -52,11 +52,12 @@ def acquire_credential(
                 integration = g.integrations.get(credential.integration_name)
                 token = credential.to_token_dict(g.fernet)
                 if integration and token:
-                    is_refreshed = integration.refresh_token_if_expired(
+                    is_refreshed, updated_token = integration.refresh_token_if_expired(
                         token, update_token=get_update_token_callback(g, credential)
                     )
                     if is_refreshed:
-                        credential = g.backend.credentials.get_or_error(credential.id)
+                        logger.debug("Updating credential with the new token")
+                        credential.update_token(updated_token, g.fernet)
             logger.info(
                 "Giving credential",
                 credential_id=credential.id,
@@ -78,7 +79,6 @@ def get_update_token_callback(g: GitentialContext, credential: CredentialInDB):
         )
 
         if "access_token" in token:
-
             return g.backend.credentials.update(
                 credential.id,
                 CredentialUpdate.from_token(
@@ -89,6 +89,7 @@ def get_update_token_callback(g: GitentialContext, credential: CredentialInDB):
                     integration_type=credential.integration_type,
                 ),
             )
+
         else:
             logger.error("update_token error", token=token, credential=credential)
             return None

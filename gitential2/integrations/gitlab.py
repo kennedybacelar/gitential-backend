@@ -1,8 +1,10 @@
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Tuple
+from datetime import datetime
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
+from authlib.integrations.requests_client import OAuth2Session
+
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
-from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.pull_requests import (
     PullRequest,
     PullRequestComment,
@@ -12,8 +14,7 @@ from gitential2.datatypes.pull_requests import (
 )
 from gitential2.datatypes.authors import AuthorAlias
 
-from gitential2.extraction.output import OutputHandler
-from .base import BaseIntegration, CollectPRsResult, OAuthLoginMixin, GitProviderMixin
+from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error, walk_next_link
 from ..utils.is_bugfix import calculate_is_bugfix
 
@@ -28,6 +29,9 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         self.authorize_url = "{}/oauth/authorize".format(self.base_url)
         self.token_url = "{}/oauth/token".format(self.base_url)
 
+    def get_client(self, token, update_token) -> OAuth2Session:
+        return self.get_oauth2_client(token=token, update_token=update_token)
+
     def oauth_register(self):
 
         return {
@@ -40,8 +44,8 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "client_secret": self.settings.oauth.client_secret,
         }
 
-    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
-        return False
+    def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
+        return False, token
 
     def refresh_token(self, token):
         client = self.get_oauth2_client(token=token)
@@ -98,98 +102,60 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             extra=project,
         )
 
-    def collect_pull_requests(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        prs_we_already_have: Optional[dict] = None,
-        limit: int = 200,
-    ):
-        client = self.get_oauth2_client(token=token, update_token=update_token)
-        ret = CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
-
-        def _is_mr_up_to_date(mr: dict) -> bool:
-            return (
-                prs_we_already_have is not None
-                and mr["iid"] in prs_we_already_have
-                and parse_datetime(prs_we_already_have[mr["iid"]]) == parse_datetime(mr["updated_at"])
-            )
-
+    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
         if repository.extra and "id" in repository.extra:
             project_id = repository.extra["id"]
             merge_requests = walk_next_link(
                 client, f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple"
             )
-            mrs_to_get = [mr for mr in merge_requests if not _is_mr_up_to_date(mr)]
-
-            counter = 0
-            for mr in mrs_to_get:
-                iid = mr["iid"]
-                if counter >= limit:
-                    ret.prs_left.append(iid)
-                else:
-                    pr_data = self.collect_pull_request(repository, token, update_token, output, author_callback, iid)
-                    if pr_data:
-                        ret.prs_collected.append(iid)
-                    else:
-                        ret.prs_failed.append(iid)
-                counter += 1
-        return ret
-
-    def collect_pull_request(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        pr_number: int,
-    ) -> Optional[PullRequestData]:
-        if repository.extra and "id" in repository.extra:
-            client = self.get_oauth2_client(token=token, update_token=update_token)
-            project_id = repository.extra["id"]
-            raw_data = self._collect_single_pr_data_raw(client, project_id, pr_number)
-            try:
-                commits = self._write_pr_commits(raw_data["mr_commits"], raw_data, repository, output)
-                comments = self._write_pr_comments(
-                    raw_data["mr_notes"], raw_data, repository, output, author_callback=author_callback
-                )
-                pull_request = self._transform_to_pr(raw_data, repository=repository, author_callback=author_callback)
-                output.write(ExtractedKind.PULL_REQUEST, pull_request)
-                return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Failed to extract pull requests", repository=repository, raw_data_mr=raw_data["mr"])
-                return None
+            return merge_requests
         else:
             logger.warning(
-                "GitLab repository without project_id", repository_id=repository.id, repository_name=repository.name
+                "GitLab project_id missing for repository", repository_id=repository.id, repository_name=repository.name
             )
-            return None
+            return []
 
-    def _collect_single_pr_data_raw(self, client, project_id, iid):
-        merge_request = client.get(f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}").json()
+    def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
+        return raw_pr["iid"], parse_datetime(raw_pr["updated_at"])
+
+    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+        if repository.extra and "id" in repository.extra:
+            project_id = repository.extra["id"]
+        else:
+            logger.warning(
+                "GitLab project_id missing for repository", repository_id=repository.id, repository_name=repository.name
+            )
+            return {}
+        merge_request = client.get(f"{self.api_base_url}/projects/{project_id}/merge_requests/{pr_number}").json()
         merge_request_changes = client.get(
-            f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}/changes?access_raw_diffs=yes"
+            f"{self.api_base_url}/projects/{project_id}/merge_requests/{pr_number}/changes?access_raw_diffs=yes"
         ).json()
         merge_request_commits = walk_next_link(
             client,
-            f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}/commits",
+            f"{self.api_base_url}/projects/{project_id}/merge_requests/{pr_number}/commits",
         )
         merge_request_notes = walk_next_link(
             client,
-            f"{self.api_base_url}/projects/{project_id}/merge_requests/{iid}/notes",
+            f"{self.api_base_url}/projects/{project_id}/merge_requests/{pr_number}/notes",
         )
         return {
             "project_id": project_id,
-            "iid": iid,
+            "iid": pr_number,
             "mr": merge_request,
             "mr_changes": merge_request_changes,
             "mr_commits": merge_request_commits,
             "mr_notes": merge_request_notes,
         }
+
+    def _tranform_to_pr_data(
+        self, repository: RepositoryInDB, pr_number: int, raw_data: dict, author_callback: Callable
+    ) -> PullRequestData:
+        pull_request = self._transform_to_pr(raw_data, repository=repository, author_callback=author_callback)
+        commits = self._transform_to_commits(raw_data["mr_commits"], raw_data, repository)
+        comments = self._transform_to_comments(
+            raw_data["mr_notes"], raw_data, repository, author_callback=author_callback
+        )
+        return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
 
     def _transform_to_pr(
         self,
@@ -264,12 +230,11 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             is_bugfix=calculate_is_bugfix([], raw_data["mr"].get("title", "<missing title>")),
         )
 
-    def _write_pr_commits(
+    def _transform_to_commits(
         self,
         commits_raw: list,
         raw_data: dict,
         repository: RepositoryInDB,
-        output: OutputHandler,
     ) -> List[PullRequestCommit]:
         ret = []
         for commit_raw in commits_raw:
@@ -288,16 +253,14 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 created_at=commit_raw["created_at"],
                 updated_at=commit_raw["created_at"],
             )
-            output.write(ExtractedKind.PULL_REQUEST_COMMIT, commit)
             ret.append(commit)
         return ret
 
-    def _write_pr_comments(
+    def _transform_to_comments(
         self,
         notes_raw: list,
         raw_data: dict,
         repository: RepositoryInDB,
-        output: OutputHandler,
         author_callback: Callable,
     ) -> List[PullRequestComment]:
         ret = []
@@ -321,6 +284,5 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 updated_at=note_raw["updated_at"],
                 published_at=note_raw["updated_at"],
             )
-            output.write(ExtractedKind.PULL_REQUEST_COMMENT, comment)
             ret.append(comment)
         return ret

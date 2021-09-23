@@ -46,6 +46,17 @@ class PullRequestState(str, Enum):
         else:
             raise ValueError(f'invalid state for BitBucket PR "{state}"')
 
+    @classmethod
+    def from_vsts(cls, state):
+        if state == "abandoned":
+            return cls.closed
+        elif state == "active":
+            return cls.open
+        elif state == "completed":
+            return cls.merged
+        else:
+            raise ValueError(f'invalid state for VSTS PR "{state}"')
+
 
 class PullRequestId(CoreModel):
     repo_id: int

@@ -1,16 +1,18 @@
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Tuple
+from datetime import datetime
 from urllib.parse import urlparse
 
 from structlog import get_logger
+
+from authlib.integrations.requests_client import OAuth2Session
+
 from pydantic.datetime_parse import parse_datetime
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 
-from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestState, PullRequestData
-from gitential2.extraction.output import OutputHandler
 from gitential2.utils import calc_repo_namespace
-from .base import BaseIntegration, CollectPRsResult, OAuthLoginMixin, GitProviderMixin
+from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error
 from ..utils.is_bugfix import calculate_is_bugfix
 
@@ -18,6 +20,9 @@ logger = get_logger(__name__)
 
 
 class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
+    def get_client(self, token, update_token) -> OAuth2Session:
+        return self.get_oauth2_client(token=token, update_token=update_token)
+
     def oauth_register(self):
         return {
             "api_base_url": "https://api.bitbucket.org/2.0/",
@@ -52,9 +57,8 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
         return UserInfoCreate(**user_info_dict)
 
-    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
-        self.refresh_token(token, update_token)
-        return True
+    def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
+        return True, self.refresh_token(token, update_token)
 
     def refresh_token(self, token, update_token):
         client = self.get_oauth2_client(token=token, update_token=update_token)
@@ -63,82 +67,19 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         client.close()
         return new_token
 
-    def collect_pull_requests(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        prs_we_already_have: Optional[dict] = None,
-        limit: int = 200,
-    ):
-        client = self.get_oauth2_client(token=token, update_token=update_token)
+    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
         prs = _walk_paginated_results(
             client,
             f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED",
         )
-        client.close()
+        return prs
 
-        def _is_pr_up_to_date(pr: dict) -> bool:
-            pr_number = pr["id"]
-            return (
-                prs_we_already_have is not None
-                and pr_number in prs_we_already_have
-                and parse_datetime(prs_we_already_have[pr_number]) == parse_datetime(pr["updated_on"])
-            )
+    def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
+        return raw_pr["id"], parse_datetime(raw_pr["updated_on"])
 
-        prs_needs_update = [pr for pr in prs if not _is_pr_up_to_date(pr)]
-
-        counter = 0
-        ret = CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
-        for pr in prs_needs_update:
-            pr_number = pr["id"]
-            if counter >= limit:
-                ret.prs_left.append(pr_number)
-            else:
-                pr_data = self.collect_pull_request(repository, token, update_token, output, author_callback, pr_number)
-                if pr_data:
-                    ret.prs_collected.append(pr_number)
-                else:
-                    ret.prs_failed.append(pr_number)
-            counter += 1
-        return ret
-
-    def collect_pull_request(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        pr_number: int,
-    ) -> Optional[PullRequestData]:
-        client = self.get_oauth2_client(token=token, update_token=update_token)
-        try:
-            raw_data = self._collect_single_pr_data_raw(client, repository, pr_number)
-            pull_request = self._transform_to_pr(raw_data, repository=repository)
-            output.write(ExtractedKind.PULL_REQUEST, pull_request)
-            return PullRequestData(pr=pull_request, comments=[], commits=[], labels=[])
-        except Exception:  # pylint: disable=broad-except
-            logger.exception("Failed to extract PR", repository=repository, pr_number=pr_number, raw_data=raw_data)
-            return None
-        finally:
-            client.close()
-
-    def _get_bitbucket_workspace_and_repo_slug(self, repositor: RepositoryInDB):
-        clone_url = repositor.clone_url
-        if clone_url.startswith("https://"):
-            parsed_url = urlparse(clone_url)
-            path_parts = parsed_url.path.split("/")
-            return "/".join(path_parts[:-1]).strip("/"), path_parts[-1].replace(".git", "")
-        else:
-            logger.error("Don't know how to parse clone_url for workspace, and repo slug", clone_url=clone_url)
-            raise ValueError("Don't know how to parse clone_url for workspace, and repo slug")
-
-    def _collect_single_pr_data_raw(self, client, repository: RepositoryInDB, pr_number: int):
+    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
         pr_url = f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests/{pr_number}"
@@ -151,6 +92,22 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         review_comments = _walk_paginated_results(client, pr_details["links"]["comments"]["href"])
         diffstat = _walk_paginated_results(client, pr_details["links"]["diffstat"]["href"])
         return {"pr": pr_details, "commits": commits, "review_comments": review_comments, "diffstat": diffstat}
+
+    def _tranform_to_pr_data(
+        self, repository: RepositoryInDB, pr_number: int, raw_data: dict, author_callback: Callable
+    ) -> PullRequestData:
+        pull_request = self._transform_to_pr(raw_data, repository=repository)
+        return PullRequestData(pr=pull_request, comments=[], commits=[], labels=[])
+
+    def _get_bitbucket_workspace_and_repo_slug(self, repositor: RepositoryInDB):
+        clone_url = repositor.clone_url
+        if clone_url.startswith("https://"):
+            parsed_url = urlparse(clone_url)
+            path_parts = parsed_url.path.split("/")
+            return "/".join(path_parts[:-1]).strip("/"), path_parts[-1].replace(".git", "")
+        else:
+            logger.error("Don't know how to parse clone_url for workspace, and repo slug", clone_url=clone_url)
+            raise ValueError("Don't know how to parse clone_url for workspace, and repo slug")
 
     def _transform_to_pr(self, raw_data, repository):
         def _calc_first_commit_authored_at(raw_commits):

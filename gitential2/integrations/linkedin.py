@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Tuple
 from structlog import get_logger
 from gitential2.datatypes import UserInfoCreate
 from .base import BaseIntegration, OAuthLoginMixin
@@ -57,5 +57,5 @@ class LinkedinIntegration(OAuthLoginMixin, BaseIntegration):
         logger.debug("linkedin userinfo created", user_info_dict=params)
         return UserInfoCreate(**params)
 
-    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
-        return False
+    def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
+        return False, token

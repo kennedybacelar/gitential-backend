@@ -1,18 +1,19 @@
-from typing import Optional, Callable, List
-from urllib.parse import parse_qs
-
-# from pydantic.datetime_parse import parse_datetime
+from typing import Optional, Callable, List, Tuple
+from datetime import datetime, timezone
+from urllib.parse import parse_qs, urlparse
 from structlog import get_logger
-
+from authlib.integrations.requests_client import OAuth2Session
+from pydantic.datetime_parse import parse_datetime
+from email_validator import validate_email, EmailNotValidError
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
+from gitential2.datatypes.authors import AuthorAlias
 
-# from gitential2.datatypes.extraction import ExtractedKind
 
-from gitential2.datatypes.pull_requests import PullRequestData  # , PullRequest, PullRequestState,
-from gitential2.extraction.output import OutputHandler
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestState
 
-from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, CollectPRsResult
+from ..utils.is_bugfix import calculate_is_bugfix
+from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData
 
 from .common import log_api_error
 
@@ -21,6 +22,9 @@ logger = get_logger(__name__)
 
 class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     base_url = "https://app.vssps.visualstudio.com"
+
+    def get_client(self, token, update_token) -> OAuth2Session:
+        return self.get_oauth2_client(token=token, update_token=update_token)
 
     def _auth_client_secret_uri(self, client, method, uri, headers, body):
         logger.debug(
@@ -73,32 +77,142 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             extra=data,
         )
 
-    def collect_pull_requests(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        prs_we_already_have: Optional[dict] = None,
-        limit: int = 200,
-    ) -> CollectPRsResult:
-        return CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
+    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+        organization, project, repo = _get_project_organization_and_repository(repository)
+        pull_requests = _paginate_with_skip_top(
+            client,
+            f"https://dev.azure.com/{organization}/{project}/_apis/git/pullrequests?api-version=6.0&searchCriteria.repositoryId={repo}&searchCriteria.status=all",
+        )
+        return pull_requests
 
-    def collect_pull_request(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        pr_number: int,
-    ) -> Optional[PullRequestData]:
-        return None
+    def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
+        return (
+            raw_pr["pullRequestId"],
+            parse_datetime(raw_pr["closedDate"])
+            if "closedDate" in raw_pr
+            else datetime.utcnow().replace(tzinfo=timezone.utc),
+        )
 
-    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
-        self.refresh_token(token, update_token)
-        return True
+    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+        def _get_json_response(url):
+            resp = client.get(url)
+            resp.raise_for_status()
+            return resp.json()
+
+        organization, project, repo = _get_project_organization_and_repository(repository)
+
+        pr_details = _get_json_response(
+            f"https://dev.azure.com/{organization}/{project}/_apis/git/pullrequests/{pr_number}?api-version=6.0"
+        )
+        iterations = _get_json_response(
+            f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repo}/pullRequests/{pr_number}/iterations?api-version=6.0"
+        )
+        threads = _get_json_response(
+            f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repo}/pullRequests/{pr_number}/threads?api-version=6.0"
+        )
+
+        commits = _get_json_response(
+            f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repo}/pullRequests/{pr_number}/commits?api-version=6.0"
+        )
+
+        return {"pr": pr_details, "threads": threads, "commits": commits, "iterations": iterations}
+
+    def _tranform_to_pr_data(
+        self, repository: RepositoryInDB, pr_number: int, raw_data: dict, author_callback: Callable
+    ) -> PullRequestData:
+        return PullRequestData(
+            pr=self._tranform_to_pr(repository, pr_number, raw_data, author_callback),
+            comments=self._tranform_to_comments(repository, pr_number, raw_data, author_callback),
+            commits=[],
+            labels=[],
+        )
+
+    def _tranform_to_pr(
+        self, repository: RepositoryInDB, pr_number: int, raw_data: dict, author_callback: Callable
+    ) -> PullRequest:
+
+        all_commit_dates = [c["author"]["date"] for c in raw_data.get("commits", {}).get("value", [])]
+        all_commit_dates.sort()
+        first_commit_authored_at = all_commit_dates[0] if all_commit_dates else None
+
+        all_interactions_dates = []
+
+        for thread in raw_data.get("threads", {}).get("value", []):
+            for comment in thread.get("comments", []):
+                if "publishedDate" in comment and comment["publishedDate"]:
+                    all_interactions_dates.append(comment["publishedDate"])
+
+        if raw_data["pr"].get("closedDate"):
+            all_interactions_dates.append(raw_data["pr"].get("closedDate"))
+
+        all_interactions_dates.sort()
+        first_interaction_at = all_interactions_dates[0] if all_interactions_dates else None
+
+        return PullRequest(
+            repo_id=repository.id,
+            number=pr_number,
+            title=raw_data["pr"].get("title", "<missing title>"),
+            platform="vsts",
+            id_platform=raw_data["pr"]["pullRequestId"],
+            api_resource_uri=raw_data["pr"]["url"],
+            state_platform=raw_data["pr"]["status"],
+            state=PullRequestState.from_vsts(raw_data["pr"]["status"]),
+            created_at=raw_data["pr"]["creationDate"],
+            closed_at=raw_data["pr"].get("closedDate"),
+            updated_at=raw_data["pr"].get("closedDate") or None,
+            merged_at=raw_data["pr"].get("closedDate") if raw_data["pr"]["status"] == "completed" else None,
+            additions=0,
+            deletions=0,
+            changed_files=0,
+            draft=raw_data["pr"]["isDraft"],
+            user=raw_data["pr"]["createdBy"]["uniqueName"],
+            user_name_external=raw_data["pr"]["createdBy"]["displayName"],
+            user_username_external=raw_data["pr"]["createdBy"]["uniqueName"],
+            user_aid=author_callback(to_author_alias(raw_data["pr"]["createdBy"])),
+            commits=len(raw_data["commits"]),
+            merged_by=raw_data["pr"]["closedBy"]["uniqueName"]
+            if "closedBy" in raw_data["pr"]
+            and PullRequestState.from_vsts(raw_data["pr"]["status"]) == PullRequestState.merged
+            else None,
+            merged_by_aid=author_callback(to_author_alias(raw_data["pr"]["closedBy"]))
+            if "closedBy" in raw_data["pr"]
+            and PullRequestState.from_vsts(raw_data["pr"]["status"]) == PullRequestState.merged
+            else None,
+            first_reaction_at=first_interaction_at,
+            first_commit_authored_at=first_commit_authored_at,
+            extra=raw_data,
+            is_bugfix=calculate_is_bugfix([], raw_data["pr"].get("title", "<missing title>")),
+        )
+
+    def _tranform_to_comments(
+        self, repository: RepositoryInDB, pr_number: int, raw_data: dict, author_callback: Callable
+    ) -> List[PullRequestComment]:
+        ret = []
+        for thread in raw_data.get("threads", {}).get("value", []):
+            for comment in thread.get("comments", []):
+                pr_comment = PullRequestComment(
+                    repo_id=repository.id,
+                    pr_number=pr_number,
+                    comment_type=str(comment["commentType"]),
+                    comment_id="-".join([str(thread["id"]), str(comment["id"])]),
+                    thread_id=str(thread["id"]),
+                    parent_comment_id=str(comment["parentCommentId"]),
+                    author_id_external=comment["author"]["id"],
+                    author_name_external=comment["author"]["displayName"],
+                    author_username_external=comment["author"]["uniqueName"],
+                    author_aid=author_callback(to_author_alias(comment["author"])),
+                    content=comment["content"],
+                    extra=comment,
+                    created_at=comment["publishedDate"],
+                    updated_at=comment["lastUpdatedDate"],
+                    published_at=comment["publishedDate"],
+                )
+                ret.append(pr_comment)
+
+        return ret
+
+    def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
+        return True, self.refresh_token(token, update_token)
 
     def refresh_token(self, token, update_token):
         client = self.get_oauth2_client(
@@ -159,3 +273,66 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         return []
+
+
+def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
+
+    if repository.extra and "project" in repository.extra:
+        repository_url = repository.extra["url"]
+        return _parse_azure_repository_url(repository_url)
+    else:
+        return _parse_clone_url(repository.clone_url)
+
+
+def _parse_azure_repository_url(url: str) -> Tuple[str, str, str]:
+    parsed_url = urlparse(url)
+
+    if parsed_url.hostname and parsed_url.path:
+        _splitted_path = parsed_url.path.split("/")
+
+        if "visualstudio.com" in parsed_url.hostname and "_apis/git/repositories" in parsed_url.path:
+            # "https://ORGANIZATION_NAME.visualstudio.com/PROJECT_ID/_apis/git/repositories/REPOSITORY_ID"
+            organization_name = parsed_url.hostname.split(".")[0]
+            project_id = _splitted_path[1]
+            repository_id = _splitted_path[-1]
+            return organization_name, project_id, repository_id
+        elif "dev.azure.com" in parsed_url.hostname:
+            organization_name = _splitted_path[1]
+
+    raise ValueError(f"Don't know how to parse AZURE Resource URL: {url}")
+
+
+# pylint: disable=unused-argument
+def _parse_clone_url(url: str) -> Tuple[str, str, str]:
+    return ("", "", "")
+
+
+def _paginate_with_skip_top(client, starting_url, top=100) -> list:
+    ret: list = []
+    skip = 0
+
+    while True:
+        url = starting_url + f"&$top={top}&$skip={skip}"
+        resp = client.get(url)
+        if resp.status_code != 200:
+            return ret
+        elif resp.status_code == 200:
+            json_resp = resp.json()
+            count = json_resp["count"]
+            value = json_resp["value"]
+            ret += value
+            if count >= top:
+                skip = skip + top
+            else:
+                return ret
+
+
+def to_author_alias(raw_user):
+    name = raw_user.get("displayName")
+    uniq_name = raw_user.get("uniqueName")
+    try:
+        valid = validate_email(uniq_name)
+        email = valid.email
+        return AuthorAlias(name=name, email=email)
+    except EmailNotValidError:
+        return AuthorAlias(name=name, login=uniq_name)

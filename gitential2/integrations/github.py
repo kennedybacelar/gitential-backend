@@ -1,10 +1,12 @@
-from typing import Callable, Optional, List
-from functools import lru_cache
+from typing import Callable, Optional, List, Tuple
+from datetime import datetime
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
+from authlib.integrations.requests_client import OAuth2Session
+
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB, RepositoryCreate, GitProtocol
 
-from gitential2.datatypes.extraction import ExtractedKind
+
 from gitential2.datatypes.pull_requests import (
     PullRequest,
     PullRequestState,
@@ -13,8 +15,7 @@ from gitential2.datatypes.pull_requests import (
     PullRequestComment,
 )
 from gitential2.datatypes.authors import AuthorAlias
-from gitential2.extraction.output import OutputHandler
-from .base import CollectPRsResult, OAuthLoginMixin, BaseIntegration, GitProviderMixin
+from .base import OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
 from ..utils.is_bugfix import calculate_is_bugfix
 
@@ -22,6 +23,9 @@ logger = get_logger(__name__)
 
 
 class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
+    def get_client(self, token, update_token) -> OAuth2Session:
+        return self.get_oauth2_client(token=token, update_token=update_token)
+
     def normalize_userinfo(self, data, token=None) -> UserInfoCreate:
         if not data.get("email"):
             logger.warning("GitHub: Getting all emails because of private email setting.", userinfo=data)
@@ -59,8 +63,8 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "client_secret": self.settings.oauth.client_secret,
         }
 
-    def refresh_token_if_expired(self, token, update_token: Callable) -> bool:
-        return False
+    def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
+        return False, token
 
     def get_rate_limit(self, token, update_token: Callable):
         api_base_url = self.oauth_register()["api_base_url"]
@@ -73,107 +77,70 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             return rate_limit.get("core", None)
         return None
 
-    def collect_pull_requests(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        prs_we_already_have: Optional[dict] = None,
-        limit: int = 200,
-    ) -> CollectPRsResult:
+    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
         api_base_url = self.oauth_register()["api_base_url"]
-
         pr_list_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls?per_page=100&state=all"
-        client = self.get_oauth2_client(token=token, update_token=update_token)
         prs = walk_next_link(client, pr_list_url)
+        return prs
 
-        def _is_pr_up_to_date(pr: dict) -> bool:
-            pr_number = pr["number"]
-            return (
-                prs_we_already_have is not None
-                and pr_number in prs_we_already_have
-                and parse_datetime(prs_we_already_have[pr_number]) == parse_datetime(pr["updated_at"])
-            )
+    def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
+        return raw_pr["number"], parse_datetime(raw_pr["updated_at"])
 
-        prs_needs_update = [pr for pr in prs if not _is_pr_up_to_date(pr)]
-
+    def _check_rate_limit(self, token, update_token):
         rate_limit = self.get_rate_limit(token, update_token)
-        if rate_limit and rate_limit["remaining"] < 1000:
+        if rate_limit and rate_limit["remaining"] > 500:
+            return True
+        else:
             logger.warn(
-                "Skipping pr collection because API rate limit",
+                "Skipping because API rate limit",
                 rate_limit=rate_limit,
-                repository_name=repository.name,
-                repository_id=repository.id,
             )
-            return CollectPRsResult(prs_collected=[], prs_left=[pr["number"] for pr in prs_needs_update], prs_failed=[])
+            return False
 
-        counter = 0
-        ret = CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
-        for pr in prs_needs_update:
-            pr_number = pr["number"]
-            if counter >= limit:
-                ret.prs_left.append(pr_number)
-            else:
-                pr_data = self.collect_pull_request(repository, token, update_token, output, author_callback, pr_number)
-                if pr_data:
-                    ret.prs_collected.append(pr_number)
-                else:
-                    ret.prs_failed.append(pr_number)
-            counter += 1
+    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+        users: dict = {}
 
-        return ret
+        def _collect_user_data(user_url):
+            if user_url not in users:
+                resp = client.get(user_url)
+                users[user_url] = resp.json()
 
-    def collect_pull_request(
-        self,
-        repository: RepositoryInDB,
-        token: dict,
-        update_token: Callable,
-        output: OutputHandler,
-        author_callback: Callable,
-        pr_number: int,
-    ) -> Optional[PullRequestData]:
         api_base_url = self.oauth_register()["api_base_url"]
         pr_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls/{pr_number}"
-        client = self.get_oauth2_client(token=token, update_token=update_token)
-        user_getter = make_user_getter(client=client)
-        raw_data = None
-        try:
-            raw_data = self._collect_single_pr_data_raw(client, pr_url)
-            pull_request = self._transform_to_pr(
-                raw_data, repository=repository, author_callback=author_callback, user_getter=user_getter
-            )
-            commits = self._write_pr_commits(raw_data["commits"], raw_data, repository, output)
-            comments = self._write_pr_comments(
-                raw_data["review_comments"],
-                raw_data,
-                repository,
-                output,
-                author_callback=author_callback,
-                user_getter=user_getter,
-            )
-            output.write(ExtractedKind.PULL_REQUEST, pull_request)
-            return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
-        except Exception:  # pylint: disable=broad-except
-            logger.exception("Failed to extract PR", pr_number=pr_number, raw_data=raw_data)
-            return None
-        finally:
-            client.close()
-
-    def _collect_single_pr_data_raw(self, client, pr_url):
         resp = client.get(pr_url)
         resp.raise_for_status()
         pr_details = resp.json()
+        _collect_user_data(pr_details["user"]["url"])
+
         commits = walk_next_link(client, pr_details["_links"]["commits"]["href"])
         review_comments = walk_next_link(client, pr_details["_links"]["review_comments"]["href"])
+
+        for c in review_comments:
+            if c.get("user"):
+                _collect_user_data(c["user"]["url"])
+
         return {
             "pr": pr_details,
             "commits": commits,
             "review_comments": review_comments,
+            "users": users,
         }
 
-    def _transform_to_pr(self, raw_data, repository, author_callback: Callable, user_getter: Callable):
+    def _tranform_to_pr_data(
+        self, repository: RepositoryInDB, pr_number: int, raw_data: dict, author_callback: Callable
+    ) -> PullRequestData:
+        pull_request = self._transform_to_pr(raw_data, repository=repository, author_callback=author_callback)
+        commits = self._transform_to_commits(raw_data["commits"], raw_data, repository)
+        comments = self._transform_to_comments(
+            raw_data["review_comments"],
+            raw_data,
+            repository,
+            author_callback=author_callback,
+        )
+
+        return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
+
+    def _transform_to_pr(self, raw_data, repository, author_callback: Callable):
         def _calc_first_commit_authored_at(raw_commits):
             author_times = [c["commit"]["author"]["date"] for c in raw_commits]
             author_times.sort()
@@ -190,7 +157,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
         # print("*******", raw_data["pr"]["user"])
 
-        user_data = user_getter(raw_data["pr"]["user"]["url"])
+        user_data = raw_data["users"][raw_data["pr"]["user"]["url"]]
 
         user_author_id = author_callback(
             AuthorAlias(
@@ -275,17 +242,14 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             log_api_error(response)
             return []
 
-    def _write_pr_commits(
+    def _transform_to_commits(
         self,
         commits_raw: list,
         raw_data: dict,
         repository: RepositoryInDB,
-        output: OutputHandler,
     ) -> List[PullRequestCommit]:
         ret = []
         for commit_raw in commits_raw:
-            # print(commit_raw)
-            # print("-----")
             commit = PullRequestCommit(
                 repo_id=repository.id,
                 pr_number=raw_data["pr"]["number"],
@@ -306,24 +270,21 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 created_at=commit_raw["commit"]["author"]["date"],
                 updated_at=commit_raw["commit"]["committer"]["date"],
             )
-            output.write(ExtractedKind.PULL_REQUEST_COMMIT, commit)
             ret.append(commit)
         return ret
 
-    def _write_pr_comments(
+    def _transform_to_comments(
         self,
         notes_raw: list,
         raw_data: dict,
         repository: RepositoryInDB,
-        output: OutputHandler,
         author_callback: Callable,
-        user_getter: Callable,
     ) -> List[PullRequestComment]:
         ret = []
         for note_raw in notes_raw:
             # print(note_raw)
             if note_raw.get("user"):
-                user_data = user_getter(note_raw["user"]["url"])
+                user_data = raw_data["users"][note_raw["user"]["url"]]
                 # print("!!!***!!!", note_raw["user"])
                 author_name_external = user_data.get("name")
                 author_aid = author_callback(AuthorAlias(name=user_data.get("name"), login=note_raw["user"]["login"]))
@@ -345,16 +306,5 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 created_at=note_raw["created_at"],
                 upated_at=note_raw["updated_at"],
             )
-            output.write(ExtractedKind.PULL_REQUEST_COMMENT, comment)
             ret.append(comment)
         return ret
-
-
-def make_user_getter(client):
-    @lru_cache(100)
-    def get_user(user_url):
-        logger.debug("Getting GitHub user", user_url=user_url)
-        response = client.get(user_url)
-        return response.json()
-
-    return get_user
