@@ -169,7 +169,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             user_name_external=raw_data["pr"]["createdBy"]["displayName"],
             user_username_external=raw_data["pr"]["createdBy"]["uniqueName"],
             user_aid=author_callback(to_author_alias(raw_data["pr"]["createdBy"])),
-            commits=len(raw_data["commits"]),
+            commits=len(raw_data["commits"].get("value", [])),
             merged_by=raw_data["pr"]["closedBy"]["uniqueName"]
             if "closedBy" in raw_data["pr"]
             and PullRequestState.from_vsts(raw_data["pr"]["status"]) == PullRequestState.merged
