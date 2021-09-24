@@ -201,7 +201,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                     author_name_external=comment["author"]["displayName"],
                     author_username_external=comment["author"]["uniqueName"],
                     author_aid=author_callback(to_author_alias(comment["author"])),
-                    content=comment.get("content"),
+                    content=comment.get("content", ""),
                     extra=comment,
                     created_at=comment["publishedDate"],
                     updated_at=comment["lastUpdatedDate"],
