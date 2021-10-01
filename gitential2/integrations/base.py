@@ -77,6 +77,12 @@ class GitProviderMixin(ABC):
         client = self.get_client(token=token, update_token=update_token)
         ret = CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
 
+        logger.info(
+            "Started collecting PRs",
+            repository_name=repository.name,
+            repository_id=repository.id,
+        )
+
         if not self._check_rate_limit(token, update_token):
             return ret
 
@@ -92,6 +98,13 @@ class GitProviderMixin(ABC):
             )
 
         prs_needs_update = [pr for pr in raw_prs if not _is_pr_up_to_date(pr)]
+
+        logger.info(
+            "PRs needs update/collect",
+            repository_name=repository.name,
+            repository_id=repository.id,
+            pr_numbers=[self._raw_pr_number_and_updated_at(pr)[0] for pr in prs_needs_update],
+        )
         if not self._check_rate_limit(token, update_token):
             ret.prs_left = [self._raw_pr_number_and_updated_at(pr)[0] for pr in prs_needs_update]
             return ret
@@ -122,6 +135,12 @@ class GitProviderMixin(ABC):
     ) -> Optional[PullRequestData]:
         client = self.get_client(token=token, update_token=update_token)
         raw_data = None
+        logger.info(
+            "Started collection data for PR",
+            repository_name=repository.name,
+            repository_id=repository.id,
+            pr_number=pr_number,
+        )
         try:
             raw_data = self._collect_raw_pull_request(repository, pr_number, client)
             pr_data = self._tranform_to_pr_data(repository, pr_number, raw_data, author_callback)

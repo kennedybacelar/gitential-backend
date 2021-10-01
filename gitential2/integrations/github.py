@@ -74,7 +74,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             rate_limit, headers = response.json(), response.headers
 
             logger.info("Github API rate limit", rate_limit=rate_limit, headers=headers)
-            return rate_limit.get("core", None)
+            return rate_limit.get("resources", {}).get("core", None)
         return None
 
     def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
@@ -88,6 +88,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
     def _check_rate_limit(self, token, update_token):
         rate_limit = self.get_rate_limit(token, update_token)
+
         if rate_limit and rate_limit["remaining"] > 500:
             return True
         else:
