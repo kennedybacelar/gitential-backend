@@ -89,6 +89,13 @@ def clone_repository(
         def _construct_callbacks(credentials):
             if isinstance(credentials, UserPassCredential):
                 userpass = pygit2.UserPass(username=credentials.username, password=credentials.password)
+                logger.debug(
+                    "Userpass credential",
+                    url=repository.clone_url,
+                    path=str(destination_path),
+                    username=credentials.username,
+                    password=credentials.password,
+                )
                 return pygit2.RemoteCallbacks(credentials=userpass)
             elif isinstance(credentials, KeypairCredential):
                 keypair = pygit2.Keypair(
@@ -100,9 +107,9 @@ def clone_repository(
                 return pygit2.RemoteCallbacks(credentials=keypair)
             return None
 
-        pygit2.clone_repository(
-            url=repository.clone_url, path=str(destination_path), callbacks=_construct_callbacks(credentials)
-        )
+        callbacks = _construct_callbacks(credentials)
+        logger.info("Cloning repository", url=repository.clone_url, path=str(destination_path), callbacks=callbacks)
+        pygit2.clone_repository(url=repository.clone_url, path=str(destination_path), callbacks=callbacks)
         return LocalGitRepository(repo_id=repository.id, directory=destination_path)
 
 
