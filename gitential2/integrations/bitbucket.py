@@ -9,8 +9,15 @@ from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
+from gitential2.datatypes.authors import AuthorAlias
 
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestState, PullRequestData
+from gitential2.datatypes.pull_requests import (
+    PullRequest,
+    PullRequestState,
+    PullRequestData,
+    PullRequestCommit,
+    PullRequestComment,
+)
 from gitential2.utils import calc_repo_namespace
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error
@@ -96,8 +103,12 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def _tranform_to_pr_data(
         self, repository: RepositoryInDB, pr_number: int, raw_data: dict, author_callback: Callable
     ) -> PullRequestData:
-        pull_request = self._transform_to_pr(raw_data, repository=repository)
-        return PullRequestData(pr=pull_request, comments=[], commits=[], labels=[])
+        pull_request = self._transform_to_pr(raw_data, repository=repository, author_callback=author_callback)
+        commits = self._transform_to_commits(raw_data["commits"], raw_data, repository)
+        comments = self._transform_to_comments(
+            raw_data["review_comments"], raw_data, repository, author_callback=author_callback
+        )
+        return PullRequestData(pr=pull_request, comments=comments, commits=commits, labels=[])
 
     def _get_bitbucket_workspace_and_repo_slug(self, repositor: RepositoryInDB):
         clone_url = repositor.clone_url
@@ -109,7 +120,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             logger.error("Don't know how to parse clone_url for workspace, and repo slug", clone_url=clone_url)
             raise ValueError("Don't know how to parse clone_url for workspace, and repo slug")
 
-    def _transform_to_pr(self, raw_data, repository):
+    def _transform_to_pr(self, raw_data, repository, author_callback):
         def _calc_first_commit_authored_at(raw_commits):
             author_times = [c["date"] for c in raw_commits]
             author_times.sort()
@@ -137,6 +148,20 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
         state = PullRequestState.from_bitbucket(raw_data["pr"]["state"])
 
+        user_author_id = author_callback(
+            AuthorAlias(name=raw_data["pr"]["author"]["display_name"], login=raw_data["pr"]["author"]["nickname"])
+        )
+
+        merged_by_author_id = (
+            author_callback(
+                AuthorAlias(
+                    name=raw_data["pr"]["closed_by"]["display_name"], login=raw_data["pr"]["closed_by"]["nickname"]
+                )
+            )
+            if state == PullRequestState.merged and raw_data["pr"].get("closed_by", {})
+            else None
+        )
+
         return PullRequest(
             repo_id=repository.id,
             number=raw_data["pr"]["id"],
@@ -155,13 +180,80 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             changed_files=changed_files,
             draft=False,
             user=raw_data["pr"]["author"]["nickname"],
+            user_id_external=str(raw_data["pr"]["author"]["uuid"]),
+            user_name_external=raw_data["pr"]["author"]["display_name"],
+            user_username_external=raw_data["pr"]["author"]["nickname"],
+            user_aid=user_author_id,
             commits=len(raw_data["commits"]),
-            merged_by=None,
+            merged_by_aid=merged_by_author_id,
+            merged_by=raw_data["pr"]["closed_by"]["nickname"] if merged_by_author_id else None,
             first_reaction_at=_calc_first_reaction_at(raw_data["pr"], raw_data["review_comments"]),
             first_commit_authored_at=_calc_first_commit_authored_at(raw_data["commits"]),
             extra=raw_data,
             is_bugfix=calculate_is_bugfix([], raw_data["pr"].get("title", "<missing title>")),
         )
+
+    def _transform_to_commits(
+        self,
+        commits_raw: list,
+        raw_data: dict,
+        repository: RepositoryInDB,
+    ) -> List[PullRequestCommit]:
+        ret = []
+        for commit_raw in commits_raw:
+            commit = PullRequestCommit(
+                repo_id=repository.id,
+                pr_number=raw_data["pr"]["id"],
+                commit_id=commit_raw["hash"],
+                author_name=commit_raw["author"]["raw"],
+                author_email=commit_raw["author"]["raw"],
+                author_date=commit_raw["date"],
+                author_login=None,
+                committer_name=commit_raw["author"]["raw"],
+                committer_email=commit_raw["author"]["raw"],
+                committer_date=commit_raw["date"],
+                committer_login=None,
+                created_at=commit_raw["date"],
+                updated_at=commit_raw["date"],
+                extra=commit_raw,
+            )
+            ret.append(commit)
+        return ret
+
+    def _transform_to_comments(
+        self,
+        comments_raw: list,
+        raw_data: dict,
+        repository: RepositoryInDB,
+        author_callback: Callable,
+    ) -> List[PullRequestComment]:
+        ret = []
+        for comment_raw in comments_raw:
+            author_aid = (
+                author_callback(
+                    AuthorAlias(name=comment_raw["user"]["display_name"], login=comment_raw["user"]["nickname"])
+                )
+                if comment_raw["user"].get("nickname") and comment_raw["user"].get("display_name")
+                else None
+            )
+
+            comment = PullRequestComment(
+                repo_id=repository.id,
+                pr_number=raw_data["pr"]["id"],
+                comment_type=str(comment_raw["type"]),
+                comment_id=str(comment_raw["id"]),
+                author_id_external=comment_raw["user"]["uuid"],
+                author_name_external=comment_raw["user"]["display_name"],
+                author_username_external=comment_raw["user"]["nickname"],
+                author_aid=author_aid,
+                content=comment_raw["content"]["raw"],
+                extra=comment_raw,
+                created_at=comment_raw["created_on"],
+                updated_at=comment_raw["updated_on"],
+                published_at=comment_raw["updated_on"],
+            )
+            ret.append(comment)
+        return ret
 
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str]
