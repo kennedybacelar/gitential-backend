@@ -20,7 +20,7 @@ class TemporaryDirectory(tempfile.TemporaryDirectory):
 
     def new_file(self, content):
         fd, path = tempfile.mkstemp(dir=self.name)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(content)
         os.close(fd)
         return path

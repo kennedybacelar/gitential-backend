@@ -13,10 +13,10 @@ def _get_project_refresh_status_summary(
     ret_status: RefreshStatus = RefreshStatus.up_to_date
     reason: Optional[Dict[str, str]] = None
 
-    if any([s[0] == RefreshStatus.in_progress for s in summaries.values()]):
+    if any(s[0] == RefreshStatus.in_progress for s in summaries.values()):
         ret_status = RefreshStatus.in_progress
 
-    elif any([s[0] == RefreshStatus.error for s in summaries.values()]):
+    elif any(s[0] == RefreshStatus.error for s in summaries.values()):
         ret_status = RefreshStatus.error
         reason = {n: s[1] for n, s in summaries.items() if s[0] == RefreshStatus.error}
 

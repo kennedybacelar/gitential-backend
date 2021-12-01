@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 from abc import abstractmethod
 from fastapi.encoders import jsonable_encoder
 from pydantic.main import BaseModel
@@ -11,9 +11,8 @@ class ExportableModel(BaseModel):
     def export_names(self) -> Tuple[str, str]:
         pass
 
-    @abstractmethod
     def export_fields(self) -> List[str]:
-        pass
+        return cast(List[str], list(self.__fields_set__))
 
     def to_exportable(self, fields: Optional[List[str]] = None) -> dict_type:
         return jsonable_encoder(self.dict(include=set(fields or self.export_fields())))

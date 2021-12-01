@@ -2,9 +2,10 @@ from datetime import datetime
 import json
 from typing import Any, Tuple, Set
 from threading import Lock
+from ibis.expr.api import schema
 import pandas as pd
 import sqlalchemy as sa
-from ibis.backends.postgres import connect
+import ibis
 from sqlalchemy.sql import and_, select
 
 from fastapi.encoders import jsonable_encoder
@@ -385,19 +386,28 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def get_ibis_tables(self, workspace_id: int) -> Any:
         with self._ibis_lock:
             ibis_conn = self._get_ibis_conn()
-            ibis_schema = ibis_conn.schema(self._workspace_schema_name(workspace_id))
+            # ibis_schema = ibis_conn.schema(self._workspace_schema_name(workspace_id))
+            # ret = IbisTables()
+            # ret.conn = ibis_conn
+            # ret.pull_requests = ibis_schema.pull_requests
+            # ret.commits = ibis_schema.calculated_commits
+            # ret.patches = ibis_schema.calculated_patches
+            # ret.authors = ibis_schema.authors
+            # ret.pull_request_comments = ibis_schema.pull_request_comments
             ret = IbisTables()
             ret.conn = ibis_conn
-            ret.pull_requests = ibis_schema.pull_requests
-            ret.commits = ibis_schema.calculated_commits
-            ret.patches = ibis_schema.calculated_patches
-            ret.authors = ibis_schema.authors
-            ret.pull_request_comments = ibis_schema.pull_request_comments
+            ret.pull_requests = ibis_conn.table("pull_requests", schema=self._workspace_schema_name(workspace_id))
+            ret.commits = ibis_conn.table("calculated_commits", schema=self._workspace_schema_name(workspace_id))
+            ret.patches = ibis_conn.table("calculated_patches", schema=self._workspace_schema_name(workspace_id))
+            ret.authors = ibis_conn.table("authors", schema=self._workspace_schema_name(workspace_id))
+            ret.pull_request_comments = ibis_conn.table(
+                "pull_request_comments", schema=self._workspace_schema_name(workspace_id)
+            )
             return ret
 
     def _get_ibis_conn(self):
         if not self._ibis_conn:
-            self._ibis_conn = connect(url=self.settings.connections.database_url)
+            self._ibis_conn = ibis.postgres.connect(url=self.settings.connections.database_url)
         return self._ibis_conn
 
     def save_calculated_dataframes(

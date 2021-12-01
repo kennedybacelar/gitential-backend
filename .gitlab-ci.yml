@@ -20,7 +20,7 @@ stages:
   before_script:
     - poetry install
   image:
-    name: nexus-docker.ops.gitential.com/python-poetry:v1-py3.8.6-build
+    name: docker-internal.gitential.io/python-poetry:v4-py3.10.0-build
     entrypoint: [""]
 
 .kaniko:

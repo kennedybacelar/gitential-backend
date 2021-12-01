@@ -208,9 +208,9 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     prs = ibis_tables.pull_requests
 
     sum_pr_count = prs.count().name("sum_pr_count")
-    sum_pr_open = prs.title.count(where=prs.state == PullRequestState.open).name("sum_pr_open")
-    sum_pr_closed = prs.title.count(where=prs.state == PullRequestState.closed).name("sum_pr_closed")
-    sum_pr_merged = prs.title.count(where=prs.state == PullRequestState.merged).name("sum_pr_merged")
+    sum_pr_open = prs.title.count(where=prs.state == PullRequestState.open.name).name("sum_pr_open")
+    sum_pr_closed = prs.title.count(where=prs.state == PullRequestState.closed.name).name("sum_pr_closed")
+    sum_pr_merged = prs.title.count(where=prs.state == PullRequestState.merged.name).name("sum_pr_merged")
     avg_pr_commit_count = prs["commits"].mean().name("avg_pr_commit_count")
     avg_pr_code_volume = prs["additions"].mean().name("avg_pr_code_volume")
     avg_pr_cycle_time = (

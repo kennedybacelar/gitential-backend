@@ -104,9 +104,6 @@ class PullRequest(ExtraFieldMixin, CoreModel, ExportableModel):
     def id_(self):
         return PullRequestId(repo_id=self.repo_id, number=self.number)
 
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
-
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request", "pull_requests")
 
@@ -133,9 +130,6 @@ class PullRequestCommit(ExtraFieldMixin, DateTimeModelMixin, CoreModel, Exportab
     @property
     def id_(self):
         return PullRequestCommitId(repo_id=self.repo_id, pr_number=self.pr_number, commit_id=self.commit_id)
-
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
 
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request_commit", "pull_request_commits")
@@ -172,9 +166,6 @@ class PullRequestComment(ExtraFieldMixin, DateTimeModelMixin, CoreModel, Exporta
             repo_id=self.repo_id, pr_number=self.pr_number, comment_type=self.comment_type, comment_id=self.comment_id
         )
 
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
-
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request_comment", "pull_request_comments")
 
@@ -196,9 +187,6 @@ class PullRequestLabel(ExtraFieldMixin, DateTimeModelMixin, CoreModel, Exportabl
     @property
     def id_(self):
         return PullRequestLabelId(repo_id=self.repo_id, pr_number=self.pr_number, name=self.name)
-
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
 
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request_label", "pull_request_labels")

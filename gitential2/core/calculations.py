@@ -399,7 +399,7 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
             ["repo_id", "newpath", "date", "aid"]
         ]
 
-        patches_map = dict()
+        patches_map = {}
 
         def _is_collaboration(collaboration_df: pd.DataFrame, x: pd.DataFrame) -> bool:
             if x["newpath"] not in patches_map:
@@ -466,6 +466,7 @@ def _calc_outlier_detection_df(prepared_patches_df: pd.DataFrame) -> pd.DataFram
 
     stats = pdf.reset_index().groupby(["commit_id", "outlier"])[columns].sum().unstack(fill_value=0)
 
+    # pylint: disable=consider-using-f-string
     stats.columns = [
         "{}_{}".format(metric, "outlier" if outlier else "inlier") for metric, outlier in stats.columns.values
     ]

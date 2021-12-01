@@ -53,7 +53,7 @@ def send_system_notification_email(g: GitentialContext, user: UserInDB, template
 def get_email_template(template_name: str) -> Optional[EmailTemplate]:
     filename = EMAIL_TEMPLATES_DIR / f"{template_name}.yml"
     if filename.is_file():
-        with open(filename, "r") as template_file:
+        with open(filename, "r", encoding="utf-8") as template_file:
             template_dict = yaml.full_load(template_file)
             return EmailTemplate(**template_dict)
     return None

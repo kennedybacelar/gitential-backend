@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel
@@ -47,9 +47,6 @@ class ExtractedCommit(CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_commit", "extracted_commits")
-
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
 
 
 class Langtype(Enum):
@@ -102,9 +99,6 @@ class ExtractedPatch(CoreModel, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_patch", "extracted_patches")
 
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
-
 
 class ExtractedPatchRewriteId(CoreModel):
     repo_id: int
@@ -136,9 +130,6 @@ class ExtractedPatchRewrite(CoreModel, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_patch_rewrite", "extracted_patch_rewrites")
 
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
-
 
 class ExtractedCommitBranchId(CoreModel):
     repo_id: int
@@ -162,6 +153,3 @@ class ExtractedCommitBranch(CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_commit_branch", "extracted_commit_branches")
-
-    def export_fields(self) -> List[str]:
-        return list(self.fields)

@@ -33,7 +33,10 @@ def import_legacy_database(
 ):
 
     _truncate_public(g)
-    users_json = json.loads(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json"), "r").read())
+    # pylint: disable=consider-using-with
+    users_json = json.loads(
+        open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json"), "r", encoding="utf-8").read()
+    )
     import_legacy_users(g, legacy_users, users_json)
     import_legacy_secrets(g, legacy_secrets)
     import_legacy_workspaces(

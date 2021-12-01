@@ -7,7 +7,7 @@ logger = get_logger(__name__)
 
 
 def get_localized_value(name):
-    key = "{}_{}".format(name["preferredLocale"]["language"], name["preferredLocale"]["country"])
+    key = "_".join([name["preferredLocale"]["language"], name["preferredLocale"]["country"]])
     return name["localized"].get(key, "")
 
 
