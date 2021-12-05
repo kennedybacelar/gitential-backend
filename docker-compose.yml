@@ -1,6 +1,17 @@
 version: "3.7"
 
 services:
+  # development:
+  #   build: .
+  #   ports:
+  #     - "7998:7998"
+  #   volumes:
+  #     - .:/project/app
+  #   environment:
+  #     ENVFILE_PATH: .secrets.env
+  #   entrypoint: [ "echo", "Service foo disabled" ]
+  #   restart: "no"
+
   db:
     image: postgres:13.1
     restart: always
@@ -38,6 +49,6 @@ services:
     network_mode: host
 
 volumes:
-  db-data:
-  pgadmin-data:
-  redis-data:
+  db-data: null
+  pgadmin-data: null
+  redis-data: null
