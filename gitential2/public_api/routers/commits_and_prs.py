@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from datetime import datetime
 from structlog import get_logger
 
@@ -50,6 +50,8 @@ def commits_repo_level(
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
     developer_id: Optional[int] = Query(None, alias="developer_id"),
+    developer_ids: Optional[List[int]] = Query(None, alias="developer_ids"),
+    keywords: Optional[List[str]] = Query(None, alias="commit_msg"),
     is_merge: Optional[bool] = Query(None),
     limit: int = 100,
     offset: int = 0,
@@ -64,7 +66,9 @@ def commits_repo_level(
             from_=_convert_to_datetime(from_),
             to_=_convert_to_datetime(to_, eod=True),
             developer_id=developer_id,
+            author_ids=developer_ids,
             is_merge=is_merge,
+            keywords=keywords,
             limit=limit,
             offset=offset,
         ),
@@ -114,11 +118,14 @@ def commits_project_level(
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
     developer_id: Optional[int] = Query(None, alias="developer_id"),
+    developer_ids: Optional[List[int]] = Query(None, alias="developer_ids"),
+    keywords: Optional[List[str]] = Query(None, alias="commit_msg"),
     is_merge: Optional[bool] = Query(None),
     limit: int = 100,
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    print(keywords)
     return _paginated_response(
         response,
         get_commits(
@@ -128,7 +135,9 @@ def commits_project_level(
             from_=_convert_to_datetime(from_),
             to_=_convert_to_datetime(to_, eod=True),
             developer_id=developer_id,
+            author_ids=developer_ids,
             is_merge=is_merge,
+            keywords=keywords,
             limit=limit,
             offset=offset,
         ),

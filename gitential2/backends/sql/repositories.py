@@ -1,11 +1,14 @@
 from typing import Iterable, Optional, Callable, List, Dict, Union, cast
 import datetime as dt
 import typing
-import sqlalchemy as sa
 import pandas as pd
+
+import sqlalchemy as sa
+from sqlalchemy import func
 from sqlalchemy.sql import and_, select, desc, or_
 from sqlalchemy.dialects.postgresql import insert
 from gitential2.exceptions import NotFoundException
+
 
 from gitential2.datatypes import (
     UserCreate,
@@ -604,11 +607,12 @@ class SQLCalculatedCommitRepository(
         to_: Optional[dt.datetime] = None,
         author_ids: Optional[List[int]] = None,
         is_merge: Optional[bool] = None,
+        keywords: Optional[List[str]] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> Iterable[CalculatedCommit]:
         query = self.table.select().order_by(self.table.c.date.desc()).limit(limit).offset(offset)
-        query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge)
+        query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge, keywords)
         with self._connection_with_schema(workspace_id) as connection:
             proxy = connection.execution_options(stream_results=True).execute(query)
             while True:
@@ -627,9 +631,12 @@ class SQLCalculatedCommitRepository(
         to_: Optional[dt.datetime] = None,
         author_ids: Optional[List[int]] = None,
         is_merge: Optional[bool] = None,
+        keywords: Optional[List[str]] = None,
     ) -> int:
-        query = self.table.count()
-        query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge)
+        query = select(func.count()).select_from(self.table)
+        query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge, keywords)
+        print("*" * 200)
+        print(query)
         with self._connection_with_schema(workspace_id) as connection:
             result = connection.execute(query)
             return result.fetchone()[0]
@@ -642,6 +649,7 @@ class SQLCalculatedCommitRepository(
         to_: Optional[dt.datetime] = None,
         author_ids: Optional[List[int]] = None,
         is_merge: Optional[bool] = None,
+        keywords: Optional[List[str]] = None,
     ):
         if repository_ids:
             query = query.where(self.table.c.repo_id.in_(repository_ids))
@@ -653,6 +661,10 @@ class SQLCalculatedCommitRepository(
             query = query.where(self.table.c.date < to_)
         if is_merge is not None:
             query = query.where(self.table.c.is_merge == is_merge)
+        if keywords:
+            for keyword in keywords:
+                if keyword:
+                    query = query.where(self.table.c.message.ilike(f"%{keyword}%"))
         return query
 
 
@@ -726,7 +738,7 @@ class SQLPullRequestRepository(
         to_: Optional[dt.datetime] = None,
         developer_ids: Optional[List[int]] = None,
     ) -> int:
-        query = self.table.count()
+        query = select(func.count()).select_from(self.table)
         query = self._build_filters(query, repository_ids, from_, to_, developer_ids)
 
         with self._connection_with_schema(workspace_id) as connection:

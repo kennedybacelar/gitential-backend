@@ -17,6 +17,7 @@ def get_commits(
     from_: Optional[datetime] = None,
     to_: Optional[datetime] = None,
     is_merge: Optional[bool] = None,
+    keywords: Optional[List[str]] = None,
     limit: int = 100,
     offset: int = 0,
 ) -> Tuple[int, List[CalculatedCommit]]:
@@ -37,6 +38,7 @@ def get_commits(
             from_=from_,
             to_=to_,
             is_merge=is_merge,
+            keywords=keywords,
         ),
         list(
             g.backend.calculated_commits.select(
@@ -46,6 +48,7 @@ def get_commits(
                 from_=from_,
                 to_=to_,
                 is_merge=is_merge,
+                keywords=keywords,
                 limit=limit,
                 offset=offset,
             )

@@ -352,6 +352,7 @@ class CalculatedCommitRepository(
         to_: Optional[datetime] = None,
         author_ids: Optional[List[int]] = None,
         is_merge: Optional[bool] = None,
+        keywords: Optional[List[str]] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> Iterable[CalculatedCommit]:
@@ -366,6 +367,7 @@ class CalculatedCommitRepository(
         to_: Optional[datetime] = None,
         author_ids: Optional[List[int]] = None,
         is_merge: Optional[bool] = None,
+        keywords: Optional[List[str]] = None,
     ) -> int:
         pass
 
