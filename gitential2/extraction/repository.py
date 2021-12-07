@@ -406,7 +406,8 @@ def _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id):  #
 
 
 def _utc_timestamp_for(signature):
-    return signature.time + signature.offset * 60
+    # signature.time is already an unix timestamp in utc (we don't need the offset!!!)
+    return signature.time
 
 
 def blame_porcelain(git_path, filepath, newest_commit) -> Dict[int, str]:

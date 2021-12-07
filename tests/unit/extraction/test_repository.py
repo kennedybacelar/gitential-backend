@@ -110,11 +110,11 @@ def test_extract_commit(test_repositories):
     res = output.values["extracted_commit"][0]
 
     assert res.commit_id == "dc11cdb4a4627b9f8c79e47e39aa7e1357151896"
-    assert res.atime == datetime(2020, 11, 5, 9, 0, 57, tzinfo=timezone.utc)
+    assert res.atime == datetime(2020, 11, 5, 17, 0, 57, tzinfo=timezone.utc)
     assert res.aemail == "davidism@gmail.com"
     assert res.aname == "David Lord"
 
-    assert res.ctime == datetime(2020, 11, 5, 9, 27, 52, tzinfo=timezone.utc)
+    assert res.ctime == datetime(2020, 11, 5, 17, 27, 52, tzinfo=timezone.utc)
     assert res.cemail == "davidism@gmail.com"
     assert res.cname == "David Lord"
 
