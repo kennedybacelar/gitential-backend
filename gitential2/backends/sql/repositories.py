@@ -633,7 +633,7 @@ class SQLCalculatedCommitRepository(
         is_merge: Optional[bool] = None,
         keywords: Optional[List[str]] = None,
     ) -> int:
-        query = select(func.count()).select_from(self.table)
+        query = select([func.count()]).select_from(self.table)
         query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge, keywords)
         print("*" * 200)
         print(query)
@@ -738,7 +738,7 @@ class SQLPullRequestRepository(
         to_: Optional[dt.datetime] = None,
         developer_ids: Optional[List[int]] = None,
     ) -> int:
-        query = select(func.count()).select_from(self.table)
+        query = select([func.count()]).select_from(self.table)
         query = self._build_filters(query, repository_ids, from_, to_, developer_ids)
 
         with self._connection_with_schema(workspace_id) as connection:
