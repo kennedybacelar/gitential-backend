@@ -306,4 +306,7 @@ def _paginated_response(response: Response, result: Tuple[int, list], limit: int
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Current-Limit"] = str(limit)
     response.headers["X-Current-Offset"] = str(offset)
+    response.headers["Access-Control-Expose-Headers"] = ", ".join(
+        ["X-Total-Count", "X-Current-Limit", "X-Current-Offset"]
+    )
     return items
