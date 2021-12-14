@@ -37,38 +37,36 @@ def recalculate_repository_values(
 
 
 def recalculate_repo_values_in_interval(
-    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=5000
+    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=2500
 ):
-    with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
-        (
-            extracted_commits_df,
-            extracted_patches_df,
-            extracted_patch_rewrites_df,
-            pull_request_commits_df,
-        ) = g.backend.get_extracted_dataframes(
-            workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
-        )
 
-    if extracted_commits_df.size > commit_limit:
+    extracted_commit_count = g.backend.extracted_commits.count(
+        workspace_id=workspace_id, repository_ids=[repository_id], from_=from_, to_=to_
+    )
+
+    if extracted_commit_count > commit_limit:
         logger.warning(
-            "Extraced commits dataframe is too large for calculation, splitting time interval to half",
+            "Extraced commit count is too large for calculation, splitting time interval to half",
             workspace_id=workspace_id,
             repository_id=repository_id,
-            commit_count=extracted_commits_df.size,
+            commit_count=extracted_commit_count,
             from_=from_,
             to_=to_,
         )
-        del (
-            extracted_commits_df,
-            extracted_patches_df,
-            extracted_patch_rewrites_df,
-            pull_request_commits_df,
-        )  # free up some memory, pls
 
         intervals = split_timerange(from_, to_)
         for (from__, to__) in intervals:
             recalculate_repo_values_in_interval(g, workspace_id, repository_id, from__, to__, commit_limit=commit_limit)
     else:
+        with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
+            (
+                extracted_commits_df,
+                extracted_patches_df,
+                extracted_patch_rewrites_df,
+                pull_request_commits_df,
+            ) = g.backend.get_extracted_dataframes(
+                workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
+            )
 
         logger.info(
             "Extracted commits info",

@@ -545,6 +545,40 @@ class SQLExtractedCommitRepository(
     def identity(self, id_: ExtractedCommitId):
         return and_(self.table.c.commit_id == id_.commit_id, self.table.c.repo_id == id_.repo_id)
 
+    def count(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[dt.datetime] = None,
+        to_: Optional[dt.datetime] = None,
+        keywords: Optional[List[str]] = None,
+    ) -> int:
+        query = select([func.count()]).select_from(self.table)
+        query = self._build_filters(query, repository_ids, from_, to_, keywords)
+        with self._connection_with_schema(workspace_id) as connection:
+            result = connection.execute(query)
+            return result.fetchone()[0]
+
+    def _build_filters(
+        self,
+        query,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[dt.datetime] = None,
+        to_: Optional[dt.datetime] = None,
+        keywords: Optional[List[str]] = None,
+    ):
+        if repository_ids:
+            query = query.where(self.table.c.repo_id.in_(repository_ids))
+        if from_:
+            query = query.where(self.table.c.atime >= from_)
+        if to_:
+            query = query.where(self.table.c.atime < to_)
+        if keywords:
+            for keyword in keywords:
+                if keyword:
+                    query = query.where(self.table.c.message.ilike(f"%{keyword}%"))
+        return query
+
 
 class SQLExtractedCommitBranchRepository(
     SQLRepoDFMixin,
@@ -635,8 +669,6 @@ class SQLCalculatedCommitRepository(
     ) -> int:
         query = select([func.count()]).select_from(self.table)
         query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge, keywords)
-        print("*" * 200)
-        print(query)
         with self._connection_with_schema(workspace_id) as connection:
             result = connection.execute(query)
             return result.fetchone()[0]
