@@ -312,7 +312,16 @@ class ExtractedCommitRepository(
     RepoDFMixin,
     BaseWorkspaceScopedRepository[ExtractedCommitId, ExtractedCommit, ExtractedCommit, ExtractedCommit],
 ):
-    pass
+    @abstractmethod
+    def count(
+        self,
+        workspace_id: int,
+        repository_ids: Optional[List[int]] = None,
+        from_: Optional[datetime] = None,
+        to_: Optional[datetime] = None,
+        keywords: Optional[List[str]] = None,
+    ) -> int:
+        pass
 
 
 class ExtractedPatchRepository(
