@@ -1,8 +1,6 @@
-from typing import Optional, Any
+from typing import Optional
 from uuid import uuid4
-import json
 from structlog import get_logger
-import orjson
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -38,24 +36,8 @@ from .routers import (
 logger = get_logger(__name__)
 
 
-class ORJSONResponse(JSONResponse):
-    media_type = "application/json"
-
-    def render(self, content: Any) -> bytes:
-        try:
-            return orjson.dumps(content)
-        except TypeError:
-            return json.dumps(
-                content,
-                ensure_ascii=False,
-                allow_nan=True,
-                indent=None,
-                separators=(",", ":"),
-            ).encode("utf-8")
-
-
 def create_app(settings: Optional[GitentialSettings] = None):
-    app = FastAPI(title="Gitential REST API", version="2.0.0", default_response_class=ORJSONResponse)
+    app = FastAPI(title="Gitential REST API", version="2.1.0")
     settings = settings or load_settings()
     initialize_logging(settings)
     app.state.settings = settings
