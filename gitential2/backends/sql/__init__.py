@@ -381,6 +381,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             con=self._engine,
         )
 
+        if not pull_request_commits_df.empty:
+            pull_request_commits_df = pull_request_commits_df.drop(labels=["extra", "extra_1"], axis=1)
+
         return extracted_commits_df, extracted_patches_df, extracted_patch_rewrites_df, pull_request_commits_df
 
     def get_ibis_tables(self, workspace_id: int) -> Any:
