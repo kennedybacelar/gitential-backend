@@ -20,8 +20,8 @@ variables:
   POSTGRES_PASSWORD: secret123
 
 stages:
-  - test_stage0
-  - test_stage1
+  - test
+  - test_integration
   - build
   - deploy
 
@@ -73,19 +73,19 @@ stages:
 
 poetry_invoke_lint:
   extends: .poetry_common
-  stage: test_stage0
+  stage: test
   script:
     - poetry run invoke lint
 
 unit_tests:
   extends: .poetry_common
-  stage: test_stage0
+  stage: test
   script:
     - poetry run invoke unit-test
 
 integration_tests:
   extends: .poetry_common
-  stage: test_stage1
+  stage: test_integration
   services:
     - name: postgres:13.1
     - name: redis:6.0.10
@@ -99,7 +99,6 @@ build_and_publish_image:
 
 gemnasium-python-dependency_scanning:
   # Work around https://gitlab.com/gitlab-org/gitlab/-/issues/7006
-  stage: test_stage0
   before_script:
     - pip install poetry # Or via another method: https://python-poetry.org/docs/#installation
     - poetry export --output="$PIP_REQUIREMENTS_FILE"
