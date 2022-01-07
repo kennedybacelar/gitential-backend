@@ -98,6 +98,7 @@ build_and_publish_image:
   stage: build
 
 gemnasium-python-dependency_scanning:
+  stage: test
   # Work around https://gitlab.com/gitlab-org/gitlab/-/issues/7006
   before_script:
     - pip install poetry # Or via another method: https://python-poetry.org/docs/#installation
