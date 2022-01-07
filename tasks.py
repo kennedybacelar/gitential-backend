@@ -3,6 +3,14 @@ from invoke import task
 
 PACKAGE_DIR = "gitential2"
 TESTS_DIR = "tests"
+DOCKER_REGISTRY = "docker-internal.gitential.io"
+TESTING_IMAGE_TAG = "v1-20220107"
+
+
+@task
+def build_testing_image(ctx):
+    ctx.run(f"docker build -f Dockerfile.testing -t {DOCKER_REGISTRY}/gitential2-testing:{TESTING_IMAGE_TAG} .")
+    ctx.run(f"docker push {DOCKER_REGISTRY}/gitential2-testing:{TESTING_IMAGE_TAG}")
 
 
 @task

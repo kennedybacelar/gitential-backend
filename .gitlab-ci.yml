@@ -25,7 +25,7 @@ stages:
   before_script:
     - poetry install
   image:
-    name: docker-internal.gitential.io/python-poetry:v4-py3.10.0-build
+    name: docker-internal.gitential.io/gitential2-testing:v1-20220107
     entrypoint: [""]
 
 .kaniko:
