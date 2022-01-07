@@ -14,6 +14,15 @@ def build_testing_image(ctx):
 
 
 @task
+def dependency_check(ctx):
+    ignores = [
+        42194,  # sqlalchemy-utils           | 0.37.9    | >=0.27.0
+    ]
+    ignores_str = " ".join([f"-i {i}" for i in ignores])
+    ctx.run(f"safety check --full-report {ignores_str}")
+
+
+@task
 def lint(ctx):
     ctx.run(f"black --check {PACKAGE_DIR} {TESTS_DIR}")
     ctx.run(f"pylint {PACKAGE_DIR}")

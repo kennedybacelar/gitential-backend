@@ -77,7 +77,7 @@ dependency_check:
   extends: .poetry_common
   stage: test
   script:
-    - poetry run safety check --full-report
+    - poetry run invoke dependency-check
 
 unit_tests:
   extends: .poetry_common
