@@ -56,6 +56,7 @@ flower = {git = "https://github.com/avikam/flower.git"}
 jupyter = "^1.0.0"
 notebook = "^6.3.0"
 Pympler = "^0.9"
+safety = "^1.10.3"
 
 [tool.black]
 line-length = 120

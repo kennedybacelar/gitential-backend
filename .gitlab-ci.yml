@@ -1,6 +1,3 @@
-include:
-  - template: Security/Dependency-Scanning.gitlab-ci.yml
-
 workflow:
   rules:
     - if: $CI_MERGE_REQUEST_ID
@@ -9,8 +6,6 @@ workflow:
     - if: "$CI_COMMIT_BRANCH =~ /^pilot/"
 
 variables:
-  PIP_REQUIREMENTS_FILE: "requirements-converted.txt"
-  SECURE_LOG_LEVEL: debug
   IMAGE_NAME: "backend"
   KANIKO_VERBOSITY: info
   DOCKERFILE: Dockerfile
@@ -78,6 +73,12 @@ poetry_invoke_lint:
   script:
     - poetry run invoke lint
 
+dependency_check:
+  extends: .poetry_common
+  stage: test
+  script:
+    - poetry run safety check --full-report
+
 unit_tests:
   extends: .poetry_common
   stage: test
@@ -97,20 +98,6 @@ integration_tests:
 build_and_publish_image:
   extends: .kaniko
   stage: build
-
-gemnasium-python-dependency_scanning:
-  stage: test
-  # Work around https://gitlab.com/gitlab-org/gitlab/-/issues/7006
-  before_script:
-    - pip install poetry # Or via another method: https://python-poetry.org/docs/#installation
-    - poetry export -f requirements.txt --output $PIP_REQUIREMENTS_FILE
-    - rm poetry.lock pyproject.toml
-    - ls -la
-  rules:
-    - if: $DEPENDENCY_SCANNING_DISABLED
-      when: never
-    - if: $CI_MERGE_REQUEST_ID
-    - if: $CI_COMMIT_BRANCH
 
 deploy_to_testing_environment:
   stage: deploy
