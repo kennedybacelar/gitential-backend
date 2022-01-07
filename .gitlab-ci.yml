@@ -10,6 +10,7 @@ workflow:
 
 variables:
   PIP_REQUIREMENTS_FILE: "requirements-converted.txt"
+  SECURE_LOG_LEVEL: debug
   IMAGE_NAME: "backend"
   KANIKO_VERBOSITY: info
   DOCKERFILE: Dockerfile
