@@ -102,8 +102,9 @@ gemnasium-python-dependency_scanning:
   # Work around https://gitlab.com/gitlab-org/gitlab/-/issues/7006
   before_script:
     - pip install poetry # Or via another method: https://python-poetry.org/docs/#installation
-    - poetry export --output="$PIP_REQUIREMENTS_FILE"
+    - poetry export -f requirements.txt --output $PIP_REQUIREMENTS_FILE
     - rm poetry.lock pyproject.toml
+    - ls -la
   rules:
     - if: $DEPENDENCY_SCANNING_DISABLED
       when: never
