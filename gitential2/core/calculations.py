@@ -81,6 +81,15 @@ def recalculate_repo_values_in_interval(
         for (from__, to__) in intervals:
             recalculate_repo_values_in_interval(g, workspace_id, repository_id, from__, to__, commit_limit=commit_limit)
     else:
+        with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
+            (
+                extracted_commits_df,
+                extracted_patches_df,
+                extracted_patch_rewrites_df,
+                pull_request_commits_df,
+            ) = g.backend.get_extracted_dataframes(
+                workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
+            )
 
         _log_large_df = partial(
             _log_large_dataframe, workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
