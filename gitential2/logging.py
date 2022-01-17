@@ -39,16 +39,16 @@ def logging_config_dict(settings: GitentialSettings):
                 "class": "logging.StreamHandler",
                 "formatter": "json",
             },
-            "uvicorn.access": {
-                "level": "INFO",
-                "class": "logging.StreamHandler",
-                "formatter": "access",
-            },
-            "uvicorn.default": {
-                "level": "INFO",
-                "class": "logging.StreamHandler",
-                "formatter": "default",
-            },
+            # "uvicorn.access": {
+            #     "level": "INFO",
+            #     "class": "logging.StreamHandler",
+            #     "formatter": "json",
+            # },
+            # "uvicorn.default": {
+            #     "level": "INFO",
+            #     "class": "logging.StreamHandler",
+            #     "formatter": "default",
+            # },
         },
         "loggers": {
             "": {"handlers": ["default"], "level": log_level},

@@ -46,7 +46,8 @@ class CSVExporter(Exporter):
 
     def _get_writer(self, name_singular: str, name_plural: str, fields: List[str]):
         if name_singular not in self._writers:
-            self._files[name_singular] = open(self._get_filename(name_plural), "w")
+            # pylint: disable=consider-using-with
+            self._files[name_singular] = open(self._get_filename(name_plural), "w", encoding="utf-8")
             self._writers[name_singular] = csv.DictWriter(self._files[name_singular], fieldnames=fields)
             self._writers[name_singular].writeheader()
         return self._writers[name_singular]
@@ -72,7 +73,8 @@ class JSONExporter(Exporter):
 
     def _get_json_file(self, name_singular, name_plural):
         if name_singular not in self._files:
-            self._files[name_singular] = open(self._get_filename(name_plural), "w")
+            # pylint: disable=consider-using-with
+            self._files[name_singular] = open(self._get_filename(name_plural), "w", encoding="utf-8")
             self._files[name_singular].write("[\n")
         return self._files[name_singular]
 

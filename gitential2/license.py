@@ -94,6 +94,7 @@ def load_license(license_file_path: Optional[str] = None, bits=2048) -> License:
         # gitential_public_key_bytes = _zip.read("GITENTIAL-public.key")
         # client_public_key_bytes = _zip.read(f"{client_slug}-public.key")
 
+        # pylint: disable=consider-using-with
         gitential_public_key_bytes = open(
             os.path.dirname(os.path.abspath(__file__)) + "/GITENTIAL-public.pem", "rb"
         ).read()
@@ -101,8 +102,8 @@ def load_license(license_file_path: Optional[str] = None, bits=2048) -> License:
         client_private_key_bytes = _zip.read(f"{client_slug}-private.key")
         license_file_bytes = _zip.read(lic_file)
 
-        private_key = rsa.PrivateKey.load_pkcs1(client_private_key_bytes)
-        gitential_public_key = rsa.PublicKey.load_pkcs1(gitential_public_key_bytes)
+        private_key = cast(rsa.PrivateKey, rsa.PrivateKey.load_pkcs1(client_private_key_bytes))
+        gitential_public_key = cast(rsa.PublicKey, rsa.PublicKey.load_pkcs1(gitential_public_key_bytes))
 
         signature_bytes, licence_bytes = license_file_bytes[-int(bits / 8) :], license_file_bytes[0 : -int(bits / 8)]
 

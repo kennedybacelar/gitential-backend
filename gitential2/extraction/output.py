@@ -19,6 +19,7 @@ class DataCollector(OutputHandler):
         self.values[kind].append(value)
 
     def __iter__(self):
+        # pylint: disable=consider-using-dict-items
         for kind in self.values.keys():
             for value in self.values[kind]:
                 yield kind, value

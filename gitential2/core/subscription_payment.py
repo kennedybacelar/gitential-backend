@@ -96,7 +96,7 @@ def process_webhook(g: GitentialContext, input_data: bytes, signature: str) -> N
     except (ValueError, SignatureVerificationError):
         logger.info("Payload verification error")
         return None
-    if event.type == "customer.subscription.updated" or event.type == "customer.subscription.created":
+    if event.type in ["customer.subscription.updated", "customer.subscription.created"]:
         logger.info("new subscription mod/update", type=event.type)
         customer_id = event["data"]["object"]["customer"]
         customer = stripe.Customer.retrieve(customer_id)

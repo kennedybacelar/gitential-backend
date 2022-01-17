@@ -1,6 +1,7 @@
+import gc
 from typing import List, Tuple
 from itertools import product
-
+from functools import partial
 import datetime as dt
 import pandas as pd
 import numpy as np
@@ -26,6 +27,28 @@ def _get_time_intervals() -> List[Tuple[dt.datetime, dt.datetime]]:
     return ret
 
 
+def _log_large_dataframe(workspace_id, repository_id, name: str, df: pd.DataFrame, **ctx) -> pd.DataFrame:
+    mem_usage = df.memory_usage(deep=True).sum()
+    megabyte = 1024 * 1024
+    if mem_usage > 100 * megabyte:
+        log_ = logger.warning
+    else:
+        log_ = logger.info
+
+    log_(
+        "DF-SIZE-LOG",
+        df_name=name,
+        workspace_id=workspace_id,
+        repository_id=repository_id,
+        size=df.size,
+        mem_usage=mem_usage,
+        mem_usage_kb=mem_usage / 1024,
+        shape=df.shape,
+        **ctx,
+    )
+    return df
+
+
 def recalculate_repository_values(
     g: GitentialContext, workspace_id: int, repository_id: int
 ):  # pylint: disable=unused-variable
@@ -37,7 +60,7 @@ def recalculate_repository_values(
 
 
 def recalculate_repo_values_in_interval(
-    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=100
+    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=1000
 ):
 
     extracted_commit_count = g.backend.extracted_commits.count(
@@ -68,51 +91,65 @@ def recalculate_repo_values_in_interval(
                 workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
             )
 
-        logger.info(
-            "Extracted commits info",
-            from_=from_,
-            to_=to_,
-            workspace_id=workspace_id,
-            repository_id=repository_id,
-            size=extracted_commits_df.size,
-            mem=extracted_commits_df.memory_usage(deep=True).sum(),
+        _log_large_df = partial(
+            _log_large_dataframe, workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
         )
 
-        logger.info(
-            "Extracted patches info",
-            from_=from_,
-            to_=to_,
-            workspace_id=workspace_id,
-            repository_id=repository_id,
-            size=extracted_patches_df.size,
-            mem=extracted_patches_df.memory_usage(deep=True).sum(),
-        )
-        logger.info(
-            "Extracted patch rewrites info",
-            from_=from_,
-            to_=to_,
-            workspace_id=workspace_id,
-            repository_id=repository_id,
-            size=extracted_patch_rewrites_df.size,
-            mem=extracted_patch_rewrites_df.memory_usage(deep=True).sum(),
-        )
+        with LogTimeIt("get_extracted_dataframes", logger, threshold_ms=1000):
+            (
+                extracted_commits_df,
+                extracted_patches_df,
+                extracted_patch_rewrites_df,
+                pull_request_commits_df,
+            ) = g.backend.get_extracted_dataframes(
+                workspace_id=workspace_id, repository_id=repository_id, from_=from_, to_=to_
+            )
+        for name, df in [
+            ("extracted_commits_df", extracted_commits_df),
+            ("extracted_patches_df", extracted_patches_df),
+            ("extracted_patch_rewrites_df", extracted_patch_rewrites_df),
+            ("pull_request_commits_df", pull_request_commits_df),
+        ]:
+            _log_large_df(name=name, df=df)
 
         if extracted_patches_df.empty or extracted_commits_df.empty:
             return
 
-        parents_df = extracted_patches_df.reset_index()[["commit_id", "parent_commit_id"]].drop_duplicates()
-
-        prepared_commits_df = _prepare_extracted_commits_df(g, workspace_id, extracted_commits_df, parents_df)
-        prepared_patches_df = _prepare_extracted_patches_df(extracted_patches_df)
-        uploc_df = _calculate_uploc_df(extracted_commits_df, extracted_patch_rewrites_df)
-
-        commits_patches_df = _prepare_commits_patches_df(prepared_commits_df, prepared_patches_df, uploc_df)
-        outlier_df = _calc_outlier_detection_df(prepared_patches_df)
-
-        calculated_commits_df = _calculate_commit_level(
-            prepared_commits_df, commits_patches_df, outlier_df, pull_request_commits_df
+        parents_df = _log_large_df(
+            name="parents_df",
+            df=extracted_patches_df.reset_index()[["commit_id", "parent_commit_id"]].drop_duplicates(),
         )
-        calculated_patches_df = _calculate_patch_level(commits_patches_df)
+
+        prepared_commits_df = _log_large_df(
+            name="prepared_commits_df",
+            df=_prepare_extracted_commits_df(g, workspace_id, extracted_commits_df, parents_df),
+        )
+        prepared_patches_df = _log_large_df(
+            name="prepared_patches_df", df=_prepare_extracted_patches_df(extracted_patches_df)
+        )
+        uploc_df = _log_large_df(
+            name="uploc_df", df=_calculate_uploc_df(extracted_commits_df, extracted_patch_rewrites_df)
+        )
+
+        # We can remove the original dataframes here
+        del extracted_commits_df
+        del extracted_patches_df
+        del extracted_patch_rewrites_df
+        gc.collect()
+
+        commits_patches_df = _log_large_df(
+            name="commits_patches_df",
+            df=_prepare_commits_patches_df(prepared_commits_df, prepared_patches_df, uploc_df),
+        )
+        outlier_df = _log_large_df(name="outlier_df", df=_calc_outlier_detection_df(prepared_patches_df))
+
+        calculated_commits_df = _log_large_df(
+            name="calculated_commits_df",
+            df=_calculate_commit_level(prepared_commits_df, commits_patches_df, outlier_df, pull_request_commits_df),
+        )
+        calculated_patches_df = _log_large_df(
+            name="calculated_patches_df", df=_calculate_patch_level(commits_patches_df)
+        )
 
         logger.info(
             "Saving repository commit calculations",
@@ -131,6 +168,16 @@ def recalculate_repo_values_in_interval(
                 from_=from_,
                 to_=to_,
             )
+
+        del calculated_commits_df
+        del calculated_patches_df
+        del outlier_df
+        del commits_patches_df
+        del parents_df
+        del prepared_commits_df
+        del prepared_patches_df
+        del uploc_df
+        gc.collect()
 
 
 @time_it_log(logger)
@@ -227,7 +274,8 @@ def _prepare_commits_patches_df(
     prepared_commits_df: pd.DataFrame, prepared_patches_df: pd.DataFrame, uploc_df: pd.DataFrame
 ):
     df = (
-        prepared_commits_df.join(prepared_patches_df, lsuffix="__commit", rsuffix="__patch")
+        prepared_commits_df.drop(labels=["message"], axis=1)
+        .join(prepared_patches_df, lsuffix="__commit", rsuffix="__patch")
         .reset_index()
         .set_index(["commit_id", "parent_commit_id", "newpath"])
     )
@@ -397,7 +445,7 @@ def _calculate_patch_level(calculated_patches_df: pd.DataFrame) -> pd.DataFrame:
             ["repo_id", "newpath", "date", "aid"]
         ]
 
-        patches_map = dict()
+        patches_map = {}
 
         def _is_collaboration(collaboration_df: pd.DataFrame, x: pd.DataFrame) -> bool:
             if x["newpath"] not in patches_map:
@@ -464,6 +512,7 @@ def _calc_outlier_detection_df(prepared_patches_df: pd.DataFrame) -> pd.DataFram
 
     stats = pdf.reset_index().groupby(["commit_id", "outlier"])[columns].sum().unstack(fill_value=0)
 
+    # pylint: disable=consider-using-f-string
     stats.columns = [
         "{}_{}".format(metric, "outlier" if outlier else "inlier") for metric, outlier in stats.columns.values
     ]

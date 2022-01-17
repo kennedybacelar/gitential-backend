@@ -51,7 +51,15 @@ def public_api(
     port: int = typer.Option(7999, "--port", "-p"),
     reload: bool = False,
 ):
-    uvicorn.run("gitential2.public_api.main:app", host=host, port=port, log_level="info", reload=reload)
+    uvicorn.run(
+        "gitential2.public_api.main:app",
+        host=host,
+        port=port,
+        log_level="info",
+        reload=reload,
+        forwarded_allow_ips="*",
+        proxy_headers=True,
+    )
 
 
 @app.command("initialize-database")

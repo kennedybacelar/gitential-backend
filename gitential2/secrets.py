@@ -35,12 +35,12 @@ class FernetVault:
         return self._vault.__delitem__(key)
 
     def load(self, path):
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             contents = f.read()
             self._vault = {self.decrypt_string(k): self.decrypt_string(v) for k, v in json.loads(contents).items()}
 
     def save(self, path):
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             encrypted_vault = {self.encrypt_string(k): self.encrypt_string(v) for k, v in self._vault.items()}
             json_vault = json.dumps(encrypted_vault)
             f.write(json_vault)

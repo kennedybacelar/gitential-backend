@@ -1,5 +1,6 @@
 # pylint: disable=too-complex,too-many-branches
 
+import math
 from typing import Generator, List, Any, Dict, Optional
 from datetime import datetime, date, timedelta, timezone
 
@@ -208,9 +209,9 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     prs = ibis_tables.pull_requests
 
     sum_pr_count = prs.count().name("sum_pr_count")
-    sum_pr_open = prs.title.count(where=prs.state == PullRequestState.open).name("sum_pr_open")
-    sum_pr_closed = prs.title.count(where=prs.state == PullRequestState.closed).name("sum_pr_closed")
-    sum_pr_merged = prs.title.count(where=prs.state == PullRequestState.merged).name("sum_pr_merged")
+    sum_pr_open = prs.title.count(where=prs.state == PullRequestState.open.name).name("sum_pr_open")
+    sum_pr_closed = prs.title.count(where=prs.state == PullRequestState.closed.name).name("sum_pr_closed")
+    sum_pr_merged = prs.title.count(where=prs.state == PullRequestState.merged.name).name("sum_pr_merged")
     avg_pr_commit_count = prs["commits"].mean().name("avg_pr_commit_count")
     avg_pr_code_volume = prs["additions"].mean().name("avg_pr_code_volume")
     avg_pr_cycle_time = (
@@ -396,10 +397,21 @@ def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
 def _to_jsonable_result(result: QueryResult) -> dict:
     if result.values.empty:
         return {}
-    ret = result.values.replace([np.inf, -np.inf], np.nan)
+    ret = result.values.replace([np.inf, -np.inf], np.NaN)
     ret = ret.where(pd.notnull(ret), None)
     logger.debug("INDEX", index=ret.index)
-    return ret.to_dict(orient="list")
+    return replace_nans(ret.to_dict(orient="list"))
+
+
+def replace_nans(obj):
+    if isinstance(obj, dict):
+        return {k: replace_nans(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [replace_nans(v) for v in obj]
+    elif obj in [np.inf, -np.inf, np.NaN, float("nan")] or (isinstance(obj, float) and math.isnan(obj)):
+        return None
+    else:
+        return obj
 
 
 def _add_missing_timestamp_to_result(result: QueryResult):

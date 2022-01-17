@@ -25,9 +25,9 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def __init__(self, name, settings):
         super().__init__(name, settings)
         self.base_url = self.settings.base_url or "https://gitlab.com"
-        self.api_base_url = "{}/api/v4".format(self.base_url)
-        self.authorize_url = "{}/oauth/authorize".format(self.base_url)
-        self.token_url = "{}/oauth/token".format(self.base_url)
+        self.api_base_url = f"{self.base_url}/api/v4"
+        self.authorize_url = f"{self.base_url}/oauth/authorize"
+        self.token_url = f"{self.base_url}/oauth/token"
 
     def get_client(self, token, update_token) -> OAuth2Session:
         return self.get_oauth2_client(token=token, update_token=update_token)

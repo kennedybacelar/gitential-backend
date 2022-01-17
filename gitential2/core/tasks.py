@@ -50,7 +50,7 @@ def schedule_task(
 def configure_celery(settings: Optional[GitentialSettings] = None):
     settings = settings or load_settings()
     initialize_logging(settings)
-    global celery_app  # pylint: disable=global-statement
+    # global celery_app  # pylint: disable=global-statement,
     celery_app.conf.update(
         result_expires=120,
         task_acks_late=True,

@@ -143,6 +143,7 @@ def import_legacy_workspace_(
 
 def _load_list(filename):  # pylint: disable=unused-variable
     try:
+        # pylint: disable=unspecified-encoding
         return json.loads(open(os.getcwd() + "/" + filename, "r").read())
     except Exception as e:  # pylint: disable=broad-except
         print(e)
@@ -168,6 +169,7 @@ def _load_list(filename):  # pylint: disable=unused-variable
 
 def _load_fix_file():
     ret = {}
+    # pylint: disable=unspecified-encoding
     with open(
         os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "credential_fix.csv"), "r"
     ) as f:

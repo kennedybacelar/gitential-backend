@@ -196,6 +196,6 @@ def _environtment_overrides(config_dict):
 
 def load_settings(settings_file=None):
     settings_file = settings_file or os.environ.get("GITENTIAL_SETTINGS", "settings.yml")
-    with open(settings_file, "r") as f:
+    with open(settings_file, "r", encoding="utf-8") as f:
         config_dict = _environtment_overrides(yaml.safe_load(f))
         return GitentialSettings.parse_obj(config_dict)

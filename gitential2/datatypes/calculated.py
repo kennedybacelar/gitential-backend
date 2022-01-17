@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 from datetime import datetime
 
 from .export import ExportableModel
@@ -74,9 +74,6 @@ class CalculatedCommit(CoreModel, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
         return ("calculated_commit", "calculated_commits")
 
-    def export_fields(self) -> List[str]:
-        return list(self.fields)
-
 
 class CalculatedPatchId(CoreModel):
     repo_id: int
@@ -135,6 +132,3 @@ class CalculatedPatch(CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("calculated_patch", "calculated_patches")
-
-    def export_fields(self) -> List[str]:
-        return list(self.fields)

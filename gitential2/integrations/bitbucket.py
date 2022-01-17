@@ -334,7 +334,7 @@ def _walk_paginated_results(client, starting_url, acc=None):
 
 
 def _get_profile(data):
-    return "https://bitbucket.org/{}/".format(data["username"])
+    return f"https://bitbucket.org/{data['username']}/"
 
 
 def _get_avatar(data):

@@ -272,6 +272,12 @@ def _extract_patch(commit, parent, patch, g2_repo, output, repo_id):
     patch_stats = _get_patch_stats(patch)
     nrewrites, rewrites_loc = _extract_patch_rewrites(commit, parent, patch, g2_repo, output, repo_id=repo_id)
     lang, langtype = _get_patch_lang_and_langtype(commit, patch, g2_repo)
+
+    # We cannot store a larger file size in postgres
+    # However, it's rare to see large files commited to git,
+    # and usually these are more likely some kind of data files
+    MAX_FILE_SIZE = 2147483647
+
     output.write(
         ExtractedKind.EXTRACTED_PATCH.value,
         ExtractedPatch(
@@ -281,8 +287,8 @@ def _extract_patch(commit, parent, patch, g2_repo, output, repo_id):
             status=patch.delta.status_char(),
             newpath=patch.delta.new_file.path[:255],
             oldpath=patch.delta.old_file.path[:255],
-            newsize=patch.delta.new_file.size,
-            oldsize=patch.delta.old_file.size,
+            newsize=min(patch.delta.new_file.size, MAX_FILE_SIZE),
+            oldsize=min(patch.delta.old_file.size, MAX_FILE_SIZE),
             is_binary=patch.delta.is_binary,
             lang=lang,
             langtype=langtype,
