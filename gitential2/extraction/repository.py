@@ -1,9 +1,10 @@
-from typing import Optional, Dict, Generator, Set
+from typing import Optional, Dict, Generator, Set, List, Union
 from collections import defaultdict
 from pathlib import Path
 import subprocess
 import math
 import re
+import os
 import numpy as np
 import pygit2
 from structlog import get_logger
@@ -43,7 +44,7 @@ def extract_incremental(
     ignore_spec: IgnoreSpec = default_ignorespec,
 ):
     with TemporaryDirectory() as workdir:
-        local_repo = clone_repository(repository, destination_path=workdir.path, credentials=credentials)
+        local_repo = clone_repository_pygit2(repository, destination_path=workdir.path, credentials=credentials)
         return extract_incremental_local(local_repo, output, settings, previous_state, ignore_spec)
 
 
@@ -81,7 +82,88 @@ def _extract_single_commit(commit_id, local_repo: LocalGitRepository, output: Ou
     return output
 
 
-def clone_repository(
+# pylint: disable=too-complex
+def clone_repository_gitcli(
+    repository: RepositoryInDB, destination_path: Path, credentials: Optional[RepositoryCredential] = None
+) -> LocalGitRepository:
+    def subprocess_run(job: Union[List[str], str], shell=False):
+        subprocess.run(
+            job,
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=shell,
+            cwd=destination_path,
+        )
+
+    if not os.path.exists(destination_path):
+        os.makedirs(destination_path)
+    with TemporaryDirectory() as workdir:
+        try:
+            if isinstance(credentials, KeypairCredential):
+                private_key = workdir.new_file(credentials.privkey)
+                if credentials and credentials.passphrase:
+                    subprocess_run(
+                        "{ sleep .1; echo "
+                        + credentials.passphrase
+                        + "; } | script -q /dev/null -c 'ssh-add "
+                        + private_key
+                        + "' ; git clone "
+                        + repository.clone_url
+                        + " .",
+                        shell=True,
+                    )
+                else:
+                    subprocess_run(
+                        "ssh-add " + private_key + "' ; git clone " + repository.clone_url + " .",
+                        shell=True,
+                    )
+            elif isinstance(credentials, UserPassCredential):
+                jobs = [
+                    [
+                        "git",
+                        "init",
+                    ],
+                    ["git", "remote", "add", "origin", repository.clone_url],
+                    [
+                        "git",
+                        "config",
+                        "credential.username",
+                        credentials.username,
+                    ],
+                    [
+                        "git",
+                        "config",
+                        "credential.helper",
+                        '!f() { sleep 0.3; printf "%s\n" "password=' + credentials.password + '"; };f',
+                    ],
+                    ["git", "fetch"],
+                    ["git", "checkout", "master"],
+                ]
+                for command in jobs:
+                    subprocess_run(command)
+            else:
+                subprocess_run(["git", "clone", repository.clone_url, "."])
+        except subprocess.CalledProcessError as e:
+            logger.warning(
+                "Failed to run git clone.", clone_url=repository.clone_url, error=e, stdout=e.stdout, stderr=e.stderr
+            )
+            if "pathspec" in e.stderr:
+                try:
+                    subprocess_run(["git", "checkout", "main"])
+                except subprocess.CalledProcessError as e:
+                    logger.warning(
+                        "Failed to checkout main branch",
+                        clone_url=repository.clone_url,
+                        error=e,
+                        stdout=e.stdout,
+                        stderr=e.stderr,
+                    )
+        # Needs some validation
+        return LocalGitRepository(repo_id=repository.id, directory=destination_path)
+
+
+def clone_repository_pygit2(
     repository: RepositoryInDB, destination_path: Path, credentials: Optional[RepositoryCredential] = None
 ) -> LocalGitRepository:
     with TemporaryDirectory() as workdir:
@@ -111,6 +193,17 @@ def clone_repository(
         logger.info("Cloning repository", url=repository.clone_url, path=str(destination_path), callbacks=callbacks)
         pygit2.clone_repository(url=repository.clone_url, path=str(destination_path), callbacks=callbacks)
         return LocalGitRepository(repo_id=repository.id, directory=destination_path)
+
+
+def clone_repository(
+    repository: RepositoryInDB, destination_path: Path, credentials: Optional[RepositoryCredential] = None
+) -> LocalGitRepository:
+    try:
+        if repository.clone_url.startswith("https"):
+            return clone_repository_gitcli(repository, destination_path, credentials)
+    except:  # pylint: disable=bare-except
+        logger.exception("There was an error with git cli, falling back to pygit2")
+    return clone_repository_pygit2(repository, destination_path, credentials)
 
 
 def _git2_repo(repository: LocalGitRepository) -> pygit2.Repository:

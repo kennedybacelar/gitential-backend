@@ -1,9 +1,13 @@
 from typing import Optional
+from pathlib import Path
+
 import typer
 
 from structlog import get_logger
 
 from gitential2.core.repositories import list_project_repositories, list_repositories, list_available_repositories
+from gitential2.core.credentials import acquire_credential
+from gitential2.extraction.repository import clone_repository
 from .common import get_context, print_results, OutputFormat
 
 app = typer.Typer()
@@ -28,3 +32,21 @@ def list_repositories_(
         results = list_repositories(g, workspace_id)
 
     print_results(results, format_=format_, fields=fields)
+
+
+@app.command("clone")
+def clone_repository_(workspace_id: int, repo_id: int, destination_path: Path):
+    g = get_context()
+    repository = g.backend.repositories.get_or_error(workspace_id, repo_id)
+    with acquire_credential(
+        g,
+        credential_id=repository.credential_id,
+        workspace_id=workspace_id,
+        integration_name=repository.integration_name,
+        blocking_timeout_seconds=30,
+    ) as credential:
+        clone_repository(
+            repository,
+            destination_path,
+            credentials=credential.to_repository_credential(g.fernet) if credential else None,
+        )
