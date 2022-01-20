@@ -10,7 +10,7 @@ from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInD
 from gitential2.datatypes.authors import AuthorAlias
 
 
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestState
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 
 from ..utils.is_bugfix import calculate_is_bugfix
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData
@@ -123,7 +123,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return PullRequestData(
             pr=self._tranform_to_pr(repository, pr_number, raw_data, author_callback),
             comments=self._tranform_to_comments(repository, pr_number, raw_data, author_callback),
-            commits=[],
+            commits=self._transform_to_commits(repository, pr_number, raw_data),
             labels=[],
         )
 
@@ -209,6 +209,30 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 )
                 ret.append(pr_comment)
 
+        return ret
+
+    def _transform_to_commits(
+        self, repository: RepositoryInDB, pr_number: int, raw_data: dict
+    ) -> List[PullRequestCommit]:
+        ret = []
+        for commit_raw in raw_data.get("commits", {}).get("value", []):
+            commit = PullRequestCommit(
+                repo_id=repository.id,
+                pr_number=pr_number,
+                commit_id=commit_raw["commitId"],
+                author_name=commit_raw.get("author", {}).get("name", None),
+                author_email=commit_raw.get("author", {}).get("email", None),
+                author_date=commit_raw.get("author", {}).get("date", None),
+                author_login=None,
+                committer_name=commit_raw.get("committer", {}).get("name", None),
+                committer_email=commit_raw.get("committer", {}).get("email", None),
+                committer_date=commit_raw.get("committer", {}).get("date", None),
+                committer_login=None,
+                created_at=commit_raw.get("committer", {}).get("date", None),
+                updated_at=commit_raw.get("committer", {}).get("date", None),
+                extra=commit_raw,
+            )
+            ret.append(commit)
         return ret
 
     def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
