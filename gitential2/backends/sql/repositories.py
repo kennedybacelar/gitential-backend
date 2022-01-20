@@ -734,7 +734,10 @@ class SQLPullRequestRepository(
 
     def get_prs_updated_at(self, workspace_id: int, repository_id: int) -> Dict[int, dt.datetime]:
         def _add_utc_timezone(d: dt.datetime):
-            return d.replace(tzinfo=dt.timezone.utc)
+            if d:
+                return d.replace(tzinfo=dt.timezone.utc)
+            else:
+                return dt.datetime.min.replace(tzinfo=dt.timezone.utc)
 
         query = select([self.table.c.number, self.table.c.updated_at]).where(self.table.c.repo_id == repository_id)
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
