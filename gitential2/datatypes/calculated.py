@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from datetime import datetime
 
 from .export import ExportableModel
@@ -74,6 +74,50 @@ class CalculatedCommit(CoreModel, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
         return ("calculated_commit", "calculated_commits")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "repo_id",
+            "commit_id",
+            "atime",
+            "aemail",
+            "aname",
+            "ctime",
+            "cemail",
+            "cname",
+            "message",
+            "nparents",
+            "tree_id",
+            "date",
+            "age",
+            "aid",
+            "cid",
+            "is_merge",
+            "nfiles",
+            "loc_i_c",
+            "loc_i_inlier",
+            "loc_i_outlier",
+            "loc_d_c",
+            "loc_d_inlier",
+            "loc_d_outlier",
+            "comp_i_c",
+            "comp_i_inlier",
+            "comp_i_outlier",
+            "comp_d_c",
+            "comp_d_inlier",
+            "comp_d_outlier",
+            "loc_effort_c",
+            "uploc_c",
+            "hours_measured",
+            "hours_estimated",
+            "hours",
+            "velocity_measured",
+            "velocity",
+            "is_bugfix",
+            "is_pr_exists",
+            "is_pr_open",
+            "is_pr_closed",
+        ]
+
 
 class CalculatedPatchId(CoreModel):
     repo_id: int
@@ -132,3 +176,37 @@ class CalculatedPatch(CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("calculated_patch", "calculated_patches")
+
+    def export_fields(self) -> List[str]:
+        return [
+            "repo_id",
+            "commit_id",
+            "parent_commit_id",
+            "aid",
+            "cid",
+            "date",
+            "status",
+            "newpath",
+            "oldpath",
+            "newsize",
+            "oldsize",
+            "is_binary",
+            "lang",
+            "langtype",
+            "loc_i",
+            "loc_d",
+            "comp_i",
+            "comp_d",
+            "nhunks",
+            "nrewrites",
+            "rewrites_loc",
+            "is_merge",
+            "is_test",
+            "uploc",
+            "outlier",
+            "anomaly",
+            "is_collaboration",
+            "is_new_code",
+            "loc_effort_p",
+            "is_bugfix",
+        ]

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel
@@ -47,6 +47,21 @@ class ExtractedCommit(CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_commit", "extracted_commits")
+
+    def export_fields(self) -> List[str]:
+        return [
+            "repo_id",
+            "commit_id",
+            "atime",
+            "aemail",
+            "aname",
+            "ctime",
+            "cemail",
+            "cname",
+            "message",
+            "nparents",
+            "tree_id",
+        ]
 
 
 class Langtype(Enum):
@@ -99,6 +114,32 @@ class ExtractedPatch(CoreModel, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_patch", "extracted_patches")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "repo_id",
+            "commit_id",
+            "parent_commit_id",
+            "status",
+            "newpath",
+            "oldpath",
+            "newsize",
+            "oldsize",
+            "is_binary",
+            "lang",
+            "langtype",
+            "loc_i",
+            "loc_d",
+            "comp_i",
+            "comp_d",
+            "loc_i_std",
+            "loc_d_std",
+            "comp_i_std",
+            "comp_d_std",
+            "nhunks",
+            "nrewrites",
+            "rewrites_loc",
+        ]
+
 
 class ExtractedPatchRewriteId(CoreModel):
     repo_id: int
@@ -130,6 +171,19 @@ class ExtractedPatchRewrite(CoreModel, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_patch_rewrite", "extracted_patch_rewrites")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "repo_id",
+            "commit_id",
+            "atime",
+            "aemail",
+            "newpath",
+            "rewritten_commit_id",
+            "rewritten_atime",
+            "rewritten_aemail",
+            "loc_d",
+        ]
+
 
 class ExtractedCommitBranchId(CoreModel):
     repo_id: int
@@ -153,3 +207,6 @@ class ExtractedCommitBranch(CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("extracted_commit_branch", "extracted_commit_branches")
+
+    def export_fields(self) -> List[str]:
+        return ["repo_id", "commit_id", "atime", "branch"]

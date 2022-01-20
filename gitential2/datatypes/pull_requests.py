@@ -107,6 +107,41 @@ class PullRequest(ExtraFieldMixin, CoreModel, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request", "pull_requests")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "extra",
+            "repo_id",
+            "number",
+            "title",
+            "platform",
+            "id_platform",
+            "api_resource_uri",
+            "state_platform",
+            "state",
+            "created_at",
+            "closed_at",
+            "updated_at",
+            "merged_at",
+            "additions",
+            "deletions",
+            "changed_files",
+            "draft",
+            "user",
+            "user_id_external",
+            "user_name_external",
+            "user_username_external",
+            "user_aid",
+            "commits",
+            "merged_by",
+            "merged_by_id_external",
+            "merged_by_name_external",
+            "merged_by_username_external",
+            "merged_by_aid",
+            "first_reaction_at",
+            "first_commit_authored_at",
+            "is_bugfix",
+        ]
+
 
 class PullRequestCommitId(CoreModel):
     repo_id: int
@@ -133,6 +168,24 @@ class PullRequestCommit(ExtraFieldMixin, DateTimeModelMixin, CoreModel, Exportab
 
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request_commit", "pull_request_commits")
+
+    def export_fields(self) -> List[str]:
+        return [
+            "author_date",
+            "repo_id",
+            "updated_at",
+            "author_name",
+            "committer_name",
+            "author_email",
+            "committer_date",
+            "commit_id",
+            "committer_login",
+            "author_login",
+            "committer_email",
+            "pr_number",
+            "extra",
+            "created_at",
+        ]
 
 
 class PullRequestCommentId(CoreModel):
@@ -169,6 +222,26 @@ class PullRequestComment(ExtraFieldMixin, DateTimeModelMixin, CoreModel, Exporta
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request_comment", "pull_request_comments")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "created_at",
+            "updated_at",
+            "extra",
+            "repo_id",
+            "pr_number",
+            "comment_type",
+            "comment_id",
+            "author_id_external",
+            "author_name_external",
+            "author_username_external",
+            "author_aid",
+            "published_at",
+            "content",
+            "parent_comment_id",
+            "thread_id",
+            "review_id",
+        ]
+
 
 class PullRequestLabelId(CoreModel):
     repo_id: int
@@ -190,6 +263,9 @@ class PullRequestLabel(ExtraFieldMixin, DateTimeModelMixin, CoreModel, Exportabl
 
     def export_names(self) -> Tuple[str, str]:
         return ("pull_request_label", "pull_request_labels")
+
+    def export_fields(self) -> List[str]:
+        return ["repo_id", "pr_number", "name", "color", "description", "active"]
 
 
 class PullRequestData(CoreModel):
