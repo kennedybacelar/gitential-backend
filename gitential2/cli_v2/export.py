@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import cast
@@ -21,7 +22,10 @@ class ExportFormat(str, Enum):
 
 @app.command("full-workspace")
 def export_full_workspace(
-    workspace_id: int, destination_directory: Path = Path("/tmp"), export_format: ExportFormat = ExportFormat.csv
+    workspace_id: int,
+    destination_directory: Path = Path("/tmp"),
+    export_format: ExportFormat = ExportFormat.csv,
+    date_from: datetime = datetime.min,
 ):
     validate_directory_exists(destination_directory)
 
@@ -44,13 +48,25 @@ def export_full_workspace(
         ("pull_request_labels", g.backend.pull_request_labels),
     ]
 
+    def _date_filter(name, obj, date_from):
+        skip_date_filter = ["projects", "repositories", "project_repositories", "authors", "teams", "team_members"]
+        if name in skip_date_filter or date_from == datetime.min:
+            return True
+        elif hasattr(obj, "created_at") and getattr(obj, "created_at", datetime.min) >= date_from:
+            return True
+        elif hasattr(obj, "date") and getattr(obj, "date", datetime.min) >= date_from:
+            return True
+        else:
+            return False
+
     for name, backend_repository in data_to_export:
         backend_repository = cast(BaseWorkspaceScopedRepository, backend_repository)
         logger.info("exporting", datatype=name, workspace_id=workspace_id, format=export_format)
 
         exporter = _get_exporter(export_format, destination_directory, workspace_id)
         for obj in backend_repository.iterate_all(workspace_id=workspace_id):
-            exporter.export_object(obj)
+            if _date_filter(name, obj, date_from):
+                exporter.export_object(obj)
 
         exporter.close()
 
