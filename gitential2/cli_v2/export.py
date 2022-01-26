@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import cast
 import typer
 from structlog import get_logger
-from gitential2.export.exporters import Exporter, CSVExporter, JSONExporter, SQLiteExporter
+from gitential2.export.exporters import Exporter, CSVExporter, JSONExporter, SQLiteExporter, XlsxExporter
 from gitential2.backends.base.repositories import BaseWorkspaceScopedRepository
 
 from .common import get_context, validate_directory_exists
@@ -18,6 +18,7 @@ class ExportFormat(str, Enum):
     csv = "csv"
     json = "json"
     sqlite = "sqlite"
+    xlsx = "xlsx"
 
 
 @app.command("full-workspace")
@@ -59,16 +60,17 @@ def export_full_workspace(
         else:
             return False
 
+    exporter = _get_exporter(export_format, destination_directory, workspace_id)
+
     for name, backend_repository in data_to_export:
         backend_repository = cast(BaseWorkspaceScopedRepository, backend_repository)
         logger.info("exporting", datatype=name, workspace_id=workspace_id, format=export_format)
 
-        exporter = _get_exporter(export_format, destination_directory, workspace_id)
         for obj in backend_repository.iterate_all(workspace_id=workspace_id):
             if _date_filter(name, obj, date_from):
                 exporter.export_object(obj)
 
-        exporter.close()
+    exporter.close()
 
 
 @app.command("repositories")
@@ -91,4 +93,6 @@ def _get_exporter(export_format: ExportFormat, destination_directory: Path, work
         return JSONExporter(destination_directory, prefix)
     elif export_format == ExportFormat.sqlite:
         return SQLiteExporter(destination_directory, prefix)
+    elif export_format == ExportFormat.xlsx:
+        return XlsxExporter(destination_directory, prefix)
     raise ValueError("Invalid export format")

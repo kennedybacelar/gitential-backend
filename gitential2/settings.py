@@ -5,6 +5,7 @@ from enum import Enum
 
 import yaml
 from pydantic import BaseModel, validator
+from gitential2.utils import deep_merge_dicts
 
 
 class LogLevel(str, Enum):
@@ -194,8 +195,20 @@ def _environtment_overrides(config_dict):
     return config_dict
 
 
-def load_settings(settings_file=None):
+def load_settings(settings_file=None, override_file=None):
+    # Load settings.yml as a dict
     settings_file = settings_file or os.environ.get("GITENTIAL_SETTINGS", "settings.yml")
     with open(settings_file, "r", encoding="utf-8") as f:
-        config_dict = _environtment_overrides(yaml.safe_load(f))
-        return GitentialSettings.parse_obj(config_dict)
+        config_dict = yaml.safe_load(f)
+
+    # If override configured, load and merge it to the config
+    override_file = override_file or os.environ.get("GITENTIAL_SETTINGS_OVERRIDE")
+    if override_file:
+        with open(override_file, "r", encoding="utf-8") as f:
+            override_dict = yaml.safe_load(f)
+            print("!!!", override_dict)
+        config_dict = deep_merge_dicts(config_dict, override_dict)
+
+    # Apply environment varible overrides
+    config_dict = _environtment_overrides(config_dict)
+    return GitentialSettings.parse_obj(config_dict)

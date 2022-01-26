@@ -99,3 +99,12 @@ modules.xml
 .idea/sonarlint
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm+all
+
+# Ignore settings files for different environments
+settings.production-*.override.yml
+settings.production-*.yml
+settings.testing-*.override.yml
+settings.testing-*.yml
+
+# Ignore the tmp folder
+tmp/

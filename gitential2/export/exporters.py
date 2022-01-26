@@ -5,11 +5,12 @@ import os
 import json
 from collections import defaultdict
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 from pathlib import Path
 
 import sqlalchemy as sa
+import xlsxwriter
 
 from gitential2.datatypes.export import ExportableModel
 from gitential2.datatypes.extraction import Langtype
@@ -184,3 +185,61 @@ def _convert_fields(name_singular: str, exportable_dict: dict) -> dict:
         else:
             ret[k] = v
     return ret
+
+
+class XlsxExporter(Exporter):
+    def __init__(self, destination_directory: Path, prefix: str = ""):
+        self.destination_directory = destination_directory
+        self.prefix = prefix
+        self.xlsx_file = os.path.join(destination_directory, prefix + "export.xlsx")
+        self.workbook = xlsxwriter.Workbook(self.xlsx_file, {"nan_inf_to_errors": True, "remove_timezone": True})
+        self.date_format = self.workbook.add_format({"num_format": "dd/mm/yy hh:mm:ss"})
+        self.current_row: Dict[str, int] = {}
+
+    def _get_worksheet(self, name_plural: str, fields: List[str]):
+        existing_worksheet = self.workbook.get_worksheet_by_name(name_plural)
+        if existing_worksheet:
+            return existing_worksheet
+        else:
+            ws = self.workbook.add_worksheet(name_plural)
+            for col, field in enumerate(fields):
+                ws.write(0, col, field)
+            self.current_row[name_plural] = 1
+
+            return ws
+
+    def _export_low_level(self, name_singular: str, name_plural: str, fields: List[str], exportable_dict: dict):
+        ws = self._get_worksheet(name_plural, fields)
+        col = 0
+        row = self.current_row[name_plural]
+        for col, f in enumerate(fields):
+            value = self._prepare_value(name_singular, f, exportable_dict.get(f))
+            if isinstance(value, datetime):
+                ws.write_datetime(row, col, value, self.date_format)
+            else:
+                ws.write(row, col, value)
+        self.current_row[name_plural] += 1
+
+    def _prepare_value(self, name_singular: str, field: str, value: Any):
+        def _it_was_a_datetime_field(name_singular, field):
+            return (
+                name_singular in ["calculated_commit", "calculated_patch", "extracted_commit", "extracted_patch"]
+                and field in ["atime", "ctime", "date"]
+            ) or (field in ["created_at", "updated_at", "closed_at", "merged_at", "published_at", "committer_date"])
+
+        def _convert_to_excel_compatible_datetime(value):
+            if value:
+                return datetime.fromisoformat(value)
+            else:
+                return None
+
+        if _it_was_a_datetime_field(name_singular, field):
+            value = _convert_to_excel_compatible_datetime(value)
+        if field == "extra":
+            return ""  # Ignore 'extra' fields in xlsx exports
+        if isinstance(value, (dict, list)):
+            return json_dumps(value)
+        return value
+
+    def close(self):
+        self.workbook.close()

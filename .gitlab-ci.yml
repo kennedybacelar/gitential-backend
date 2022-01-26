@@ -16,8 +16,8 @@ variables:
   POSTGRES_PASSWORD: secret123
 
 stages:
+  - check
   - test
-  - test_integration
   - build
   - deploy
 
@@ -67,15 +67,22 @@ stages:
       --build-arg IMAGE_VERSION=$IMAGE_VERSION \
       $SKIP_PUSH
 
-poetry_invoke_lint:
+code_linters:
   extends: .poetry_common
-  stage: test
+  stage: check
   script:
-    - poetry run invoke lint
+    - poetry run black --check gitential2 tests
+    - poetry run pylint gitential2
+
+static_type_check:
+  extends: .poetry_common
+  stage: check
+  script:
+    - poetry run mypy gitential2
 
 dependency_check:
   extends: .poetry_common
-  stage: test
+  stage: check
   script:
     - poetry run invoke dependency-check
 
@@ -87,7 +94,7 @@ unit_tests:
 
 integration_tests:
   extends: .poetry_common
-  stage: test_integration
+  stage: test
   services:
     - name: postgres:13.1
     - name: redis:6.0.10
