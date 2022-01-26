@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from urllib.parse import urlparse
+from copy import deepcopy
 
 
 def levenshtein(s1: str, s2: str):
@@ -87,3 +88,16 @@ def common_elements_if_not_none(l1: Optional[list], l2: Optional[list]) -> Optio
             if (e in l1) and (e in l2):
                 ret.append(e)
         return ret
+
+
+def deep_merge_dicts(a: dict, b: dict) -> dict:
+    """Deep merge two dictionaries"""
+
+    result = deepcopy(a)
+    for bk, bv in b.items():
+        av = result.get(bk)
+        if isinstance(av, dict) and isinstance(bv, dict):
+            result[bk] = deep_merge_dicts(av, bv)
+        else:
+            result[bk] = deepcopy(bv)
+    return result
