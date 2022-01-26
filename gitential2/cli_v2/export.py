@@ -29,7 +29,7 @@ def export_full_workspace(
     export_format: ExportFormat = ExportFormat.csv,
     date_from: datetime = datetime.min,
     upload_to_aws_s3: bool = typer.Option(False, '--upload_to_aws_s3'),
-    aws_s3_location: Path = 'export-test/'
+    aws_s3_location: Path = Path('export-test/')
 ):
     validate_directory_exists(destination_directory)
 
@@ -85,7 +85,7 @@ def export_repositories(
     destination_directory: Path = Path("/tmp"),
     export_format: ExportFormat = ExportFormat.csv,
     upload_to_aws_s3: bool = typer.Option(False, '--upload_to_aws_s3'),
-    aws_s3_location: Path = 'export-test/'
+    aws_s3_location: Path = Path('export-test/')
 ):
     validate_directory_exists(destination_directory)
     g = get_context()
