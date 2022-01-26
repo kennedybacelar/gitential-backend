@@ -74,6 +74,9 @@ class CelerySettings(BaseModel):
 class ConnectionSettings(BaseModel):
     database_url: Optional[str] = None
     redis_url: Optional[str] = "redis://localhost:6379/0"
+    aws_access_key_id = 'AKIA4G3GM7INDNB7RLR6'
+    aws_secret_access_key = '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'
+    s3_bucket_name = 'gitential-internal-data'
 
 
 class HTMLElementPosition(str, Enum):

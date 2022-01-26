@@ -30,6 +30,10 @@ class Exporter:
     @abstractmethod
     def _export_low_level(self, name_singular: str, name_plural: str, fields: List[str], exportable_dict: dict):
         pass
+    
+    @abstractmethod
+    def get_files(self) -> List[str]:
+        pass
 
     def close(self):
         pass
@@ -56,6 +60,12 @@ class CSVExporter(Exporter):
     def _export_low_level(self, name_singular: str, name_plural: str, fields: List[str], exportable_dict: dict):
         writer = self._get_writer(name_singular, name_plural, fields)
         writer.writerow(exportable_dict)
+    
+    def get_files(self) -> List[str]:
+        list_of_file_names: List[str] = []
+        for file in self._files.values():
+            list_of_file_names.append(file.name)
+        return list_of_file_names
 
     def close(self):
         for f in self._files.values():
@@ -86,6 +96,12 @@ class JSONExporter(Exporter):
         if self._counter[name_singular] > 1:
             json_file.write(",\n")
         json_file.write(json_str)
+    
+    def get_files(self) -> List[str]:
+        list_of_file_names: List[str] = []
+        for file in self._files.values():
+            list_of_file_names.append(file.name)
+        return list_of_file_names
 
     def close(self):
         for f in self._files.values():
@@ -139,6 +155,9 @@ class SQLiteExporter(Exporter):
                 connection.execute(query, values)
         except sa.exc.IntegrityError:
             pass
+    
+    def get_files(self) -> List[str]:
+        return [self.sqlite_file]
 
     def close(self):
         self._flush()
@@ -240,6 +259,9 @@ class XlsxExporter(Exporter):
         if isinstance(value, (dict, list)):
             return json_dumps(value)
         return value
+    
+    def get_files(self) -> List[str]:
+        return [self.xlsx_file]
 
     def close(self):
         self.workbook.close()
