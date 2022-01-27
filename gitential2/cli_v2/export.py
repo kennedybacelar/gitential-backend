@@ -2,11 +2,10 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import cast, List
-import typer
+import typer, boto3
 from structlog import get_logger
 from gitential2.export.exporters import Exporter, CSVExporter, JSONExporter, SQLiteExporter, XlsxExporter
 from gitential2.backends.base.repositories import BaseWorkspaceScopedRepository
-import boto3
 
 from .common import get_context, validate_directory_exists
 
@@ -28,7 +27,7 @@ def export_full_workspace(
     destination_directory: Path = Path("/tmp"),
     export_format: ExportFormat = ExportFormat.csv,
     date_from: datetime = datetime.min,
-    upload_to_aws_s3: bool = typer.Option(False, '--upload_to_aws_s3'),
+    upload_to_aws_s3: bool = typer.Option(False, '--upload-to-aws-s3'),
     aws_s3_location: Path = Path('export-test/')
 ):
     validate_directory_exists(destination_directory)
@@ -84,7 +83,7 @@ def export_repositories(
     workspace_id: int,
     destination_directory: Path = Path("/tmp"),
     export_format: ExportFormat = ExportFormat.csv,
-    upload_to_aws_s3: bool = typer.Option(False, '--upload_to_aws_s3'),
+    upload_to_aws_s3: bool = typer.Option(False, '--upload-to-aws-s3'),
     aws_s3_location: Path = Path('export-test/')
 ):
     validate_directory_exists(destination_directory)
@@ -103,13 +102,13 @@ def _upload_to_aws_s3(list_of_files_to_be_uploaded_to_s3: List[str], aws_s3_loca
     g = get_context()
 
     client = boto3.client('s3',
-                            aws_access_key_id = g.settings.connections.aws_access_key_id,
-                            aws_secret_access_key = g.settings.connections.aws_secret_access_key)
+                            aws_access_key_id = g.settings.connections.s3.aws_access_key_id,
+                            aws_secret_access_key = g.settings.connections.s3.aws_secret_access_key)
 
     for file in list_of_files_to_be_uploaded_to_s3:
         filename_into_s3_bucket = file.split('/')[-1]
         upload_file_key = Path.joinpath(aws_s3_location, filename_into_s3_bucket)
-        client.upload_file(file, g.settings.connections.s3_bucket_name, str(upload_file_key))
+        client.upload_file(file, g.settings.connections.s3.bucket_name, str(upload_file_key))
 
 
 def _get_exporter(export_format: ExportFormat, destination_directory: Path, workspace_id: int) -> Exporter:

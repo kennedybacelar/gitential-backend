@@ -71,12 +71,16 @@ class CelerySettings(BaseModel):
     worker_max_memory_per_child: int = 512 * 1024  # in kbytes
 
 
+class s3SettingsAWS(BaseModel):
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    bucket_name: Optional[str] = None
+
+
 class ConnectionSettings(BaseModel):
     database_url: Optional[str] = None
     redis_url: Optional[str] = "redis://localhost:6379/0"
-    aws_access_key_id: str = 'AKIA4G3GM7INDNB7RLR6'
-    aws_secret_access_key: str = '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'
-    s3_bucket_name: str = 'gitential-internal-data'
+    s3: Optional[s3SettingsAWS] = None
 
 
 class HTMLElementPosition(str, Enum):
