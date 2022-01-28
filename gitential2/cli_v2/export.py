@@ -2,7 +2,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import cast, List
-import typer, boto3
+import typer
+import boto3
 from structlog import get_logger
 from gitential2.export.exporters import Exporter, CSVExporter, JSONExporter, SQLiteExporter, XlsxExporter
 from gitential2.backends.base.repositories import BaseWorkspaceScopedRepository
