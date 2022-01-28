@@ -80,7 +80,7 @@ class S3Settings(BaseModel):
 class ConnectionSettings(BaseModel):
     database_url: Optional[str] = None
     redis_url: Optional[str] = "redis://localhost:6379/0"
-    s3: Optional[S3Settings]
+    s3: S3Settings = S3Settings()
 
 
 class HTMLElementPosition(str, Enum):
