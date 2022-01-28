@@ -108,3 +108,6 @@ settings.testing-*.yml
 
 # Ignore the tmp folder
 tmp/
+
+.mypy_cache/
+
