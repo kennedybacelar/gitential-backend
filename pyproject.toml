@@ -50,7 +50,7 @@ boto3 = "^1.20.43"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
-black = {version = "^21.12b0", allow-prereleases = true}
+black = "^22.1.0"
 pylint = "^2.6.0"
 mypy = "^0.800"
 sqlalchemy-stubs = "^0.4"

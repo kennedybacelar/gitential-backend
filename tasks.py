@@ -4,7 +4,7 @@ from invoke import task
 PACKAGE_DIR = "gitential2"
 TESTS_DIR = "tests"
 DOCKER_REGISTRY = "docker-internal.gitential.io"
-TESTING_IMAGE_TAG = "v3-20220107"
+TESTING_IMAGE_TAG = "v4-20220131"
 
 
 @task

@@ -1,4 +1,4 @@
-FROM docker-internal.gitential.io/python-poetry:v4-py3.10.0-build as build
+FROM docker-internal.gitential.io/python-poetry:v5-py3.10.2-build as build
 USER root
 RUN mkdir -p /builds/gitential-com/gitential2
 RUN chown app:app /builds -R
