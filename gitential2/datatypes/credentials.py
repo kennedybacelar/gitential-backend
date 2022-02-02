@@ -1,7 +1,7 @@
 from abc import ABC
 from enum import Enum
 from typing import Optional, cast
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic.dataclasses import dataclass
 from pydantic.datetime_parse import parse_datetime
@@ -100,7 +100,7 @@ class CredentialBase(CredentialBasePublic, CredentialBaseSecret):
                 "refresh_token": fernet.decrypt_string(self.refresh_token.decode()) if self.refresh_token else None,
             }
             if self.expires_at:
-                ret["expires_at"] = int(self.expires_at.timestamp())
+                ret["expires_at"] = int(self.expires_at.replace(tzinfo=timezone.utc).timestamp())
 
             return ret
         else:

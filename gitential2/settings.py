@@ -23,6 +23,7 @@ class IntegrationType(str, Enum):
     linkedin = "linkedin"
     bitbucket = "bitbucket"
     vsts = "vsts"
+    jira = "jira"
 
 
 class Executor(str, Enum):

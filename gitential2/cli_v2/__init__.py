@@ -26,6 +26,7 @@ from .usage_stats import app as usage_stats_app
 from .users import app as users_app
 from .crud import app as crud_app
 from .invitation import app as invitation_app
+from .jira import app as jira_app
 
 logger = get_logger(__name__)
 
@@ -43,6 +44,7 @@ app.add_typer(emails_app, name="emails")
 app.add_typer(extraction_app, name="extract")
 app.add_typer(crud_app, name="crud")
 app.add_typer(invitation_app, name="invitation")
+app.add_typer(jira_app, name="jira")
 
 
 @app.command("public-api")

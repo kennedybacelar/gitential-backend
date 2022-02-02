@@ -153,3 +153,10 @@ integrations:
     oauth:
       client_id: 78niu9tfn4fufa
       client_secret: 1LH59EYaQQnxGAHn
+
+  jira:
+    type: jira
+    login: false
+    oauth:
+      client_id: uBMcWdotssP2J9uwCQhht9KxLFTe9wM1
+      client_secret: SH29iWEOfE5tcxFXkaJ1Eug5J0oCWFOa-UoPllVa2x8unU5bIny-u76d8PtNID46

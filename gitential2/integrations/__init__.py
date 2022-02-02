@@ -1,12 +1,15 @@
 from typing import Callable
+
 from gitential2.settings import IntegrationType, GitentialSettings
 from .gitlab import GitlabIntegration
 from .github import GithubIntegration
 from .linkedin import LinkedinIntegration
 from .bitbucket import BitBucketIntegration
 from .vsts import VSTSIntegration
+from .jira import JiraIntegration
 
 REPOSITORY_SOURCES = [IntegrationType.github, IntegrationType.gitlab, IntegrationType.bitbucket, IntegrationType.vsts]
+ISSUE_SORUCES = [IntegrationType.jira]
 
 
 def integration_type_to_class(type_: IntegrationType) -> Callable:
@@ -20,6 +23,8 @@ def integration_type_to_class(type_: IntegrationType) -> Callable:
         return BitBucketIntegration
     if type_ == IntegrationType.vsts:
         return VSTSIntegration
+    if type_ == IntegrationType.jira:
+        return JiraIntegration
     raise ValueError("Invalid integration")
 
 
