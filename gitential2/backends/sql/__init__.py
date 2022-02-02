@@ -254,6 +254,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(256);"
             # subscriptions
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(256);"
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS features JSON;"
         ]
         for migration_query_ in migration_steps:
             self._engine.execute(migration_query_)

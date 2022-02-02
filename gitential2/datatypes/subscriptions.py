@@ -17,6 +17,7 @@ class SubscriptionBase(CoreModel):
     subscription_type: SubscriptionType = SubscriptionType.trial
     number_of_developers: int = 5
     stripe_subscription_id: Optional[str]
+    features: Optional[dict] = None
 
 
 class CreateCheckoutSession(CoreModel):
@@ -33,6 +34,7 @@ class SubscriptionCreate(SubscriptionBase):
             subscription_end=datetime.datetime.utcnow() + datetime.timedelta(days=14),
             subscription_type=SubscriptionType.trial,
             number_of_developers=5,
+            features=None,
         )
 
 

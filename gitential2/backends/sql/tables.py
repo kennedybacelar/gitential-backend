@@ -63,6 +63,7 @@ subscriptions_table = sa.Table(
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("number_of_developers", sa.Integer(), nullable=False, default=5),
     sa.Column("stripe_subscription_id", sa.String(256), nullable=True),
+    sa.Column("features", sa.JSON, nullable=True),
 )
 
 user_infos_table = sa.Table(

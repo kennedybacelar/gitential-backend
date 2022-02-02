@@ -3,7 +3,7 @@ import typer
 from structlog import get_logger
 
 from gitential2.core.users import list_users, set_as_admin
-from gitential2.core.subscription import set_as_professional
+from gitential2.core.subscription import set_as_professional, enable_or_disable_jira_integration
 from .common import get_context, print_results, OutputFormat
 
 app = typer.Typer()
@@ -30,4 +30,11 @@ def set_as_admin_(user_id: int, revoke: bool = False):
 def set_as_professional_(user_id: int, number_of_developers: int = 5):
     g = get_context()
     subscription = set_as_professional(g, user_id, number_of_developers)
+    print(subscription)
+
+
+@app.command(name="set-jira-integration")
+def toggle_jira_integration(user_id: int, enable: bool = typer.Option(None, "--enable/--disable")):
+    g = get_context()
+    subscription = enable_or_disable_jira_integration(g, user_id, enable)
     print(subscription)

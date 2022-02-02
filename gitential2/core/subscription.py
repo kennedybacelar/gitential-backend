@@ -1,5 +1,6 @@
 from typing import Optional, cast
 from datetime import datetime, timedelta
+from xmlrpc.client import Boolean
 
 from structlog import get_logger
 
@@ -12,7 +13,7 @@ from gitential2.datatypes.subscriptions import (
     SubscriptionUpdate,
 )
 from gitential2.datatypes.stats import FilterName
-
+from gitential2.utils import deep_merge_dicts
 from .context import GitentialContext
 
 
@@ -150,3 +151,16 @@ def _create_new_prof_subs(g: GitentialContext, user_id: int, number_of_developer
 def cancel_trial_emails(g: GitentialContext, user_id: int):
     for template in ["free_trial_expiration", "free_trial_ended"]:
         g.backend.email_log.cancel_email(user_id, template)
+
+
+def enable_or_disable_jira_integration(
+    g: GitentialContext, user_id: int, enable: Boolean
+) -> Optional[SubscriptionInDB]:
+    user = g.backend.users.get_or_error(user_id)
+    current_subs = _get_current_subscription_from_db(g, user_id=user.id)
+    if current_subs:
+        su = SubscriptionUpdate(**current_subs.dict())
+        features = su.features or {}
+        su.features = deep_merge_dicts(features, {"jira": {"enabled": enable}})
+        return g.backend.subscriptions.update(current_subs.id, su)
+    return None
