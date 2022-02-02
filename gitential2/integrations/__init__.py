@@ -9,7 +9,7 @@ from .vsts import VSTSIntegration
 from .jira import JiraIntegration
 
 REPOSITORY_SOURCES = [IntegrationType.github, IntegrationType.gitlab, IntegrationType.bitbucket, IntegrationType.vsts]
-ISSUE_SORUCES = [IntegrationType.jira]
+ISSUE_SOURCES = [IntegrationType.jira]
 
 
 def integration_type_to_class(type_: IntegrationType) -> Callable:

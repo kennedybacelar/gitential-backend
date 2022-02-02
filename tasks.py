@@ -17,6 +17,12 @@ def build_testing_image(ctx):
 def dependency_check(ctx):
     ignores = [
         42194,  # sqlalchemy-utils           | 0.37.9    | >=0.27.0
+        44715,  # numpy                      | 1.22.1    | >0
+        # | All versions of Numpy are affected by CVE-2021-41495: A null Pointer         |
+        # | Dereference vulnerability exists in numpy.sort, in the PyArray_DescrNew      |
+        # | function due to missing return-value validation, which allows attackers to   |
+        # | conduct DoS attacks by repetitively creating sort arrays.                    |
+        # | https://github.com/numpy/numpy/issues/19038                                  |
     ]
     ignores_str = " ".join([f"-i {i}" for i in ignores])
     ctx.run(f"safety check --full-report {ignores_str}")

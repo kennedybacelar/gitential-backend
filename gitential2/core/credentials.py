@@ -5,7 +5,7 @@ from gitential2.datatypes.credentials import CredentialInDB, CredentialCreate, C
 from gitential2.datatypes.repositories import RepositoryInDB
 
 from gitential2.utils.ssh import create_ssh_keypair
-from gitential2.integrations import REPOSITORY_SOURCES
+from gitential2.integrations import REPOSITORY_SOURCES, ISSUE_SOURCES
 from .context import GitentialContext
 from ..exceptions import NotImplementedException, NotFoundException
 
@@ -171,6 +171,18 @@ def list_connected_repository_sources(g: GitentialContext, workspace_id: int) ->
         if (
             credential.integration_name
             and credential.integration_type in REPOSITORY_SOURCES
+            and credential.integration_name in g.integrations
+        )
+    ]
+
+
+def list_connected_its_sources(g: GitentialContext, workspace_id: int) -> List[str]:
+    return [
+        credential.integration_name
+        for credential in list_credentials_for_workspace(g, workspace_id)
+        if (
+            credential.integration_name
+            and credential.integration_type in ISSUE_SOURCES
             and credential.integration_name in g.integrations
         )
     ]
