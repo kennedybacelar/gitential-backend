@@ -60,7 +60,7 @@ def recalculate_repository_values(
 
 
 def recalculate_repo_values_in_interval(
-    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=500
+    g: GitentialContext, workspace_id: int, repository_id: int, from_: dt.datetime, to_: dt.datetime, commit_limit=400
 ):
 
     extracted_commit_count = g.backend.extracted_commits.count(
