@@ -8,10 +8,9 @@ import typer
 
 from gitential2.datatypes.credentials import CredentialInDB
 from gitential2.core.context import GitentialContext
-from gitential2.core.credentials import list_credentials_for_workspace, get_update_token_callback
-from gitential2.settings import IntegrationType
+from gitential2.core.credentials import get_update_token_callback, get_fresh_credential
 from gitential2.integrations.jira import JiraIntegration
-from .common import get_context
+from .common import get_context, print_results, OutputFormat
 
 app = typer.Typer()
 logger = get_logger(__name__)
@@ -21,12 +20,8 @@ logger = get_logger(__name__)
 # log.setLevel(logging.DEBUG)
 
 
-def _get_jira_credential(g: GitentialContext, workspace_id: int) -> Optional[CredentialInDB]:
-    all_credentials = list_credentials_for_workspace(g, workspace_id)
-    for c in all_credentials:
-        if c.integration_type == IntegrationType.jira:
-            return c
-    return None
+def _get_jira_credential(g: GitentialContext, workspace_id: int, integration_name="jira") -> Optional[CredentialInDB]:
+    return get_fresh_credential(g, workspace_id=workspace_id, integration_name=integration_name)
 
 
 @app.command("list-accessible-resources")
@@ -49,11 +44,16 @@ def list_accessible_resources(workspace_id: int):
 
 
 @app.command("list-available-projects")
-def list_available_projects(workspace_id: int):
+def list_available_projects(
+    workspace_id: int,
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
     g = get_context()
     jira_credential = _get_jira_credential(g, workspace_id)
     jira_integration = g.integrations.get("jira")
     if jira_credential and jira_integration:
         jira_integration = cast(JiraIntegration, jira_integration)
         token = jira_credential.to_token_dict(g.fernet)
-        jira_integration.list_available_projects(token, get_update_token_callback(g, jira_credential))
+        its_projects = jira_integration.list_available_its_projects(token)
+        print_results(its_projects, format_=format_, fields=fields)
