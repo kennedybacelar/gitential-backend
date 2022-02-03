@@ -6,7 +6,11 @@ from gitential2.datatypes.userinfos import UserInfoInDB
 
 from gitential2.utils import levenshtein, find_first
 from .context import GitentialContext
-from .credentials import acquire_credential, list_credentials_for_workspace, get_update_token_callback
+from .credentials import (
+    get_fresh_credential,
+    list_credentials_for_workspace,
+    get_update_token_callback,
+)
 
 
 logger = get_logger(__name__)
@@ -28,13 +32,19 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
     for credential_ in list_credentials_for_workspace(g, workspace_id):
         if credential_.integration_type in REPOSITORY_SOURCES and credential_.integration_name in g.integrations:
             try:
-                with acquire_credential(g, credential_id=credential_.id) as credential:
+                credential = get_fresh_credential(g, credential_id=credential_.id)
+                if credential:
+                    # with acquire_credential(g, credential_id=credential_.id) as credential:
                     integration = g.integrations[credential.integration_name]
                     token = credential.to_token_dict(fernet=g.fernet)
-                    userinfo: UserInfoInDB = find_first(
-                        lambda ui: ui.integration_name
-                        == credential.integration_name,  # pylint: disable=cell-var-from-loop
-                        g.backend.user_infos.get_for_user(credential.owner_id),
+                    userinfo: UserInfoInDB = (
+                        find_first(
+                            lambda ui: ui.integration_name
+                            == credential.integration_name,  # pylint: disable=cell-var-from-loop
+                            g.backend.user_infos.get_for_user(credential.owner_id),
+                        )
+                        if credential.owner_id
+                        else None
                     )
                     collected_repositories = integration.list_available_private_repositories(
                         token=token,
@@ -42,6 +52,13 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
                         provider_user_id=userinfo.sub if userinfo else None,
                     )
                     results = _merge_repo_lists(collected_repositories, results)
+                else:
+                    logger.error(
+                        "Cannot get fresh credential",
+                        credential_id=credential_.id,
+                        owner_id=credential_.owner_id,
+                        integration_name=credential_.integration_name,
+                    )
             except Exception:  # pylint: disable=broad-except
                 logger.exception(
                     "Error during collecting repositories",
@@ -106,7 +123,9 @@ def search_public_repositories(g: GitentialContext, workspace_id: int, search: s
                 g.backend.user_infos.get_for_user(credential_.owner_id),
             )
             try:
-                with acquire_credential(g, credential_id=credential_.id) as credential:
+                # with acquire_credential(g, credential_id=credential_.id) as credential:
+                credential = get_fresh_credential(g, credential_id=credential_.id)
+                if credential:
                     integration = g.integrations[credential.integration_name]
                     token = credential.to_token_dict(fernet=g.fernet)
                     results += integration.search_public_repositories(
@@ -114,6 +133,13 @@ def search_public_repositories(g: GitentialContext, workspace_id: int, search: s
                         token=token,
                         update_token=get_update_token_callback(g, credential),
                         provider_user_id=userinfo.sub if userinfo else None,
+                    )
+                else:
+                    logger.error(
+                        "Cannot get fresh credential",
+                        credential_id=credential_.id,
+                        owner_id=credential_.owner_id,
+                        integration_name=credential_.integration_name,
                     )
             except:  # pylint: disable=bare-except
                 logger.exception("Error during public repo search")

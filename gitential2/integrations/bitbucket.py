@@ -65,10 +65,12 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return UserInfoCreate(**user_info_dict)
 
     def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
-        return True, self.refresh_token(token, update_token)
+        new_token = self.refresh_token(token)
+        update_token(new_token)
+        return True, new_token
 
-    def refresh_token(self, token, update_token):
-        client = self.get_oauth2_client(token=token, update_token=update_token)
+    def refresh_token(self, token):
+        client = self.get_oauth2_client(token=token)
         urls = self.oauth_register()
         new_token = client.refresh_token(urls["token_endpoint"], refresh_token=token["refresh_token"])
         client.close()

@@ -18,7 +18,7 @@ from .calculations import recalculate_repository_values
 from .context import GitentialContext
 from .authors import get_or_create_optional_author_for_alias
 from .tasks import schedule_task
-from .credentials import acquire_credential, get_update_token_callback
+from .credentials import acquire_credential, get_fresh_credential, get_update_token_callback
 from .repositories import list_project_repositories
 from .refresh_statuses import get_repo_refresh_status, update_repo_refresh_status
 
@@ -239,8 +239,9 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
     with TemporaryDirectory() as workdir:
         try:
             local_repo = _refresh_repository_commits_clone_phase(g, workspace_id, repository, workdir, _update_state)
-            _refresh_repository_commits_extract_phase(g, workspace_id, repository, local_repo, _update_state)
-            _refresh_repository_commits_persist_phase(g, workspace_id, repository_id, _update_state)
+            if local_repo:
+                _refresh_repository_commits_extract_phase(g, workspace_id, repository, local_repo, _update_state)
+                _refresh_repository_commits_persist_phase(g, workspace_id, repository_id, _update_state)
 
             _update_state(
                 commits_phase=RefreshCommitsPhase.done,
@@ -275,21 +276,28 @@ def _refresh_repository_commits_clone_phase(
     repository: RepositoryInDB,
     workdir: TemporaryDirectory,
     _update_state: Callable,
-):
+) -> Optional[LocalGitRepository]:
     logger.info(
         "Cloning repository",
         workspace_id=workspace_id,
         repository_id=repository.id,
         repository_name=repository.name,
     )
-    with acquire_credential(
+
+    # with acquire_credential(
+    #     g,
+    #     credential_id=repository.credential_id,
+    #     workspace_id=workspace_id,
+    #     integration_name=repository.integration_name,
+    #     blocking_timeout_seconds=30,
+    # ) as credential:
+    credential = get_fresh_credential(
         g,
         credential_id=repository.credential_id,
         workspace_id=workspace_id,
         integration_name=repository.integration_name,
-        blocking_timeout_seconds=30,
-    ) as credential:
-
+    )
+    if credential:
         _update_state(
             commits_in_progress=True,
             commits_refresh_scheduled=False,
@@ -304,6 +312,7 @@ def _refresh_repository_commits_clone_phase(
             credentials=credential.to_repository_credential(g.fernet) if credential else None,
         )
         return local_repo
+    return None
 
 
 def _refresh_repository_commits_extract_phase(
@@ -394,21 +403,21 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
                 repository_name=repository.name,
             )
             return
-        with acquire_credential(
+        # with acquire_credential(
+        #     g,
+        #     credential_id=repository.credential_id,
+        #     workspace_id=workspace_id,
+        #     integration_name=repository.integration_name,
+        #     blocking_timeout_seconds=30,
+        # ) as credential:
+        credential = get_fresh_credential(
             g,
             credential_id=repository.credential_id,
             workspace_id=workspace_id,
             integration_name=repository.integration_name,
-            blocking_timeout_seconds=30,
-        ) as credential:
+        )
+        if credential:
             _update_state(prs_in_progress=True, prs_refresh_scheduled=False, prs_started=g.current_time())
-
-            if not credential:
-                logger.info(
-                    "Skipping PR refresh: no credential", workspace_id=workspace_id, repository_id=repository_id
-                )
-                _end_processing_no_error()
-                return
 
             integration = g.integrations.get(repository.integration_name)
             if not integration:
@@ -448,6 +457,10 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
                     integration=repository.integration_name,
                 )
                 _end_processing_no_error()
+        else:
+            logger.info("Skipping PR refresh: no credential", workspace_id=workspace_id, repository_id=repository_id)
+            _end_processing_no_error()
+            return
     except LockError:
         logger.warning("Failed to acquire lock, maybe rescheduling")
         raise

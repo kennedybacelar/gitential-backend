@@ -3,9 +3,11 @@ from abc import ABC, abstractmethod
 from typing import Callable, List, Optional, Tuple
 from datetime import datetime
 from authlib.integrations.requests_client import OAuth2Session
+from authlib.integrations.base_client.errors import InvalidTokenError
 from pydantic import BaseModel
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
+from gitential2.datatypes.its_projects import ITSProjectCreate
 
 from gitential2.settings import IntegrationSettings
 from gitential2.datatypes.extraction import ExtractedKind
@@ -39,6 +41,10 @@ class OAuthLoginMixin(ABC):
     def oauth_register(self) -> dict:
         pass
 
+    @property
+    def oauth_config(self) -> dict:
+        return self.oauth_register()
+
     def get_oauth2_client(self, **kwargs):
         params = self.oauth_register()
         params.update(kwargs)
@@ -51,6 +57,22 @@ class OAuthLoginMixin(ABC):
     @abstractmethod
     def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
         pass
+
+    def refresh_token(self, token) -> dict:
+        client = self.get_oauth2_client(token=token)
+        new_token = client.refresh_token(self.oauth_config["access_token_url"], refresh_token=token["refresh_token"])
+        client.close()
+        return {f: new_token.get(f) for f in ["access_token", "refresh_token", "expires_at"]}
+
+    def check_token(self, token) -> bool:
+        client = self.get_oauth2_client(token=token)
+        try:
+            resp = client.get(self.oauth_config["userinfo_endpoint"])
+        except InvalidTokenError:
+            return False
+        finally:
+            client.close()
+        return resp.status_code == 200
 
 
 class CollectPRsResult(BaseModel):
@@ -204,4 +226,10 @@ class GitProviderMixin(ABC):
     def search_public_repositories(
         self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
+        pass
+
+
+class ITSProviderMixin(ABC):
+    @abstractmethod
+    def list_available_its_projects(self, token: dict) -> List[ITSProjectCreate]:
         pass
