@@ -52,4 +52,12 @@ def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[
 
 # pylint: disable=unused-argument
 def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id: int) -> List[ITSProjectInDB]:
-    return []
+
+    ret = []
+    for repo_id in g.backend.project_its_projects.get_itsp_ids_for_project(
+        workspace_id=workspace_id, project_id=project_id
+    ):
+        itsp = g.backend.its_projects.get(workspace_id=workspace_id, id_=repo_id)
+        if itsp:
+            ret.append(itsp)
+    return ret

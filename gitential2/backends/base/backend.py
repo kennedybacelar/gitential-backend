@@ -25,7 +25,9 @@ from .repositories import (
     WorkspaceMemberRepository,
     ProjectRepository,
     RepositoryRepository,
+    ITSProjectRepository,
     ProjectRepositoryRepository,
+    ProjectITSProjectRepository,
     PullRequestRepository,
     PullRequestCommitRepository,
     PullRequestCommentRepository,
@@ -91,7 +93,17 @@ class GitentialBackend(ABC):
 
     @property
     @abstractmethod
+    def its_projects(self) -> ITSProjectRepository:
+        pass
+
+    @property
+    @abstractmethod
     def project_repositories(self) -> ProjectRepositoryRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def project_its_projects(self) -> ProjectITSProjectRepository:
         pass
 
     @property

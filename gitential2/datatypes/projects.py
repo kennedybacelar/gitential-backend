@@ -4,8 +4,10 @@ from enum import Enum
 from typing import Optional, List, Tuple
 from pydantic import Field
 
+
 from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
 from .repositories import RepositoryCreate, RepositoryPublic, RepositoryStatus
+from .its_projects import ITSProjectCreate
 from .export import ExportableModel
 
 
@@ -27,6 +29,7 @@ class ProjectCreate(ProjectBase):
 
 class ProjectCreateWithRepositories(ProjectCreate):
     repos: List[RepositoryCreate]
+    its_projects: Optional[List[ITSProjectCreate]] = None
 
 
 class ProjectUpdate(ProjectBase):
@@ -35,6 +38,7 @@ class ProjectUpdate(ProjectBase):
 
 class ProjectUpdateWithRepositories(ProjectUpdate):
     repos: List[RepositoryCreate]
+    its_projects: Optional[List[ITSProjectCreate]] = None
 
 
 class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase, ExportableModel):

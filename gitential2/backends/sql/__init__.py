@@ -17,6 +17,8 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchRewrite,
     ExtractedCommitBranch,
 )
+from gitential2.datatypes.its_projects import ITSProjectInDB
+from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
 from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
 from gitential2.extraction.output import OutputHandler
@@ -63,6 +65,8 @@ from .repositories import (
     SQLAuthorRepository,
     SQLEmailLogRepository,
     SQLCalculatedPatchRepository,
+    SQLITSProjectRepository,
+    SQLProjectITSProjectRepository,
     SQLProjectRepositoryRepository,
     SQLPullRequestCommentRepository,
     SQLPullRequestCommitRepository,
@@ -136,11 +140,23 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             metadata=self._workspace_tables,
             in_db_cls=RepositoryInDB,
         )
+        self._its_projects = SQLITSProjectRepository(
+            table=self._workspace_tables.tables["its_projects"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSProjectInDB,
+        )
         self._project_repositories = SQLProjectRepositoryRepository(
             table=self._workspace_tables.tables["project_repositories"],
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ProjectRepositoryInDB,
+        )
+        self._project_its_projects = SQLProjectITSProjectRepository(
+            table=self._workspace_tables.tables["project_its_projects"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ProjectITSProjectInDB,
         )
         self._authors = SQLAuthorRepository(
             table=self._workspace_tables.tables["authors"],

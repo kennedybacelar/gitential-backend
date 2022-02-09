@@ -194,12 +194,38 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("extra", sa.JSON, nullable=True),
     )
 
+    its_projects = sa.Table(
+        "its_projects",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("api_url", sa.String(256), nullable=False, unique=True),
+        sa.Column("name", sa.String(128)),
+        sa.Column("namespace", sa.String(128)),
+        sa.Column("private", sa.Boolean, nullable=False, default=True),
+        sa.Column("key", sa.String(128), nullable=True),
+        sa.Column("integration_type", sa.String(64), nullable=True),
+        sa.Column("integration_name", sa.String(64), nullable=True),
+        sa.Column("integration_id", sa.String(128), nullable=True),
+        sa.Column("credential_id", sa.Integer, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
     project_repositories = sa.Table(
         "project_repositories",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("project_id", sa.Integer, sa.ForeignKey("projects.id"), nullable=False),
         sa.Column("repo_id", sa.Integer, sa.ForeignKey("repositories.id"), nullable=False),
+    )
+
+    project_its_projects = sa.Table(
+        "project_its_projects",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("project_id", sa.Integer, sa.ForeignKey("projects.id"), nullable=False),
+        sa.Column("itsp_id", sa.Integer, sa.ForeignKey("its_projects.id"), nullable=False),
     )
 
     # Extracted Commits
@@ -518,7 +544,9 @@ def get_workspace_metadata(schema: Optional[str] = None):
     return metadata, {
         "projects": projects,
         "repositories": repositories,
+        "its_projects": its_projects,
         "project_repositories": project_repositories,
+        "project_its_projects": project_its_projects,
         "extracted_commits": extracted_commits,
         "calculated_commits": calculated_commits,
         "extracted_patches": extracted_patches,

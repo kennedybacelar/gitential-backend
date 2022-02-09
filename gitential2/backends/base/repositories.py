@@ -36,10 +36,16 @@ from gitential2.datatypes.pull_requests import (
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
 from gitential2.datatypes.project_repositories import (
     ProjectRepositoryCreate,
     ProjectRepositoryInDB,
     ProjectRepositoryUpdate,
+)
+from gitential2.datatypes.project_its_projects import (
+    ProjectITSProjectCreate,
+    ProjectITSProjectUpdate,
+    ProjectITSProjectInDB,
 )
 from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB
 from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
@@ -273,6 +279,25 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
             return self.create(workspace_id=workspace_id, obj=cast(RepositoryCreate, obj))
 
 
+class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]):
+    @abstractmethod
+    def get_by_api_url(self, workspace_id: int, api_url: str) -> Optional[ITSProjectInDB]:
+        pass
+
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[ITSProjectInDB]:
+        pass
+
+    def create_or_update_by_api_url(
+        self, workspace_id: int, obj: Union[ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]
+    ) -> ITSProjectInDB:
+        existing = self.get_by_api_url(workspace_id, obj.api_url)
+        if existing:
+            return self.update(workspace_id=workspace_id, id_=existing.id, obj=ITSProjectUpdate(**obj.dict()))
+        else:
+            return self.create(workspace_id=workspace_id, obj=cast(ITSProjectCreate, obj))
+
+
 class ProjectRepositoryRepository(
     BaseWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB]
 ):
@@ -299,6 +324,35 @@ class ProjectRepositoryRepository(
             self.add_repo_ids_to_project(workspace_id, project_id, ids_needs_addition)
         if ids_needs_removal:
             self.remove_repo_ids_from_project(workspace_id, project_id, ids_needs_removal)
+        return ids_needs_addition, ids_needs_removal, ids_kept
+
+
+class ProjectITSProjectRepository(
+    BaseWorkspaceScopedRepository[int, ProjectITSProjectCreate, ProjectITSProjectUpdate, ProjectITSProjectInDB]
+):
+    @abstractmethod
+    def get_itsp_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def add_itsp_ids_to_project(self, workspace_id: int, project_id: int, itsp_ids: List[int]):
+        pass
+
+    @abstractmethod
+    def remove_itsp_ids_from_project(self, workspace_id: int, project_id: int, itsp_ids: List[int]):
+        pass
+
+    def update_its_projects(
+        self, workspace_id: int, project_id: int, itsp_ids: List[int]
+    ) -> Tuple[List[int], List[int], List[int]]:
+        current_ids = self.get_itsp_ids_for_project(workspace_id=workspace_id, project_id=project_id)
+        ids_needs_addition = [r_id for r_id in itsp_ids if r_id not in current_ids]
+        ids_needs_removal = [r_id for r_id in current_ids if r_id not in itsp_ids]
+        ids_kept = [r_id for r_id in current_ids if r_id in itsp_ids]
+        if ids_needs_addition:
+            self.add_itsp_ids_to_project(workspace_id, project_id, ids_needs_addition)
+        if ids_needs_removal:
+            self.remove_itsp_ids_from_project(workspace_id, project_id, ids_needs_removal)
         return ids_needs_addition, ids_needs_removal, ids_kept
 
 

@@ -4,6 +4,8 @@ from .repositories import (
     EmailLogRepository,
     CalculatedCommitRepository,
     CalculatedPatchRepository,
+    ITSProjectRepository,
+    ProjectITSProjectRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
@@ -37,7 +39,9 @@ class WithRepositoriesMixin:
     _credentials: CredentialRepository
     _projects: ProjectRepository
     _repositories: RepositoryRepository
+    _its_projects: ITSProjectRepository
     _project_repositories: ProjectRepositoryRepository
+    _project_its_projects: ProjectITSProjectRepository
     _authors: AuthorRepository
     _teams: TeamRepository
     _team_members: TeamMemberRepository
@@ -96,8 +100,16 @@ class WithRepositoriesMixin:
         return self._repositories
 
     @property
+    def its_projects(self) -> ITSProjectRepository:
+        return self._its_projects
+
+    @property
     def project_repositories(self) -> ProjectRepositoryRepository:
         return self._project_repositories
+
+    @property
+    def project_its_projects(self) -> ProjectITSProjectRepository:
+        return self._project_its_projects
 
     @property
     def authors(self) -> AuthorRepository:

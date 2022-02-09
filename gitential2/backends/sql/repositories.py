@@ -7,6 +7,12 @@ import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy.sql import and_, select, desc, or_
 from sqlalchemy.dialects.postgresql import insert
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
+from gitential2.datatypes.project_its_projects import (
+    ProjectITSProjectCreate,
+    ProjectITSProjectInDB,
+    ProjectITSProjectUpdate,
+)
 from gitential2.exceptions import NotFoundException
 
 
@@ -68,6 +74,8 @@ from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId
 from gitential2.backends.base.repositories import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
+    ITSProjectRepository,
+    ProjectITSProjectRepository,
     UserRepository,
     SubscriptionRepository,
     UserInfoRepository,
@@ -464,6 +472,20 @@ class SQLRepositoryRepository(
         return RepositoryInDB(**row) if row else None
 
 
+class SQLITSProjectRepository(
+    ITSProjectRepository, SQLWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]
+):
+    def search(self, workspace_id: int, q: str) -> List[ITSProjectInDB]:
+        query = self.table.select().where(self.table.c.api_url.ilike(f"%{q}%"))
+        rows = self._execute_query(query, workspace_id)
+        return [ITSProjectInDB(**row) for row in rows]
+
+    def get_by_api_url(self, workspace_id: int, api_url: str) -> Optional[ITSProjectInDB]:
+        query = self.table.select().where(self.table.c.api_url == api_url)
+        row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
+        return ITSProjectInDB(**row) if row else None
+
+
 class SQLProjectRepositoryRepository(
     ProjectRepositoryRepository,
     SQLWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB],
@@ -483,6 +505,28 @@ class SQLProjectRepositoryRepository(
 
     def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
         query = self.table.delete().where(self.table.c.repo_id.in_(repo_ids))
+        self._execute_query(query, workspace_id=workspace_id)
+
+
+class SQLProjectITSProjectRepository(
+    ProjectITSProjectRepository,
+    SQLWorkspaceScopedRepository[int, ProjectITSProjectCreate, ProjectITSProjectUpdate, ProjectITSProjectInDB],
+):
+    def get_itsp_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:
+        query = select([self.table.c.itsp_id]).where(self.table.c.project_id == project_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [r["itsp_id"] for r in rows]
+
+    def add_itsp_ids_to_project(self, workspace_id: int, project_id: int, itsp_ids: List[int]):
+        query = self.table.insert()
+        self._execute_query(
+            query,
+            workspace_id=workspace_id,
+            values=[{"project_id": project_id, "itsp_id": itsp_id} for itsp_id in itsp_ids],
+        )
+
+    def remove_itsp_ids_from_project(self, workspace_id: int, project_id: int, itsp_ids: List[int]):
+        query = self.table.delete().where(self.table.c.itsp_id.in_(itsp_ids))
         self._execute_query(query, workspace_id=workspace_id)
 
 
