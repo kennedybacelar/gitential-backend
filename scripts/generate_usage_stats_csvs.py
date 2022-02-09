@@ -72,6 +72,7 @@ def create_usage_stat_csvs(prefix):
             "subscription_subscription_end",
             "subscription_subscription_type",
             "subscription_number_of_developers",
+            "subscription_features",
             "subscription_created_at",
             "subscription_updated_at",
             "subscription_id",
