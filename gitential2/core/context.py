@@ -53,10 +53,11 @@ class GitentialContext:
 
 
 def init_context_from_settings(settings: GitentialSettings) -> GitentialContext:
-    integrations = init_integrations(settings)
+    kvstore = init_key_value_store(settings)
+    integrations = init_integrations(settings, kvstore=kvstore)
     backend: GitentialBackend = init_backend(settings)
     fernet = Fernet(settings)
-    kvstore = init_key_value_store(settings)
+
     license_ = check_license()
     return GitentialContext(
         settings=settings,

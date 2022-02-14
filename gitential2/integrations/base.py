@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
 
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 from datetime import datetime
+import typing
 from authlib.integrations.requests_client import OAuth2Session
 from authlib.integrations.base_client.errors import InvalidTokenError
 from pydantic import BaseModel
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
 from gitential2.datatypes.its_projects import ITSProjectCreate
+from gitential2.kvstore import KeyValueStore
 
 from gitential2.settings import IntegrationSettings
 from gitential2.datatypes.extraction import ExtractedKind
@@ -22,17 +24,25 @@ logger = get_logger(__name__)
 
 
 class BaseIntegration:
-    def __init__(self, name, settings: IntegrationSettings):
+    def __init__(self, name, settings: IntegrationSettings, kvstore: KeyValueStore):
         self.name = name
         self.settings = settings
         self.integration_type = settings.type_
+        self.kvstore = kvstore
 
     @property
     def is_oauth(self) -> bool:
         return False
 
 
+ONE_HOUR_IN_SECONDS = 60 * 60
+
+
 class OAuthLoginMixin(ABC):
+
+    if typing.TYPE_CHECKING:
+        kvstore: KeyValueStore
+
     @property
     def is_oauth(self) -> bool:
         return True
@@ -49,6 +59,24 @@ class OAuthLoginMixin(ABC):
         params = self.oauth_register()
         params.update(kwargs)
         return OAuth2Session(**params)
+
+    def http_get_json(self, url: str, **kwargs) -> Union[dict, list]:
+        client = self.get_oauth2_client(**kwargs)
+        try:
+            resp = client.get(url)
+            return resp.json()
+        finally:
+            client.close()
+
+    def http_get_json_and_cache(self, url: str, ex_seconds: int = ONE_HOUR_IN_SECONDS, **kwargs):
+        key = f"http-get-{url}"
+        value = self.kvstore.get_value(key)
+        if value:
+            return value
+        else:
+            value = self.http_get_json(url, **kwargs)
+            self.kvstore.set_value(key, value, ex=ex_seconds)
+            return value
 
     @abstractmethod
     def normalize_userinfo(self, data, token=None) -> UserInfoCreate:

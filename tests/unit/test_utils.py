@@ -1,7 +1,7 @@
 from datetime import datetime
 import pytest
 
-from gitential2.utils import calc_repo_namespace, levenshtein_ratio, split_timerange
+from gitential2.utils import calc_repo_namespace, levenshtein_ratio, split_timerange, add_url_params
 
 
 @pytest.mark.parametrize(
@@ -63,3 +63,17 @@ def test_levenshtein_ratio(s1, s2, ratio):
 def test_split_timerange(from_, to_, parts, intervals):
     assert list(split_timerange(from_, to_, parts)) == intervals
     # assert pytest.approx(levenshtein_ratio(s1, s2), ratio)
+
+
+@pytest.mark.parametrize(
+    "original,params,expected",
+    [
+        (
+            "http://stackoverflow.com/search?q=question",
+            {"lang": "en", "tag": "python"},
+            "http://stackoverflow.com/search?q=question&lang=en&tag=python",
+        ),
+    ],
+)
+def test_add_url_params(original, params, expected):
+    assert expected == add_url_params(original, params)

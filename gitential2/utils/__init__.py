@@ -1,7 +1,8 @@
 from typing import Optional
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 from copy import deepcopy
+from json import dumps
 
 
 def levenshtein(s1: str, s2: str):
@@ -101,3 +102,25 @@ def deep_merge_dicts(a: dict, b: dict) -> dict:
         else:
             result[bk] = deepcopy(bv)
     return result
+
+
+def add_url_params(url, params):
+
+    url = unquote(url)
+    parsed_url = urlparse(url)
+    get_args = parsed_url.query
+    parsed_get_args = dict(parse_qsl(get_args))
+    parsed_get_args.update(params)
+
+    # Bool and Dict values should be converted to json-friendly values
+    # you may throw this part away if you don't like it :)
+    parsed_get_args.update({k: dumps(v) for k, v in parsed_get_args.items() if isinstance(v, (bool, dict))})
+
+    # Converting URL argument to proper query string
+    encoded_get_args = urlencode(parsed_get_args, doseq=True)
+
+    new_url = ParseResult(
+        parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params, encoded_get_args, parsed_url.fragment
+    ).geturl()
+
+    return new_url

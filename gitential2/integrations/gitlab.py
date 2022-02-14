@@ -22,8 +22,8 @@ logger = get_logger(__name__)
 
 
 class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
-    def __init__(self, name, settings):
-        super().__init__(name, settings)
+    def __init__(self, name, settings, kvstore):
+        super().__init__(name, settings, kvstore)
         self.base_url = self.settings.base_url or "https://gitlab.com"
         self.api_base_url = f"{self.base_url}/api/v4"
         self.authorize_url = f"{self.base_url}/oauth/authorize"
