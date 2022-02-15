@@ -7,7 +7,7 @@ from gitential2.core.credentials import list_credentials_for_workspace, get_fres
 
 logger = get_logger(__name__)
 
-ISSUE_SOURCES = [IntegrationType.jira]
+ISSUE_SOURCES = [IntegrationType.jira, IntegrationType.vsts]
 
 
 def _merge_its_project_lists(first: List[ITSProjectCreate], second: List[ITSProjectCreate]) -> List[ITSProjectCreate]:
