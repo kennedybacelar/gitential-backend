@@ -17,8 +17,6 @@ def _merge_its_project_lists(first: List[ITSProjectCreate], second: List[ITSProj
 
 
 def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[ITSProjectCreate]:
-    # all_already_used_repositories = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
-    # results: List[ITSProjectCreate] = all_already_used_its_projects
     results: List[ITSProjectCreate] = []
     for credential_ in list_credentials_for_workspace(g, workspace_id):
         if credential_.integration_type in ISSUE_SOURCES and credential_.integration_name in g.integrations:
