@@ -16,6 +16,8 @@ from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB
 from gitential2.datatypes.repositories import RepositoryCreate
 from gitential2.datatypes.pull_requests import PullRequestData
+from gitential2.datatypes.its_projects import ITSProjectInDB
+from gitential2.datatypes.its import ITSIssueHeader, ITSIssueAllData
 
 from gitential2.extraction.output import OutputHandler
 
@@ -260,4 +262,20 @@ class GitProviderMixin(ABC):
 class ITSProviderMixin(ABC):
     @abstractmethod
     def list_available_its_projects(self, token: dict) -> List[ITSProjectCreate]:
+        pass
+
+    @abstractmethod
+    def list_recently_updated_issues(
+        self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
+    ) -> List[ITSIssueHeader]:
+        pass
+
+    @abstractmethod
+    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
+        pass
+
+    @abstractmethod
+    def get_all_data_for_issue(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
+    ) -> ITSIssueAllData:
         pass
