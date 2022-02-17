@@ -1,4 +1,5 @@
 from typing import Optional, Callable, Tuple
+from datetime import datetime
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.utils import add_url_params
@@ -16,6 +17,7 @@ def get_all_pages_from_paginated(client, start_url: str, start_at=0, max_results
             total = resp_json.get("total", 0)
             return items, start_at, max_results, total
         else:
+            print(resp.status_code, resp.json())
             return [], 0, 0, 0
 
     ret = []
@@ -56,3 +58,10 @@ def parse_account(
     name = account_dict.get("displayName")
     dev_id = developer_map_callback(AuthorAlias(name=name, email=email)) if email or name else None
     return api_id, email, name, dev_id
+
+
+def format_datetime_for_jql(dt: Optional[datetime] = None) -> str:
+    if not dt:
+        return "1970-01-01 00:00"
+    else:
+        return dt.strftime("%Y-%m-%d %H:%M")

@@ -97,7 +97,7 @@ def transform_dict_to_issue(
         assignee_dev_id=assignee_dev_id,
         # extra
         labels=issue_dict["fields"].get("labels"),
-        # extra=issue_dict,
+        extra=issue_dict,
         # calculated
         **calculated_fields,
     )

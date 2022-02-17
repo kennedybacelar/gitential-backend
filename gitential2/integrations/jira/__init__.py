@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import Callable, Tuple, List, Dict, cast
+from datetime import datetime, timedelta
+from typing import Callable, Tuple, List, Dict, cast, Optional
 from pydantic import BaseModel, Field
 from structlog import get_logger
 
@@ -16,7 +16,12 @@ from gitential2.datatypes.its import (
 from gitential2.datatypes.userinfos import UserInfoCreate
 
 from ..base import BaseIntegration, ITSProviderMixin, OAuthLoginMixin
-from .common import get_rest_api_base_url_from_project_api_url, get_db_issue_id, get_all_pages_from_paginated
+from .common import (
+    get_rest_api_base_url_from_project_api_url,
+    get_db_issue_id,
+    get_all_pages_from_paginated,
+    format_datetime_for_jql,
+)
 from .transformations import (
     transform_dict_to_issue,
     transform_dict_to_issue_header,
@@ -232,20 +237,45 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
         return {status["id"]: status for status in statuses}
 
     def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
-        client = self.get_oauth2_client(token=token)
-        query_for_project = f'project = "{its_project.key}" ORDER BY created DESC'
-        fields = ["created", "status", "updated", "summary"]
-        base_url = get_rest_api_base_url_from_project_api_url(its_project.api_url)
-
-        issue_header_dicts = get_all_pages_from_paginated(
-            client,
-            base_url + f"/rest/api/3/search?jql={query_for_project}&fields={','.join(fields)}",
-            values_key="issues",
-        )
-        client.close()
+        issue_header_dicts = self._list_project_issues(token, its_project, order_by="created DESC")
         return [
             transform_dict_to_issue_header(issue_header_dict, its_project) for issue_header_dict in issue_header_dicts
         ]
+
+    def list_recently_updated_issues(
+        self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
+    ) -> List[ITSIssueHeader]:
+        date_from = date_from or datetime.utcnow() - timedelta(days=7)
+        issue_header_dicts = self._list_project_issues(
+            token, its_project, jql=f'updated >= "{format_datetime_for_jql(date_from)}"', order_by="updated DESC"
+        )
+        return [
+            transform_dict_to_issue_header(issue_header_dict, its_project) for issue_header_dict in issue_header_dicts
+        ]
+
+    def _list_project_issues(
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        jql: Optional[str] = None,
+        order_by: Optional[str] = None,
+        fields: Optional[List[str]] = None,
+    ) -> List[dict]:
+        query = f'project = "{its_project.key}"'
+        if jql:
+            query = f"{query} AND {jql}"
+        if order_by:
+            query = f"{query} ORDER BY {order_by}"
+        fields = fields or ["created", "status", "updated", "summary"]
+        client = self.get_oauth2_client(token=token)
+        base_url = get_rest_api_base_url_from_project_api_url(its_project.api_url)
+        results = get_all_pages_from_paginated(
+            client,
+            base_url + f"/rest/api/3/search?jql={query}&fields={','.join(fields)}",
+            values_key="issues",
+        )
+        client.close()
+        return results
 
 
 def _calc_additional_fields_for_issue(
