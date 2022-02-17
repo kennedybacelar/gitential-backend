@@ -5,6 +5,7 @@ from gitential2.settings import GitentialSettings, IntegrationSettings, Integrat
 from gitential2.backends import InMemGitentialBackend
 from gitential2.integrations.base import BaseIntegration, OAuthLoginMixin
 from gitential2.datatypes import UserInfoCreate
+from gitential2.kvstore import InMemKeyValueStore
 
 
 @pytest.fixture
@@ -40,8 +41,15 @@ class DummyIntegration(OAuthLoginMixin, BaseIntegration):
 
 
 @pytest.fixture
-def dummy_integration():
-    return DummyIntegration(name="dummy", settings=IntegrationSettings(type=IntegrationType.dummy))
+def dummy_kvstore(minimal_settings):
+    return InMemKeyValueStore(minimal_settings)
+
+
+@pytest.fixture
+def dummy_integration(dummy_kvstore):
+    return DummyIntegration(
+        name="dummy", settings=IntegrationSettings(type=IntegrationType.dummy), kvstore=dummy_kvstore
+    )
 
 
 @pytest.fixture
