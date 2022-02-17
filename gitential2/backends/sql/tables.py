@@ -1,5 +1,6 @@
 from typing import Optional
 import datetime as dt
+
 import sqlalchemy as sa
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_utils import IPAddressType
@@ -541,6 +542,141 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.PrimaryKeyConstraint("repo_id", "commit_id", "branch"),
     )
 
+    its_issues = sa.Table(
+        "its_issues",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
+        sa.Column("api_url", sa.String(256)),
+        sa.Column("api_id", sa.String(128)),
+        sa.Column("key", sa.String(64)),
+        # status fields
+        sa.Column("status_name", sa.String(64)),
+        sa.Column("status_id", sa.String(64)),
+        sa.Column("status_category_api", sa.String(16)),
+        sa.Column("status_category", sa.String(16)),
+        # issue types and parent
+        sa.Column("issue_type_name", sa.String(32)),
+        sa.Column("issue_type_id", sa.String(32)),
+        sa.Column("parent_id", sa.String(128)),
+        # resolution fields
+        sa.Column("resolution_name", sa.String(32)),
+        sa.Column("resolution_id", sa.String(32)),
+        sa.Column("resolution_date", sa.DateTime, default=dt.datetime.utcnow, nullable=True),
+        # priority fields
+        sa.Column("priority_name", sa.String(16)),
+        sa.Column("priority_id", sa.String(32)),
+        sa.Column("priority_order", sa.Integer(), nullable=True),
+        # summary and description
+        sa.Column("summary", sa.String(256)),
+        sa.Column("description", sa.String()),
+        # creator
+        sa.Column("creator_api_id", sa.String(128)),
+        sa.Column("creator_email", sa.String(128)),
+        sa.Column("creator_name", sa.String(128)),
+        sa.Column("creator_dev_id", sa.Integer()),
+        # reporter
+        sa.Column("reporter_api_id", sa.String(128)),
+        sa.Column("reporter_email", sa.String(128)),
+        sa.Column("reporter_name", sa.String(128)),
+        sa.Column("reporter_dev_id", sa.Integer()),
+        # assignee
+        sa.Column("assignee_api_id", sa.String(128)),
+        sa.Column("assignee_email", sa.String(128)),
+        sa.Column("assignee_name", sa.String(128)),
+        sa.Column("assignee_dev_id", sa.Integer()),
+        # labels
+        sa.Column("labels", sa.JSON, nullable=True),
+        # calculated fields
+        sa.Column("is_started", sa.Boolean()),
+        sa.Column("started_at", sa.DateTime, nullable=True),
+        sa.Column("is_closed", sa.Boolean()),
+        sa.Column("closed_at", sa.DateTime, nullable=True),
+        sa.Column("comment_count", sa.Integer()),
+        sa.Column("last_comment_at", sa.DateTime, nullable=True),
+        sa.Column("change_count", sa.Integer()),
+        sa.Column("last_change_at", sa.DateTime, nullable=True),
+        # extra, created_at, updated_at
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    )
+
+    its_issue_changes = sa.Table(
+        "its_issue_changes",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        # relations
+        sa.Column("issue_id", sa.String(128), nullable=False),  # todo foreign key
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
+        sa.Column("api_id", sa.String(128)),
+        # author
+        sa.Column("author_api_id", sa.String(128)),
+        sa.Column("author_email", sa.String(128)),
+        sa.Column("author_name", sa.String(128)),
+        sa.Column("author_dev_id", sa.Integer()),
+        # field & meta
+        sa.Column("field_name", sa.String(32)),
+        sa.Column("field_id", sa.String(32)),
+        sa.Column("field_type", sa.String(32)),
+        sa.Column("change_type", sa.String(16)),
+        # values
+        sa.Column("v_from", sa.String()),
+        sa.Column("v_from_string", sa.String()),
+        sa.Column("v_to", sa.String()),
+        sa.Column("v_to_string", sa.String()),
+        # extra, created_at, updated_at
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    )
+
+    its_issue_times_in_status = sa.Table(
+        "its_issue_times_in_status",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        # relations
+        sa.Column("issue_id", sa.String(128), nullable=False),  # todo foreign key
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
+        # status fields
+        sa.Column("status_name", sa.String(64)),
+        sa.Column("status_id", sa.String(64)),
+        sa.Column("status_category_api", sa.String(16)),
+        sa.Column("status_category", sa.String(16)),
+        # started, ended
+        sa.Column("started_at", sa.DateTime, nullable=False),
+        sa.Column("started_issue_change_id", sa.String(128), nullable=True),
+        sa.Column("ended_at", sa.DateTime, nullable=False),
+        sa.Column("ended_issue_change_id", sa.String(128), nullable=True),
+        sa.Column("ended_with_status_name", sa.String(64)),
+        sa.Column("ended_with_status_id", sa.String(64)),
+        sa.Column("seconds_in_status", sa.Integer()),
+        # extra, created_at, updated_at
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    )
+
+    its_issue_comments = sa.Table(
+        "its_issue_comments",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        # relations
+        sa.Column("issue_id", sa.String(128), nullable=False),  # todo foreign key
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
+        # author
+        sa.Column("author_api_id", sa.String(128)),
+        sa.Column("author_email", sa.String(128)),
+        sa.Column("author_name", sa.String(128)),
+        sa.Column("author_dev_id", sa.Integer()),
+        # comment
+        sa.Column("comment", sa.String()),
+        # extra, created_at, updated_at
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    )
+
     return metadata, {
         "projects": projects,
         "repositories": repositories,
@@ -560,4 +696,9 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "pull_request_comments": pull_request_comments,
         "pull_request_labels": pull_request_labels,
         "extracted_commit_branches": extracted_commit_branches,
+        # its data tables
+        "its_issues": its_issues,
+        "its_issue_changes": its_issue_changes,
+        "its_issue_times_in_status": its_issue_times_in_status,
+        "its_issue_comments": its_issue_comments,
     }
