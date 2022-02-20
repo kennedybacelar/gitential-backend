@@ -246,9 +246,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         client.close()
         return {f: token[f] for f in ["access_token", "refresh_token", "expires_at"]}
 
-    def list_available_private_repositories(
-        self, token, update_token, provider_user_id: Optional[str]
-    ) -> List[RepositoryCreate]:
+    def list_available_private_repositories(self, token, update_token, provider_user_id: Optional[str]) -> List[RepositoryCreate]:
 
         if not provider_user_id:
             logger.warn("Cannot list vsts repositories, provider_user_id is missing", token=token)
@@ -299,31 +297,33 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         return []
 
     
-    def list_available_its_projects(self, token: dict, update_token, provider_user_id: Optional[str]) -> List[ITSProjectCreate]:
+    def list_available_its_projects(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[ITSProjectCreate]:
 
         if not provider_user_id:
             logger.warn("Cannot list vsts repositories, provider_user_id is missing", token=token)
             return []
-        # token = self.refresh_token(token)
 
         client = self.get_oauth2_client(
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
 
         api_base_url = self.oauth_register()["api_base_url"]
-
         accounts_resp = client.get(f"{api_base_url}/_apis/accounts?memberId={provider_user_id}&api-version=6.0")
+
         if accounts_resp.status_code != 200:
             log_api_error(accounts_resp)
             return []
 
         accounts = accounts_resp.json().get("value", [])
-
         ret = []
-
+        
         for account in accounts:
             organization = account['accountName']
-            all_teams_per_organization_url = f"https://dev.azure.com/{organization}/_apis/teams?api-version=6.0-preview.3"
+            all_teams_per_organization_url = f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
+            #Organization>Settings>Security>Policies>Third-party application access vai OAuth
+
             teams_resp = client.get(all_teams_per_organization_url)
 
             if teams_resp.status_code != 200:
@@ -332,17 +332,18 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
             teams_resp_json = teams_resp.json()["value"]
             
-            for team in teams_resp_json:    
+            for team in teams_resp_json:
+                team['organization'] = organization
                 ret.append(self._transform_to_its_project(team))
         return ret
-
+        
 
     def _transform_to_its_project(self, project_dict: dict) -> ITSProjectCreate:
-            print(project_dict)
+            #print(project_dict)
             return ITSProjectCreate(
                 name=project_dict["name"],
-                namespace=f"{organization}/{project_dict['projectName']}",
-                private=None,
+                namespace=f"{project_dict['organization']}/{project_dict['projectName']}",
+                private=True,
                 api_url=project_dict["identityUrl"],
                 key=project_dict["id"],
                 integration_type="vsts",

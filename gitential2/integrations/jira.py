@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, List
+from typing import Callable, Tuple, List, Optional
 from pydantic import BaseModel, Field
 from structlog import get_logger
 from gitential2.datatypes.its_projects import ITSProjectCreate
@@ -67,7 +67,10 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
             extra=data,
         )
 
-    def list_available_its_projects(self, token: dict) -> List[ITSProjectCreate]:
+    def list_available_its_projects(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[ITSProjectCreate]:
+
         jira_projects = self.list_available_jira_projects(token)
         ret = []
         for site, project_dict in jira_projects:

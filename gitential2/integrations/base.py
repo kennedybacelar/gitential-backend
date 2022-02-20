@@ -231,5 +231,7 @@ class GitProviderMixin(ABC):
 
 class ITSProviderMixin(ABC):
     @abstractmethod
-    def list_available_its_projects(self, token: dict) -> List[ITSProjectCreate]:
+    def list_available_its_projects(
+        self, token: dict, update_token, provider_user_id: Optional[str]
+    ) -> List[ITSProjectCreate]:
         pass
