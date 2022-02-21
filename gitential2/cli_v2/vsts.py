@@ -37,7 +37,7 @@ def list_available_projects(
     vsts_integration = g.integrations.get("vsts")
 
     if vsts_credential:
-        for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
+        for single_user in g.backend.user_infos.get_for_user(int(vsts_credential.owner_id)):
             if single_user.integration_type == IntegrationType.vsts:
                 userinfo: UserInfoInDB = single_user
                 break
