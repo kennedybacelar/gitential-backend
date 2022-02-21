@@ -318,7 +318,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         ret = []
         
         for account in accounts:
-            organization = account['accountName']
+            organization = account["accountName"]
             all_teams_per_organization_url = f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
             #Organization>Settings>Security>Policies>Third-party application access vai OAuth
 
@@ -331,7 +331,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             teams_resp_json = teams_resp.json()["value"]
             
             for team in teams_resp_json:
-                team['organization'] = organization
+                team["organization"] = organization
                 ret.append(self._transform_to_its_project(team))
         return ret
         
