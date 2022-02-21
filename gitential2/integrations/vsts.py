@@ -246,7 +246,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         client.close()
         return {f: token[f] for f in ["access_token", "refresh_token", "expires_at"]}
 
-    def list_available_private_repositories(self, token, update_token, provider_user_id: Optional[str]) -> List[RepositoryCreate]:
+    def list_available_private_repositories(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[RepositoryCreate]:
 
         if not provider_user_id:
             logger.warn("Cannot list vsts repositories, provider_user_id is missing", token=token)
@@ -296,8 +298,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     ) -> List[RepositoryCreate]:
         return []
 
-    
-    def list_available_its_projects(self, token, update_token, provider_user_id: Optional[str]) -> List[ITSProjectCreate]:
+    def list_available_its_projects(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[ITSProjectCreate]:
 
         if not provider_user_id:
             logger.warn("Cannot list vsts repositories, provider_user_id is missing", token=token)
@@ -316,11 +319,13 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         accounts = accounts_resp.json().get("value", [])
         ret = []
-        
+
         for account in accounts:
             organization = account["accountName"]
-            all_teams_per_organization_url = f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
-            #Organization>Settings>Security>Policies>Third-party application access vai OAuth
+            all_teams_per_organization_url = (
+                f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
+            )
+            # Organization>Settings>Security>Policies>Third-party application access vai OAuth
 
             teams_resp = client.get(all_teams_per_organization_url)
 
@@ -329,26 +334,25 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                 continue
 
             teams_resp_json = teams_resp.json()["value"]
-            
+
             for team in teams_resp_json:
                 team["organization"] = organization
                 ret.append(self._transform_to_its_project(team))
         return ret
-        
 
     def _transform_to_its_project(self, project_dict: dict) -> ITSProjectCreate:
-            #print(project_dict)
-            return ITSProjectCreate(
-                name=project_dict["name"],
-                namespace=f"{project_dict['organization']}/{project_dict['projectName']}",
-                private=True,
-                api_url=project_dict["identityUrl"],
-                key=project_dict["id"],
-                integration_type="vsts",
-                integration_name=self.name,
-                integration_id=project_dict["id"],
-                extra=None,
-            )
+        # print(project_dict)
+        return ITSProjectCreate(
+            name=project_dict["name"],
+            namespace=f"{project_dict['organization']}/{project_dict['projectName']}",
+            private=True,
+            api_url=project_dict["identityUrl"],
+            key=project_dict["id"],
+            integration_type="vsts",
+            integration_name=self.name,
+            integration_id=project_dict["id"],
+            extra=None,
+        )
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
