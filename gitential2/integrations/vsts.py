@@ -297,9 +297,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         return []
 
     
-    def list_available_its_projects(
-        self, token, update_token, provider_user_id: Optional[str]
-    ) -> List[ITSProjectCreate]:
+    def list_available_its_projects(self, token, update_token, provider_user_id: Optional[str]) -> List[ITSProjectCreate]:
 
         if not provider_user_id:
             logger.warn("Cannot list vsts repositories, provider_user_id is missing", token=token)
