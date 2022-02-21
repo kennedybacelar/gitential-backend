@@ -1,6 +1,6 @@
 from typing import List, Union, Optional
 from functools import partial
-from datetime import datetime
+from datetime import datetime, timezone
 from structlog import get_logger
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.its import ITSIssueAllData, ITSIssueHeader
@@ -67,7 +67,9 @@ def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id
     return ret
 
 
-def refresh_its_project(g: GitentialContext, workspace_id: int, itsp_id: int, date_from: Optional[datetime] = None):
+def refresh_its_project(
+    g: GitentialContext, workspace_id: int, itsp_id: int, date_from: Optional[datetime] = None, force: bool = False
+):
     itsp = g.backend.its_projects.get_or_error(workspace_id=workspace_id, id_=itsp_id)
     integration = g.integrations.get(itsp.integration_name)
     if not hasattr(integration, "list_recently_updated_issues"):
@@ -93,11 +95,26 @@ def refresh_its_project(g: GitentialContext, workspace_id: int, itsp_id: int, da
             token, itsp, date_from=date_from
         )
         for ih in recently_updated_issues:
-            collect_and_save_data_for_issue(g, workspace_id, itsp=itsp, issue_id_or_key=ih.api_id)
+            if force or _is_issue_new_or_updated(g, workspace_id, ih):
+                collect_and_save_data_for_issue(g, workspace_id, itsp=itsp, issue_id_or_key=ih.api_id)
+            else:
+                logger.info(
+                    "Issue is up-to-date", workspace_id=workspace_id, itsp_id=itsp.id, issue_id_or_key=ih.api_id
+                )
     else:
         logger.info("Skipping ITS Project refresh: no fresh credential", workspace_id=workspace_id, itsp_id=itsp.id)
 
-    # output = g.backend.output_handler(workspace_id)
+
+def _is_issue_new_or_updated(g: GitentialContext, workspace_id: int, issue_header: ITSIssueHeader) -> bool:
+    existing_ih = g.backend.its_issues.get_header(workspace_id, issue_header.id)
+    if (
+        existing_ih
+        and existing_ih.updated_at
+        and issue_header.updated_at
+        and existing_ih.updated_at.replace(tzinfo=timezone.utc) == issue_header.updated_at.astimezone(timezone.utc)
+    ):
+        return False
+    return True
 
 
 def _get_fresh_token_for_itsp(g: GitentialContext, workspace_id: int, itsp: ITSProjectInDB) -> Optional[dict]:

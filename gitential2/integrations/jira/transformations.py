@@ -145,7 +145,7 @@ def _transform_dict_to_issue_change(
     change_item: dict, change_id: str, common_args: dict, fields: dict
 ) -> ITSIssueChange:
     field_id = change_item.get("fieldId", change_item["field"])
-    field_name, field_schema = get_name_and_schema_for_field(field_id, change_item["field"], fields)
+    field_name, field_schema = get_name_and_schema_for_field(field_id, change_item["field"], fields)[:64]
 
     return ITSIssueChange(
         id=change_id,

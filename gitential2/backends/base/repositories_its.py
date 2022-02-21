@@ -1,11 +1,15 @@
-from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueTimeInStatus, ITSIssueComment
+from abc import abstractmethod
+from typing import Optional
+from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueHeader, ITSIssueTimeInStatus, ITSIssueComment
 from .repositories_base import BaseWorkspaceScopedRepository
 
 
 class ITSIssueRepository(
     BaseWorkspaceScopedRepository[str, ITSIssue, ITSIssue, ITSIssue],
 ):
-    pass
+    @abstractmethod
+    def get_header(self, workspace_id: int, id_: str) -> Optional[ITSIssueHeader]:
+        pass
 
 
 class ITSIssueChangeRepository(

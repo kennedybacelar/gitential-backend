@@ -616,7 +616,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("author_name", sa.String(128)),
         sa.Column("author_dev_id", sa.Integer()),
         # field & meta
-        sa.Column("field_name", sa.String(32)),
+        sa.Column("field_name", sa.String(64)),
         sa.Column("field_id", sa.String(32)),
         sa.Column("field_type", sa.String(32)),
         sa.Column("change_type", sa.String(16)),
