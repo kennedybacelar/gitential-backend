@@ -7,19 +7,14 @@ import typer
 
 
 from gitential2.datatypes.credentials import CredentialInDB
+from gitential2.datatypes.userinfos import UserInfoInDB
 from gitential2.core.context import GitentialContext
 from gitential2.core.credentials import get_update_token_callback, get_fresh_credential, list_credentials_for_workspace
 from gitential2.integrations.vsts import VSTSIntegration
 from .common import get_context, print_results, OutputFormat
 
 from gitential2.cli_v2.common import get_context
-from gitential2.utils import levenshtein, find_first
-
-from gitential2.core.credentials import (
-    get_fresh_credential,
-    list_credentials_for_workspace,
-    get_update_token_callback,
-)
+from gitential2.settings import IntegrationType
 
 from gitential2.core.workspaces import get_own_workspaces, get_workspace
 
@@ -38,20 +33,16 @@ def list_available_projects(
     fields: Optional[str] = None,
 ):
     g = get_context()
-    vsts_credential = _get_vsts_credential(g, workspace_id)
+    vsts_credential: CredentialInDB = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")
 
-    userinfo: UserInfoInDB = (
-        find_first(
-            lambda ui: ui.integration_name == vsts_credential.integration_name,  # pylint: disable=cell-var-from-loop
-            g.backend.user_infos.get_for_user(vsts_credential.owner_id),
-        )
-        if vsts_credential.owner_id
-        else None
-    )
+    for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
+        if single_user.integration_type == IntegrationType.vsts:
+            userinfo: UserInfoInDB = single_user
+            break
 
     if vsts_credential and vsts_integration:
-        vsts_integration = cast(vsts_integration, vsts_integration)
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
         its_projects = vsts_integration.list_available_its_projects(
             token,
