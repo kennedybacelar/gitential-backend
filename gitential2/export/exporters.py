@@ -168,7 +168,7 @@ def _convert_fields(name_singular: str, exportable_dict: dict) -> dict:
 
     def _is_dt_field(name_singular, k):
         return (
-            (k in ["created_at", "updated_at"])
+            (k in ["created_at", "updated_at", "published_at"])
             or (
                 name_singular
                 in [
