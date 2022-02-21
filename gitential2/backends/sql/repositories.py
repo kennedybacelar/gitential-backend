@@ -122,13 +122,26 @@ inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
 rowcount_ = lambda result: result.rowcount
 
 
+def convert_times_to_utc(values_dict: dict) -> dict:
+    def _convert_to_utc_if_dt(v):
+        if isinstance(v, dt.datetime):
+            if v.tzinfo != dt.timezone.utc:
+                return v.astimezone(dt.timezone.utc)
+            else:
+                return v
+        else:
+            return v
+
+    return {k: _convert_to_utc_if_dt(v) for k, v in values_dict.items()}
+
+
 class SQLAccessLogRepository(AccessLogRepository):
     def __init__(self, table: sa.Table, engine: sa.engine.Engine):
         self.table = table
         self.engine = engine
 
     def create(self, log: AccessLog) -> AccessLog:
-        query = self.table.insert().values(**log.dict())
+        query = self.table.insert().values(**convert_times_to_utc(log.dict()))
         self._execute_query(query)
         return log
 
@@ -169,7 +182,7 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         return self.in_db_cls(**row)
 
     def create(self, obj: CreateType) -> InDBType:
-        query = self.table.insert().values(**obj.dict())
+        query = self.table.insert().values(**convert_times_to_utc(obj.dict()))
         id_ = self._execute_query(query, callback_fn=inserted_primary_key_)
         return self.get_or_error(id_)
 
@@ -178,7 +191,7 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         if not id_:
             return self.create(cast(CreateType, obj))
         else:
-            values_dict = obj.dict(exclude_unset=True)
+            values_dict = convert_times_to_utc(obj.dict(exclude_unset=True))
             if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
                 values_dict["updated_at"] = dt.datetime.utcnow()
             query = (
@@ -190,7 +203,7 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
             return self.get_or_error(id_)
 
     def insert(self, id_: IdType, obj: InDBType) -> InDBType:
-        values_dict = obj.dict(exclude_unset=True)
+        values_dict = convert_times_to_utc(obj.dict(exclude_unset=True))
         values_dict["id"] = id_
         if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
             values_dict["updated_at"] = dt.datetime.utcnow()
@@ -200,7 +213,7 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         return self.get_or_error(id_)
 
     def update(self, id_: IdType, obj: UpdateType) -> InDBType:
-        update_dict = obj.dict(exclude_unset=True)
+        update_dict = convert_times_to_utc(obj.dict(exclude_unset=True))
         if "updated_at" in self.table.columns.keys() and "updated_at" not in update_dict:
             update_dict["updated_at"] = dt.datetime.utcnow()
 
@@ -262,7 +275,7 @@ class SQLWorkspaceScopedRepository(
             raise NotFoundException("Object not found")
 
     def create(self, workspace_id: int, obj: CreateType) -> InDBType:
-        query = self.table.insert().values(**obj.dict())
+        query = self.table.insert().values(**convert_times_to_utc(obj.dict()))
         id_ = self._execute_query(query, workspace_id=workspace_id, callback_fn=inserted_primary_key_)
         return self.get_or_error(workspace_id, id_)
 
@@ -271,7 +284,7 @@ class SQLWorkspaceScopedRepository(
         if not id_:
             return self.create(workspace_id, cast(CreateType, obj))
         else:
-            values_dict = obj.dict(exclude_unset=True)
+            values_dict = convert_times_to_utc(obj.dict(exclude_unset=True))
             if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
                 values_dict["updated_at"] = dt.datetime.utcnow()
             query = (
@@ -283,7 +296,7 @@ class SQLWorkspaceScopedRepository(
             return self.get_or_error(workspace_id, id_)
 
     def insert(self, workspace_id: int, id_: IdType, obj: InDBType) -> InDBType:
-        values_dict = obj.dict(exclude_unset=True)
+        values_dict = convert_times_to_utc(obj.dict(exclude_unset=True))
         values_dict["id"] = id_
         if "updated_at" in self.table.columns.keys() and "updated_at" not in values_dict:
             values_dict["updated_at"] = dt.datetime.utcnow()
@@ -293,7 +306,7 @@ class SQLWorkspaceScopedRepository(
         return self.get_or_error(workspace_id, id_)
 
     def update(self, workspace_id: int, id_: IdType, obj: UpdateType) -> InDBType:
-        update_dict = obj.dict(exclude_unset=True)
+        update_dict = convert_times_to_utc(obj.dict(exclude_unset=True))
         if "updated_at" in self.table.columns.keys() and "updated_at" not in update_dict:
             update_dict["updated_at"] = dt.datetime.utcnow()
 

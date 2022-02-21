@@ -29,6 +29,14 @@ from .repositories import (
 )
 
 
+from .repositories_its import (
+    ITSIssueRepository,
+    ITSIssueChangeRepository,
+    ITSIssueCommentRepository,
+    ITSIssueTimeInStatusRepository,
+)
+
+
 class WithRepositoriesMixin:
     _access_logs: AccessLogRepository
     _users: UserRepository
@@ -58,6 +66,11 @@ class WithRepositoriesMixin:
     _pull_request_comments: PullRequestCommentRepository
     _pull_request_labels: PullRequestLabelRepository
     _email_log: EmailLogRepository
+
+    _its_issues: ITSIssueRepository
+    _its_issue_changes: ITSIssueChangeRepository
+    _its_issue_times_in_statuses: ITSIssueTimeInStatusRepository
+    _its_issue_comments: ITSIssueCommentRepository
 
     @property
     def access_logs(self):
@@ -162,6 +175,22 @@ class WithRepositoriesMixin:
     @property
     def team_members(self) -> TeamMemberRepository:
         return self._team_members
+
+    @property
+    def its_issues(self) -> ITSIssueRepository:
+        return self._its_issues
+
+    @property
+    def its_issue_changes(self) -> ITSIssueChangeRepository:
+        return self._its_issue_changes
+
+    @property
+    def its_issue_times_in_statuses(self) -> ITSIssueTimeInStatusRepository:
+        return self._its_issue_times_in_statuses
+
+    @property
+    def its_issue_comments(self) -> ITSIssueCommentRepository:
+        return self._its_issue_comments
 
     @property
     def email_log(self) -> EmailLogRepository:

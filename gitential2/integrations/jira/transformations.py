@@ -24,7 +24,9 @@ def transform_dict_to_issue_header(issue_header_dict: dict, its_project: ITSProj
         key=issue_header_dict["key"],
         status_name=issue_header_dict["fields"]["status"]["name"],
         status_id=issue_header_dict["fields"]["status"]["id"],
-        status_category=issue_header_dict["fields"]["status"]["statusCategory"]["key"],
+        status_category=its_issue_status_category_from_str(
+            "jira", issue_header_dict["fields"]["status"]["statusCategory"]["key"]
+        ),
         summary=issue_header_dict["fields"]["summary"],
     )
 

@@ -631,8 +631,8 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     )
 
-    its_issue_times_in_status = sa.Table(
-        "its_issue_times_in_status",
+    its_issue_times_in_statuses = sa.Table(
+        "its_issue_times_in_statuses",
         metadata,
         sa.Column("id", sa.String(128), primary_key=True),
         # relations
@@ -699,6 +699,6 @@ def get_workspace_metadata(schema: Optional[str] = None):
         # its data tables
         "its_issues": its_issues,
         "its_issue_changes": its_issue_changes,
-        "its_issue_times_in_status": its_issue_times_in_status,
+        "its_issue_times_in_statuses": its_issue_times_in_statuses,
         "its_issue_comments": its_issue_comments,
     }
