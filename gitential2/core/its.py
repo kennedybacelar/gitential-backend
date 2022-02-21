@@ -93,7 +93,7 @@ def refresh_its_project(g: GitentialContext, workspace_id: int, itsp_id: int, da
             token, itsp, date_from=date_from
         )
         for ih in recently_updated_issues:
-            collect_and_save_data_for_issue(g, workspace_id, itsp=itsp, issue_id_or_key=ih.api_id, token=token)
+            collect_and_save_data_for_issue(g, workspace_id, itsp=itsp, issue_id_or_key=ih.api_id)
     else:
         logger.info("Skipping ITS Project refresh: no fresh credential", workspace_id=workspace_id, itsp_id=itsp.id)
 
