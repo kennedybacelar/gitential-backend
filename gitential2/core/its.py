@@ -39,7 +39,8 @@ def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[
 
                     userinfo: UserInfoInDB = (
                         find_first(
-                            lambda ui: ui.integration_name == credential.integration_name,
+                            lambda ui: ui.integration_name
+                            == credential.integration_name,  # pylint: disable=cell-var-from-loop
                             g.backend.user_infos.get_for_user(credential.owner_id),
                         )
                         if credential.owner_id
