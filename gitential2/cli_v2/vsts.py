@@ -33,13 +33,14 @@ def list_available_projects(
     fields: Optional[str] = None,
 ):
     g = get_context()
-    vsts_credential = _get_vsts_credential(g, workspace_id)
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")
 
-    for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
-        if single_user.integration_type == IntegrationType.vsts:
-            userinfo: UserInfoInDB = single_user
-            break
+    if vsts_credential:
+        for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
+            if single_user.integration_type == IntegrationType.vsts:
+                userinfo: UserInfoInDB = single_user
+                break
 
     if vsts_credential and vsts_integration:
         vsts_integration = cast(VSTSIntegration, vsts_integration)
