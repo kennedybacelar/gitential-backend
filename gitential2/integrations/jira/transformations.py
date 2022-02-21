@@ -105,6 +105,14 @@ def transform_dict_to_issue(
     )
 
 
+def _remove_spec_chars(s: str) -> str:
+    return "".join(e for e in s if e.isalnum())
+
+
+def _get_field_id(change: dict) -> str:
+    return _remove_spec_chars(change.get("fieldId", change["field"])).lower().replace("customfield", "cf")
+
+
 def transform_dicts_to_issue_changes(
     changes: List[dict], fields: dict, its_project: ITSProjectInDB, db_issue_id: str, developer_map_callback: Callable
 ) -> List[ITSIssueChange]:
@@ -126,7 +134,8 @@ def transform_dicts_to_issue_changes(
         }
 
         for change in changelog.get("items", []):
-            change_id = f"{its_project.id}-{db_issue_id}-{changelog['id']}-{change['field'].lower()}"
+            field_id = _get_field_id(change)
+            change_id = f"{its_project.id}-{db_issue_id}-{changelog['id']}-{field_id}"[:32]
             change_obj = _transform_dict_to_issue_change(change, change_id, common_args_for_changelog, fields)
             ret.append(change_obj)
     return ret
