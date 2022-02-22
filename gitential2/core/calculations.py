@@ -1,5 +1,5 @@
 import gc
-from typing import List, Tuple
+from typing import List, Tuple, cast
 from itertools import product
 from functools import partial
 import datetime as dt
@@ -226,7 +226,7 @@ def _prepare_extracted_patches_df(extracted_patches_df: pd.DataFrame) -> pd.Data
 
 @time_it_log(logger)
 def _calculate_age_df(extracted_commit_df: pd.DataFrame, parents_df: pd.DataFrame) -> pd.DataFrame:
-    author_times = extracted_commit_df.set_index(["commit_id"])[["atime"]].to_dict()["atime"]
+    author_times = cast(dict, extracted_commit_df.set_index(["commit_id"])[["atime"]].to_dict(orient="dict"))["atime"]
 
     def _calc_age(row):
         # print(row["commit_id"], row["parent_commit_id"], author_times.get(row["commit_id"]))

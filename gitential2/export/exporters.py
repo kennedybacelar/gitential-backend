@@ -168,7 +168,7 @@ def _convert_fields(name_singular: str, exportable_dict: dict) -> dict:
 
     def _is_dt_field(name_singular, k):
         return (
-            (k in ["created_at", "updated_at"])
+            (k in ["created_at", "updated_at", "published_at"])
             or (
                 name_singular
                 in [
@@ -244,7 +244,11 @@ class XlsxExporter(Exporter):
             return (
                 name_singular in ["calculated_commit", "calculated_patch", "extracted_commit", "extracted_patch"]
                 and field in ["atime", "ctime", "date"]
-            ) or (field in ["created_at", "updated_at", "closed_at", "merged_at", "published_at", "committer_date"])
+            ) or (
+                field
+                in ["created_at", "updated_at", "closed_at", "merged_at", "published_at", "committer_date"]
+                + ["resolution_date", "started_at", "last_comment_at", "last_change_at", "ended_at"]
+            )
 
         def _convert_to_excel_compatible_datetime(value):
             if value:

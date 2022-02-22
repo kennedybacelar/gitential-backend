@@ -99,16 +99,18 @@ def _refresh_token_credential_if_its_going_to_expire(
     credential: CredentialInDB,
     blocking_timeout_seconds=5 * 60,
     timeout_seconds=30 * 60,
-    expire_timeout_seconds=15 * 60,
+    expire_timeout_seconds=10 * 60,
 ):
     def _token_is_about_to_expire(credential):
         logger.info(
             "credential expire check",
             expires_at=credential.expires_at,
-            timeout_at=datetime.utcnow() - timedelta(seconds=expire_timeout_seconds),
+            timeout_at=credential.expires_at - timedelta(seconds=expire_timeout_seconds),
+            current_time=datetime.utcnow(),
         )
-        return credential.expires_at and credential.expires_at < datetime.utcnow() - timedelta(
-            seconds=expire_timeout_seconds
+        return (
+            credential.expires_at
+            and credential.expires_at - timedelta(seconds=expire_timeout_seconds) < datetime.utcnow()
         )
 
     def _token_is_invalid(integration, token):

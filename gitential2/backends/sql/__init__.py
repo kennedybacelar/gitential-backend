@@ -2,7 +2,7 @@ from datetime import datetime
 import json
 from typing import Any, Tuple, Set
 from threading import Lock
-from ibis.expr.api import schema
+
 import pandas as pd
 import sqlalchemy as sa
 import ibis
@@ -17,6 +17,7 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchRewrite,
     ExtractedCommitBranch,
 )
+from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueComment, ITSIssueTimeInStatus
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
 from gitential2.datatypes.subscriptions import SubscriptionInDB
@@ -88,6 +89,13 @@ from .repositories import (
     SQLExtractedCommitBranchRepository,
     SQLExtractedPatchRewriteRepository,
     SQLCalculatedCommitRepository,
+)
+
+from .repositories_its import (
+    SQLITSIssueRepository,
+    SQLITSIssueChangeRepository,
+    SQLITSIssueTimeInStatusRepository,
+    SQLITSIssueCommentRepository,
 )
 
 
@@ -246,6 +254,34 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=PullRequestLabel,
         )
         self._email_log = SQLEmailLogRepository(table=email_log_table, engine=self._engine, in_db_cls=EmailLogInDB)
+
+        self._its_issues = SQLITSIssueRepository(
+            table=self._workspace_tables.tables["its_issues"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSIssue,
+        )
+
+        self._its_issue_changes = SQLITSIssueChangeRepository(
+            table=self._workspace_tables.tables["its_issue_changes"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSIssueChange,
+        )
+
+        self._its_issue_times_in_statuses = SQLITSIssueTimeInStatusRepository(
+            table=self._workspace_tables.tables["its_issue_times_in_statuses"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSIssueTimeInStatus,
+        )
+
+        self._its_issue_comments = SQLITSIssueCommentRepository(
+            table=self._workspace_tables.tables["its_issue_comments"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSIssueComment,
+        )
 
     def _execute_query(self, query):
         with self._engine.connect() as connection:
@@ -485,22 +521,22 @@ class SQLOutputHandler(OutputHandler):
         return repository.create_or_update(self.workspace_id, value)
 
     def _get_repository(self, kind):
-        if kind == ExtractedKind.PULL_REQUEST:
-            return self.backend.pull_requests
-        elif kind == ExtractedKind.PULL_REQUEST_COMMIT:
-            return self.backend.pull_request_commits
-        elif kind == ExtractedKind.PULL_REQUEST_COMMENT:
-            return self.backend.pull_request_comments
-        elif kind == ExtractedKind.PULL_REQUEST_LABEL:
-            return self.backend.pull_request_labels
-        elif kind == ExtractedKind.EXTRACTED_COMMIT:
-            return self.backend.extracted_commits
-        elif kind == ExtractedKind.EXTRACTED_PATCH:
-            return self.backend.extracted_patches
-        elif kind == ExtractedKind.EXTRACTED_PATCH_REWRITE:
-            return self.backend.extracted_patch_rewrites
-        elif kind == ExtractedKind.EXTRACTED_COMMIT_BRANCH:
-            return self.backend.extracted_commit_branches
+        kind_to_backend_repository = {
+            ExtractedKind.PULL_REQUEST: self.backend.pull_requests,
+            ExtractedKind.PULL_REQUEST_COMMIT: self.backend.pull_request_commits,
+            ExtractedKind.PULL_REQUEST_COMMENT: self.backend.pull_request_comments,
+            ExtractedKind.PULL_REQUEST_LABEL: self.backend.pull_request_labels,
+            ExtractedKind.EXTRACTED_COMMIT: self.backend.extracted_commits,
+            ExtractedKind.EXTRACTED_PATCH: self.backend.extracted_patches,
+            ExtractedKind.EXTRACTED_PATCH_REWRITE: self.backend.extracted_patch_rewrites,
+            ExtractedKind.EXTRACTED_COMMIT_BRANCH: self.backend.extracted_commit_branches,
+            ExtractedKind.ITS_ISSUE: self.backend.its_issues,
+            ExtractedKind.ITS_ISSUE_CHANGE: self.backend.its_issue_changes,
+            ExtractedKind.ITS_ISSUE_TIME_IN_STATUS: self.backend.its_issue_times_in_statuses,
+            ExtractedKind.ITS_ISSUE_COMMENT: self.backend.its_issue_comments,
+        }
 
+        if kind in kind_to_backend_repository:
+            return kind_to_backend_repository[kind]
         else:
             raise ValueError("invalid kind")

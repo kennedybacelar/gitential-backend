@@ -36,6 +36,13 @@ from .repositories import (
     ExtractedCommitBranchRepository,
 )
 
+from .repositories_its import (
+    ITSIssueRepository,
+    ITSIssueChangeRepository,
+    ITSIssueCommentRepository,
+    ITSIssueTimeInStatusRepository,
+)
+
 
 class GitentialBackend(ABC):
     def __init__(self, settings: GitentialSettings):
@@ -169,6 +176,26 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def pull_request_labels(self) -> PullRequestLabelRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def its_issues(self) -> ITSIssueRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def its_issue_changes(self) -> ITSIssueChangeRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def its_issue_times_in_statuses(self) -> ITSIssueTimeInStatusRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def its_issue_comments(self) -> ITSIssueCommentRepository:
         pass
 
     @property

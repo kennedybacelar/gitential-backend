@@ -21,6 +21,11 @@ class ExtractedKind(str, Enum):
     PULL_REQUEST_COMMIT = "pull_request_commit"
     PULL_REQUEST_COMMENT = "pull_request_comment"
     PULL_REQUEST_LABEL = "pull_request_label"
+    # ITS
+    ITS_ISSUE = "its_issue"
+    ITS_ISSUE_CHANGE = "its_issue_change"
+    ITS_ISSUE_TIME_IN_STATUS = "its_issue_time_in_status"
+    ITS_ISSUE_COMMENT = "its_issue_comment"
 
 
 class ExtractedCommitId(CoreModel):

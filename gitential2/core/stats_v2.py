@@ -1,7 +1,7 @@
 # pylint: disable=too-complex,too-many-branches
 
 import math
-from typing import Generator, List, Any, Dict, Optional
+from typing import Generator, List, Any, Dict, Optional, cast
 from datetime import datetime, date, timedelta, timezone
 
 from structlog import get_logger
@@ -386,7 +386,7 @@ def _sort_dataframe(result: pd.DataFrame, query: Query) -> pd.DataFrame:
         logger.debug("SORTING", columns=result.columns, sort_by=sort_by)
         if isinstance(sort_by[0], list):
             by, ascending = map(list, zip(*sort_by))
-            result.sort_values(by=by, ascending=ascending, inplace=True)
+            result.sort_values(by=cast(List[str], by), ascending=cast(List[bool], ascending), inplace=True)
         else:
             result.sort_values(by=sort_by, inplace=True)
 
