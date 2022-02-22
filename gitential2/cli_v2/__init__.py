@@ -5,6 +5,7 @@ import uvicorn
 from structlog import get_logger
 
 from gitential2.core.deduplication import deduplicate_authors
+from gitential2.core.authors import fix_author_names
 from gitential2.core.emails import send_email_to_user
 from gitential2.core.maintenance import maintenance
 from gitential2.core.tasks import configure_celery
@@ -28,6 +29,7 @@ from .crud import app as crud_app
 from .invitation import app as invitation_app
 from .jira import app as jira_app
 from .vsts import app as vsts_app
+from .its import app as its_app
 
 logger = get_logger(__name__)
 
@@ -47,6 +49,7 @@ app.add_typer(crud_app, name="crud")
 app.add_typer(invitation_app, name="invitation")
 app.add_typer(jira_app, name="jira")
 app.add_typer(vsts_app, name="vsts")
+app.add_typer(its_app, name="its")
 
 
 @app.command("public-api")
@@ -107,6 +110,15 @@ def deduplicate_authors_(worspace_id: int, dry_run: bool = False):
 
         print_results(result, format_=OutputFormat.tabulate, fields=["id", "name", "email", "aliases", "active"])
         print()
+
+
+@app.command("fix-author-names")
+def fix_author_names_(
+    worspace_id: int,
+):
+    g = get_context()
+    configure_celery(g.settings)
+    fix_author_names(g, worspace_id)
 
 
 @app.command("quick-login")

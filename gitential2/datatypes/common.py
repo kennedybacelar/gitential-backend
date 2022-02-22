@@ -36,3 +36,11 @@ class IDModelMixin(BaseModel):
     @property
     def id_(self) -> int:
         return self.id
+
+
+class StringIdModelMixin(BaseModel):
+    id: str
+
+    @property
+    def id_(self) -> str:
+        return self.id

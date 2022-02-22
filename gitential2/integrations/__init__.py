@@ -1,4 +1,5 @@
 from typing import Callable
+from gitential2.kvstore import KeyValueStore
 
 from gitential2.settings import IntegrationType, GitentialSettings
 from .gitlab import GitlabIntegration
@@ -28,11 +29,11 @@ def integration_type_to_class(type_: IntegrationType) -> Callable:
     raise ValueError("Invalid integration")
 
 
-def init_integrations(settings: GitentialSettings):
+def init_integrations(settings: GitentialSettings, kvstore: KeyValueStore):
     ret = {}
     for name, int_settings in settings.integrations.items():
         int_cls = integration_type_to_class(int_settings.type_)
-        ret[name] = int_cls(name, settings=int_settings)
+        ret[name] = int_cls(name, settings=int_settings, kvstore=kvstore)
     return ret
 
 

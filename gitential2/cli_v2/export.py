@@ -50,6 +50,13 @@ def export_full_workspace(
         ("pull_request_commits", g.backend.pull_request_commits),
         ("pull_request_comments", g.backend.pull_request_comments),
         ("pull_request_labels", g.backend.pull_request_labels),
+        # its related tables
+        ("project_its_projects", g.backend.project_its_projects),
+        ("its_projects", g.backend.its_projects),
+        ("its_issues", g.backend.its_issues),
+        ("its_issue_changes", g.backend.its_issue_changes),
+        ("its_issue_times_in_statuses", g.backend.its_issue_times_in_statuses),
+        ("its_issue_comments", g.backend.its_issue_comments),
     ]
 
     def _date_filter(name, obj, date_from):

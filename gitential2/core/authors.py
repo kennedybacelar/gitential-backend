@@ -42,6 +42,18 @@ def merge_authors(g: GitentialContext, workspace_id: int, authors: List[AuthorIn
     return g.backend.authors.update(workspace_id, first.id, author_update)
 
 
+def developer_map_callback(
+    alias: AuthorAlias,
+    g: GitentialContext,
+    workspace_id: int,
+) -> Optional[int]:
+    author = get_or_create_optional_author_for_alias(g, workspace_id, alias)
+    if author:
+        return author.id
+    else:
+        return None
+
+
 def delete_author(g: GitentialContext, workspace_id: int, author_id: int) -> int:
     team_ids = g.backend.team_members.get_author_team_ids(workspace_id, author_id)
     for team_id in team_ids:
@@ -55,6 +67,21 @@ def create_author(g: GitentialContext, workspace_id: int, author_create: AuthorC
 
 def get_author(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorInDB]:
     return g.backend.authors.get(workspace_id, author_id)
+
+
+def fix_author_names(g: GitentialContext, workspace_id: int):
+    for author in g.backend.authors.all(workspace_id):
+        if not author.name:
+            logger.info("Fixing author name", author=author, workspace_id=workspace_id)
+            possible_names = [alias.name for alias in author.aliases] + [alias.login for alias in author.aliases]
+            if not possible_names:
+                logger.warning("No names for author", author=author, workspace_id=workspace_id)
+                continue
+            # pylint: disable=unnecessary-lambda
+            sorted_names = sorted(possible_names, key=lambda x: len(x) if x else 0, reverse=True)
+            author.name = sorted_names[0]
+            logger.info("Updating author name", workspace_id=workspace_id, author=author)
+            g.backend.authors.update(workspace_id, author.id, cast(AuthorUpdate, author))
 
 
 def get_or_create_author_for_alias(g: GitentialContext, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
