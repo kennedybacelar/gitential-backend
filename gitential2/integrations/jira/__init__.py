@@ -91,7 +91,10 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
             extra=data,
         )
 
-    def list_available_its_projects(self, token: dict) -> List[ITSProjectCreate]:
+    # pylint: disable=unused-argument
+    def list_available_its_projects(
+        self, token: dict, update_token, provider_user_id: Optional[str]
+    ) -> List[ITSProjectCreate]:
         jira_projects = self.list_available_jira_projects(token)
         ret = []
         for site, project_dict in jira_projects:

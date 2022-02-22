@@ -1,22 +1,18 @@
 from typing import Optional, cast
-import sys
-import logging
 
 from structlog import get_logger
 import typer
 
-
 from gitential2.datatypes.credentials import CredentialInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
 from gitential2.core.context import GitentialContext
-from gitential2.core.credentials import get_update_token_callback, get_fresh_credential, list_credentials_for_workspace
+from gitential2.core.credentials import get_update_token_callback, get_fresh_credential
 from gitential2.integrations.vsts import VSTSIntegration
-from .common import get_context, print_results, OutputFormat
-
 from gitential2.cli_v2.common import get_context
 from gitential2.settings import IntegrationType
 
-from gitential2.core.workspaces import get_own_workspaces, get_workspace
+from .common import get_context, print_results, OutputFormat
+
 
 app = typer.Typer()
 logger = get_logger(__name__)
@@ -36,8 +32,8 @@ def list_available_projects(
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")
 
-    if vsts_credential:
-        for single_user in g.backend.user_infos.get_for_user(int(vsts_credential.owner_id)):
+    if vsts_credential and vsts_credential.owner_id:
+        for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
             if single_user.integration_type == IntegrationType.vsts:
                 userinfo: UserInfoInDB = single_user
                 break
