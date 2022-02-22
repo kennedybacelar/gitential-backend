@@ -8,19 +8,21 @@ from email_validator import validate_email, EmailNotValidError
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.authors import AuthorAlias
-
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
+from gitential2.datatypes.its import ITSIssueHeader, ITSIssueAllData
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 
 from ..utils.is_bugfix import calculate_is_bugfix
-from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData
+from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData, ITSProviderMixin
 
 from .common import log_api_error
+
 
 logger = get_logger(__name__)
 
 
-class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
+class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSProviderMixin):
     base_url = "https://app.vssps.visualstudio.com"
 
     def get_client(self, token, update_token) -> OAuth2Session:
@@ -297,6 +299,75 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         return []
+
+    def list_available_its_projects(
+        self, token, update_token, provider_user_id: Optional[str]
+    ) -> List[ITSProjectCreate]:
+
+        if not provider_user_id:
+            logger.warn("Cannot list vsts repositories, provider_user_id is missing", token=token)
+            return []
+
+        client = self.get_oauth2_client(
+            token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
+
+        api_base_url = self.oauth_register()["api_base_url"]
+        accounts_resp = client.get(f"{api_base_url}/_apis/accounts?memberId={provider_user_id}&api-version=6.0")
+
+        if accounts_resp.status_code != 200:
+            log_api_error(accounts_resp)
+            return []
+
+        accounts = accounts_resp.json().get("value", [])
+        ret = []
+
+        for account in accounts:
+            organization = account["accountName"]
+            all_teams_per_organization_url = (
+                f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
+            )
+            # Organization>Settings>Security>Policies>Third-party application access vai OAuth
+
+            teams_resp = client.get(all_teams_per_organization_url)
+
+            if teams_resp.status_code != 200:
+                log_api_error(teams_resp)
+                continue
+
+            teams_resp_json = teams_resp.json()["value"]
+
+            for team in teams_resp_json:
+                team["organization"] = organization
+                ret.append(self._transform_to_its_project(team))
+        return ret
+
+    def _transform_to_its_project(self, project_dict: dict) -> ITSProjectCreate:
+        # print(project_dict)
+        return ITSProjectCreate(
+            name=project_dict["name"],
+            namespace=f"{project_dict['organization']}/{project_dict['projectName']}",
+            private=True,
+            api_url=project_dict["identityUrl"],
+            key=project_dict["id"],
+            integration_type="vsts",
+            integration_name=self.name,
+            integration_id=project_dict["id"],
+            extra=None,
+        )
+
+    def list_recently_updated_issues(
+        self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
+    ) -> List[ITSIssueHeader]:
+        return []
+
+    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
+        return []
+
+    def get_all_data_for_issue(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
+    ) -> ITSIssueAllData:
+        return ITSIssueAllData(issue=None, comments=[], changes=[], times_in_statuses=[])
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
