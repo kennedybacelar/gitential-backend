@@ -112,6 +112,61 @@ class ITSIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreMode
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue", "its_issues")
 
+    def export_fields(self) -> List[str]:
+        return [
+            # general fields
+            "id",
+            "created_at",
+            "updated_at",
+            "itsp_id",
+            "api_url",
+            "api_id",
+            "key",
+            "parent_id",
+            # status & type
+            "status_name",
+            "status_id",
+            "status_category_api",
+            "status_category",
+            "issue_type_name",
+            "issue_type_id",
+            # resolution & priority
+            "resolution_name",
+            "resolution_id",
+            "resolution_date",
+            "priority_name",
+            "priority_id",
+            "priority_order",
+            # text fields
+            "summary",
+            "description",
+            # creator
+            "creator_api_id",
+            "creator_email",
+            "creator_name",
+            "creator_dev_id",
+            # reporter
+            "reporter_api_id",
+            "reporter_email",
+            "reporter_name",
+            "reporter_dev_id",
+            # assignee
+            "assignee_api_id",
+            "assignee_email",
+            "assignee_name",
+            "assignee_dev_id",
+            # calculated fields + other
+            "labels",
+            "is_started",
+            "started_at",
+            "is_closed",
+            "closed_at",
+            "comment_count",
+            "last_comment_at",
+            "change_count",
+            "last_change_at",
+        ]
+
 
 class ITSIssueChange(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
     issue_id: str
@@ -137,6 +192,28 @@ class ITSIssueChange(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, Co
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_change", "its_issue_changes")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "id",
+            "created_at",
+            "updated_at",
+            "issue_id",
+            "itsp_id",
+            "api_id",
+            "author_api_id",
+            "author_email",
+            "author_name",
+            "author_dev_id",
+            "field_name",
+            "field_id",
+            "field_type",
+            "change_type",
+            "v_from",
+            "v_from_string",
+            "v_to",
+            "v_to_string",
+        ]
+
 
 class ITSIssueTimeInStatus(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
     issue_id: str
@@ -157,6 +234,26 @@ class ITSIssueTimeInStatus(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMix
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_time_in_status", "its_issue_times_in_status")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "id",
+            "created_at",
+            "updated_at",
+            "issue_id",
+            "itsp_id",
+            "status_name",
+            "status_id",
+            "status_category_api",
+            "status_category",
+            "started_issue_change_id",
+            "started_at",
+            "ended_at",
+            "ended_issue_change_id",
+            "ended_with_status_name",
+            "ended_with_status_id",
+            "seconds_in_status",
+        ]
+
 
 class ITSIssueComment(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
     issue_id: str
@@ -171,6 +268,20 @@ class ITSIssueComment(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, C
 
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_comment", "its_issue_comments")
+
+    def export_fields(self) -> List[str]:
+        return [
+            "id",
+            "created_at",
+            "updated_at",
+            "issue_id",
+            "itsp_id",
+            "author_api_id",
+            "author_email",
+            "author_name",
+            "author_dev_id",
+            "comment",
+        ]
 
 
 class ITSIssueLinkedIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
