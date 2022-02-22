@@ -15,6 +15,7 @@ def refresh_its_project_(
     workspace_id: int,
     itsp_id: int,
     date_from: Optional[datetime] = None,
+    force: bool = False,
 ):
     g = get_context()
-    refresh_its_project(g, workspace_id, itsp_id, date_from)
+    refresh_its_project(g, workspace_id, itsp_id, date_from, force)

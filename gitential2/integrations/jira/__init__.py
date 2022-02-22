@@ -165,6 +165,9 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
 
         calculated_fields = _calc_additional_fields_for_issue(changes, comments, all_statuses)
 
+        fields = self._get_site_fields(token, its_project)
+        calculated_fields["story_points"] = _get_story_points(issue_dict, fields)
+
         issue = transform_dict_to_issue(
             issue_dict,
             its_project,
@@ -290,7 +293,7 @@ def _calc_additional_fields_for_issue(
     # changes
     ret["change_count"] = len(changes)
     ret["last_change_at"] = (
-        sorted(changes, key=lambda c: cast(datetime, c.created_at), reverse=True)[0].created_at if comments else None
+        sorted(changes, key=lambda c: cast(datetime, c.created_at), reverse=True)[0].created_at if changes else None
     )
     status_changes = sorted(
         [c for c in changes if c.change_type == ITSIssueChangeType.status], key=lambda x: cast(datetime, x.created_at)
@@ -321,3 +324,21 @@ def _calc_additional_fields_for_issue(
     ret["closed_at"] = closed_at
 
     return ret
+
+
+def _get_story_points(issue_dict: dict, all_fields: dict) -> Optional[int]:
+    sp = None
+    story_point_field_keys = sorted(
+        [
+            key
+            for key, value in all_fields.items()
+            if "com.pyxis.greenhopper.jira:jsw-story-points" == value.get("schema", {}).get("custom", "")
+            or "story point" in value["name"].lower()
+        ]
+    )
+    for field_key in story_point_field_keys:
+        if field_key in issue_dict["fields"]:
+            sp = issue_dict["fields"].get(field_key)
+            if sp:
+                return int(sp)
+    return None

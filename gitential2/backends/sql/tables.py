@@ -596,6 +596,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("last_comment_at", sa.DateTime, nullable=True),
         sa.Column("change_count", sa.Integer()),
         sa.Column("last_change_at", sa.DateTime, nullable=True),
+        sa.Column("story_points", sa.Integer(), nullable=True),
         # extra, created_at, updated_at
         sa.Column("extra", sa.JSON, nullable=True),
         sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),

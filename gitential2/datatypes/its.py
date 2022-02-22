@@ -105,6 +105,7 @@ class ITSIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreMode
     last_comment_at: Optional[datetime] = None
     change_count: int = 0
     last_change_at: Optional[datetime] = None
+    story_points: Optional[int] = None
 
     # is_planned: Optional[bool] = None
     # sprint_count: int = 0
@@ -165,6 +166,7 @@ class ITSIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreMode
             "last_comment_at",
             "change_count",
             "last_change_at",
+            "story_points",
         ]
 
 
