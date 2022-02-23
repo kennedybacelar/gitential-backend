@@ -105,7 +105,9 @@ def _refresh_token_credential_if_its_going_to_expire(
         logger.info(
             "credential expire check",
             expires_at=credential.expires_at,
-            timeout_at=credential.expires_at - timedelta(seconds=expire_timeout_seconds),
+            timeout_at=credential.expires_at - timedelta(seconds=expire_timeout_seconds)
+            if credential.expires_at
+            else None,
             current_time=datetime.utcnow(),
         )
         return (
