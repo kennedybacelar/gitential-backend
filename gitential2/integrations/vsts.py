@@ -1,4 +1,4 @@
-from typing import Optional, Callable, List, Tuple, Dict
+from typing import Optional, Callable, List, Tuple
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
 from structlog import get_logger
