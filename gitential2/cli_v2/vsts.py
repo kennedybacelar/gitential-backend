@@ -16,8 +16,10 @@ from .common import get_context, print_results, OutputFormat
 app = typer.Typer()
 logger = get_logger(__name__)
 
+
 def _get_vsts_credential(g: GitentialContext, workspace_id: int, integration_name="vsts") -> Optional[CredentialInDB]:
     return get_fresh_credential(g, workspace_id=workspace_id, integration_name=integration_name)
+
 
 @app.command("list-available-projects")
 def list_available_projects(
@@ -45,6 +47,7 @@ def list_available_projects(
         )
         print_results(its_projects, format_=format_, fields=fields)
 
+
 @app.command("list-workitems-for-project")
 def list_wit_projects(
     workspace_id: int,
@@ -53,16 +56,13 @@ def list_wit_projects(
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
 ):
-    
-    its_project_mock = {
-        'namespace': namespace,
-        'name': team
-    }
-    
+
+    its_project_mock = {"namespace": namespace, "name": team}
+
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")
-    
+
     if vsts_credential and vsts_integration:
         vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
