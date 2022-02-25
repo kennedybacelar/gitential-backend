@@ -1,11 +1,15 @@
-from typing import List, Tuple, cast
+import math
+from typing import Dict, List, Tuple, cast, Union
 from ibis.expr.types import TableExpr, ColumnExpr
 import pandas as pd
+import numpy as np
 from gitential2.datatypes.data_queries import (
     DQColumnAttrName,
     DQColumnExpr,
     DQFnColumnExpr,
     DQFunctionName,
+    DQResult,
+    DQResultOrientation,
     DQSelectionExpr,
     DQSingleColumnExpr,
     DQSortByExpr,
@@ -20,12 +24,47 @@ from gitential2.datatypes.data_queries import (
 from .context import GitentialContext
 
 
-# def process_data_query(g: GitentialContext, workspace_id: int, query: DataQuery):
-#     result, total = execute_data_query()
+def process_data_queries(
+    g: GitentialContext,
+    workspace_id: int,
+    queries: MultiQuery,
+    orientation: DQResultOrientation = DQResultOrientation.LIST,
+) -> Dict[str, DQResult]:
+    ret = {}
+    for name, query in queries.items():
+        result = process_data_query(g, workspace_id, query, orientation=orientation)
+        ret[name] = result
+    return ret
 
 
-def execute_multi_query(g: GitentialContext, workspace_id: int, query: MultiQuery) -> dict:
-    return {k: execute_data_query(g, workspace_id, v) for k, v in query.items()}
+def process_data_query(
+    g: GitentialContext,
+    workspace_id: int,
+    query: DataQuery,
+    orientation: DQResultOrientation = DQResultOrientation.LIST,
+) -> DQResult:
+    result, total = execute_data_query(g, workspace_id, query)
+    result_json = _to_jsonable_result(result, orientation=orientation)
+    return DQResult(results=result_json, total=total, limit=query.limit, offset=query.offset, orientation=orientation)
+
+
+def _to_jsonable_result(result: pd.DataFrame, orientation: DQResultOrientation) -> Union[dict, list]:
+    if result.empty:
+        return {}
+    ret = result.replace([np.inf, -np.inf], np.NaN)
+    ret = ret.where(pd.notnull(ret), None)
+    return _replace_nans(ret.to_dict(orient=orientation.value))  # type: ignore[arg-type]
+
+
+def _replace_nans(obj):
+    if isinstance(obj, dict):
+        return {k: _replace_nans(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_replace_nans(v) for v in obj]
+    elif obj in [np.inf, -np.inf, np.NaN, float("nan")] or (isinstance(obj, float) and math.isnan(obj)):
+        return None
+    else:
+        return obj
 
 
 def execute_data_query(g: GitentialContext, workspace_id: int, query: DataQuery) -> Tuple[pd.DataFrame, int]:

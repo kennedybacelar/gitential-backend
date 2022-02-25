@@ -115,4 +115,19 @@ class DataQuery(BaseModel):
     offset: Optional[int] = None
 
 
+class DQResultOrientation(str, Enum):
+    LIST = "list"
+    SPLIT = "split"
+    TIGHT = "tight"
+    RECORDS = "records"
+
+
+class DQResult(BaseModel):
+    total: Optional[int] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    orientation: DQResultOrientation = DQResultOrientation.LIST
+    results: Union[list, dict]
+
+
 MultiQuery = Dict[str, DataQuery]
