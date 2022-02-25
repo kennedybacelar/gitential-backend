@@ -1,4 +1,4 @@
-from typing import Optional, Callable, List, Tuple
+from typing import Optional, Callable, List, Tuple, Dict
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
 from structlog import get_logger
@@ -61,7 +61,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             "authorize_url": f"{self.base_url}/oauth2/authorize",
             "userinfo_endpoint": f"{self.base_url}/_apis/profile/profiles/me?api-version=4.1",
             "client_kwargs": {
-                "scope": "vso.code vso.project",
+                "scope": "vso.code vso.project vso.work",
                 "response_type": "Assertion",
                 "token_endpoint_auth_method": self._auth_client_secret_uri,
             },
@@ -299,6 +299,34 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         self, query: str, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         return []
+    
+    def _get_all_accounts(self, client, provider_user_id: Optional[str]) -> List[dict]:
+
+        api_base_url = self.oauth_register()["api_base_url"]
+        accounts_resp = client.get(f"{api_base_url}/_apis/accounts?memberId={provider_user_id}&api-version=6.0")
+
+        if accounts_resp.status_code != 200:
+            log_api_error(accounts_resp)
+            return []
+
+        accounts = accounts_resp.json().get("value", [])
+        return accounts
+    
+    def _get_all_teams(self, client, organization: str) -> List[dict]:
+        
+        all_teams_per_organization_url = (
+                f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
+            )
+            # Organization>Settings>Security>Policies>Third-party application access vai OAuth
+
+        teams_resp = client.get(all_teams_per_organization_url)
+
+        if teams_resp.status_code != 200:
+            log_api_error(teams_resp)
+            return []
+
+        teams_resp_json = teams_resp.json()["value"]
+        return teams_resp_json
 
     def list_available_its_projects(
         self, token, update_token, provider_user_id: Optional[str]
@@ -312,30 +340,12 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
 
-        api_base_url = self.oauth_register()["api_base_url"]
-        accounts_resp = client.get(f"{api_base_url}/_apis/accounts?memberId={provider_user_id}&api-version=6.0")
-
-        if accounts_resp.status_code != 200:
-            log_api_error(accounts_resp)
-            return []
-
-        accounts = accounts_resp.json().get("value", [])
+        accounts = self._get_all_accounts(client, provider_user_id)
         ret = []
 
         for account in accounts:
             organization = account["accountName"]
-            all_teams_per_organization_url = (
-                f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
-            )
-            # Organization>Settings>Security>Policies>Third-party application access vai OAuth
-
-            teams_resp = client.get(all_teams_per_organization_url)
-
-            if teams_resp.status_code != 200:
-                log_api_error(teams_resp)
-                continue
-
-            teams_resp_json = teams_resp.json()["value"]
+            teams_resp_json = self._get_all_teams(client, organization)
 
             for team in teams_resp_json:
                 team["organization"] = organization
@@ -355,6 +365,12 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             integration_id=project_dict["id"],
             extra=None,
         )
+    
+    def _get_organization_and_project_from_its_project(self, its_project_namespace: str) -> Tuple[str, str]:
+        if len(its_project_namespace.split('/')) == 2:
+            splitted = its_project_namespace.split('/')
+            return (splitted[0], splitted[1])
+        raise ValueError(f"Don't know how to parse vsts {its_project_namespace} namespace")
 
     def list_recently_updated_issues(
         self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
@@ -362,13 +378,70 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         return []
 
     def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
-        return []
+        
+        organization, project = self._get_organization_and_project_from_its_project(its_project['namespace']) # type: ignore[index]
+        team = its_project['name'] # type: ignore[index]
+        
+        body_query_work_items_by_teams = {
+        "query": f"SELECT [System.Id] FROM workitems WHERE [System.TeamProject] = '{project}' ORDER BY [System.ChangedDate] DESC"
+        }
+
+        client = self.get_oauth2_client(
+            token=token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
+
+        work_items_url = (
+                f"https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?api-version=6.0-preview.2"
+            )
+        
+        wit_by_teams_response = client.post(work_items_url, json=body_query_work_items_by_teams)
+        if wit_by_teams_response.status_code != 200:
+            log_api_error(wit_by_teams_response)
+            return []
+
+        all_work_items_per_its_project = wit_by_teams_response.json()["workItems"]
+        list_of_work_items_ids = []
+        
+        for single_work_item in all_work_items_per_its_project:
+            list_of_work_items_ids.append(single_work_item['id'])
+        
+        body_query_work_items_details_batch = {
+            'ids': list_of_work_items_ids
+        }
+        
+        get_work_items_details_batch_url = (
+                f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemsbatch?api-version=6.0"
+            )
+        
+        wit_by_details_batch_response = client.post(get_work_items_details_batch_url, json=body_query_work_items_details_batch)
+        if wit_by_details_batch_response.status_code != 200:
+            log_api_error(wit_by_details_batch_response)
+            return []
+        
+        wit_by_details_batch_response_json = wit_by_details_batch_response.json()['value']
+        ret = []
+        
+        for single_issue in wit_by_details_batch_response_json:
+            ret.append(self._transform_to_its_issues(single_issue))
+        return ret
+    
+    def _transform_to_its_issues(self, issue_dict: dict) -> ITSIssueHeader:
+        return ITSIssueHeader(
+            id = issue_dict['id'],
+            itsp_id = issue_dict['id'],
+            api_url = issue_dict['url'],
+            api_id = issue_dict['id'],
+            key = None,
+            status_name = issue_dict['fields']['System.State'],
+            status_id = None,
+            status_category = None,  # todo, in progress/indeterminate, done
+            summary = issue_dict['fields']['System.Title'],
+        )
 
     def get_all_data_for_issue(
         self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
     ) -> ITSIssueAllData:
         return ITSIssueAllData(issue=None, comments=[], changes=[], times_in_statuses=[])
-
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
 
@@ -377,7 +450,6 @@ def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tupl
         return _parse_azure_repository_url(repository_url)
     else:
         return _parse_clone_url(repository.clone_url)
-
 
 def _parse_azure_repository_url(url: str) -> Tuple[str, str, str]:
     parsed_url = urlparse(url)
@@ -396,11 +468,9 @@ def _parse_azure_repository_url(url: str) -> Tuple[str, str, str]:
 
     raise ValueError(f"Don't know how to parse AZURE Resource URL: {url}")
 
-
 # pylint: disable=unused-argument
 def _parse_clone_url(url: str) -> Tuple[str, str, str]:
     return ("", "", "")
-
 
 def _paginate_with_skip_top(client, starting_url, top=100) -> list:
     ret: list = []
@@ -420,7 +490,6 @@ def _paginate_with_skip_top(client, starting_url, top=100) -> list:
                 skip = skip + top
             else:
                 return ret
-
 
 def to_author_alias(raw_user):
     name = raw_user.get("displayName")
