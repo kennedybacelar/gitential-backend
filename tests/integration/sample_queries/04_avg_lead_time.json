@@ -1,0 +1,101 @@
+{
+    "query_type": "aggregate",
+    "source_name": "its_issues",
+    "filters": [
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "is_started"
+                },
+                true
+            ]
+        },
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "is_closed"
+                },
+                true
+            ]
+        },
+        {
+            "fn": "between",
+            "args": [
+                {
+                    "col": "created_at"
+                },
+                "2021-01-01",
+                "2021-12-31"
+            ]
+        }
+    ],
+    "dimensions": [
+        {
+            "col": "created_at",
+            "attr": "round_to_month",
+            "as": "created_at_month"
+        }
+    ],
+    "selections": [
+        {
+            "fn": "mean",
+            "args": [
+                {
+                    "fn": "div",
+                    "args": [
+                        {
+                            "fn": "sub",
+                            "args": [
+                                {
+                                    "col": "closed_at",
+                                    "attr": "epoch_seconds"
+                                },
+                                {
+                                    "col": "created_at",
+                                    "attr": "epoch_seconds"
+                                }
+                            ]
+                        },
+                        86400
+                    ]
+                }
+            ],
+            "as": "avg_lead_time_in_days"
+        },
+        {
+            "fn": "count"
+        },
+        {
+            "fn": "sum",
+            "args": [
+                {
+                    "col": "story_points"
+                }
+            ],
+            "as": "sum_story_points"
+        },
+        {
+            "fn": "mean",
+            "args": [
+                {
+                    "col": "comment_count"
+                }
+            ],
+            "as": "avg_comment_count"
+        }
+    ],
+    "sort_by": [
+        {
+            "col": "avg_lead_time_in_days",
+            "desc": true
+        },
+        {
+            "col": "sum_story_points",
+            "desc": true
+        }
+    ],
+    "limit": 5,
+    "offset": 0
+}

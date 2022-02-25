@@ -1,0 +1,68 @@
+{
+    "query_type": "aggregate",
+    "source_name": "its_issues",
+    "filters": [
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "is_started"
+                },
+                true
+            ]
+        },
+        {
+            "fn": "between",
+            "args": [
+                {
+                    "col": "created_at"
+                },
+                "2021-01-01",
+                "2021-12-31"
+            ]
+        }
+    ],
+    "dimensions": [
+        {
+            "col": "created_at",
+            "attr": "round_to_month",
+            "as": "created_at_month"
+        },
+        {
+            "col": "issue_type_name"
+        }
+    ],
+    "selections": [
+        {
+            "fn": "count"
+        },
+        {
+            "args": [
+                {
+                    "col": "story_points"
+                }
+            ],
+            "fn": "sum",
+            "as": "sum_story_points"
+        },
+        {
+            "args": [
+                {
+                    "col": "comment_count"
+                }
+            ],
+            "fn": "mean",
+            "as": "avg_comment_count"
+        }
+    ],
+    "sort_by": [
+        {
+            "col": "created_at_month",
+            "desc": true
+        },
+        {
+            "col": "sum_story_points",
+            "desc": true
+        }
+    ]
+}

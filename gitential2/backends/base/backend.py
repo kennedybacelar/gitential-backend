@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Tuple, Set
 from abc import ABC, abstractmethod
+from ibis.expr.types import TableExpr
 import pandas as pd
 from gitential2.extraction.output import OutputHandler
 from gitential2.settings import GitentialSettings
@@ -247,4 +248,8 @@ class GitentialBackend(ABC):
 
     @abstractmethod
     def get_ibis_tables(self, workspace_id: int) -> IbisTables:
+        pass
+
+    @abstractmethod
+    def get_ibis_table(self, workspace_id: int, source_name: str) -> TableExpr:
         pass

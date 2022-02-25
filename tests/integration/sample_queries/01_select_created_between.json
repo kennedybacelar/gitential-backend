@@ -1,0 +1,53 @@
+{
+    "query_type": "select",
+    "source_name": "its_issues",
+    "filters": [
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "is_started"
+                },
+                true
+            ]
+        },
+        {
+            "fn": "between",
+            "args": [
+                {
+                    "col": "created_at",
+                    "attr": "round_to_day",
+                    "as": "created_date"
+                },
+                "2022-02-01",
+                "2022-02-24"
+            ]
+        }
+    ],
+    "selections": [
+        {
+            "col": "id"
+        },
+        {
+            "col": "key"
+        },
+        {
+            "col": "is_started"
+        },
+        {
+            "col": "created_at",
+            "attr": "round_to_day",
+            "as": "created_at_day"
+        },
+        {
+            "col": "started_at",
+            "attr": "round_to_day",
+            "as": "started_at_day"
+        }
+    ],
+    "sort_by": [
+        {
+            "col": "created_at_day"
+        }
+    ]
+}
