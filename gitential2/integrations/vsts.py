@@ -1,5 +1,5 @@
 from typing import Optional, Callable, List, Tuple
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 from urllib.parse import parse_qs, urlparse
 from structlog import get_logger
 from authlib.integrations.requests_client import OAuth2Session
@@ -364,20 +364,36 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             extra=None,
         )
 
-    def _get_organization_and_project_from_its_project(self, its_project_namespace: str) -> Tuple[str, str]:
-        if len(its_project_namespace.split("/")) == 2:
-            splitted = its_project_namespace.split("/")
-            return (splitted[0], splitted[1])
-        raise ValueError(f"Don't know how to parse vsts {its_project_namespace} namespace")
-
     def list_recently_updated_issues(
         self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
     ) -> List[ITSIssueHeader]:
-        return []
+
+        max_number_of_entries = 10
+        number_of_days_consider_wit_recent = 7
+
+        if date_from:
+            date_limit_to_wit_be_listed_as_recent = date_from.date()
+        else:
+            date_limit_to_wit_be_listed_as_recent = datetime.today().date() - timedelta(
+                number_of_days_consider_wit_recent
+            )
+
+        ret: List[ITSIssueHeader] = []
+
+        all_issues_for_project = self.list_all_issues_for_project(token=token, its_project=its_project)[
+            :max_number_of_entries
+        ]
+        for single_issue in all_issues_for_project:
+            if single_issue.key:
+                issue_change_date = _parse_issue_change_date_to_datetime(single_issue.key)
+                if issue_change_date < date_limit_to_wit_be_listed_as_recent:
+                    return ret
+                ret.append(single_issue)
+        return ret
 
     def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
 
-        organization, project = self._get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
+        organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
         team = its_project["name"]  # type: ignore[index]
 
         body_query_work_items_by_teams = {
@@ -418,26 +434,43 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         ret = []
 
         for single_issue in wit_by_details_batch_response_json:
-            ret.append(self._transform_to_its_issues(single_issue))
+            ret.append(_transform_to_its_issues_header(single_issue))
         return ret
-
-    def _transform_to_its_issues(self, issue_dict: dict) -> ITSIssueHeader:
-        return ITSIssueHeader(
-            id=issue_dict["id"],
-            itsp_id=issue_dict["id"],
-            api_url=issue_dict["url"],
-            api_id=issue_dict["id"],
-            key=None,
-            status_name=issue_dict["fields"]["System.State"],
-            status_id=None,
-            status_category=None,  # todo, in progress/indeterminate, done
-            summary=issue_dict["fields"]["System.Title"],
-        )
 
     def get_all_data_for_issue(
         self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
     ) -> ITSIssueAllData:
         return ITSIssueAllData(issue=None, comments=[], changes=[], times_in_statuses=[])
+
+
+def _parse_issue_change_date_to_datetime(system_change_date: str) -> date:
+    splitted = system_change_date.split("-")
+    year = int(splitted[0])
+    month = int(splitted[1])
+    day = int(splitted[2][:2])
+
+    return datetime(year=year, month=month, day=day).date()
+
+
+def _get_organization_and_project_from_its_project(its_project_namespace: str) -> Tuple[str, str]:
+    if len(its_project_namespace.split("/")) == 2:
+        splitted = its_project_namespace.split("/")
+        return (splitted[0], splitted[1])
+    raise ValueError(f"Don't know how to parse vsts {its_project_namespace} namespace")
+
+
+def _transform_to_its_issues_header(issue_dict: dict) -> ITSIssueHeader:
+    return ITSIssueHeader(
+        id=issue_dict["id"],
+        itsp_id=issue_dict["id"],
+        api_url=issue_dict["url"],
+        api_id=issue_dict["id"],
+        key=issue_dict["fields"]["System.ChangedDate"],  # adding change date to datatype ITSIssueHeader
+        status_name=issue_dict["fields"]["System.State"],
+        status_id=None,
+        status_category=None,  # todo, in progress/indeterminate, done
+        summary=issue_dict["fields"]["System.Title"],
+    )
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:

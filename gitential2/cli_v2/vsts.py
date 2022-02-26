@@ -1,4 +1,5 @@
 from typing import Optional, cast
+from datetime import datetime, timedelta
 
 from structlog import get_logger
 import typer
@@ -68,3 +69,28 @@ def list_wit_projects(
         token = vsts_credential.to_token_dict(g.fernet)
         work_items = vsts_integration.list_all_issues_for_project(token=token, its_project=its_project_mock)
         print_results(work_items, format_=format_, fields=fields)
+
+
+@app.command("list-recent-workitems")
+def list_recent_wit_projects(
+    workspace_id: int,
+    namespace: str,
+    team: str,
+    date_from: datetime = typer.Option(datetime.today() - timedelta(7), "--date-from"),
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+
+    its_project_mock = {"namespace": namespace, "name": team}
+
+    g = get_context()
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        recent_work_items = vsts_integration.list_recently_updated_issues(
+            token=token, its_project=its_project_mock, date_from=date_from
+        )
+        print_results(recent_work_items, format_=format_, fields=fields)
