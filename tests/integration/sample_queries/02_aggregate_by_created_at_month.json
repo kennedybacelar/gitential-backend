@@ -1,0 +1,42 @@
+{
+    "query_type": "aggregate",
+    "source_name": "its_issues",
+    "filters": [
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "is_started"
+                },
+                true
+            ]
+        },
+        {
+            "fn": "between",
+            "args": [
+                {
+                    "col": "created_at"
+                },
+                "2021-01-01",
+                "2021-12-31"
+            ]
+        }
+    ],
+    "dimensions": [
+        {
+            "col": "created_at",
+            "attr": "round_to_month",
+            "as": "created_at_month"
+        }
+    ],
+    "selections": [
+        {
+            "fn": "count"
+        }
+    ],
+    "sort_by": [
+        {
+            "col": "created_at_month"
+        }
+    ]
+}

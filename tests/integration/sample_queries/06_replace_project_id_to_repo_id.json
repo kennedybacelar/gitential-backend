@@ -1,0 +1,77 @@
+{
+    "query_type": "aggregate",
+    "source_name": "pull_requests",
+    "filters": [
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "project_id"
+                },
+                1
+            ]
+        },
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "state"
+                },
+                "merged"
+            ]
+        },
+        {
+            "fn": "between",
+            "args": [
+                {
+                    "col": "created_at"
+                },
+                "2021-01-01",
+                "2021-12-31"
+            ]
+        }
+    ],
+    "dimensions": [
+        {
+            "col": "created_at",
+            "attr": "round_to_month",
+            "as": "created_at_month"
+        }
+    ],
+    "selections": [
+        {
+            "fn": "mean",
+            "args": [
+                {
+                    "fn": "div",
+                    "args": [
+                        {
+                            "fn": "sub",
+                            "args": [
+                                {
+                                    "col": "merged_at",
+                                    "attr": "epoch_seconds"
+                                },
+                                {
+                                    "col": "created_at",
+                                    "attr": "epoch_seconds"
+                                }
+                            ]
+                        },
+                        86400
+                    ]
+                }
+            ],
+            "as": "avg_cycle_time_in_days"
+        },
+        {
+            "fn": "count"
+        }
+    ],
+    "sort_by": [
+        {
+            "col": "created_at_month",
+            "desc": false
+        }
+    ]
+}

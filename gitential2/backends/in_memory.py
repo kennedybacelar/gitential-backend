@@ -4,6 +4,8 @@ from threading import Lock
 from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union, Set
 from collections import defaultdict
 import pandas as pd
+from ibis.expr.types import TableExpr
+
 from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import DataCollector, OutputHandler
 from gitential2.datatypes import (
@@ -405,6 +407,9 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def get_ibis_tables(self, workspace_id: int) -> IbisTables:
         return IbisTables()
+
+    def get_ibis_table(self, workspace_id: int, source_name: str) -> TableExpr:
+        return TableExpr(None)
 
     def get_commit_ids_for_repository(self, workspace_id: int, repository_id: int) -> Set[str]:
         return set()

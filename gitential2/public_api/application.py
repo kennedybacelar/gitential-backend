@@ -32,6 +32,7 @@ from .routers import (
     payment,
     invitations,
     its,
+    data_queries,
 )
 
 logger = get_logger(__name__)
@@ -86,6 +87,7 @@ def _configure_routes(app: FastAPI):
         commits_and_prs.router,
         invitations.router,
         its.router,
+        data_queries.router,
     ]:
         app.include_router(router, prefix="/v2")
 

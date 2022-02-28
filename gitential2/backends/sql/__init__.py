@@ -6,6 +6,7 @@ from threading import Lock
 import pandas as pd
 import sqlalchemy as sa
 import ibis
+from ibis.expr.types import TableExpr
 from sqlalchemy.sql import and_, select
 
 from fastapi.encoders import jsonable_encoder
@@ -460,6 +461,11 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
                 "pull_request_comments", schema=self._workspace_schema_name(workspace_id)
             )
             return ret
+
+    def get_ibis_table(self, workspace_id: int, source_name: str) -> TableExpr:
+        with self._ibis_lock:
+            ibis_conn = self._get_ibis_conn()
+            return ibis_conn.table(source_name, schema=self._workspace_schema_name(workspace_id))
 
     def _get_ibis_conn(self):
         if not self._ibis_conn:

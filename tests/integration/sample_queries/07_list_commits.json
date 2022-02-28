@@ -1,0 +1,56 @@
+{
+    "query_type": "select",
+    "source_name": "calculated_commits",
+    "filters": [
+        {
+            "fn": "between",
+            "args": [
+                {
+                    "col": "date"
+                },
+                "2021-08-23",
+                "2022-02-23"
+            ]
+        },
+        {
+            "fn": "eq",
+            "args": [
+                {
+                    "col": "project_id"
+                },
+                1
+            ]
+        }
+    ],
+    "selections": [
+        {
+            "col": "date",
+            "as": "created_at"
+        },
+        {
+            "col": "commit_id"
+        },
+        {
+            "col": "aid"
+        },
+        {
+            "col": "loc_i_c"
+        },
+        {
+            "col": "loc_d_c"
+        },
+        {
+            "col": "is_merge"
+        },
+        {
+            "col": "message"
+        }
+    ],
+    "sort_by": [
+        {
+            "col": "created_at"
+        }
+    ],
+    "limit": 25,
+    "offset": 50
+}

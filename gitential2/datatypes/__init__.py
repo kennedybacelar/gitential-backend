@@ -44,3 +44,4 @@ from .repositories import (
 from .project_repositories import ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB
 from .authors import AuthorAlias, AuthorCreate, AuthorUpdate, AuthorInDB
 from .stats import StatsRequest
+from .data_queries import *
