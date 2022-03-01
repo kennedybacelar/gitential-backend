@@ -36,6 +36,9 @@ stripe:
   price_id_monthly: "price_1JDnUJFFL0UUh0zzefPuFoKf"
   price_id_yearly: "price_1JDnUJFFL0UUh0zzBizI1UvN"
   webhook_secret: "whsec_J3wwXzXQOklhlC5qS9iCFynVkiHzXZ9g"
+features:
+  enable_additional_materialized_views: true
+
 # frontend:
 #   inject_html:
 #     - tag: script

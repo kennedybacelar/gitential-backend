@@ -163,6 +163,11 @@ class NotificationSettings(BaseModel):
     request_free_trial: bool = True
 
 
+class FeaturesSettings(BaseModel):
+    enable_additional_materialized_views: bool = False
+    enable_access_approval: bool = False
+
+
 class GitentialSettings(BaseModel):
     maintenance: MaintenanceSettings = MaintenanceSettings()
     secret: str
@@ -181,6 +186,7 @@ class GitentialSettings(BaseModel):
     frontend: FrontendSettings = FrontendSettings()
     contacts: ContactSettings = ContactSettings()
     stripe: StripeIntegration = StripeIntegration()
+    features: FeaturesSettings = FeaturesSettings()
 
     @validator("secret")
     def secret_validation(cls, v):
