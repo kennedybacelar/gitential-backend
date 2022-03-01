@@ -62,6 +62,17 @@ from .tables import (
     get_workspace_metadata,
 )
 
+from .materialized_views import (
+    _create_commits_v,
+    _create_patches_v,
+    _create_pull_requests_v,
+    _create_pull_request_comments_v,
+    _drop_commits_v,
+    _drop_patches_v,
+    _drop_pull_requests_v,
+    _drop_pull_request_comments_v,
+)
+
 from .repositories import (
     SQLAccessLogRepository,
     SQLAuthorRepository,
@@ -337,6 +348,34 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         ]
         for migration_query_ in migration_steps:
             self._engine.execute(migration_query_)
+
+    def create_missing_materialized_views(self, workspace_id: int):
+        queries = [
+            _create_commits_v(workspace_id),
+            _create_patches_v(workspace_id),
+            _create_pull_requests_v(workspace_id),
+            _create_pull_request_comments_v(workspace_id),
+        ]
+        for query_ in queries:
+            self._engine.execute(query_)
+
+    def drop_existing_materialized_views(self, workspace_id: int):
+        queries = [
+            _drop_commits_v(workspace_id),
+            _drop_patches_v(workspace_id),
+            _drop_pull_requests_v(workspace_id),
+            _drop_pull_request_comments_v(workspace_id),
+        ]
+        for query_ in queries:
+            self._engine.execute(query_)
+
+    def refresh_materialized_views(self, workspace_id: int):
+        queries = [
+            f"REFRESH MATERIALIZED VIEW CONCURRENTLY ws_{workspace_id}.{view_name};"
+            for view_name in ["commits_v", "patches_v", "pull_requests_v", "pull_request_comments_v"]
+        ]
+        for query_ in queries:
+            self._engine.execute(query_)
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)

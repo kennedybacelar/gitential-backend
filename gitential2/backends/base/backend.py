@@ -221,6 +221,18 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
+    def create_missing_materialized_views(self, workspace_id: int):
+        pass
+
+    @abstractmethod
+    def drop_existing_materialized_views(self, workspace_id: int):
+        pass
+
+    @abstractmethod
+    def refresh_materialized_views(self, workspace_id: int):
+        pass
+
+    @abstractmethod
     def output_handler(self, workspace_id: int) -> OutputHandler:
         pass
 

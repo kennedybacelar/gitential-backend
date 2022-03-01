@@ -79,8 +79,27 @@ def initialize_database():
     workspaces = g.backend.workspaces.all()
     for w in workspaces:
         logger.info("Initializing workspace schema", workspace_id=w.id)
-        g.backend.initialize_workspace(w.id)
-        g.backend.migrate_workspace(w.id)
+        try:
+            g.backend.initialize_workspace(w.id)
+            g.backend.migrate_workspace(w.id)
+
+            if g.settings.features.enable_additional_materialized_views:
+                g.backend.create_missing_materialized_views(w.id)
+            else:
+                g.backend.drop_existing_materialized_views(w.id)
+        except:  # pylint: disable=bare-except
+            logger.exception("Failed to initialize workspace schema", workspace_id=w.id)
+
+
+@app.command("refresh-materialized-views")
+def refresh_materialized_views():
+    g = get_context()
+    workspaces = g.backend.workspaces.all()
+    for w in workspaces:
+        try:
+            g.backend.refresh_materialized_views(workspace_id=w.id)
+        except:  # pylint: disable=bare-except
+            logger.exception("Failed to refresh materialized views", workspace_id=w.id)
 
 
 @app.command("send-email-to-user")
