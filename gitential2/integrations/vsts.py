@@ -389,9 +389,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
 
         body_work_items_by_teams = {
-            "query": f"SELECT {','.join(fields)} FROM workitems WHERE [System.TeamProject] = '{project}'{if_date_from} ORDER BY [System.ChangedDate] DESC",
-            "WorkItemExpand": "All",
-            "relations": "rel",
+            "query": f"SELECT {','.join(fields)} FROM workitems WHERE [System.TeamProject] = '{project}'{if_date_from} ORDER BY [System.ChangedDate] DESC"
         }
 
         work_items_url = (
@@ -554,9 +552,9 @@ def _transform_to_its_ITSIssueComment(comment_dict: dict, its_project: ITSProjec
 
 def _transform_to_its_ITSIssueAllData(
     issue: ITSIssue,
-    comments: List[ITSIssueComment] = None,
-    changes: List[ITSIssueChange] = None,
-    times_in_statuses: List[ITSIssueTimeInStatus] = None,
+    comments: List[ITSIssueComment] = [],
+    changes: List[ITSIssueChange] = [],
+    times_in_statuses: List[ITSIssueTimeInStatus] = [],
 ) -> ITSIssueAllData:
     return ITSIssueAllData(
         issue=issue,
@@ -573,7 +571,6 @@ def _parse_labels(labels: str) -> List[str]:
 
 
 def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
-
     assignment_state_category_api_to_its = {
         "To Do": "new",
         "Doing": "in_progress",
