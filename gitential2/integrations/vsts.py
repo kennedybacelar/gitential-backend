@@ -425,7 +425,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             return wit_by_details_batch_response_json
         return []
 
-    def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str):
+    def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
         organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
@@ -438,7 +438,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         if single_work_item_details_response.status_code != 200:
             log_api_error(single_work_item_details_response)
-            return None
+            return {}
 
         single_work_item_details_response_json = single_work_item_details_response.json()
         return single_work_item_details_response_json
