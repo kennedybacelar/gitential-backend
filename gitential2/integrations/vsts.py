@@ -527,13 +527,13 @@ def _transform_to_its_issues_header(issue_dict: dict) -> ITSIssueHeader:
         itsp_id=issue_dict["id"],
         api_url=issue_dict["url"],
         api_id=issue_dict["id"],
-        key=issue_dict["id"],  # adding change date to datatype ITSIssueHeader
-        status_name=issue_dict["fields"]["System.State"],
+        key=issue_dict["id"],
+        status_name=issue_dict["fields"].get("System.State"),
         status_id=None,
-        status_category=None,  # todo, in progress/indeterminate, done
-        summary=issue_dict["fields"]["System.Title"],
-        created_at=parse_datetime(issue_dict["fields"]["System.CreatedDate"]),
-        updated_at=parse_datetime(issue_dict["fields"]["System.ChangedDate"]),
+        status_category=issue_dict["fields"].get("System.WorkItemType"),
+        summary=issue_dict["fields"].get("System.Title"),
+        created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
+        updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
     )
 
 

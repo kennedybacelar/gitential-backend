@@ -140,6 +140,7 @@ def list_raw_data_for_issues_per_project(
     if vsts_credential and vsts_integration:
         vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
+        # pylint: disable=protected-access
         recent_work_items = vsts_integration._raw_fetching_all_issues_per_project(
             token=token, its_project=its_project_mock, date_from=date_from
         )
@@ -165,6 +166,7 @@ def list_all_data_single_issue(
     if vsts_credential and vsts_integration:
         vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
+        # pylint: disable=protected-access
         recent_work_items = vsts_integration._get_single_work_item_all_data(
             token=token, its_project=its_project_mock, issue_id_or_key=issue_id_or_key
         )
