@@ -1,5 +1,5 @@
 from typing import Optional, Callable, List, Tuple
-from datetime import datetime, timezone, date, timedelta
+from datetime import datetime, timezone, timedelta
 from urllib.parse import parse_qs, urlparse
 from structlog import get_logger
 from authlib.integrations.requests_client import OAuth2Session
@@ -9,7 +9,15 @@ from email_validator import validate_email, EmailNotValidError
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
-from gitential2.datatypes.its import ITSIssueHeader, ITSIssueAllData
+from gitential2.datatypes.its import (
+    ITSIssueHeader,
+    ITSIssueAllData,
+    ITSIssue,
+    ITSIssueComment,
+    ITSIssueChange,
+    ITSIssueTimeInStatus,
+    ITSIssueStatusCategory,
+)
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 
@@ -364,73 +372,122 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             extra=None,
         )
 
-    def list_recently_updated_issues(
-        self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
-    ) -> List[ITSIssueHeader]:
+    def _raw_fetching_all_issues_per_project(
+        self, token, its_project: ITSProjectInDB, fields: List[str] = None, date_from: Optional[datetime] = None
+    ) -> List[dict]:
 
-        max_number_of_entries = 10
-        number_of_days_consider_wit_recent = 7
-
-        if date_from:
-            date_limit_to_wit_be_listed_as_recent = date_from.date()
-        else:
-            date_limit_to_wit_be_listed_as_recent = datetime.today().date() - timedelta(
-                number_of_days_consider_wit_recent
-            )
-
-        ret: List[ITSIssueHeader] = []
-
-        all_issues_for_project = self.list_all_issues_for_project(token=token, its_project=its_project)[
-            :max_number_of_entries
-        ]
-        for single_issue in all_issues_for_project:
-            if single_issue.key:
-                issue_change_date = _parse_issue_change_date_to_datetime(single_issue.key)
-                if issue_change_date < date_limit_to_wit_be_listed_as_recent:
-                    return ret
-                ret.append(single_issue)
-        return ret
-
-    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
 
         organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
         team = its_project["name"]  # type: ignore[index]
 
-        body_query_work_items_by_teams = {
-            "query": f"SELECT [System.Id] FROM workitems WHERE [System.TeamProject] = '{project}' ORDER BY [System.ChangedDate] DESC"
-        }
+        fields = fields or [
+            "System.Id, System.WorkItemType, System.Description, System.AssignedTo, System.State, System.AreaPath,System.Tags, System.CommentCount, System.ChangedDate"
+        ]
+        if_date_from = (
+            f" AND System.ChangedDate > '{date_from.year}-{date_from.month}-{date_from.day}'" if date_from else ""
+        )
 
-        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        body_work_items_by_teams = {
+            "query": f"SELECT {','.join(fields)} FROM workitems WHERE [System.TeamProject] = '{project}'{if_date_from} ORDER BY [System.ChangedDate] DESC",
+            "WorkItemExpand": "All",
+            "relations": "rel",
+        }
 
         work_items_url = (
             f"https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?api-version=6.0-preview.2"
         )
 
-        wit_by_teams_response = client.post(work_items_url, json=body_query_work_items_by_teams)
+        wit_by_teams_response = client.post(work_items_url, json=body_work_items_by_teams)
         if wit_by_teams_response.status_code != 200:
             log_api_error(wit_by_teams_response)
             return []
 
-        all_work_items_per_its_project = wit_by_teams_response.json()["workItems"]
-        list_of_work_items_ids = []
+        all_work_items_per_its_project = wit_by_teams_response.json().get("workItems", [])
 
-        for single_work_item in all_work_items_per_its_project:
-            list_of_work_items_ids.append(single_work_item["id"])
+        if all_work_items_per_its_project:
+            list_of_work_items_ids = []
+            for single_work_item in all_work_items_per_its_project:
+                list_of_work_items_ids.append(single_work_item["id"])
 
-        body_query_work_items_details_batch = {"ids": list_of_work_items_ids}
+            body_query_work_items_details_batch = {"ids": list_of_work_items_ids}
 
-        get_work_items_details_batch_url = (
-            f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemsbatch?api-version=6.0"
+            get_work_items_details_batch_url = (
+                f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemsbatch?api-version=6.0"
+            )
+
+            wit_by_details_batch_response = client.post(
+                get_work_items_details_batch_url, json=body_query_work_items_details_batch
+            )
+            if wit_by_details_batch_response.status_code != 200:
+                log_api_error(wit_by_details_batch_response)
+                return []
+
+            wit_by_details_batch_response_json = wit_by_details_batch_response.json()["value"]
+            return wit_by_details_batch_response_json
+        return []
+
+    def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str):
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
+
+        single_work_item_details_url = (
+            f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{issue_id_or_key}?api-version=6.0"
         )
 
-        wit_by_details_batch_response = client.post(
-            get_work_items_details_batch_url, json=body_query_work_items_details_batch
-        )
-        if wit_by_details_batch_response.status_code != 200:
-            log_api_error(wit_by_details_batch_response)
+        single_work_item_details_response = client.get(single_work_item_details_url)
+
+        if single_work_item_details_response.status_code != 200:
+            log_api_error(single_work_item_details_response)
+            return None
+
+        single_work_item_details_response_json = single_work_item_details_response.json()
+        return single_work_item_details_response_json
+
+    def _get_issue_comments(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> List[ITSIssueComment]:
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
+
+        issue_comments_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/comments?api-version=6.0-preview.3"
+
+        issue_comments_response = client.get(issue_comments_url)
+
+        if issue_comments_response.status_code != 200:
+            log_api_error(issue_comments_response)
             return []
 
-        wit_by_details_batch_response_json = wit_by_details_batch_response.json()["value"]
+        ret = []
+        list_issue_comments_response = issue_comments_response.json().get("comments", [])
+        for single_comment in list_issue_comments_response:
+            ret.append(_transform_to_its_ITSIssueComment(comment_dict=single_comment, its_project=its_project))
+        return ret
+
+    def list_recently_updated_issues(
+        self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
+    ) -> List[ITSIssueHeader]:
+
+        number_of_days_since_last_change_to_be_considered_recent = 7
+
+        date_from = date_from or (
+            datetime.today() - timedelta(number_of_days_since_last_change_to_be_considered_recent)
+        )
+        ret: List[ITSIssueHeader] = []
+
+        wit_by_details_batch_response_json = self._raw_fetching_all_issues_per_project(
+            token=token, its_project=its_project, date_from=date_from
+        )
+
+        for single_issue in wit_by_details_batch_response_json:
+            ret.append(_transform_to_its_issues_header(single_issue))
+        return ret
+
+    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
+
+        wit_by_details_batch_response_json = self._raw_fetching_all_issues_per_project(
+            token=token, its_project=its_project
+        )
         ret = []
 
         for single_issue in wit_by_details_batch_response_json:
@@ -440,16 +497,21 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     def get_all_data_for_issue(
         self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
     ) -> ITSIssueAllData:
-        return ITSIssueAllData(issue=None, comments=[], changes=[], times_in_statuses=[])
 
+        # raw data of single work item
+        single_work_item_details_response_json = self._get_single_work_item_all_data(
+            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        )
 
-def _parse_issue_change_date_to_datetime(system_change_date: str) -> date:
-    splitted = system_change_date.split("-")
-    year = int(splitted[0])
-    month = int(splitted[1])
-    day = int(splitted[2][:2])
-
-    return datetime(year=year, month=month, day=day).date()
+        issue: ITSIssue = _transform_to_its_issue(
+            issue_dict=single_work_item_details_response_json, its_project=its_project
+        )
+        comments: List[ITSIssueComment] = self._get_issue_comments(
+            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        )
+        # changes= To be implemented
+        # times_in_statuses= To be implemented
+        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments)
 
 
 def _get_organization_and_project_from_its_project(its_project_namespace: str) -> Tuple[str, str]:
@@ -465,11 +527,118 @@ def _transform_to_its_issues_header(issue_dict: dict) -> ITSIssueHeader:
         itsp_id=issue_dict["id"],
         api_url=issue_dict["url"],
         api_id=issue_dict["id"],
-        key=issue_dict["fields"]["System.ChangedDate"],  # adding change date to datatype ITSIssueHeader
+        key=issue_dict["id"],  # adding change date to datatype ITSIssueHeader
         status_name=issue_dict["fields"]["System.State"],
         status_id=None,
         status_category=None,  # todo, in progress/indeterminate, done
         summary=issue_dict["fields"]["System.Title"],
+        created_at=parse_datetime(issue_dict["fields"]["System.CreatedDate"]),
+        updated_at=parse_datetime(issue_dict["fields"]["System.ChangedDate"]),
+    )
+
+
+def _transform_to_its_ITSIssueComment(comment_dict: dict, its_project: ITSProjectInDB) -> ITSIssueComment:
+    return ITSIssueComment(
+        id=comment_dict["id"],
+        issue_id=comment_dict["workItemId"],
+        itsp_id=its_project["id"],  # type: ignore[index]
+        author_api_id=comment_dict["createdBy"].get("id"),
+        author_email=comment_dict["createdBy"].get("uniqueName"),
+        author_name=comment_dict["createdBy"].get("displayName"),
+        author_dev_id=None,
+        comment=comment_dict.get("text"),
+        created_at=parse_datetime(comment_dict["createdDate"]) if comment_dict.get("createdDate") else None,
+        updated_at=parse_datetime(comment_dict["modifiedDate"]) if comment_dict.get("modifiedDate") else None,
+    )
+
+
+def _transform_to_its_ITSIssueAllData(
+    issue: ITSIssue,
+    comments: List[ITSIssueComment] = None,
+    changes: List[ITSIssueChange] = None,
+    times_in_statuses: List[ITSIssueTimeInStatus] = None,
+) -> ITSIssueAllData:
+    return ITSIssueAllData(
+        issue=issue,
+        comments=comments,
+        changes=changes,
+        times_in_statuses=times_in_statuses,
+    )
+
+
+def _parse_labels(labels: str) -> List[str]:
+    if labels:
+        return [label.strip() for label in labels.split(";")]
+    return []
+
+
+def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
+
+    assignment_state_category_api_to_its = {
+        "To Do": "new",
+        "Doing": "in_progress",
+        "Done": "done",
+    }
+    if status_category_api in assignment_state_category_api_to_its:
+        return ITSIssueStatusCategory(assignment_state_category_api_to_its[status_category_api])
+    return ITSIssueStatusCategory("unknown")
+
+
+def _transform_to_its_issue(issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssue:
+    return ITSIssue(
+        id=issue_dict["id"],
+        itsp_id=its_project["id"],  # type: ignore[index]
+        api_url=issue_dict["url"],
+        api_id=issue_dict["id"],
+        key=issue_dict["id"],
+        status_name=issue_dict["fields"].get("System.State"),
+        status_id=None,
+        status_category_api=issue_dict["fields"].get("System.WorkItemType"),
+        status_category=_parse_status_category(issue_dict["fields"].get("System.State")),
+        issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
+        issue_type_id=None,
+        resolution_name=issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate"),
+        resolution_id=None,
+        resolution_date=None,
+        priority_name=issue_dict["fields"].get("Microsoft.VSTS.Common.Priority"),
+        priority_id=None,
+        priority_order=None,
+        summary=issue_dict["fields"].get("System.Title", ""),
+        description=issue_dict["fields"].get("System.Description", ""),
+        creator_api_id=None,
+        creator_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName")
+        if issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedBy")
+        else None,
+        creator_name=issue_dict["fields"]["System.CreatedBy"].get("displayName")
+        if issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedBy")
+        else None,
+        creator_dev_id=None,
+        reporter_api_id=None,
+        reporter_email=None,
+        reporter_name=None,
+        reporter_dev_id=None,
+        assignee_api_id=issue_dict["fields"]["System.AssignedTo"].get("id")
+        if issue_dict["fields"].get("System.AssignedTo")
+        else None,
+        assignee_email=issue_dict["fields"]["System.AssignedTo"].get("uniqueName")
+        if issue_dict["fields"].get("System.AssignedTo")
+        else None,
+        assignee_name=issue_dict["fields"]["System.AssignedTo"].get("displayName")
+        if issue_dict["fields"].get("System.AssignedTo")
+        else None,
+        assignee_dev_id=None,
+        labels=_parse_labels(issue_dict["fields"].get("System.Tags")),
+        is_started=None,
+        started_at=None,
+        is_closed=None,
+        closed_at=None,
+        comment_count=issue_dict["fields"].get("System.CommentCount"),
+        last_comment_at=None,
+        change_count=issue_dict.get("rev"),
+        last_change_at=None,
+        story_points=None,
+        created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
+        updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
     )
 
 

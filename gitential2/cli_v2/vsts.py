@@ -1,5 +1,5 @@
 from typing import Optional, cast
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from structlog import get_logger
 import typer
@@ -58,7 +58,7 @@ def list_wit_projects(
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = {"namespace": namespace, "name": team}
+    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -76,12 +76,12 @@ def list_recent_wit_projects(
     workspace_id: int,
     namespace: str,
     team: str,
-    date_from: datetime = typer.Option(datetime.today() - timedelta(7), "--date-from"),
+    date_from: datetime = typer.Option(None, "--date-from"),
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = {"namespace": namespace, "name": team}
+    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -94,3 +94,78 @@ def list_recent_wit_projects(
             token=token, its_project=its_project_mock, date_from=date_from
         )
         print_results(recent_work_items, format_=format_, fields=fields)
+
+
+@app.command("list-all-data-issue")
+def list_all_data_for_issue(
+    workspace_id: int,
+    namespace: str,
+    team: str,
+    issue_id_or_key: str = typer.Option(None, "--issue-id"),
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+
+    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+
+    g = get_context()
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        recent_work_items = vsts_integration.get_all_data_for_issue(
+            token=token, its_project=its_project_mock, issue_id_or_key=issue_id_or_key, developer_map_callback=None
+        )
+        print_results([recent_work_items], format_=format_, fields=fields)
+
+
+@app.command("raw-data-issue")
+def list_raw_data_for_issues_per_project(
+    workspace_id: int,
+    namespace: str,
+    team: str,
+    date_from: datetime = typer.Option(None, "--date-from"),
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+
+    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+
+    g = get_context()
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        recent_work_items = vsts_integration._raw_fetching_all_issues_per_project(
+            token=token, its_project=its_project_mock, date_from=date_from
+        )
+        print_results(recent_work_items, format_=format_, fields=fields)
+
+
+@app.command("single-issue")
+def list_all_data_single_issue(
+    workspace_id: int,
+    namespace: str,
+    team: str,
+    issue_id_or_key: str = typer.Option(None, "--issue-id"),
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+
+    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+
+    g = get_context()
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        recent_work_items = vsts_integration._get_single_work_item_all_data(
+            token=token, its_project=its_project_mock, issue_id_or_key=issue_id_or_key
+        )
+        print_results([recent_work_items], format_=format_, fields=fields)
