@@ -509,7 +509,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
         # changes= To be implemented
         # times_in_statuses= To be implemented
-        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments)
+        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments, changes=[], times_in_statuses=[])
 
 
 def _get_organization_and_project_from_its_project(its_project_namespace: str) -> Tuple[str, str]:
@@ -552,9 +552,9 @@ def _transform_to_its_ITSIssueComment(comment_dict: dict, its_project: ITSProjec
 
 def _transform_to_its_ITSIssueAllData(
     issue: ITSIssue,
-    comments: List[ITSIssueComment] = [],
-    changes: List[ITSIssueChange] = [],
-    times_in_statuses: List[ITSIssueTimeInStatus] = [],
+    comments: List[ITSIssueComment],
+    changes: List[ITSIssueChange],
+    times_in_statuses: List[ITSIssueTimeInStatus],
 ) -> ITSIssueAllData:
     return ITSIssueAllData(
         issue=issue,
