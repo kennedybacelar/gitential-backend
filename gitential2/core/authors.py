@@ -1,4 +1,5 @@
 import re
+import contextlib
 from typing import Iterable, Dict, List, Optional, cast, Tuple
 from itertools import product
 from unidecode import unidecode
@@ -23,23 +24,40 @@ def list_active_author_ids(g: GitentialContext, workspace_id: int) -> List[int]:
     return ret
 
 
+@contextlib.contextmanager
+def authors_change_lock(
+    g: GitentialContext,
+    workspace_id: int,
+    blocking_timeout_seconds=5,
+    timeout_seconds=10,
+):
+    with g.kvstore.lock(
+        f"authors-change-lock{workspace_id}", timeout=timeout_seconds, blocking_timeout=blocking_timeout_seconds
+    ):
+        yield
+
+
 def list_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
     return list(g.backend.authors.all(workspace_id))
 
 
 def update_author(g: GitentialContext, workspace_id: int, author_id: int, author_update: AuthorUpdate):
     # existing_author = g.backend.authors.get_or_error(workspace_id, author_id)
-    return g.backend.authors.update(workspace_id, author_id, author_update)
+    with authors_change_lock(g, workspace_id):
+        _reset_all_authors_from_cache(g, workspace_id)
+        return g.backend.authors.update(workspace_id, author_id, author_update)
 
 
 def merge_authors(g: GitentialContext, workspace_id: int, authors: List[AuthorInDB]) -> AuthorInDB:
     first, *rest = authors
     author_update = AuthorUpdate(**first.dict())
-    for other in rest:
-        author_update.aliases += other.aliases  # pylint: disable=no-member
-        delete_author(g, workspace_id, other.id)
-    author_update.aliases = _remove_duplicate_aliases(author_update.aliases)
-    return g.backend.authors.update(workspace_id, first.id, author_update)
+    with authors_change_lock(g, workspace_id):
+        for other in rest:
+            author_update.aliases += other.aliases  # pylint: disable=no-member
+            delete_author(g, workspace_id, other.id)
+        author_update.aliases = _remove_duplicate_aliases(author_update.aliases)
+        _reset_all_authors_from_cache(g, workspace_id)
+        return g.backend.authors.update(workspace_id, first.id, author_update)
 
 
 def developer_map_callback(
@@ -55,13 +73,16 @@ def developer_map_callback(
 
 
 def delete_author(g: GitentialContext, workspace_id: int, author_id: int) -> int:
-    team_ids = g.backend.team_members.get_author_team_ids(workspace_id, author_id)
-    for team_id in team_ids:
-        g.backend.team_members.remove_members_from_team(workspace_id, team_id, [author_id])
-    return g.backend.authors.delete(workspace_id, author_id)
+    with authors_change_lock(g, workspace_id):
+        team_ids = g.backend.team_members.get_author_team_ids(workspace_id, author_id)
+        for team_id in team_ids:
+            g.backend.team_members.remove_members_from_team(workspace_id, team_id, [author_id])
+        _reset_all_authors_from_cache(g, workspace_id)
+        return g.backend.authors.delete(workspace_id, author_id)
 
 
 def create_author(g: GitentialContext, workspace_id: int, author_create: AuthorCreate):
+    _reset_all_authors_from_cache(g, workspace_id)
     return g.backend.authors.create(workspace_id, author_create)
 
 
@@ -70,27 +91,37 @@ def get_author(g: GitentialContext, workspace_id: int, author_id: int) -> Option
 
 
 def fix_author_names(g: GitentialContext, workspace_id: int):
-    for author in g.backend.authors.all(workspace_id):
-        if not author.name:
-            logger.info("Fixing author name", author=author, workspace_id=workspace_id)
-            possible_names = [alias.name for alias in author.aliases] + [alias.login for alias in author.aliases]
-            if not possible_names:
-                logger.warning("No names for author", author=author, workspace_id=workspace_id)
-                continue
-            # pylint: disable=unnecessary-lambda
-            sorted_names = sorted(possible_names, key=lambda x: len(x) if x else 0, reverse=True)
-            author.name = sorted_names[0]
-            logger.info("Updating author name", workspace_id=workspace_id, author=author)
-            g.backend.authors.update(workspace_id, author.id, cast(AuthorUpdate, author))
+    with authors_change_lock(g, workspace_id):
+        fixed_count = 0
+        for author in g.backend.authors.all(workspace_id):
+            if not author.name:
+                logger.info("Fixing author name", author=author, workspace_id=workspace_id)
+                possible_names = [alias.name for alias in author.aliases] + [alias.login for alias in author.aliases]
+                if not possible_names:
+                    logger.warning("No names for author", author=author, workspace_id=workspace_id)
+                    continue
+                # pylint: disable=unnecessary-lambda
+                sorted_names = sorted(possible_names, key=lambda x: len(x) if x else 0, reverse=True)
+                author.name = sorted_names[0]
+                logger.info("Updating author name", workspace_id=workspace_id, author=author)
+                g.backend.authors.update(workspace_id, author.id, cast(AuthorUpdate, author))
+                fixed_count += 1
+        if fixed_count > 0:
+            _reset_all_authors_from_cache(g, workspace_id)
 
 
 def fix_author_aliases(g: GitentialContext, workspace_id: int):
-    for author in g.backend.authors.all(workspace_id):
-        aliases = _remove_duplicate_aliases(author.aliases)
-        if len(aliases) != len(author.aliases):
-            author.aliases = aliases
-            g.backend.authors.update(workspace_id, author.id, cast(AuthorUpdate, author))
-            logger.info("Fixed author aliases", workspace_id=workspace_id, author=author)
+    with authors_change_lock(g, workspace_id):
+        fixed_count = 0
+        for author in g.backend.authors.all(workspace_id):
+            aliases = _remove_duplicate_aliases(author.aliases)
+            if len(aliases) != len(author.aliases):
+                author.aliases = aliases
+                g.backend.authors.update(workspace_id, author.id, cast(AuthorUpdate, author))
+                logger.info("Fixed author aliases", workspace_id=workspace_id, author=author)
+                fixed_count += 1
+        if fixed_count > 0:
+            _reset_all_authors_from_cache(g, workspace_id)
 
 
 def _get_all_authors_from_cache(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
@@ -111,30 +142,31 @@ def _get_all_authors_from_cache(g: GitentialContext, workspace_id: int) -> List[
         return all_authors
 
 
-def _reset_all_authors_from_cahe(g: GitentialContext, workspace_id: int):
+def _reset_all_authors_from_cache(g: GitentialContext, workspace_id: int):
     cache_key = f"authors_ws_{workspace_id}"
     return g.kvstore.delete_value(cache_key)
 
 
 def get_or_create_author_for_alias(g: GitentialContext, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
-    all_authors = _get_all_authors_from_cache(g, workspace_id)
-    alias_to_author_map = _build_alias_author_map(all_authors)
-    alias_tuple = (alias.name, alias.email, alias.login)
-    if alias_tuple in alias_to_author_map:
-        return alias_to_author_map[alias_tuple]
-    else:
-        _reset_all_authors_from_cahe(g, workspace_id)
-        for author in all_authors:
-            if alias_matching_author(alias, author):
-                logger.debug(
-                    "Matching author for alias by L-distance", alias=alias, author=author, workspace_id=workspace_id
-                )
-                return add_alias_to_author(g, workspace_id, author, alias)
+    with authors_change_lock(g, workspace_id):
+        all_authors = _get_all_authors_from_cache(g, workspace_id)
+        alias_to_author_map = _build_alias_author_map(all_authors)
+        alias_tuple = (alias.name, alias.email, alias.login)
+        if alias_tuple in alias_to_author_map:
+            return alias_to_author_map[alias_tuple]
+        else:
+            _reset_all_authors_from_cache(g, workspace_id)
+            for author in all_authors:
+                if alias_matching_author(alias, author):
+                    logger.debug(
+                        "Matching author for alias by L-distance", alias=alias, author=author, workspace_id=workspace_id
+                    )
+                    return add_alias_to_author(g, workspace_id, author, alias)
 
-        new_author = g.backend.authors.create(workspace_id, _new_author_from_alias(alias))
-        logger.debug("Creating new author for alias", alias=alias, author=new_author)
+            new_author = g.backend.authors.create(workspace_id, _new_author_from_alias(alias))
+            logger.debug("Creating new author for alias", alias=alias, author=new_author)
 
-        return new_author
+            return new_author
 
 
 def get_or_create_optional_author_for_alias(
@@ -151,17 +183,6 @@ def add_alias_to_author(g: GitentialContext, workspace_id: int, author: AuthorIn
     author_update = AuthorUpdate(**author.dict())
     author_update.aliases = _remove_duplicate_aliases(author_update.aliases + [alias])
     return g.backend.authors.update(workspace_id, author.id, author_update)
-
-
-def _build_email_author_id_map(author_list: Iterable[AuthorInDB]) -> Dict[str, int]:
-    ret = {}
-    for author in author_list:
-        for alias in author.aliases or []:
-            if alias.email:
-                ret[alias.email] = author.id
-        if author.email:
-            ret[author.email] = author.id
-    return ret
 
 
 def _build_alias_author_map(
