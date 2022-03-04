@@ -1,5 +1,5 @@
 import re
-from typing import Iterable, Dict, List, Optional, cast
+from typing import Iterable, Dict, List, Optional, cast, Tuple
 from itertools import product
 from unidecode import unidecode
 from structlog import get_logger
@@ -84,17 +84,46 @@ def fix_author_names(g: GitentialContext, workspace_id: int):
             g.backend.authors.update(workspace_id, author.id, cast(AuthorUpdate, author))
 
 
-def get_or_create_author_for_alias(g: GitentialContext, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
-    all_authors = list(g.backend.authors.all(workspace_id))
+def fix_author_aliases(g: GitentialContext, workspace_id: int):
+    for author in g.backend.authors.all(workspace_id):
+        aliases = _remove_duplicate_aliases(author.aliases)
+        if len(aliases) != len(author.aliases):
+            author.aliases = aliases
+            g.backend.authors.update(workspace_id, author.id, cast(AuthorUpdate, author))
+            logger.info("Fixed author aliases", workspace_id=workspace_id, author=author)
 
-    email_author_id_map = _build_email_author_id_map(all_authors)
-    if alias.email and alias.email in email_author_id_map:
-        author = g.backend.authors.get_or_error(workspace_id, email_author_id_map[alias.email])
-        logger.debug(
-            "Matching author for alias by email address", alias=alias, author=author, workspace_id=workspace_id
-        )
-        return author
+
+def _get_all_authors_from_cache(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
+    def _to_list(authors: List[AuthorInDB]) -> List[dict]:
+        return [a.dict() for a in authors]
+
+    def _from_list(l: list) -> List[AuthorInDB]:
+        return [AuthorInDB(**author_dict) for author_dict in l]
+
+    cache_key = f"authors_ws_{workspace_id}"
+
+    from_cache = g.kvstore.get_value(cache_key)
+    if from_cache:
+        return _from_list(cast(list, from_cache))
     else:
+        all_authors = list(g.backend.authors.all(workspace_id))
+        g.kvstore.set_value(cache_key, _to_list(all_authors))
+        return all_authors
+
+
+def _reset_all_authors_from_cahe(g: GitentialContext, workspace_id: int):
+    cache_key = f"authors_ws_{workspace_id}"
+    return g.kvstore.delete_value(cache_key)
+
+
+def get_or_create_author_for_alias(g: GitentialContext, workspace_id: int, alias: AuthorAlias) -> AuthorInDB:
+    all_authors = _get_all_authors_from_cache(g, workspace_id)
+    alias_to_author_map = _build_alias_author_map(all_authors)
+    alias_tuple = (alias.name, alias.email, alias.login)
+    if alias_tuple in alias_to_author_map:
+        return alias_to_author_map[alias_tuple]
+    else:
+        _reset_all_authors_from_cahe(g, workspace_id)
         for author in all_authors:
             if alias_matching_author(alias, author):
                 logger.debug(
@@ -104,6 +133,7 @@ def get_or_create_author_for_alias(g: GitentialContext, workspace_id: int, alias
 
         new_author = g.backend.authors.create(workspace_id, _new_author_from_alias(alias))
         logger.debug("Creating new author for alias", alias=alias, author=new_author)
+
         return new_author
 
 
@@ -131,6 +161,16 @@ def _build_email_author_id_map(author_list: Iterable[AuthorInDB]) -> Dict[str, i
                 ret[alias.email] = author.id
         if author.email:
             ret[author.email] = author.id
+    return ret
+
+
+def _build_alias_author_map(
+    author_list: Iterable[AuthorInDB],
+) -> Dict[Tuple[Optional[str], Optional[str], Optional[str]], AuthorInDB]:
+    ret = {}
+    for author in author_list:
+        for alias in author.aliases or []:
+            ret[(alias.name, alias.email, alias.login)] = author
     return ret
 
 
@@ -197,6 +237,8 @@ def _remove_duplicate_aliases(aliases: List[AuthorAlias]) -> List[AuthorAlias]:
         if alias.email and alias.email in [r.email for r in ret]:
             continue
         elif alias.login and alias.login in [r.login for r in ret]:
+            continue
+        elif any(a.name == alias.name and a.login == alias.login and a.email == alias.email for a in ret):
             continue
         else:
             ret.append(alias)

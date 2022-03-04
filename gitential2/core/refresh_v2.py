@@ -16,7 +16,7 @@ from gitential2.exceptions import LockError
 
 from .calculations import recalculate_repository_values
 from .context import GitentialContext
-from .authors import get_or_create_optional_author_for_alias, fix_author_names
+from .authors import fix_author_aliases, get_or_create_optional_author_for_alias, fix_author_names
 from .tasks import schedule_task
 from .credentials import acquire_credential, get_fresh_credential, get_update_token_callback
 from .repositories import list_project_repositories
@@ -59,6 +59,7 @@ def maintain_workspace(
 ):
     refresh_all_repositories(g, workspace_id)
     fix_author_names(g, workspace_id)
+    fix_author_aliases(g, workspace_id)
 
 
 def refresh_all_repositories(g: GitentialContext, workspace_id: int):

@@ -5,7 +5,7 @@ import uvicorn
 from structlog import get_logger
 
 from gitential2.core.deduplication import deduplicate_authors
-from gitential2.core.authors import fix_author_names
+from gitential2.core.authors import fix_author_aliases, fix_author_names
 from gitential2.core.emails import send_email_to_user
 from gitential2.core.maintenance import maintenance
 from gitential2.core.tasks import configure_celery
@@ -140,6 +140,15 @@ def fix_author_names_(
     g = get_context()
     configure_celery(g.settings)
     fix_author_names(g, worspace_id)
+
+
+@app.command("fix-author-aliases")
+def fix_author_aliases_(
+    worspace_id: int,
+):
+    g = get_context()
+    configure_celery(g.settings)
+    fix_author_aliases(g, worspace_id)
 
 
 @app.command("quick-login")
