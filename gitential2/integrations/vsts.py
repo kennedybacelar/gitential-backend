@@ -636,9 +636,11 @@ def _transform_to_its_issue(
         status_category=_parse_status_category(issue_dict["fields"].get("System.State")),
         issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
         issue_type_id=None,
-        resolution_name=issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate"),
+        resolution_name=issue_dict["fields"]["System.Reason"]
+        if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
+        else None,
         resolution_id=None,
-        resolution_date=None,
+        resolution_date=issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate"),
         priority_name=issue_dict["fields"].get("Microsoft.VSTS.Common.Priority"),
         priority_id=None,
         priority_order=None,
@@ -667,16 +669,22 @@ def _transform_to_its_issue(
         assignee_name=issue_dict["fields"]["System.AssignedTo"].get("displayName")
         if issue_dict["fields"].get("System.AssignedTo")
         else None,
-        assignee_dev_id=None,
+        assignee_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.AssignedTo")))
+        if issue_dict["fields"].get("System.AssignedTo")
+        else None,
         labels=_parse_labels(issue_dict["fields"].get("System.Tags")),
-        is_started=None,
-        started_at=None,
-        is_closed=None,
-        closed_at=None,
+        is_started=bool(issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedDate")),
+        started_at=parse_datetime(issue_dict["fields"]["Microsoft.VSTS.Common.ActivatedDate"])
+        if issue_dict["fields"].get("ActivatedDate")
+        else None,
+        is_closed=bool(issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")),
+        closed_at=parse_datetime(issue_dict["fields"]["Microsoft.VSTS.Common.ClosedDate"])
+        if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
+        else None,
         comment_count=issue_dict["fields"].get("System.CommentCount"),
         last_comment_at=None,
         change_count=issue_dict.get("rev"),
-        last_change_at=None,
+        last_change_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
         story_points=None,
         created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
         updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
