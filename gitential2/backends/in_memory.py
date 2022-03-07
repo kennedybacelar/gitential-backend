@@ -5,6 +5,7 @@ from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union,
 from collections import defaultdict
 import pandas as pd
 from ibis.expr.types import TableExpr
+from gitential2.datatypes.pats import PersonalAccessToken
 
 from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import DataCollector, OutputHandler
@@ -25,7 +26,7 @@ from gitential2.datatypes import (
     AccessLog,
     # WorkspaceWithPermission,
 )
-from gitential2.backends.base.repositories import AccessLogRepository
+from gitential2.backends.base.repositories import AccessLogRepository, PersonalAccessTokenRepository
 
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
@@ -227,6 +228,12 @@ class InMemWorkspaceScopedRepository(
 class InMemUserRepository(UserRepository, InMemRepository[int, UserCreate, UserUpdate, UserInDB]):
     def get_by_email(self, email: str) -> Optional[UserInDB]:
         return None
+
+
+class InMemPersonalAccessTokenRepository(
+    PersonalAccessTokenRepository, InMemRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]
+):
+    pass
 
 
 class InMemUserInfoRepository(UserInfoRepository, InMemRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):

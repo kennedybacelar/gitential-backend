@@ -34,6 +34,18 @@ users_table = sa.Table(
     sa.Column("stripe_customer_id", sa.String(256), nullable=True),
 )
 
+personal_access_tokens_table = sa.Table(
+    "personal_access_tokens",
+    metadata,
+    sa.Column("id", sa.String(128), primary_key=True),
+    sa.Column("user_id", sa.Integer(), nullable=False),
+    sa.Column("name", sa.String(256), nullable=False),
+    sa.Column("expire_at", sa.DateTime, nullable=True),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("extra", sa.JSON, nullable=True),
+)
+
 access_log_table = sa.Table(
     "access_log",
     metadata,

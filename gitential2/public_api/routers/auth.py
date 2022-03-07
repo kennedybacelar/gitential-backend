@@ -7,7 +7,7 @@ from gitential2.datatypes.users import UserCreate
 from gitential2.datatypes.subscriptions import SubscriptionType
 from gitential2.exceptions import AuthenticationException
 from gitential2.core.context import GitentialContext
-from gitential2.core.users import handle_authorize, register_user, get_user, get_profile_picture
+from gitential2.core.users import handle_authorize, register_user, get_profile_picture
 from gitential2.core.subscription import get_current_subscription
 from gitential2.core.quick_login import get_quick_login_user
 
@@ -140,11 +140,13 @@ async def logout(request: Request):
 
 @router.get("/session")
 def session(
-    request: Request, g: GitentialContext = Depends(gitential_context), api_access_log=Depends(api_access_log)
+    request: Request,
+    g: GitentialContext = Depends(gitential_context),
+    current_user=Depends(current_user),
+    api_access_log=Depends(api_access_log),
 ):  # pylint: disable=unused-argument
-    current_user_id = request.session.get("current_user_id")
-    if current_user_id:
-        user_in_db = get_user(g, current_user_id)
+    if current_user:
+        user_in_db = current_user
         if user_in_db:
             # registration_ready = license_.is_on_premises or request.session.get("registration_ready", False)
             subscription = get_current_subscription(g, user_in_db.id)

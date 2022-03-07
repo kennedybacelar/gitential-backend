@@ -5,6 +5,7 @@ from .repositories import (
     CalculatedCommitRepository,
     CalculatedPatchRepository,
     ITSProjectRepository,
+    PersonalAccessTokenRepository,
     ProjectITSProjectRepository,
     TeamMemberRepository,
     TeamRepository,
@@ -40,6 +41,7 @@ from .repositories_its import (
 class WithRepositoriesMixin:
     _access_logs: AccessLogRepository
     _users: UserRepository
+    _pats: PersonalAccessTokenRepository
     _user_infos: UserInfoRepository
     _workspaces: WorkspaceRepository
     _workspace_invitations: WorkspaceInvitationRepository
@@ -79,6 +81,10 @@ class WithRepositoriesMixin:
     @property
     def users(self) -> UserRepository:
         return self._users
+
+    @property
+    def pats(self) -> PersonalAccessTokenRepository:
+        return self._pats
 
     @property
     def subscriptions(self) -> SubscriptionRepository:

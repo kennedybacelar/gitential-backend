@@ -11,6 +11,7 @@ from .repositories import (
     AccessLogRepository,
     AuthorRepository,
     CalculatedPatchRepository,
+    PersonalAccessTokenRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
@@ -57,6 +58,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def users(self) -> UserRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def pats(self) -> PersonalAccessTokenRepository:
         pass
 
     @property

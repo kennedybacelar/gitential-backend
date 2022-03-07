@@ -1,5 +1,5 @@
 from typing import Optional
-
+from datetime import datetime
 import typer
 import uvicorn
 from structlog import get_logger
@@ -13,6 +13,7 @@ from gitential2.core.users import get_user
 from gitential2.logging import initialize_logging
 from gitential2.settings import load_settings
 from gitential2.core.quick_login import generate_quick_login
+from gitential2.core.pats import create_personal_access_token, delete_personal_access_tokens_for_user
 from .common import OutputFormat, get_context, print_results
 from .emails import app as emails_app
 from .export import app as export_app
@@ -156,6 +157,22 @@ def quick_login(user_id):
     g = get_context()
     login_hash = generate_quick_login(g, user_id)
     print("Login hash:", login_hash)
+
+
+@app.command("create-personal-access-token")
+def generate_pat_(user_id: int, name: str, expire_at: Optional[datetime] = None):
+    g = get_context()
+    pat, token = create_personal_access_token(g, user_id, name, expire_at)
+    print(pat)
+    print("------")
+    print(token)
+    print("------")
+
+
+@app.command("delete-personal-access-token")
+def delete_pat_for_user_(user_id: int):
+    g = get_context()
+    delete_personal_access_tokens_for_user(g, user_id)
 
 
 def main(prog_name: Optional[str] = None):
