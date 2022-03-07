@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.sql import and_, select, desc, or_
 from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
+from gitential2.datatypes.pats import PersonalAccessToken
 from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectCreate,
     ProjectITSProjectInDB,
@@ -75,6 +76,7 @@ from gitential2.backends.base.repositories import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
     ITSProjectRepository,
+    PersonalAccessTokenRepository,
     ProjectITSProjectRepository,
     UserRepository,
     SubscriptionRepository,
@@ -372,6 +374,12 @@ class SQLUserRepository(UserRepository, SQLRepository[int, UserCreate, UserUpdat
         result = self._execute_query(query)
         row = result.fetchone()
         return UserInDB(**row) if row else None
+
+
+class SQLPersonalAccessTokenRepository(
+    PersonalAccessTokenRepository, SQLRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]
+):
+    pass
 
 
 class SQLSubscriptionRepository(

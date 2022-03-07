@@ -21,6 +21,7 @@ from gitential2.datatypes import (
     AccessLog,
 )
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
+from gitential2.datatypes.pats import PersonalAccessToken
 
 from gitential2.datatypes.pull_requests import (
     PullRequest,
@@ -88,6 +89,10 @@ class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
     def get_by_email(self, email: str) -> Optional[UserInDB]:
         pass
+
+
+class PersonalAccessTokenRepository(BaseRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]):
+    pass
 
 
 class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB]):

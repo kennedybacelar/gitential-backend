@@ -127,22 +127,26 @@ def _configure_error_handling(app: FastAPI):
     @app.exception_handler(500)
     async def custom_http_exception_handler(request, exc):
         error_code = uuid4()
-        logger.exception(
-            "Internal server error",
-            exc=exc,
-            error_code=error_code,
-            headers=request.headers,
-            method=request.method,
-            url=request.url,
-        )
+
+        def _log_exc():
+            logger.exception(
+                "Internal server error",
+                exc=exc,
+                error_code=error_code,
+                headers=request.headers,
+                method=request.method,
+                url=request.url,
+            )
 
         if isinstance(exc, AuthenticationException):
+            _log_exc()
             return RedirectResponse(url=_error_page(request, error_code))
         elif isinstance(exc, PermissionException):
             response = JSONResponse(content={"error": str(exc)}, status_code=403)
         elif isinstance(exc, NotFoundException):
             response = JSONResponse(content={"error": str(exc)}, status_code=404)
         else:
+            _log_exc()
             response = JSONResponse(content={"error": "Something went wrong"}, status_code=500)
 
         # Since the CORSMiddleware is not executed when an unhandled server exception

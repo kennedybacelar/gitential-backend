@@ -64,6 +64,7 @@ types-requests = "^2.27.10"
 types-tabulate = "^0.8.5"
 types-Jinja2 = "^2.11.9"
 pandas-stubs = "^1.2.0"
+types-itsdangerous = "^1.1.6"
 
 [tool.black]
 line-length = 120

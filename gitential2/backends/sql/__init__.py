@@ -20,6 +20,7 @@ from gitential2.datatypes.extraction import (
 )
 from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueComment, ITSIssueTimeInStatus
 from gitential2.datatypes.its_projects import ITSProjectInDB
+from gitential2.datatypes.pats import PersonalAccessToken
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
 from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
@@ -52,6 +53,7 @@ from .tables import (
     access_log_table,
     email_log_table,
     users_table,
+    personal_access_tokens_table,
     user_infos_table,
     credentials_table,
     workspaces_table,
@@ -79,6 +81,7 @@ from .repositories import (
     SQLEmailLogRepository,
     SQLCalculatedPatchRepository,
     SQLITSProjectRepository,
+    SQLPersonalAccessTokenRepository,
     SQLProjectITSProjectRepository,
     SQLProjectRepositoryRepository,
     SQLPullRequestCommentRepository,
@@ -127,6 +130,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self.initialize()
 
         self._users = SQLUserRepository(table=users_table, engine=self._engine, in_db_cls=UserInDB)
+        self._pats = SQLPersonalAccessTokenRepository(
+            table=personal_access_tokens_table, engine=self._engine, in_db_cls=PersonalAccessToken
+        )
         self._access_logs = SQLAccessLogRepository(table=access_log_table, engine=self._engine)
         self._subscriptions = SQLSubscriptionRepository(
             table=subscriptions_table, engine=self._engine, in_db_cls=SubscriptionInDB

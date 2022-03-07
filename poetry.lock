@@ -1957,6 +1957,14 @@ doc = ["mkdocs (>=1.1.2,<2.0.0)", "mkdocs-material (>=5.4.0,<6.0.0)", "markdown-
 test = ["shellingham (>=1.3.0,<2.0.0)", "pytest (>=4.4.0,<5.4.0)", "pytest-cov (>=2.10.0,<3.0.0)", "coverage (>=5.2,<6.0)", "pytest-xdist (>=1.32.0,<2.0.0)", "pytest-sugar (>=0.9.4,<0.10.0)", "mypy (==0.910)", "black (>=19.10b0,<20.0b0)", "isort (>=5.0.6,<6.0.0)"]
 
 [[package]]
+name = "types-itsdangerous"
+version = "1.1.6"
+description = "Typing stubs for itsdangerous"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "types-jinja2"
 version = "2.11.9"
 description = "Typing stubs for Jinja2"
@@ -2125,7 +2133,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "fa9c17fb81d352982fbdd173c076de99519e8e555823330437043644a8c21559"
+content-hash = "0ef033dc4699da732e107c099c80a5a8c7a9e132c7b4040931a678849ca1deb3"
 
 [metadata.files]
 alembic = [
@@ -3382,6 +3390,10 @@ traitlets = [
 typer = [
     {file = "typer-0.4.0-py3-none-any.whl", hash = "sha256:d81169725140423d072df464cad1ff25ee154ef381aaf5b8225352ea187ca338"},
     {file = "typer-0.4.0.tar.gz", hash = "sha256:63c3aeab0549750ffe40da79a1b524f60e08a2cbc3126c520ebf2eeaf507f5dd"},
+]
+types-itsdangerous = [
+    {file = "types-itsdangerous-1.1.6.tar.gz", hash = "sha256:21c6966c10e353a5d35d36c82aaa2c5598d3bc32ddc8e0591276da5ad2e3c638"},
+    {file = "types_itsdangerous-1.1.6-py3-none-any.whl", hash = "sha256:aef2535c2fa0527dcce244ece0792b20ec02ee46533800735275f82a45a0244d"},
 ]
 types-jinja2 = [
     {file = "types-Jinja2-2.11.9.tar.gz", hash = "sha256:dbdc74a40aba7aed520b7e4d89e8f0fe4286518494208b35123bcf084d4b8c81"},
