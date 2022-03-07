@@ -404,25 +404,33 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         all_work_items_per_its_project = wit_by_teams_response.json().get("workItems", [])
 
         if all_work_items_per_its_project:
-            list_of_work_items_ids = []
+            full_list_of_work_items_ids = []
             for single_work_item in all_work_items_per_its_project:
-                list_of_work_items_ids.append(single_work_item["id"])
+                full_list_of_work_items_ids.append(single_work_item["id"])
 
-            body_query_work_items_details_batch = {"ids": list_of_work_items_ids}
+            max_number_work_items_per_batch_request = 200
+            ret = []
+            for work_item_ids in range(0, len(full_list_of_work_items_ids), max_number_work_items_per_batch_request):
 
-            get_work_items_details_batch_url = (
-                f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemsbatch?api-version=6.0"
-            )
+                sliced_list_of_work_items_ids = full_list_of_work_items_ids[
+                    work_item_ids : work_item_ids + max_number_work_items_per_batch_request
+                ]
 
-            wit_by_details_batch_response = client.post(
-                get_work_items_details_batch_url, json=body_query_work_items_details_batch
-            )
-            if wit_by_details_batch_response.status_code != 200:
-                log_api_error(wit_by_details_batch_response)
-                return []
+                body_query_work_items_details_batch = {"ids": sliced_list_of_work_items_ids}
 
-            wit_by_details_batch_response_json = wit_by_details_batch_response.json()["value"]
-            return wit_by_details_batch_response_json
+                get_work_items_details_batch_url = (
+                    f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemsbatch?api-version=6.0"
+                )
+
+                wit_by_details_batch_response = client.post(
+                    get_work_items_details_batch_url, json=body_query_work_items_details_batch
+                )
+                if wit_by_details_batch_response.status_code != 200:
+                    log_api_error(wit_by_details_batch_response)
+                    return []
+
+                ret.extend(wit_by_details_batch_response.json()["value"])
+            return ret
         return []
 
     def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
