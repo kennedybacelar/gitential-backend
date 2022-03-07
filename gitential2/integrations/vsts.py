@@ -443,7 +443,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         single_work_item_details_response_json = single_work_item_details_response.json()
         return single_work_item_details_response_json
 
-    def _get_issue_comments(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> List[ITSIssueComment]:
+    def _get_issue_comments(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
+    ) -> List[ITSIssueComment]:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
         organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
@@ -459,7 +461,11 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         ret = []
         list_issue_comments_response = issue_comments_response.json().get("comments", [])
         for single_comment in list_issue_comments_response:
-            ret.append(_transform_to_its_ITSIssueComment(comment_dict=single_comment, its_project=its_project))
+            ret.append(
+                _transform_to_its_ITSIssueComment(
+                    comment_dict=single_comment, its_project=its_project, developer_map_callback=developer_map_callback
+                )
+            )
         return ret
 
     def list_recently_updated_issues(
@@ -478,7 +484,12 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
 
         for single_issue in wit_by_details_batch_response_json:
-            ret.append(_transform_to_its_issues_header(single_issue))
+            ret.append(
+                _transform_to_its_issues_header(
+                    issue_dict=single_issue,
+                    its_project=its_project,
+                )
+            )
         return ret
 
     def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
@@ -489,7 +500,12 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         ret = []
 
         for single_issue in wit_by_details_batch_response_json:
-            ret.append(_transform_to_its_issues_header(single_issue))
+            ret.append(
+                _transform_to_its_issues_header(
+                    issue_dict=single_issue,
+                    its_project=its_project,
+                )
+            )
         return ret
 
     def get_all_data_for_issue(
@@ -502,10 +518,15 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
 
         issue: ITSIssue = _transform_to_its_issue(
-            issue_dict=single_work_item_details_response_json, its_project=its_project
+            issue_dict=single_work_item_details_response_json,
+            its_project=its_project,
+            developer_map_callback=developer_map_callback,
         )
         comments: List[ITSIssueComment] = self._get_issue_comments(
-            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+            token=token,
+            its_project=its_project,
+            issue_id_or_key=issue_id_or_key,
+            developer_map_callback=developer_map_callback,
         )
         # changes= To be implemented
         # times_in_statuses= To be implemented
@@ -519,9 +540,13 @@ def _get_organization_and_project_from_its_project(its_project_namespace: str) -
     raise ValueError(f"Don't know how to parse vsts {its_project_namespace} namespace")
 
 
-def _transform_to_its_issues_header(issue_dict: dict) -> ITSIssueHeader:
+def get_db_issue_id(issue_dict: dict, its_project: ITSProjectInDB) -> str:
+    return f"{its_project['id']}-{issue_dict['id']}"  # type: ignore[index]
+
+
+def _transform_to_its_issues_header(issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssueHeader:
     return ITSIssueHeader(
-        id=issue_dict["id"],
+        id=get_db_issue_id(issue_dict, its_project),
         itsp_id=issue_dict["id"],
         api_url=issue_dict["url"],
         api_id=issue_dict["id"],
@@ -535,7 +560,9 @@ def _transform_to_its_issues_header(issue_dict: dict) -> ITSIssueHeader:
     )
 
 
-def _transform_to_its_ITSIssueComment(comment_dict: dict, its_project: ITSProjectInDB) -> ITSIssueComment:
+def _transform_to_its_ITSIssueComment(
+    comment_dict: dict, its_project: ITSProjectInDB, developer_map_callback: Callable
+) -> ITSIssueComment:
     return ITSIssueComment(
         id=comment_dict["id"],
         issue_id=comment_dict["workItemId"],
@@ -543,7 +570,7 @@ def _transform_to_its_ITSIssueComment(comment_dict: dict, its_project: ITSProjec
         author_api_id=comment_dict["createdBy"].get("id"),
         author_email=comment_dict["createdBy"].get("uniqueName"),
         author_name=comment_dict["createdBy"].get("displayName"),
-        author_dev_id=None,
+        author_dev_id=developer_map_callback(to_author_alias(comment_dict["createdBy"])),
         comment=comment_dict.get("text"),
         created_at=parse_datetime(comment_dict["createdDate"]) if comment_dict.get("createdDate") else None,
         updated_at=parse_datetime(comment_dict["modifiedDate"]) if comment_dict.get("modifiedDate") else None,
@@ -575,15 +602,22 @@ def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
         "To Do": "new",
         "Doing": "in_progress",
         "Done": "done",
+        "In Progess": "in_progress",
+        "New": "new",
+        "Approved": "in_progress",
+        "Committed": "in_progress",
+        "Removed": "done",
     }
     if status_category_api in assignment_state_category_api_to_its:
         return ITSIssueStatusCategory(assignment_state_category_api_to_its[status_category_api])
     return ITSIssueStatusCategory("unknown")
 
 
-def _transform_to_its_issue(issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssue:
+def _transform_to_its_issue(
+    issue_dict: dict, its_project: ITSProjectInDB, developer_map_callback: Callable
+) -> ITSIssue:
     return ITSIssue(
-        id=issue_dict["id"],
+        id=get_db_issue_id(issue_dict, its_project),
         itsp_id=its_project["id"],  # type: ignore[index]
         api_url=issue_dict["url"],
         api_id=issue_dict["id"],
@@ -609,7 +643,9 @@ def _transform_to_its_issue(issue_dict: dict, its_project: ITSProjectInDB) -> IT
         creator_name=issue_dict["fields"]["System.CreatedBy"].get("displayName")
         if issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedBy")
         else None,
-        creator_dev_id=None,
+        creator_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
+        if issue_dict["fields"].get("System.CreatedBy")
+        else None,
         reporter_api_id=None,
         reporter_email=None,
         reporter_name=None,
