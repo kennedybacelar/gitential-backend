@@ -555,13 +555,13 @@ def get_db_issue_id(issue_dict: dict, its_project: ITSProjectInDB) -> str:
 def _transform_to_its_issues_header(issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssueHeader:
     return ITSIssueHeader(
         id=get_db_issue_id(issue_dict, its_project),
-        itsp_id=issue_dict["id"],
+        itsp_id=its_project["id"],  # type: ignore[index]
         api_url=issue_dict["url"],
         api_id=issue_dict["id"],
         key=issue_dict["id"],
         status_name=issue_dict["fields"].get("System.State"),
         status_id=None,
-        status_category=issue_dict["fields"].get("System.WorkItemType"),
+        status_category=_parse_status_category(issue_dict["fields"].get("System.WorkItemType")),
         summary=issue_dict["fields"].get("System.Title"),
         created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
         updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
@@ -647,19 +647,17 @@ def _transform_to_its_issue(
         summary=issue_dict["fields"].get("System.Title", ""),
         description=issue_dict["fields"].get("System.Description", ""),
         creator_api_id=None,
-        creator_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName")
-        if issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedBy")
-        else None,
-        creator_name=issue_dict["fields"]["System.CreatedBy"].get("displayName")
-        if issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedBy")
-        else None,
+        creator_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
+        creator_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
         creator_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
         if issue_dict["fields"].get("System.CreatedBy")
         else None,
         reporter_api_id=None,
-        reporter_email=None,
-        reporter_name=None,
-        reporter_dev_id=None,
+        reporter_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
+        reporter_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
+        reporter_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
+        if issue_dict["fields"].get("System.CreatedBy")
+        else None,
         assignee_api_id=issue_dict["fields"]["System.AssignedTo"].get("id")
         if issue_dict["fields"].get("System.AssignedTo")
         else None,
