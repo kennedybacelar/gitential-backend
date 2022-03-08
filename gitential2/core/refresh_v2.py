@@ -21,6 +21,7 @@ from .tasks import schedule_task
 from .credentials import acquire_credential, get_fresh_credential, get_update_token_callback
 from .repositories import list_project_repositories
 from .refresh_statuses import get_repo_refresh_status, update_repo_refresh_status
+from .its import refresh_its_project as refresh_its_project_
 
 logger = get_logger(__name__)
 
@@ -129,30 +130,52 @@ def refresh_project(
     refresh_type: RefreshType = RefreshType.everything,
     force: bool = False,
 ):
-    for repo_id in g.backend.project_repositories.get_repo_ids_for_project(workspace_id, project_id):
-        commits_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.commits_only]
-        prs_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.prs_only]
-        update_repo_refresh_status(
-            g,
-            workspace_id,
-            repo_id,
-            commits_refresh_scheduled=commits_refresh_scheduled,
-            prs_refresh_scheduled=prs_refresh_scheduled,
-        )
-        if strategy == RefreshStrategy.parallel:
-            schedule_task(
+    if refresh_type in [
+        RefreshType.everything,
+        RefreshType.prs_only,
+        RefreshType.commits_only,
+        RefreshType.commit_calculations_only,
+    ]:
+        for repo_id in g.backend.project_repositories.get_repo_ids_for_project(workspace_id, project_id):
+            commits_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.commits_only]
+            prs_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.prs_only]
+            update_repo_refresh_status(
                 g,
-                task_name="refresh_repository",
-                params={
-                    "workspace_id": workspace_id,
-                    "repository_id": repo_id,
-                    "strategy": strategy,
-                    "refresh_type": refresh_type,
-                    "force": force,
-                },
+                workspace_id,
+                repo_id,
+                commits_refresh_scheduled=commits_refresh_scheduled,
+                prs_refresh_scheduled=prs_refresh_scheduled,
             )
-        else:
-            refresh_repository(g, workspace_id, repo_id, strategy, refresh_type, force=force)
+            if strategy == RefreshStrategy.parallel:
+                schedule_task(
+                    g,
+                    task_name="refresh_repository",
+                    params={
+                        "workspace_id": workspace_id,
+                        "repository_id": repo_id,
+                        "strategy": strategy,
+                        "refresh_type": refresh_type,
+                        "force": force,
+                    },
+                )
+            else:
+                refresh_repository(g, workspace_id, repo_id, strategy, refresh_type, force=force)
+    if refresh_type in [RefreshType.everything, RefreshType.its_only]:
+        for itsp_id in g.backend.project_its_projects.get_itsp_ids_for_project(workspace_id, project_id):
+            if strategy == RefreshStrategy.parallel:
+                schedule_task(
+                    g,
+                    task_name="refresh_its_project",
+                    params={
+                        "workspace_id": workspace_id,
+                        "itsp_id": itsp_id,
+                        "strategy": strategy,
+                        "refresh_type": refresh_type,
+                        "force": force,
+                    },
+                )
+            else:
+                refresh_its_project(g, workspace_id, itsp_id, strategy, refresh_type, force=force)
 
 
 def refresh_repository(
@@ -484,6 +507,18 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
             prs_error_msg=traceback.format_exc(limit=1),
             prs_last_run=g.current_time(),
         )
+
+
+def refresh_its_project(
+    g: GitentialContext,
+    workspace_id: int,
+    itsp_id: int,
+    strategy: RefreshStrategy = RefreshStrategy.parallel,
+    refresh_type: RefreshType = RefreshType.everything,
+    force: bool = False,
+):
+
+    refresh_its_project_(g, workspace_id, itsp_id, strategy=strategy, refresh_type=refresh_type, force=force)
 
 
 def extract_project_branches(

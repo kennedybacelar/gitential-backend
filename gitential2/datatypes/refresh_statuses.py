@@ -1,6 +1,7 @@
 from enum import Enum
 from datetime import datetime
 from typing import Dict, Optional, List, Tuple, Union
+from xmlrpc.client import Boolean
 from .common import CoreModel
 
 
@@ -140,6 +141,27 @@ class RepositoryRefreshStatus(CoreModel):
             return "pending"
         else:
             return self.commits_phase.value
+
+
+class ITSProjectRefreshPhase(str, Enum):
+    scheduled = "scheduled"
+    running = "running"
+    done = "done"
+    unknown = "unknown"
+
+
+class ITSProjectRefreshStatus(CoreModel):
+    workspace_id: int
+    id: int
+    name: str
+    scheduled_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    phase: ITSProjectRefreshPhase = ITSProjectRefreshPhase.unknown
+    count_recently_updated_items: int = 0
+    count_processed_items: int = 0
+    is_error: Boolean = False
+    error_msg: Optional[str] = None
 
 
 class ProjectRefreshStatus(CoreModel):

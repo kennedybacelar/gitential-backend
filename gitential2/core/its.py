@@ -1,9 +1,13 @@
 from typing import List, Union, Optional
+import traceback
 from functools import partial
 from datetime import datetime, timezone
 from structlog import get_logger
+from structlog.threadlocal import tmp_bind
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.its import ITSIssueAllData, ITSIssueHeader
+from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
+from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase
 from gitential2.settings import IntegrationType
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
@@ -88,42 +92,101 @@ def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id
     return ret
 
 
+SKIP_REFRESH_MSG = "Skipping ITS Project refresh"
+
+
 def refresh_its_project(
-    g: GitentialContext, workspace_id: int, itsp_id: int, date_from: Optional[datetime] = None, force: bool = False
+    g: GitentialContext,
+    workspace_id: int,
+    itsp_id: int,
+    strategy: RefreshStrategy = RefreshStrategy.parallel,
+    refresh_type: RefreshType = RefreshType.everything,
+    date_from: Optional[datetime] = None,
+    force: bool = False,
 ):
     itsp = g.backend.its_projects.get_or_error(workspace_id=workspace_id, id_=itsp_id)
     integration = g.integrations.get(itsp.integration_name)
-    if not hasattr(integration, "list_recently_updated_issues"):
-        logger.warning(
-            "Skipping ITS Project refresh: list_recently_updated_issues not implemented",
-            workspace_id=workspace_id,
-            itsp_id=itsp.id,
-            integration=itsp.integration_name,
-        )
-        return
-    if not integration:
-        logger.warning(
-            "Skipping ITS Project refresh: integration not configured",
-            workspace_id=workspace_id,
-            itsp_id=itsp.id,
-            integration=itsp.integration_name,
-        )
-        return
 
-    token = _get_fresh_token_for_itsp(g, workspace_id, itsp)
-    if token:
-        recently_updated_issues: List[ITSIssueHeader] = integration.list_recently_updated_issues(
-            token, itsp, date_from=date_from
+    with tmp_bind(
+        logger, workspace_id=workspace_id, itsp_id=itsp_id, itsp_name=itsp.name, integration_name=itsp.integration_name
+    ) as log:
+
+        if (not integration) or (not hasattr(integration, "list_recently_updated_issues")):
+            log.warning(SKIP_REFRESH_MSG, reason="integration not configured or missing implementation")
+            return
+
+        if _is_refresh_already_running(g, workspace_id, itsp_id) and not force:
+            log.warning(SKIP_REFRESH_MSG, reason="already running")
+            return
+
+        log.info(
+            "Starting ITS project refresh",
+            strategy=strategy,
+            refresh_type=refresh_type,
         )
-        for ih in recently_updated_issues:
-            if force or _is_issue_new_or_updated(g, workspace_id, ih):
-                collect_and_save_data_for_issue(g, workspace_id, itsp=itsp, issue_id_or_key=ih.api_id)
-            else:
-                logger.info(
-                    "Issue is up-to-date", workspace_id=workspace_id, itsp_id=itsp.id, issue_id_or_key=ih.api_id
+        _update_status(g, workspace_id, itsp_id, phase=ITSProjectRefreshPhase.running)
+        try:
+            token = _get_fresh_token_for_itsp(g, workspace_id, itsp)
+            if token:
+                recently_updated_issues: List[ITSIssueHeader] = get_recently_updated_issues(
+                    g, workspace_id, itsp_id, date_from=date_from, itsp=itsp
                 )
-    else:
-        logger.info("Skipping ITS Project refresh: no fresh credential", workspace_id=workspace_id, itsp_id=itsp.id)
+                _update_status(g, workspace_id, itsp_id, count_recently_updated_items=len(recently_updated_issues))
+                count_processed_items = 0
+                for ih in recently_updated_issues:
+                    if force or _is_issue_new_or_updated(g, workspace_id, ih):
+                        collect_and_save_data_for_issue(g, workspace_id, itsp=itsp, issue_id_or_key=ih.api_id)
+                    else:
+                        log.info("Issue is up-to-date", issue_api_id=ih.api_id, issue_key=ih.key)
+                    count_processed_items += 1
+                    _update_status(g, workspace_id, itsp_id, count_processed_items=count_processed_items)
+                    # TODO: increment count in status
+            else:
+                log.info(SKIP_REFRESH_MSG, workspace_id=workspace_id, itsp_id=itsp.id, reason="no fresh credential")
+
+            _update_status(g, workspace_id, itsp_id, phase=ITSProjectRefreshPhase.done)
+        except:  # pylint: disable=bare-except
+            _update_status(
+                g,
+                workspace_id,
+                itsp_id,
+                phase=ITSProjectRefreshPhase.done,
+                is_error=True,
+                error_msg=traceback.format_exc(limit=1),
+            )
+            log.exception("Failed to refresh ITS Project")
+
+
+def _update_status(g: GitentialContext, workspace_id: int, itsp_id: int, **kwargs):
+    pass
+
+
+def get_recently_updated_issues(
+    g: GitentialContext,
+    workspace_id: int,
+    itsp_id: int,
+    date_from: Optional[datetime] = None,
+    itsp: Optional[ITSProjectInDB] = None,
+) -> List[ITSIssueHeader]:
+    itsp = itsp or g.backend.its_projects.get_or_error(workspace_id=workspace_id, id_=itsp_id)
+    integration = g.integrations.get(itsp.integration_name)
+
+    with tmp_bind(
+        logger, workspace_id=workspace_id, itsp_id=itsp_id, itsp_name=itsp.name, integration_name=itsp.integration_name
+    ) as log:
+        if (not integration) or (not hasattr(integration, "list_recently_updated_issues")):
+            log.warning(SKIP_REFRESH_MSG, reason="integration not configured or missing implementation")
+            return []
+
+        token = _get_fresh_token_for_itsp(g, workspace_id, itsp)
+        if token:
+            date_from = date_from or _get_last_refresh_run(g, workspace_id, itsp_id)
+            if not date_from:
+                return integration.list_all_issues_for_project(token, itsp)
+            return integration.list_recently_updated_issues(token, itsp, date_from=date_from)
+        else:
+            log.info(SKIP_REFRESH_MSG, workspace_id=workspace_id, itsp_id=itsp.id, reason="no fresh credential")
+            return []
 
 
 def _is_issue_new_or_updated(g: GitentialContext, workspace_id: int, issue_header: ITSIssueHeader) -> bool:
@@ -151,6 +214,14 @@ def _get_fresh_token_for_itsp(g: GitentialContext, workspace_id: int, itsp: ITSP
     return token
 
 
+def _is_refresh_already_running(g: GitentialContext, workspace_id: int, itsp_id: int) -> bool:
+    return False  # TODO
+
+
+def _get_last_refresh_run(g: GitentialContext, workspace_id: int, itsp_id) -> Optional[datetime]:
+    return None  # TODO
+
+
 def collect_and_save_data_for_issue(
     g: GitentialContext,
     workspace_id: int,
@@ -158,36 +229,39 @@ def collect_and_save_data_for_issue(
     issue_id_or_key: str,
     token: Optional[dict] = None,
 ):
+    dev_map_callback = partial(developer_map_callback, g=g, workspace_id=workspace_id)
     itsp = (
         itsp
         if isinstance(itsp, ITSProjectInDB)
         else g.backend.its_projects.get_or_error(workspace_id=workspace_id, id_=itsp)
     )
 
-    token = token or _get_fresh_token_for_itsp(g, workspace_id, itsp)
-    if not token:
-        logger.info("Skipping issue data collection: no fresh credential", workspace_id=workspace_id, itsp_id=itsp.id)
-        return
-
-    integration = g.integrations.get(itsp.integration_name)
-    if not integration:
-        logger.warning(
-            "Skipping issue data collection: integration not configured",
-            workspace_id=workspace_id,
-            itsp_id=itsp.id,
-            integration=itsp.integration_name,
-            issue_id_or_key=issue_id_or_key,
-        )
-        return
-    dev_map_callback = partial(developer_map_callback, g=g, workspace_id=workspace_id)
-    logger.info(
-        "Starting collection of issue data",
-        integration_name=itsp.integration_name,
+    with tmp_bind(
+        logger,
         workspace_id=workspace_id,
+        itsp_id=itsp.id,
+        itsp_name=itsp.name,
+        integration_name=itsp.integration_name,
         issue_id_or_key=issue_id_or_key,
-    )
-    issue_data = integration.get_all_data_for_issue(token, itsp, issue_id_or_key, dev_map_callback)
-    _save_collected_issue_data(g, workspace_id, issue_data)
+    ) as log:
+
+        token = token or _get_fresh_token_for_itsp(g, workspace_id, itsp)
+        if not token:
+            log.info("Skipping issue data collection: no fresh credential")
+            return
+
+        integration = g.integrations.get(itsp.integration_name)
+        if not integration:
+            log.warning("Skipping issue data collection: integration not configured")
+            return
+
+        log.info("Starting collection of issue data")
+        issue_data = integration.get_all_data_for_issue(token, itsp, issue_id_or_key, dev_map_callback)
+        _save_collected_issue_data(g, workspace_id, issue_data)
+        log.info(
+            "Issue data saved",
+            issue_id=issue_data.issue.id,
+        )
 
 
 def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_data: ITSIssueAllData):
@@ -199,9 +273,3 @@ def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_dat
         output.write(ExtractedKind.ITS_ISSUE_TIME_IN_STATUS, time_in_status)
     for comment in issue_data.comments:
         output.write(ExtractedKind.ITS_ISSUE_COMMENT, comment)
-
-    logger.info(
-        "Issue data saved",
-        workspace_id=workspace_id,
-        issue_id=issue_data.issue.id,
-    )

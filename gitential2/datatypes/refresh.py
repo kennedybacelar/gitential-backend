@@ -13,6 +13,7 @@ class RefreshType(str, Enum):
     commits_only = "commits_only"
     prs_only = "prs_only"
     commit_calculations_only = "commit_calculations_only"
+    its_only = "its_only"
 
 
 class RefreshWorkspaceParams(BaseModel):

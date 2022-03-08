@@ -103,6 +103,7 @@ available_core_tasks = {
     "refresh_workspace": (RefreshWorkspaceParams, CoreFunction("gitential2.core.refresh_v2", "refresh_workspace")),
     "refresh_project": (RefreshProjectParams, CoreFunction("gitential2.core.refresh_v2", "refresh_project")),
     "refresh_repository": (RefreshRepositoryParams, CoreFunction("gitential2.core.refresh_v2", "refresh_repository")),
+    "refresh_its_project": (RefreshRepositoryParams, CoreFunction("gitential2.core.refresh_v2", "refresh_its_project")),
     "extract_project_branches": (
         ExtractProjectBranchesParams,
         CoreFunction("gitential2.core.refresh_v2", "extract_project_branches"),
