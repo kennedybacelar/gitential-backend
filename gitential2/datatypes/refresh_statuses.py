@@ -1,6 +1,7 @@
 from enum import Enum
 from datetime import datetime
 from typing import Dict, Optional, List, Tuple, Union
+from xmlrpc.client import Boolean
 from .common import CoreModel
 
 
@@ -142,6 +143,39 @@ class RepositoryRefreshStatus(CoreModel):
             return self.commits_phase.value
 
 
+class ITSProjectRefreshPhase(str, Enum):
+    scheduled = "scheduled"
+    running = "running"
+    done = "done"
+    unknown = "unknown"
+
+
+class ITSProjectRefreshStatus(CoreModel):
+    workspace_id: int
+    id: int
+    name: str
+    scheduled_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    last_successful_at: Optional[datetime] = None
+    phase: ITSProjectRefreshPhase = ITSProjectRefreshPhase.unknown
+    count_recently_updated_items: int = 0
+    count_processed_items: int = 0
+    is_error: Boolean = False
+    error_msg: Optional[str] = None
+
+    def is_done(self) -> bool:
+        return self.phase == ITSProjectRefreshPhase.done
+
+    def summary(self) -> Tuple[RefreshStatus, str]:
+        if self.phase in [ITSProjectRefreshPhase.scheduled, ITSProjectRefreshPhase.running]:
+            return RefreshStatus.in_progress, ""
+        elif self.phase == ITSProjectRefreshPhase.done and self.is_error:
+            return RefreshStatus.error, self.error_msg or ""
+        else:
+            return RefreshStatus.up_to_date, ""
+
+
 class ProjectRefreshStatus(CoreModel):
     workspace_id: int
     id: int
@@ -149,6 +183,7 @@ class ProjectRefreshStatus(CoreModel):
     done: bool
     repos: List[LegacyRepositoryRefreshStatus]
     repositories: List[RepositoryRefreshStatus]
+    its_projects: List[ITSProjectRefreshStatus]
     status: RefreshStatus
     reason: Optional[Dict[str, str]]
     last_refreshed_at: Optional[datetime] = None

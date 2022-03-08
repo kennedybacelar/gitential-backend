@@ -11,6 +11,7 @@ from gitential2.logging import initialize_logging
 from gitential2.datatypes.refresh import (
     ExtractProjectBranchesParams,
     ExtractRepositoryBranchesParams,
+    RefreshITSProjectParams,
     RefreshProjectParams,
     RefreshRepositoryParams,
     RefreshWorkspaceParams,
@@ -103,6 +104,7 @@ available_core_tasks = {
     "refresh_workspace": (RefreshWorkspaceParams, CoreFunction("gitential2.core.refresh_v2", "refresh_workspace")),
     "refresh_project": (RefreshProjectParams, CoreFunction("gitential2.core.refresh_v2", "refresh_project")),
     "refresh_repository": (RefreshRepositoryParams, CoreFunction("gitential2.core.refresh_v2", "refresh_repository")),
+    "refresh_its_project": (RefreshITSProjectParams, CoreFunction("gitential2.core.its", "refresh_its_project")),
     "extract_project_branches": (
         ExtractProjectBranchesParams,
         CoreFunction("gitential2.core.refresh_v2", "extract_project_branches"),

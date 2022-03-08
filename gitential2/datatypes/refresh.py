@@ -13,6 +13,7 @@ class RefreshType(str, Enum):
     commits_only = "commits_only"
     prs_only = "prs_only"
     commit_calculations_only = "commit_calculations_only"
+    its_only = "its_only"
 
 
 class RefreshWorkspaceParams(BaseModel):
@@ -37,6 +38,14 @@ class RefreshProjectParams(BaseModel):
 class RefreshRepositoryParams(BaseModel):
     workspace_id: int
     repository_id: int
+    strategy: RefreshStrategy = RefreshStrategy.parallel
+    refresh_type: RefreshType = RefreshType.everything
+    force: bool = False
+
+
+class RefreshITSProjectParams(BaseModel):
+    workspace_id: int
+    itsp_id: int
     strategy: RefreshStrategy = RefreshStrategy.parallel
     refresh_type: RefreshType = RefreshType.everything
     force: bool = False

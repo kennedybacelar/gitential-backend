@@ -6,7 +6,7 @@ from typing import Callable, Optional
 from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
-from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase
+from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase, ITSProjectRefreshPhase
 from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
 from gitential2.datatypes.extraction import LocalGitRepository
 
@@ -21,6 +21,7 @@ from .tasks import schedule_task
 from .credentials import acquire_credential, get_fresh_credential, get_update_token_callback
 from .repositories import list_project_repositories
 from .refresh_statuses import get_repo_refresh_status, update_repo_refresh_status
+from .its import get_itsp_status, list_project_its_projects, refresh_its_project, update_itsp_status
 
 logger = get_logger(__name__)
 
@@ -58,6 +59,7 @@ def maintain_workspace(
     workspace_id: int,
 ):
     refresh_all_repositories(g, workspace_id)
+    refresh_all_its_projects(g, workspace_id)
     fix_author_names(g, workspace_id)
     fix_author_aliases(g, workspace_id)
 
@@ -121,6 +123,44 @@ def refresh_all_repositories(g: GitentialContext, workspace_id: int):
             repositories_processed.append(repository.id)
 
 
+def refresh_all_its_projects(g: GitentialContext, workspace_id: int):
+    projects = g.backend.projects.all(workspace_id)
+    its_projects = []
+    its_projects_processed = []
+    refresh_interval = timedelta(minutes=g.settings.refresh.interval_minutes)
+
+    for project in projects:
+        its_projects += list_project_its_projects(g, workspace_id, project.id)
+
+    for itsp in its_projects:
+        if itsp.id not in its_projects_processed:
+            logger.debug("Running maintanance task for its project", workspace_id=workspace_id, itsp_id=itsp.id)
+            itsp_status = get_itsp_status(g, workspace_id, itsp.id)
+            if (
+                itsp_status.started_at and g.current_time() - itsp_status.started_at > refresh_interval
+            ) or itsp_status.phase == ITSProjectRefreshPhase.unknown:
+                logger.info(
+                    "Scheduling its project refresh",
+                    workspace_id=workspace_id,
+                    repository_id=itsp.id,
+                    repository_name=itsp.name,
+                )
+                update_itsp_status(g, workspace_id, itsp.id, phase=ITSProjectRefreshPhase.scheduled)
+
+                schedule_task(
+                    g,
+                    task_name="refresh_its_project",
+                    params={
+                        "workspace_id": workspace_id,
+                        "itsp_id": itsp.id,
+                        "strategy": RefreshStrategy.parallel,
+                        "refresh_type": RefreshType.its_only,
+                        "force": False,
+                    },
+                )
+            its_projects_processed.append(itsp.id)
+
+
 def refresh_project(
     g: GitentialContext,
     workspace_id: int,
@@ -129,30 +169,55 @@ def refresh_project(
     refresh_type: RefreshType = RefreshType.everything,
     force: bool = False,
 ):
-    for repo_id in g.backend.project_repositories.get_repo_ids_for_project(workspace_id, project_id):
-        commits_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.commits_only]
-        prs_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.prs_only]
-        update_repo_refresh_status(
-            g,
-            workspace_id,
-            repo_id,
-            commits_refresh_scheduled=commits_refresh_scheduled,
-            prs_refresh_scheduled=prs_refresh_scheduled,
-        )
-        if strategy == RefreshStrategy.parallel:
-            schedule_task(
+    if refresh_type in [
+        RefreshType.everything,
+        RefreshType.prs_only,
+        RefreshType.commits_only,
+        RefreshType.commit_calculations_only,
+    ]:
+        for repo_id in g.backend.project_repositories.get_repo_ids_for_project(workspace_id, project_id):
+            commits_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.commits_only]
+            prs_refresh_scheduled = refresh_type in [RefreshType.everything, RefreshType.prs_only]
+            update_repo_refresh_status(
                 g,
-                task_name="refresh_repository",
-                params={
-                    "workspace_id": workspace_id,
-                    "repository_id": repo_id,
-                    "strategy": strategy,
-                    "refresh_type": refresh_type,
-                    "force": force,
-                },
+                workspace_id,
+                repo_id,
+                commits_refresh_scheduled=commits_refresh_scheduled,
+                prs_refresh_scheduled=prs_refresh_scheduled,
             )
-        else:
-            refresh_repository(g, workspace_id, repo_id, strategy, refresh_type, force=force)
+            if strategy == RefreshStrategy.parallel:
+                schedule_task(
+                    g,
+                    task_name="refresh_repository",
+                    params={
+                        "workspace_id": workspace_id,
+                        "repository_id": repo_id,
+                        "strategy": strategy,
+                        "refresh_type": refresh_type,
+                        "force": force,
+                    },
+                )
+            else:
+                refresh_repository(g, workspace_id, repo_id, strategy, refresh_type, force=force)
+    if refresh_type in [RefreshType.everything, RefreshType.its_only]:
+        for itsp_id in g.backend.project_its_projects.get_itsp_ids_for_project(workspace_id, project_id):
+            if strategy == RefreshStrategy.parallel:
+                itsp_status = get_itsp_status(g, workspace_id, itsp_id)
+                if itsp_status.phase not in [ITSProjectRefreshPhase.running, ITSProjectRefreshPhase.scheduled]:
+                    update_itsp_status(g, workspace_id, itsp_id, phase=ITSProjectRefreshPhase.scheduled)
+                    schedule_task(
+                        g,
+                        task_name="refresh_its_project",
+                        params={
+                            "workspace_id": workspace_id,
+                            "itsp_id": itsp_id,
+                            "strategy": strategy,
+                            "refresh_type": refresh_type,
+                            "force": force,
+                        },
+                    )
+            else:
+                refresh_its_project(g, workspace_id, itsp_id, strategy, refresh_type, force=force)
 
 
 def refresh_repository(
