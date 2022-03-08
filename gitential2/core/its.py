@@ -7,7 +7,7 @@ from structlog.threadlocal import tmp_bind
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.its import ITSIssueAllData, ITSIssueHeader
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
-from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase
+from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase, ITSProjectRefreshStatus
 from gitential2.settings import IntegrationType
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
@@ -79,9 +79,7 @@ def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[
     return results
 
 
-# pylint: disable=unused-argument
 def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id: int) -> List[ITSProjectInDB]:
-
     ret = []
     for itsp_id in g.backend.project_its_projects.get_itsp_ids_for_project(
         workspace_id=workspace_id, project_id=project_id
@@ -124,29 +122,35 @@ def refresh_its_project(
             strategy=strategy,
             refresh_type=refresh_type,
         )
-        _update_status(g, workspace_id, itsp_id, phase=ITSProjectRefreshPhase.running)
+        update_itsp_status(g, workspace_id, itsp_id, phase=ITSProjectRefreshPhase.running)
         try:
             token = _get_fresh_token_for_itsp(g, workspace_id, itsp)
             if token:
                 recently_updated_issues: List[ITSIssueHeader] = get_recently_updated_issues(
                     g, workspace_id, itsp_id, date_from=date_from, itsp=itsp
                 )
-                _update_status(g, workspace_id, itsp_id, count_recently_updated_items=len(recently_updated_issues))
                 count_processed_items = 0
+                update_itsp_status(
+                    g,
+                    workspace_id,
+                    itsp_id,
+                    count_recently_updated_items=len(recently_updated_issues),
+                    count_processed_items=count_processed_items,
+                )
                 for ih in recently_updated_issues:
                     if force or _is_issue_new_or_updated(g, workspace_id, ih):
                         collect_and_save_data_for_issue(g, workspace_id, itsp=itsp, issue_id_or_key=ih.api_id)
                     else:
                         log.info("Issue is up-to-date", issue_api_id=ih.api_id, issue_key=ih.key)
                     count_processed_items += 1
-                    _update_status(g, workspace_id, itsp_id, count_processed_items=count_processed_items)
+                    update_itsp_status(g, workspace_id, itsp_id, count_processed_items=count_processed_items)
                     # TODO: increment count in status
             else:
                 log.info(SKIP_REFRESH_MSG, workspace_id=workspace_id, itsp_id=itsp.id, reason="no fresh credential")
 
-            _update_status(g, workspace_id, itsp_id, phase=ITSProjectRefreshPhase.done)
+            update_itsp_status(g, workspace_id, itsp_id, phase=ITSProjectRefreshPhase.done)
         except:  # pylint: disable=bare-except
-            _update_status(
+            update_itsp_status(
                 g,
                 workspace_id,
                 itsp_id,
@@ -157,8 +161,65 @@ def refresh_its_project(
             log.exception("Failed to refresh ITS Project")
 
 
-def _update_status(g: GitentialContext, workspace_id: int, itsp_id: int, **kwargs):
-    pass
+def update_itsp_status(
+    g: GitentialContext, workspace_id: int, itsp_id: int, phase: Optional[ITSProjectRefreshPhase] = None, **kwargs
+):
+
+    status = get_itsp_status(g, workspace_id, itsp_id)
+    status_dict = status.dict()
+
+    if phase == ITSProjectRefreshPhase.scheduled:
+        status_dict["finished_at"] = None
+        status_dict["started_at"] = None
+        status_dict["scheduled_at"] = g.current_time()
+        status_dict["phase"] = ITSProjectRefreshPhase.scheduled
+    elif phase == ITSProjectRefreshPhase.running:
+        status_dict["finished_at"] = None
+        status_dict["started_at"] = g.current_time()
+        status_dict["phase"] = ITSProjectRefreshPhase.running
+    elif phase == ITSProjectRefreshPhase.done:
+        status_dict["finished_at"] = g.current_time()
+        status_dict["phase"] = ITSProjectRefreshPhase.done
+        if not kwargs.get("is_error", False):
+            status_dict["last_successful_at"] = status_dict["started_at"]
+            status_dict["is_error"] = False
+            status_dict["error_msg"] = None
+
+    status_dict.update(**kwargs)
+    return set_itsp_status(g, workspace_id, itsp_id, status_dict)
+
+
+def _get_itsp_status_key(workspace_id: int, itsp_id: int) -> str:
+    return f"ws-{workspace_id}:itsp-{itsp_id}"
+
+
+def get_itsp_status(g: GitentialContext, workspace_id: int, itsp_id: int) -> ITSProjectRefreshStatus:
+    key = _get_itsp_status_key(workspace_id, itsp_id)
+    status_dict = g.kvstore.get_value(key)
+    if status_dict and isinstance(status_dict, dict):
+        return ITSProjectRefreshStatus(**status_dict)
+    else:
+        itsp = g.backend.its_projects.get_or_error(workspace_id, itsp_id)
+        default_values = {
+            "scheduled_at": None,
+            "started_at": None,
+            "finished_at": None,
+            "last_successful_at": None,
+            "phase": ITSProjectRefreshPhase.unknown,
+            "count_recently_updated_items": 0,
+            "count_processed_items": 0,
+            "is_error": False,
+            "error_msg": None,
+        }
+        status_dict = {"workspace_id": workspace_id, "id": itsp.id, "name": itsp.name, **default_values}
+        g.kvstore.set_value(key, status_dict)
+        return ITSProjectRefreshStatus(**status_dict)
+
+
+def set_itsp_status(g: GitentialContext, workspace_id: int, itsp_id: int, status_dict: dict) -> ITSProjectRefreshStatus:
+    key = _get_itsp_status_key(workspace_id, itsp_id)
+    g.kvstore.set_value(key, status_dict)
+    return ITSProjectRefreshStatus(**status_dict)
 
 
 def get_recently_updated_issues(
@@ -180,9 +241,11 @@ def get_recently_updated_issues(
 
         token = _get_fresh_token_for_itsp(g, workspace_id, itsp)
         if token:
-            date_from = date_from or _get_last_refresh_run(g, workspace_id, itsp_id)
+            date_from = date_from or _get_last_successful_refresh_run(g, workspace_id, itsp_id)
             if not date_from:
+                log.info("Getting all issues in the project")
                 return integration.list_all_issues_for_project(token, itsp)
+            log.info("Getting issues changed since", date_from=date_from)
             return integration.list_recently_updated_issues(token, itsp, date_from=date_from)
         else:
             log.info(SKIP_REFRESH_MSG, workspace_id=workspace_id, itsp_id=itsp.id, reason="no fresh credential")
@@ -215,11 +278,13 @@ def _get_fresh_token_for_itsp(g: GitentialContext, workspace_id: int, itsp: ITSP
 
 
 def _is_refresh_already_running(g: GitentialContext, workspace_id: int, itsp_id: int) -> bool:
-    return False  # TODO
+    status = get_itsp_status(g, workspace_id, itsp_id)
+    return status.phase == ITSProjectRefreshPhase.running
 
 
-def _get_last_refresh_run(g: GitentialContext, workspace_id: int, itsp_id) -> Optional[datetime]:
-    return None  # TODO
+def _get_last_successful_refresh_run(g: GitentialContext, workspace_id: int, itsp_id) -> Optional[datetime]:
+    status = get_itsp_status(g, workspace_id, itsp_id)
+    return status.last_successful_at
 
 
 def collect_and_save_data_for_issue(

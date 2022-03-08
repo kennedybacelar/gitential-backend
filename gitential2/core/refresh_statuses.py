@@ -1,15 +1,26 @@
 from datetime import datetime
 from typing import cast, List, Tuple, Optional, Dict
+from gitential2.core.its import get_itsp_status
 
-from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus, RepositoryRefreshStatus, RefreshStatus
+from gitential2.datatypes.refresh_statuses import (
+    ITSProjectRefreshStatus,
+    ProjectRefreshStatus,
+    RepositoryRefreshStatus,
+    RefreshStatus,
+)
 from .repositories import list_project_repositories
 from .context import GitentialContext
 
 
 def _get_project_refresh_status_summary(
     repositories: List[RepositoryRefreshStatus],
+    its_projects: List[ITSProjectRefreshStatus],
 ) -> Tuple[RefreshStatus, Optional[Dict[str, str]]]:
-    summaries = {repository.repository_name: repository.summary() for repository in repositories}
+
+    summaries_repo = {repository.repository_name: repository.summary() for repository in repositories}
+    summaries_itsp = {itsp.name: itsp.summary() for itsp in its_projects}
+    summaries = {**summaries_repo, **summaries_itsp}
+
     ret_status: RefreshStatus = RefreshStatus.up_to_date
     reason: Optional[Dict[str, str]] = None
 
@@ -33,18 +44,21 @@ def _get_last_refreshed_at(repositories: List[RepositoryRefreshStatus]) -> Optio
 
 def get_project_refresh_status(g: GitentialContext, workspace_id: int, project_id: int) -> ProjectRefreshStatus:
     repositories = list_project_repositories(g, workspace_id, project_id=project_id)
+    its_project_ids = g.backend.project_its_projects.get_itsp_ids_for_project(workspace_id, project_id)
     project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
     repo_statuses = [get_repo_refresh_status(g, workspace_id, r.id) for r in repositories]
+    its_project_statuses = [get_itsp_status(g, workspace_id, itsp_id) for itsp_id in its_project_ids]
     legacy_repo_statuses = [repo_status.to_legacy() for repo_status in repo_statuses]
-    status, reason = _get_project_refresh_status_summary(repo_statuses)
+    status, reason = _get_project_refresh_status_summary(repo_statuses, its_project_statuses)
 
     return ProjectRefreshStatus(
         workspace_id=workspace_id,
         id=project_id,
         name=project.name,
-        done=all(rs.done for rs in legacy_repo_statuses),
+        done=all(rs.done for rs in legacy_repo_statuses) and all(itsp_st.is_done() for itsp_st in its_project_statuses),
         repos=legacy_repo_statuses,
         repositories=repo_statuses,
+        its_projects=its_project_statuses,
         status=status,
         reason=reason,
         last_refreshed_at=_get_last_refreshed_at(repo_statuses),
