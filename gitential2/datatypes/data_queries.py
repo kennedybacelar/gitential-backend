@@ -67,6 +67,10 @@ class DQFunctionName(str, Enum):
     ADD = "add"
     SUB = "sub"
 
+    # null check
+    ISNULL = "isnull"
+    NOTNULL = "notnull"
+
 
 # Column definitions
 

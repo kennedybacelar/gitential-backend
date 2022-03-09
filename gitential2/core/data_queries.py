@@ -196,6 +196,9 @@ def _parse_fn_column_expr(column_expr: DQFnColumnExpr, table: TableExpr):
         DQFunctionName.DIV: lambda pa: pa[0] / pa[1],
         DQFunctionName.ADD: lambda pa: pa[0] + pa[1],
         DQFunctionName.SUB: lambda pa: pa[0] - pa[1],
+        # null checks
+        DQFunctionName.ISNULL: lambda pa: pa[0].isnull(),
+        DQFunctionName.NOTNULL: lambda pa: pa[0].notnull(),
     }
     ret = fn_definitions[fn_name](parsed_args)
 
