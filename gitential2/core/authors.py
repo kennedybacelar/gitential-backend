@@ -28,8 +28,8 @@ def list_active_author_ids(g: GitentialContext, workspace_id: int) -> List[int]:
 def authors_change_lock(
     g: GitentialContext,
     workspace_id: int,
-    blocking_timeout_seconds=5,
-    timeout_seconds=10,
+    blocking_timeout_seconds=None,
+    timeout_seconds=30,
 ):
     with g.kvstore.lock(
         f"authors-change-lock{workspace_id}", timeout=timeout_seconds, blocking_timeout=blocking_timeout_seconds
@@ -191,7 +191,8 @@ def _build_alias_author_map(
     ret = {}
     for author in author_list:
         for alias in author.aliases or []:
-            ret[(alias.name, alias.email, alias.login)] = author
+            if not alias.is_empty():
+                ret[(alias.name, alias.email, alias.login)] = author
     return ret
 
 
@@ -209,8 +210,9 @@ def aliases_matching(first: AuthorAlias, second: AuthorAlias) -> bool:
     elif first.login and second.login and first.login == second.login:
         return True
     for first_token, second_token in product(tokenize_alias(first), tokenize_alias(second)):
-        if levenshtein_ratio(first_token, second_token) > 0.8:
-            return True
+        if first_token and second_token:
+            if levenshtein_ratio(first_token, second_token) > 0.8:
+                return True
     return False
 
 
@@ -261,7 +263,7 @@ def _remove_duplicate_aliases(aliases: List[AuthorAlias]) -> List[AuthorAlias]:
             continue
         elif any(a.name == alias.name and a.login == alias.login and a.email == alias.email for a in ret):
             continue
-        else:
+        elif not alias.is_empty():
             ret.append(alias)
     return ret
 

@@ -9,6 +9,9 @@ class AuthorAlias(CoreModel):
     email: Optional[str] = None
     login: Optional[str] = None
 
+    def is_empty(self):
+        return (not self.name) and (not self.email) and (not self.login)
+
 
 class AuthorBase(ExtraFieldMixin, CoreModel):
     active: bool

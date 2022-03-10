@@ -351,6 +351,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_exists BOOLEAN;"
             f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_open BOOLEAN;"
             f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_closed BOOLEAN;"
+            # add extra indexes to calculated_patches and calculated_commits
+            f"CREATE INDEX IF NOT EXISTS calculated_patches_date_idx ON {schema_name}.calculated_patches USING btree (date);"
+            f"CREATE INDEX IF NOT EXISTS calculated_commits_date_idx ON {schema_name}.calculated_commits USING btree (date);"
         ]
         for migration_query_ in migration_steps:
             self._engine.execute(migration_query_)

@@ -314,6 +314,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.PrimaryKeyConstraint("repo_id", "commit_id"),
         sa.Index("idx_repo_id", "repo_id"),
         sa.Index("idx_is_merge", "is_merge"),
+        sa.Index("calculated_commits_date_idx", "date"),
     )
 
     # Extracted Patches
@@ -385,6 +386,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.PrimaryKeyConstraint("repo_id", "commit_id", "parent_commit_id", "newpath"),
         sa.Index("idx_repo_id_commit_id", "repo_id", "commit_id"),
         sa.Index("idx_lang", "lang"),
+        sa.Index("calculated_patches_date_idx", "date"),
     )
 
     # Extracted Patch Rewrites
