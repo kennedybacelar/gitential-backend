@@ -11,7 +11,7 @@ class AccessApprovalBase(ExtraFieldMixin, CoreModel):
     created_at: Optional[datetime]
     user_id: int
     is_approved: bool
-    approved_by: int
+    approved_by: Optional[int] = None
 
     @validator("created_at", pre=True)
     def default_datetime(cls, value: datetime) -> datetime:

@@ -1,4 +1,5 @@
 from .repositories import (
+    AccessApprovalRepository,
     AccessLogRepository,
     AuthorRepository,
     EmailLogRepository,
@@ -41,6 +42,7 @@ from .repositories_its import (
 class WithRepositoriesMixin:
     _access_logs: AccessLogRepository
     _users: UserRepository
+    _access_approvals: AccessApprovalRepository
     _pats: PersonalAccessTokenRepository
     _user_infos: UserInfoRepository
     _workspaces: WorkspaceRepository
@@ -81,6 +83,10 @@ class WithRepositoriesMixin:
     @property
     def users(self) -> UserRepository:
         return self._users
+
+    @property
+    def access_approvals(self) -> AccessApprovalRepository:
+        return self._access_approvals
 
     @property
     def pats(self) -> PersonalAccessTokenRepository:

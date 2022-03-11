@@ -34,6 +34,7 @@ from gitential2.datatypes.pull_requests import (
     PullRequestLabelId,
 )
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
+from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
@@ -89,6 +90,10 @@ class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
     def get_by_email(self, email: str) -> Optional[UserInDB]:
         pass
+
+
+class AccessApprovalRepository(BaseRepository[int, AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB]):
+    pass
 
 
 class PersonalAccessTokenRepository(BaseRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]):

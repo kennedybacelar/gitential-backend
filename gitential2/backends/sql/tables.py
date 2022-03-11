@@ -59,10 +59,10 @@ access_log_table = sa.Table(
     sa.Index("idx_log_time_user_id", "log_time", "user_id"),
 )
 
-access_approvals = sa.Table(
+access_approvals_table = sa.Table(
     "access_approvals",
     metadata,
-    sa.Column("id", sa.String(128), primary_key=True),
+    sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("user_id", sa.Integer, nullable=False),
     sa.Column("is_approved", sa.Boolean, default=True, nullable=False),

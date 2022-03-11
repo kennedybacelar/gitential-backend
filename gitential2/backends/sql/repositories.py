@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy.sql import and_, select, desc, or_
 from sqlalchemy.dialects.postgresql import insert
+from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
 from gitential2.datatypes.pats import PersonalAccessToken
 from gitential2.datatypes.project_its_projects import (
@@ -73,6 +74,7 @@ from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, T
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.backends.base.repositories import (
+    AccessApprovalRepository,
     BaseRepository,
     BaseWorkspaceScopedRepository,
     ITSProjectRepository,
@@ -378,6 +380,12 @@ class SQLUserRepository(UserRepository, SQLRepository[int, UserCreate, UserUpdat
 
 class SQLPersonalAccessTokenRepository(
     PersonalAccessTokenRepository, SQLRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]
+):
+    pass
+
+
+class SQLAccessApprovalRepository(
+    AccessApprovalRepository, SQLRepository[int, AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB]
 ):
     pass
 

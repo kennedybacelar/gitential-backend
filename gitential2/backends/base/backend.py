@@ -8,6 +8,7 @@ from gitential2.settings import GitentialSettings
 from gitential2.datatypes.stats import IbisTables
 
 from .repositories import (
+    AccessApprovalRepository,
     AccessLogRepository,
     AuthorRepository,
     CalculatedPatchRepository,
@@ -58,6 +59,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def users(self) -> UserRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def access_approvals(self) -> AccessApprovalRepository:
         pass
 
     @property

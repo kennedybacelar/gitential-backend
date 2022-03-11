@@ -10,6 +10,7 @@ from ibis.expr.types import TableExpr
 from sqlalchemy.sql import and_, select
 
 from fastapi.encoders import jsonable_encoder
+from gitential2.datatypes.access_approvals import AccessApprovalInDB
 
 from gitential2.datatypes.extraction import (
     ExtractedCommit,
@@ -53,6 +54,7 @@ from .tables import (
     access_log_table,
     email_log_table,
     users_table,
+    access_approvals_table,
     personal_access_tokens_table,
     user_infos_table,
     credentials_table,
@@ -76,6 +78,7 @@ from .materialized_views import (
 )
 
 from .repositories import (
+    SQLAccessApprovalRepository,
     SQLAccessLogRepository,
     SQLAuthorRepository,
     SQLEmailLogRepository,
@@ -130,6 +133,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self.initialize()
 
         self._users = SQLUserRepository(table=users_table, engine=self._engine, in_db_cls=UserInDB)
+        self._access_approvals = SQLAccessApprovalRepository(
+            table=access_approvals_table, engine=self._engine, in_db_cls=AccessApprovalInDB
+        )
         self._pats = SQLPersonalAccessTokenRepository(
             table=personal_access_tokens_table, engine=self._engine, in_db_cls=PersonalAccessToken
         )
