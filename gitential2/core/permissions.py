@@ -47,3 +47,10 @@ def check_permission(
             return _return(False, raise_exc)
 
     return _return(True, raise_exc)
+
+
+# pylint: disable=unused-argument
+def check_is_admin(g: GitentialContext, current_user: UserInDB, raise_exc=True):
+    if current_user and current_user.is_active and current_user.is_admin:
+        return _return(True, raise_exc)
+    return _return(False, raise_exc)

@@ -59,6 +59,18 @@ access_log_table = sa.Table(
     sa.Index("idx_log_time_user_id", "log_time", "user_id"),
 )
 
+access_approvals = sa.Table(
+    "access_approvals",
+    metadata,
+    sa.Column("id", sa.String(128), primary_key=True),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("user_id", sa.Integer, nullable=False),
+    sa.Column("is_approved", sa.Boolean, default=True, nullable=False),
+    sa.Column("approved_by", sa.Integer, nullable=False),
+    sa.Column("extra", sa.JSON, nullable=True),
+    sa.Index("access_approvals_user_id_idx", "user_id"),
+)
+
 subscriptions_table = sa.Table(
     "subscriptions",
     metadata,

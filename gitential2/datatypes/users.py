@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import Field
 from .common import CoreModel, ExtraFieldMixin, IDModelMixin, DateTimeModelMixin
@@ -49,6 +50,15 @@ class UserInDB(IDModelMixin, DateTimeModelMixin, UserBase):
 
 class UserPublic(IDModelMixin, DateTimeModelMixin, UserBase):
     pass
+
+
+class UserInAdminRepr(IDModelMixin, DateTimeModelMixin):
+    name: Optional[str] = Field(None, max_length=128)
+    email: Optional[str] = Field(None, max_length=256)
+    is_admin: bool = False
+    is_active: bool = True
+    last_interaction_at: Optional[datetime] = None
+    access_approved: Optional[bool] = None
 
 
 class UserHeader(IDModelMixin, CoreModel):

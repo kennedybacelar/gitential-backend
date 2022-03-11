@@ -9,6 +9,7 @@ from gitential2.exceptions import AuthenticationException
 from gitential2.core.context import GitentialContext
 from gitential2.core.users import handle_authorize, register_user, get_profile_picture
 from gitential2.core.subscription import get_current_subscription
+from gitential2.core.admin import is_access_approved
 from gitential2.core.quick_login import get_quick_login_user
 
 from ..dependencies import gitential_context, OAuth, current_user, verify_recaptcha_token, api_access_log
@@ -150,6 +151,7 @@ def session(
         if user_in_db:
             # registration_ready = license_.is_on_premises or request.session.get("registration_ready", False)
             subscription = get_current_subscription(g, user_in_db.id)
+            access_approved = is_access_approved(g, user_in_db)
             return {
                 "user_id": user_in_db.id,
                 "login": user_in_db.login,
@@ -161,6 +163,7 @@ def session(
                 "registration_ready": user_in_db.registration_ready,
                 "login_ready": user_in_db.login_ready,
                 "profile_picture": get_profile_picture(g, user_in_db),
+                "access_approved": access_approved,
             }
     return {}
 

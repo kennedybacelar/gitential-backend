@@ -33,6 +33,7 @@ from .routers import (
     invitations,
     its,
     data_queries,
+    admin,
 )
 
 logger = get_logger(__name__)
@@ -88,6 +89,7 @@ def _configure_routes(app: FastAPI):
         invitations.router,
         its.router,
         data_queries.router,
+        admin.router,
     ]:
         app.include_router(router, prefix="/v2")
 
