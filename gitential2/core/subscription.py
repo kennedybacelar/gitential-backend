@@ -30,12 +30,18 @@ def is_free_user(g: GitentialContext, user_id: int):
 
 def get_current_subscription(g: GitentialContext, user_id: int) -> SubscriptionInDB:
     if g.license.is_on_premises:
+        features: dict = {}
+        if g.settings.features.enable_its_analytics:
+            features = deep_merge_dicts(features, {"jira": {"enabled": True}})
+        else:
+            features = deep_merge_dicts(features, {"jira": {"enabled": False}})
         return SubscriptionInDB(
             id=0,
             user_id=user_id,
             subscription_type=SubscriptionType.professional,
             subscription_start=datetime(1970, 1, 1),
             subscription_end=datetime(2099, 12, 31),
+            features=features,
         )
 
     current_subscription_from_db = _get_current_subscription_from_db(g, user_id)

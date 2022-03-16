@@ -172,6 +172,7 @@ class AccessApprovalSettings(BaseModel):
 class FeaturesSettings(BaseModel):
     enable_additional_materialized_views: bool = False
     enable_access_approval: bool = False
+    enable_its_analytics: bool = False
     access_approval: AccessApprovalSettings = AccessApprovalSettings()
 
 
