@@ -378,8 +378,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
 
-        organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
-        team = its_project["name"]  # type: ignore[index]
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        team = its_project.name
 
         fields = fields or [
             "System.Id, System.WorkItemType, System.Description, System.AssignedTo, System.State, System.AreaPath,System.Tags, System.CommentCount, System.ChangedDate"
@@ -436,7 +436,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
 
         single_work_item_details_url = (
             f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{issue_id_or_key}?api-version=6.0"
@@ -456,7 +456,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     ) -> List[ITSIssueComment]:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        organization, project = _get_organization_and_project_from_its_project(its_project["namespace"])  # type: ignore[index]
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
 
         issue_comments_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/comments?api-version=6.0-preview.3"
 
@@ -475,6 +475,133 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                 )
             )
         return ret
+
+    def _mapping_status_id(
+        self, token, its_project: ITSProjectInDB, work_item_type: str = None, wit_system_state: str = None
+    ) -> Optional[str]:
+
+        if not work_item_type:
+            return None
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+
+        single_work_item_details_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemtypes/{work_item_type}/states?api-version=6.0-preview.1"
+
+        status_original_id_response = client.get(single_work_item_details_url)
+
+        if status_original_id_response.status_code != 200:
+            log_api_error(status_original_id_response)
+            return None
+
+        list_of_status_original_id_response = status_original_id_response.json().get("value")
+        if list_of_status_original_id_response:
+            for single_status in list_of_status_original_id_response:
+                if wit_system_state == single_status["name"]:
+                    return single_status["category"]
+
+    def _work_item_type_id(self, token, its_project: ITSProjectInDB, work_item_type: str = None) -> Optional[str]:
+
+        if not work_item_type:
+            return None
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        single_work_item_type_url = (
+            f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemtypes/{work_item_type}?api-version=6.0"
+        )
+
+        single_work_item_type_response = client.get(single_work_item_type_url)
+
+        if single_work_item_type_response.status_code != 200:
+            log_api_error(single_work_item_type_response)
+            return None
+
+        resp = single_work_item_type_response.json().get("referenceName")
+        return resp
+
+    def _transform_to_its_issue(
+        self,
+        token,
+        issue_dict: dict,
+        its_project: ITSProjectInDB,
+        developer_map_callback: Callable,
+        comment: Optional[ITSIssueComment],
+    ) -> ITSIssue:
+
+        status_category_api_mapped = self._mapping_status_id(
+            token=token,
+            its_project=its_project,
+            work_item_type=issue_dict["fields"].get("System.WorkItemType"),
+            wit_system_state=issue_dict["fields"].get("System.State"),
+        )
+
+        return ITSIssue(
+            id=get_db_issue_id(issue_dict, its_project),
+            itsp_id=its_project.id,
+            api_url=issue_dict["url"],
+            api_id=issue_dict["id"],
+            key=issue_dict["id"],
+            status_name=issue_dict["fields"].get("System.State"),
+            status_id=status_category_api_mapped,
+            status_category_api=status_category_api_mapped,
+            status_category=_parse_status_category(status_category_api_mapped),
+            issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
+            issue_type_id=self._work_item_type_id(
+                token=token, its_project=its_project, work_item_type=issue_dict["fields"].get("System.WorkItemType")
+            ),
+            resolution_name=issue_dict["fields"]["System.Reason"]
+            if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
+            else None,
+            resolution_id=None,
+            resolution_date=issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate"),
+            priority_name=issue_dict["fields"].get("Microsoft.VSTS.Common.Priority"),
+            priority_id=None,
+            priority_order=None,
+            summary=issue_dict["fields"].get("System.Title", ""),
+            description=issue_dict["fields"].get("System.Description", ""),
+            creator_api_id=None,
+            creator_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
+            creator_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
+            creator_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
+            if issue_dict["fields"].get("System.CreatedBy")
+            else None,
+            reporter_api_id=None,
+            reporter_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
+            reporter_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
+            reporter_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
+            if issue_dict["fields"].get("System.CreatedBy")
+            else None,
+            assignee_api_id=issue_dict["fields"]["System.AssignedTo"].get("id")
+            if issue_dict["fields"].get("System.AssignedTo")
+            else None,
+            assignee_email=issue_dict["fields"]["System.AssignedTo"].get("uniqueName")
+            if issue_dict["fields"].get("System.AssignedTo")
+            else None,
+            assignee_name=issue_dict["fields"]["System.AssignedTo"].get("displayName")
+            if issue_dict["fields"].get("System.AssignedTo")
+            else None,
+            assignee_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.AssignedTo")))
+            if issue_dict["fields"].get("System.AssignedTo")
+            else None,
+            labels=_parse_labels(issue_dict["fields"].get("System.Tags")),
+            is_started=bool(issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedDate")),
+            started_at=parse_datetime(issue_dict["fields"]["Microsoft.VSTS.Common.ActivatedDate"])
+            if issue_dict["fields"].get("ActivatedDate")
+            else None,
+            is_closed=bool(issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")),
+            closed_at=parse_datetime(issue_dict["fields"]["Microsoft.VSTS.Common.ClosedDate"])
+            if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
+            else None,
+            comment_count=issue_dict["fields"].get("System.CommentCount"),
+            last_comment_at=parse_datetime(comment.created_at),
+            change_count=issue_dict.get("rev"),
+            last_change_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
+            story_points=None,
+            created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
+            updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
+        )
 
     def list_recently_updated_issues(
         self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
@@ -525,16 +652,19 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
         )
 
-        issue: ITSIssue = _transform_to_its_issue(
-            issue_dict=single_work_item_details_response_json,
-            its_project=its_project,
-            developer_map_callback=developer_map_callback,
-        )
         comments: List[ITSIssueComment] = self._get_issue_comments(
             token=token,
             its_project=its_project,
             issue_id_or_key=issue_id_or_key,
             developer_map_callback=developer_map_callback,
+        )
+
+        issue: ITSIssue = self._transform_to_its_issue(
+            token=token,
+            issue_dict=single_work_item_details_response_json,
+            its_project=its_project,
+            developer_map_callback=developer_map_callback,
+            comment=comments[0] if comments else None,
         )
         # changes= To be implemented
         # times_in_statuses= To be implemented
@@ -549,13 +679,13 @@ def _get_organization_and_project_from_its_project(its_project_namespace: str) -
 
 
 def get_db_issue_id(issue_dict: dict, its_project: ITSProjectInDB) -> str:
-    return f"{its_project['id']}-{issue_dict['id']}"  # type: ignore[index]
+    return f"{its_project.id}-{issue_dict['id']}"
 
 
 def _transform_to_its_issues_header(issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssueHeader:
     return ITSIssueHeader(
         id=get_db_issue_id(issue_dict, its_project),
-        itsp_id=its_project["id"],  # type: ignore[index]
+        itsp_id=its_project.id,
         api_url=issue_dict["url"],
         api_id=issue_dict["id"],
         key=issue_dict["id"],
@@ -574,7 +704,7 @@ def _transform_to_its_ITSIssueComment(
     return ITSIssueComment(
         id=comment_dict["id"],
         issue_id=comment_dict["workItemId"],
-        itsp_id=its_project["id"],  # type: ignore[index]
+        itsp_id=its_project.id,
         author_api_id=comment_dict["createdBy"].get("id"),
         author_email=comment_dict["createdBy"].get("uniqueName"),
         author_name=comment_dict["createdBy"].get("displayName"),
@@ -607,86 +737,15 @@ def _parse_labels(labels: str) -> List[str]:
 
 def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
     assignment_state_category_api_to_its = {
-        "To Do": "new",
-        "Doing": "in_progress",
-        "Done": "done",
-        "In Progess": "in_progress",
-        "New": "new",
-        "Approved": "in_progress",
-        "Committed": "in_progress",
+        "Proposed": "new",
+        "InProgress": "in_progress",
+        "Resolved": "done",
+        "Completed": "done",
         "Removed": "done",
     }
     if status_category_api in assignment_state_category_api_to_its:
         return ITSIssueStatusCategory(assignment_state_category_api_to_its[status_category_api])
     return ITSIssueStatusCategory("unknown")
-
-
-def _transform_to_its_issue(
-    issue_dict: dict, its_project: ITSProjectInDB, developer_map_callback: Callable
-) -> ITSIssue:
-    return ITSIssue(
-        id=get_db_issue_id(issue_dict, its_project),
-        itsp_id=its_project["id"],  # type: ignore[index]
-        api_url=issue_dict["url"],
-        api_id=issue_dict["id"],
-        key=issue_dict["id"],
-        status_name=issue_dict["fields"].get("System.State"),
-        status_id=None,
-        status_category_api=issue_dict["fields"].get("System.WorkItemType"),
-        status_category=_parse_status_category(issue_dict["fields"].get("System.State")),
-        issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
-        issue_type_id=None,
-        resolution_name=issue_dict["fields"]["System.Reason"]
-        if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
-        else None,
-        resolution_id=None,
-        resolution_date=issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate"),
-        priority_name=issue_dict["fields"].get("Microsoft.VSTS.Common.Priority"),
-        priority_id=None,
-        priority_order=None,
-        summary=issue_dict["fields"].get("System.Title", ""),
-        description=issue_dict["fields"].get("System.Description", ""),
-        creator_api_id=None,
-        creator_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
-        creator_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
-        creator_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
-        if issue_dict["fields"].get("System.CreatedBy")
-        else None,
-        reporter_api_id=None,
-        reporter_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
-        reporter_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
-        reporter_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
-        if issue_dict["fields"].get("System.CreatedBy")
-        else None,
-        assignee_api_id=issue_dict["fields"]["System.AssignedTo"].get("id")
-        if issue_dict["fields"].get("System.AssignedTo")
-        else None,
-        assignee_email=issue_dict["fields"]["System.AssignedTo"].get("uniqueName")
-        if issue_dict["fields"].get("System.AssignedTo")
-        else None,
-        assignee_name=issue_dict["fields"]["System.AssignedTo"].get("displayName")
-        if issue_dict["fields"].get("System.AssignedTo")
-        else None,
-        assignee_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.AssignedTo")))
-        if issue_dict["fields"].get("System.AssignedTo")
-        else None,
-        labels=_parse_labels(issue_dict["fields"].get("System.Tags")),
-        is_started=bool(issue_dict["fields"].get("Microsoft.VSTS.Common.ActivatedDate")),
-        started_at=parse_datetime(issue_dict["fields"]["Microsoft.VSTS.Common.ActivatedDate"])
-        if issue_dict["fields"].get("ActivatedDate")
-        else None,
-        is_closed=bool(issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")),
-        closed_at=parse_datetime(issue_dict["fields"]["Microsoft.VSTS.Common.ClosedDate"])
-        if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
-        else None,
-        comment_count=issue_dict["fields"].get("System.CommentCount"),
-        last_comment_at=None,
-        change_count=issue_dict.get("rev"),
-        last_change_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
-        story_points=None,
-        created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
-        updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
-    )
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:

@@ -7,6 +7,7 @@ import typer
 
 from gitential2.datatypes.credentials import CredentialInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
+from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.core.context import GitentialContext
 from gitential2.core.credentials import get_update_token_callback, get_fresh_credential
 from gitential2.core.authors import developer_map_callback
@@ -60,7 +61,7 @@ def list_wit_projects(
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -83,7 +84,7 @@ def list_recent_wit_projects(
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -108,7 +109,7 @@ def list_all_data_for_issue(
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -137,7 +138,7 @@ def list_raw_data_for_issues_per_project(
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -163,7 +164,7 @@ def list_all_data_single_issue(
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = {"namespace": namespace, "name": team, "id": 10}
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
