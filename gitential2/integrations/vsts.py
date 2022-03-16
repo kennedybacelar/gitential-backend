@@ -239,14 +239,23 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
     def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
         new_token = self.refresh_token(token)
-        update_token(new_token)
-        return True, new_token
+        if new_token:
+            update_token(new_token)
+            return True, new_token
+        else:
+            return False, {}
 
     def refresh_token(self, token):
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        token = client.refresh_token(self.oauth_register()["access_token_url"], refresh_token=token["refresh_token"])
+        refresh_response = client.refresh_token(
+            self.oauth_register()["access_token_url"], refresh_token=token["refresh_token"]
+        )
+
         client.close()
-        return {f: token[f] for f in ["access_token", "refresh_token", "expires_at"]}
+        if "access_token" in refresh_response:
+            return {f: refresh_response[f] for f in ["access_token", "refresh_token", "expires_at"]}
+        else:
+            return None
 
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str]

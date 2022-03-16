@@ -1,5 +1,8 @@
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from structlog import get_logger
+from gitential2.datatypes.credentials import CredentialInDB
 from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.userinfos import UserInfoInDB
@@ -29,45 +32,61 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
     all_already_used_repositories = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
 
     results: List[RepositoryCreate] = all_already_used_repositories
-    for credential_ in list_credentials_for_workspace(g, workspace_id):
-        if credential_.integration_type in REPOSITORY_SOURCES and credential_.integration_name in g.integrations:
-            try:
-                credential = get_fresh_credential(g, credential_id=credential_.id)
-                if credential:
-                    # with acquire_credential(g, credential_id=credential_.id) as credential:
-                    integration = g.integrations[credential.integration_name]
-                    token = credential.to_token_dict(fernet=g.fernet)
-                    userinfo: UserInfoInDB = (
-                        find_first(
-                            lambda ui: ui.integration_name
-                            == credential.integration_name,  # pylint: disable=cell-var-from-loop
-                            g.backend.user_infos.get_for_user(credential.owner_id),
-                        )
-                        if credential.owner_id
-                        else None
-                    )
-                    collected_repositories = integration.list_available_private_repositories(
-                        token=token,
-                        update_token=get_update_token_callback(g, credential),
-                        provider_user_id=userinfo.sub if userinfo else None,
-                    )
-                    results = _merge_repo_lists(collected_repositories, results)
-                else:
-                    logger.error(
-                        "Cannot get fresh credential",
-                        credential_id=credential_.id,
-                        owner_id=credential_.owner_id,
-                        integration_name=credential_.integration_name,
-                    )
-            except Exception:  # pylint: disable=broad-except
-                logger.exception(
-                    "Error during collecting repositories",
-                    integration_name=credential_.integration_name,
-                    credential_id=credential_.id,
-                    workspace_id=workspace_id,
-                )
+
+    available_repos_for_credential = partial(list_available_repositories_for_credential, g, workspace_id)
+    with ThreadPoolExecutor() as executor:
+        collected_results = executor.map(
+            available_repos_for_credential, list_credentials_for_workspace(g, workspace_id)
+        )
+
+    for collected_repositories in collected_results:
+        results = _merge_repo_lists(collected_repositories, results)
 
     results = _merge_repo_lists(list_ssh_repositories(g, workspace_id), results)
+    return results
+
+
+def list_available_repositories_for_credential(
+    g: GitentialContext, workspace_id: int, credential: CredentialInDB
+) -> List[RepositoryCreate]:
+    results = []
+
+    if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
+        try:
+            credential_ = get_fresh_credential(g, credential_id=credential.id)
+            if credential_:
+                # with acquire_credential(g, credential_id=credential_.id) as credential:
+                integration = g.integrations[credential_.integration_name]
+                token = credential_.to_token_dict(fernet=g.fernet)
+                userinfo: UserInfoInDB = (
+                    find_first(
+                        lambda ui: ui.integration_name
+                        == credential.integration_name,  # pylint: disable=cell-var-from-loop
+                        g.backend.user_infos.get_for_user(credential.owner_id),
+                    )
+                    if credential.owner_id
+                    else None
+                )
+                collected_repositories = integration.list_available_private_repositories(
+                    token=token,
+                    update_token=get_update_token_callback(g, credential),
+                    provider_user_id=userinfo.sub if userinfo else None,
+                )
+                results = collected_repositories
+            else:
+                logger.error(
+                    "Cannot get fresh credential",
+                    credential_id=credential.id,
+                    owner_id=credential.owner_id,
+                    integration_name=credential.integration_name,
+                )
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                "Error during collecting repositories",
+                integration_name=credential.integration_name,
+                credential_id=credential.id,
+                workspace_id=workspace_id,
+            )
     return results
 
 

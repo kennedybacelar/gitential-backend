@@ -129,16 +129,25 @@ def _refresh_token_credential_if_its_going_to_expire(
                     "Trying to refresh token", credential_id=credential.id, integration_name=credential.integration_name
                 )
                 updated_token = integration.refresh_token(token)
-                logger.debug("Updating credential with the new token")
-                credential.update_token(updated_token, g.fernet)
-                callback = get_update_token_callback(g, credential)
-                callback(updated_token)
+                if updated_token:
+                    logger.debug("Updating credential with the new token")
+                    credential.update_token(updated_token, g.fernet)
+                    callback = get_update_token_callback(g, credential)
+                    callback(updated_token)
+                else:
+                    logger.warning(
+                        "Failed to refresh expired token",
+                        credential_id=credential.id,
+                        integration_name=credential.integration_name,
+                    )
+                    return None
     else:
         logger.info(
             "Skipping token refresh, unknown integration",
             credential_id=credential.id,
             integration_name=credential.integration_name,
         )
+        return None
     return credential
 
 
@@ -176,9 +185,23 @@ def list_credentials_for_user(g: GitentialContext, user_id: int) -> List[Credent
     return g.backend.credentials.get_for_user(user_id)
 
 
+def list_valid_credentials_for_user(g: GitentialContext, user_id: int) -> List[CredentialInDB]:
+    results = []
+    for credential in g.backend.credentials.get_for_user(user_id):
+        fresh_credential = get_fresh_credential(g, credential_id=credential.id)
+        if fresh_credential:
+            results.append(fresh_credential)
+    return results
+
+
 def list_credentials_for_workspace(g: GitentialContext, workspace_id: int):
     workspace = g.backend.workspaces.get_or_error(workspace_id)
     return list_credentials_for_user(g, user_id=workspace.created_by)
+
+
+def list_valid_credentials_for_workspace(g: GitentialContext, workspace_id: int):
+    workspace = g.backend.workspaces.get_or_error(workspace_id)
+    return list_valid_credentials_for_user(g, user_id=workspace.created_by)
 
 
 def create_credential(g: GitentialContext, credential_create: CredentialCreate, owner_id: int) -> CredentialInDB:
@@ -242,7 +265,7 @@ def get_credential_for_repository(
 def list_connected_repository_sources(g: GitentialContext, workspace_id: int) -> List[str]:
     return [
         credential.integration_name
-        for credential in list_credentials_for_workspace(g, workspace_id)
+        for credential in list_valid_credentials_for_workspace(g, workspace_id)
         if (
             credential.integration_name
             and credential.integration_type in REPOSITORY_SOURCES
@@ -254,7 +277,7 @@ def list_connected_repository_sources(g: GitentialContext, workspace_id: int) ->
 def list_connected_its_sources(g: GitentialContext, workspace_id: int) -> List[str]:
     return [
         credential.integration_name
-        for credential in list_credentials_for_workspace(g, workspace_id)
+        for credential in list_valid_credentials_for_workspace(g, workspace_id)
         if (
             credential.integration_name
             and credential.integration_type in ISSUE_SOURCES

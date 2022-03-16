@@ -88,11 +88,16 @@ class OAuthLoginMixin(ABC):
     def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
         pass
 
-    def refresh_token(self, token) -> dict:
+    def refresh_token(self, token) -> Optional[dict]:
         client = self.get_oauth2_client(token=token)
-        new_token = client.refresh_token(self.oauth_config["access_token_url"], refresh_token=token["refresh_token"])
+        refresh_response = client.refresh_token(
+            self.oauth_config["access_token_url"], refresh_token=token["refresh_token"]
+        )
         client.close()
-        return {f: new_token.get(f) for f in ["access_token", "refresh_token", "expires_at"]}
+        if "access_token" in refresh_response:
+            return {f: refresh_response.get(f) for f in ["access_token", "refresh_token", "expires_at"]}
+        else:
+            return None
 
     def check_token(self, token) -> bool:
         client = self.get_oauth2_client(token=token)
