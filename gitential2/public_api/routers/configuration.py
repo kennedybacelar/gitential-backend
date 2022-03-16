@@ -54,4 +54,5 @@ def configuration(request: Request):
         "sentry": {"dsn": "https://dc5be4ac529146d68d723b5f5be5ae2d@sentry.io/1815669"},
         "debug": "False",
         "publishable_key": gitential_settings.stripe.publishable_key,
+        "features": gitential_settings.features,
     }

@@ -38,7 +38,7 @@ stripe:
   webhook_secret: "whsec_J3wwXzXQOklhlC5qS9iCFynVkiHzXZ9g"
 features:
   enable_additional_materialized_views: true
-
+  enable_access_approval: true
 # frontend:
 #   inject_html:
 #     - tag: script

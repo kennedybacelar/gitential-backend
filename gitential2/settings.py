@@ -163,9 +163,16 @@ class NotificationSettings(BaseModel):
     request_free_trial: bool = True
 
 
+class AccessApprovalSettings(BaseModel):
+    pending_message: str = (
+        "Your user is currently not approved to use Gitential. <br />Please, contact your administrator."
+    )
+
+
 class FeaturesSettings(BaseModel):
     enable_additional_materialized_views: bool = False
     enable_access_approval: bool = False
+    access_approval: AccessApprovalSettings = AccessApprovalSettings()
 
 
 class GitentialSettings(BaseModel):
