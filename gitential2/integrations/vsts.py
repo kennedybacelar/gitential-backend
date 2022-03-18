@@ -543,7 +543,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                 return single_status
         return {}
 
-    def _work_item_type_id(self, token, its_project: ITSProjectInDB, work_item_type: str = None) -> Optional[str]:
+    def get_work_item_type_reference_name(
+        self, token, its_project: ITSProjectInDB, work_item_type: str = None
+    ) -> Optional[str]:
 
         if not work_item_type:
             return None
@@ -573,19 +575,19 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         comment: ITSIssueComment = None,
     ) -> ITSIssue:
 
-        wit_reference_name = self._work_item_type_id(
+        # wit = work item type
+
+        wit_reference_name = self.get_work_item_type_reference_name(
             token=token, its_project=its_project, work_item_type=issue_dict["fields"].get("System.WorkItemType")
         )
+
+        wit_id = self.get_work_item_type_id(token=token, its_project=its_project, wit_ref_name=wit_reference_name)
 
         status_category_api_mapped = self._mapping_status_id(
             token=token,
             its_project=its_project,
             issue_state=issue_dict["fields"].get("System.State"),
             wit_ref_name=wit_reference_name,
-        )
-
-        work_item_type_id = self.get_work_item_type_id(
-            token=token, its_project=its_project, wit_ref_name=wit_reference_name
         )
 
         return ITSIssue(
@@ -601,7 +603,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             if status_category_api_mapped.get("stateCategory")
             else None,
             issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
-            issue_type_id=work_item_type_id,
+            issue_type_id=wit_id,
             resolution_name=issue_dict["fields"]["System.Reason"]
             if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
             else None,
