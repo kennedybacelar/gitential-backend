@@ -85,10 +85,18 @@ def execute_data_query(g: GitentialContext, workspace_id: int, query: DataQuery)
 def parse_data_query(g: GitentialContext, workspace_id: int, query: DataQuery) -> TableExpr:
     table = g.backend.get_ibis_table(workspace_id, query.source_name.value)
     filters = _prepare_filters(query.filters, table)
-    selections = _prepare_selections(query.selections, table)
-    dimensions = _prepare_dimensions(query.dimensions, table)
-    sorty_by_s = _prepare_sort_by_s(query.sort_by, table)
-    ibis_query = _construct_ibis_query(query.query_type, table, filters, selections, dimensions, sorty_by_s)
+    ibis_query = table.filter(filters) if filters else table
+    selections = _prepare_selections(query.selections, ibis_query)
+
+    if query.query_type == DQType.select:
+        ibis_query = ibis_query.select(selections)
+    elif query.query_type == DQType.aggregate:
+        dimensions = _prepare_dimensions(query.dimensions, ibis_query)
+        ibis_query = ibis_query.group_by(dimensions).aggregate(selections)
+    if query.sort_by:
+        sort_by_s = _prepare_sort_by_s(query.sort_by, ibis_query)
+        ibis_query = ibis_query.sort_by(sort_by_s)
+
     return table, ibis_query
 
 
@@ -114,24 +122,6 @@ def _simplify_filter(
     return f
 
 
-def _construct_ibis_query(
-    query_type: DQType,
-    table: TableExpr,
-    filters: list,
-    metrics: list,
-    dimensions: list,
-    sort_by_s: list,
-):
-    ibis_query = table.filter(filters) if filters else table
-    if query_type == DQType.select:
-        ibis_query = ibis_query.select(metrics)
-    elif query_type == DQType.aggregate:
-        ibis_query = ibis_query.group_by(dimensions).aggregate(metrics)
-    if sort_by_s:
-        ibis_query = ibis_query.sort_by(sort_by_s)
-    return ibis_query
-
-
 def _prepare_filters(filters: List[DQFilterExpr], table: TableExpr) -> list:
     return [_parse_column_expr(filter_, table) for filter_ in filters or []]
 
@@ -150,7 +140,7 @@ def _prepare_sort_by_s(sort_by_s: List[DQSortByExpr], table: TableExpr):
 
 # pylint: disable=unused-argument
 def _prepare_sort_by(sort_by_expr: DQSortByExpr, table: TableExpr) -> Tuple[str, bool]:
-    return (sort_by_expr.col, not sort_by_expr.desc)
+    return (_parse_single_column_expr(sort_by_expr, table), not sort_by_expr.desc)
 
 
 def _parse_column_expr(column_expr: DQColumnExpr, table: TableExpr) -> ColumnExpr:
