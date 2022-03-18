@@ -497,6 +497,26 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             )
         return ret
 
+    def get_work_item_type_id(self, token, its_project: ITSProjectInDB, wit_ref_name: Optional[str]) -> Optional[str]:
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
+        process_id = its_project.extra["process_id"]  # type: ignore[index]
+
+        if not process_id:
+            return None
+
+        get_work_item_type_url = f"https://dev.azure.com/{organization}/_apis/work/processdefinitions/{process_id}/workitemtypes/{wit_ref_name}?api-version=4.1-preview.1"
+
+        list_of_statuses_url_response = client.get(get_work_item_type_url)
+
+        if list_of_statuses_url_response.status_code != 200:
+            log_api_error(list_of_statuses_url_response)
+            return None
+
+        res = list_of_statuses_url_response.json().get("id")
+        return res
+
     def _mapping_status_id(
         self, token, its_project: ITSProjectInDB, issue_state: Optional[str], wit_ref_name: Optional[str]
     ) -> dict:
@@ -564,6 +584,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             wit_ref_name=wit_reference_name,
         )
 
+        work_item_type_id = self.get_work_item_type_id(
+            token=token, its_project=its_project, wit_ref_name=wit_reference_name
+        )
+
         return ITSIssue(
             id=get_db_issue_id(issue_dict, its_project),
             itsp_id=its_project.id,
@@ -577,7 +601,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             if status_category_api_mapped.get("stateCategory")
             else None,
             issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
-            issue_type_id=None,
+            issue_type_id=work_item_type_id,
             resolution_name=issue_dict["fields"]["System.Reason"]
             if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
             else None,

@@ -40,7 +40,7 @@ def _get_project_process_id(
 
 
 @app.command("list-available-projects")
-def list_available_projects(
+def list_available_projects(  # pylint: disable=inconsistent-return-statements
     workspace_id: int,
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
@@ -127,7 +127,6 @@ def list_all_data_for_issue(
     fields: Optional[str] = None,
 ):
 
-    # Hardcoded in the meantime the function to generate the process ID in the cli is not implemented
     its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10, extra={"process_id": process_id})
 
     g = get_context()
