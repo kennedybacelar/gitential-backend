@@ -25,8 +25,18 @@ def _get_vsts_credential(g: GitentialContext, workspace_id: int, integration_nam
     return get_fresh_credential(g, workspace_id=workspace_id, integration_name=integration_name)
 
 
-def return_its_mock(namespace: str, team: str):
-    return ITSProjectInDB(name=team, namespace=namespace, id=10, extra={"process_id": None})
+@app.command("get-project-process-id")
+def _get_project_process_id(
+    workspace_id: int,
+    namespace: str,
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+
+    all_projects = list_available_projects(workspace_id=workspace_id, internal_call=True)
+    for single_project in all_projects:
+        if namespace == single_project.namespace:
+            print_results([single_project.extra], format_=format_, fields=fields)
 
 
 @app.command("list-available-projects")
@@ -34,6 +44,7 @@ def list_available_projects(
     workspace_id: int,
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
+    internal_call: bool = False,
 ):
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -53,6 +64,8 @@ def list_available_projects(
             update_token=get_update_token_callback(g, vsts_credential),
             provider_user_id=userinfo.sub if userinfo else None,
         )
+        if internal_call:
+            return its_projects
         print_results(its_projects, format_=format_, fields=fields)
 
 
@@ -109,14 +122,13 @@ def list_all_data_for_issue(
     namespace: str,
     team: str,
     issue_id_or_key: str = typer.Option(None, "--issue-id"),
+    process_id: str = typer.Option(None, "--process-id"),
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
 ):
 
     # Hardcoded in the meantime the function to generate the process ID in the cli is not implemented
-    its_project_mock = ITSProjectInDB(
-        name=team, namespace=namespace, id=10, extra={"process_id": "b8a3a935-7e91-48b8-a94c-606d37c3e9f2"}
-    )
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10, extra={"process_id": process_id})
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
