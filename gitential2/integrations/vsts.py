@@ -334,6 +334,26 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         teams_resp_json = teams_resp.json()["value"]
         return teams_resp_json
 
+    def _getting_project_process_id(self, token, organization: str, project_id: str) -> dict:
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+
+        project_properties_url = (
+            f"https://dev.azure.com/{organization}/_apis/projects/{project_id}/properties?api-version=6.0-preview.1"
+        )
+        project_properties_response = client.get(project_properties_url)
+
+        if project_properties_response.status_code != 200:
+            log_api_error(project_properties_response)
+            return {}
+
+        project_properties_response_json = project_properties_response.json().get("value")
+
+        for single_property in project_properties_response_json:
+            if single_property["name"] == "System.ProcessTemplateType":
+                return {"process_id": single_property["value"]}
+        return {}
+
     def list_available_its_projects(
         self, token, update_token, provider_user_id: Optional[str]
     ) -> List[ITSProjectCreate]:
@@ -355,11 +375,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
             for team in teams_resp_json:
                 team["organization"] = organization
-                ret.append(self._transform_to_its_project(team))
+                ret.append(self._transform_to_its_project(token=token, project_dict=team))
         return ret
 
-    def _transform_to_its_project(self, project_dict: dict) -> ITSProjectCreate:
-        # print(project_dict)
+    def _transform_to_its_project(self, token, project_dict: dict) -> ITSProjectCreate:
         return ITSProjectCreate(
             name=project_dict["name"],
             namespace=f"{project_dict['organization']}/{project_dict['projectName']}",
@@ -369,7 +388,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             integration_type="vsts",
             integration_name=self.name,
             integration_id=project_dict["id"],
-            extra=None,
+            extra=self._getting_project_process_id(
+                token=token, organization=project_dict["organization"], project_id=project_dict["projectId"]
+            ),
         )
 
     def _raw_fetching_all_issues_per_project(
@@ -477,28 +498,30 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         return ret
 
     def _mapping_status_id(
-        self, token, its_project: ITSProjectInDB, work_item_type: str = None, wit_system_state: str = None
-    ) -> Optional[str]:
-
-        if not work_item_type:
-            return None
+        self, token, its_project: ITSProjectInDB, issue_state: Optional[str], wit_ref_name: Optional[str]
+    ) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
+        process_id = its_project.extra["process_id"]  # type: ignore[index]
 
-        single_work_item_details_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemtypes/{work_item_type}/states?api-version=6.0-preview.1"
+        if not process_id:
+            return {}
 
-        status_original_id_response = client.get(single_work_item_details_url)
+        list_of_statuses_url = f"https://dev.azure.com/{organization}/_apis/work/processes/{process_id}/workItemTypes/{wit_ref_name}/states?api-version=6.0-preview.1"
 
-        if status_original_id_response.status_code != 200:
-            log_api_error(status_original_id_response)
-            return None
+        list_of_statuses_url_response = client.get(list_of_statuses_url)
 
-        list_of_status_original_id_response = status_original_id_response.json().get("value")
-        if list_of_status_original_id_response:
-            for single_status in list_of_status_original_id_response:
-                if wit_system_state == single_status["name"]:
-                    return single_status["category"]
+        if list_of_statuses_url_response.status_code != 200:
+            log_api_error(list_of_statuses_url_response)
+            return {}
+
+        list_of_statuses_url_response_json = list_of_statuses_url_response.json()["value"]
+
+        for single_status in list_of_statuses_url_response_json:
+            if issue_state == single_status["name"]:
+                return single_status
+        return {}
 
     def _work_item_type_id(self, token, its_project: ITSProjectInDB, work_item_type: str = None) -> Optional[str]:
 
@@ -527,14 +550,18 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         issue_dict: dict,
         its_project: ITSProjectInDB,
         developer_map_callback: Callable,
-        comment: Optional[ITSIssueComment],
+        comment: ITSIssueComment = None,
     ) -> ITSIssue:
+
+        wit_reference_name = self._work_item_type_id(
+            token=token, its_project=its_project, work_item_type=issue_dict["fields"].get("System.WorkItemType")
+        )
 
         status_category_api_mapped = self._mapping_status_id(
             token=token,
             its_project=its_project,
-            work_item_type=issue_dict["fields"].get("System.WorkItemType"),
-            wit_system_state=issue_dict["fields"].get("System.State"),
+            issue_state=issue_dict["fields"].get("System.State"),
+            wit_ref_name=wit_reference_name,
         )
 
         return ITSIssue(
@@ -544,13 +571,13 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             api_id=issue_dict["id"],
             key=issue_dict["id"],
             status_name=issue_dict["fields"].get("System.State"),
-            status_id=status_category_api_mapped,
-            status_category_api=status_category_api_mapped,
-            status_category=_parse_status_category(status_category_api_mapped),
+            status_id=status_category_api_mapped.get("id"),
+            status_category_api=status_category_api_mapped.get("stateCategory"),
+            status_category=_parse_status_category(status_category_api_mapped["stateCategory"])
+            if status_category_api_mapped.get("stateCategory")
+            else None,
             issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
-            issue_type_id=self._work_item_type_id(
-                token=token, its_project=its_project, work_item_type=issue_dict["fields"].get("System.WorkItemType")
-            ),
+            issue_type_id=None,
             resolution_name=issue_dict["fields"]["System.Reason"]
             if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
             else None,
@@ -595,7 +622,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             if issue_dict["fields"].get("Microsoft.VSTS.Common.ClosedDate")
             else None,
             comment_count=issue_dict["fields"].get("System.CommentCount"),
-            last_comment_at=parse_datetime(comment.created_at),
+            last_comment_at=parse_datetime(comment.created_at) if hasattr(comment, "created_at") else None,  # type: ignore[union-attr,arg-type]
             change_count=issue_dict.get("rev"),
             last_change_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
             story_points=None,
@@ -710,7 +737,7 @@ def _transform_to_its_ITSIssueComment(
         author_name=comment_dict["createdBy"].get("displayName"),
         author_dev_id=developer_map_callback(to_author_alias(comment_dict["createdBy"])),
         comment=comment_dict.get("text"),
-        created_at=parse_datetime(comment_dict["createdDate"]) if comment_dict.get("createdDate") else None,
+        created_at=parse_datetime(comment_dict["createdDate"]),
         updated_at=parse_datetime(comment_dict["modifiedDate"]) if comment_dict.get("modifiedDate") else None,
     )
 
