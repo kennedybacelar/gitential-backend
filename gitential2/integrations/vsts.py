@@ -614,13 +614,13 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             priority_order=None,
             summary=issue_dict["fields"].get("System.Title", ""),
             description=issue_dict["fields"].get("System.Description", ""),
-            creator_api_id=None,
+            creator_api_id=issue_dict["fields"]["System.CreatedBy"].get("id"),
             creator_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
             creator_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
             creator_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
             if issue_dict["fields"].get("System.CreatedBy")
             else None,
-            reporter_api_id=None,
+            reporter_api_id=issue_dict["fields"]["System.CreatedBy"].get("id"),
             reporter_email=issue_dict["fields"]["System.CreatedBy"].get("uniqueName"),
             reporter_name=issue_dict["fields"]["System.CreatedBy"].get("displayName"),
             reporter_dev_id=developer_map_callback(to_author_alias(issue_dict["fields"].get("System.CreatedBy")))
@@ -744,7 +744,7 @@ def _transform_to_its_issues_header(issue_dict: dict, its_project: ITSProjectInD
         key=issue_dict["id"],
         status_name=issue_dict["fields"].get("System.State"),
         status_id=None,
-        status_category=_parse_status_category(issue_dict["fields"].get("System.WorkItemType")),
+        status_category=ITSIssueStatusCategory.unknown,
         summary=issue_dict["fields"].get("System.Title"),
         created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
         updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
@@ -798,7 +798,7 @@ def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
     }
     if status_category_api in assignment_state_category_api_to_its:
         return ITSIssueStatusCategory(assignment_state_category_api_to_its[status_category_api])
-    return ITSIssueStatusCategory("unknown")
+    return ITSIssueStatusCategory.unknown
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
