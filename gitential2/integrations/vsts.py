@@ -508,7 +508,6 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
     def get_work_item_type_id(self, token, its_project: ITSProjectInDB, wit_ref_name: Optional[str]) -> Optional[str]:
 
-        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
         organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
         process_id = its_project.extra["process_id"]  # type: ignore[index]
 
@@ -517,20 +516,20 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         get_work_item_type_url = f"https://dev.azure.com/{organization}/_apis/work/processdefinitions/{process_id}/workitemtypes/{wit_ref_name}?api-version=4.1-preview.1"
 
-        list_of_statuses_url_response = client.get(get_work_item_type_url)
+        wit_id = self.http_get_json_and_cache(
+            get_work_item_type_url, token=token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
 
-        if list_of_statuses_url_response.status_code != 200:
-            log_api_error(list_of_statuses_url_response)
+        if not wit_id:
             return None
 
-        res = list_of_statuses_url_response.json().get("id")
+        res = wit_id.get("id")
         return res
 
     def _mapping_status_id(
         self, token, its_project: ITSProjectInDB, issue_state: Optional[str], wit_ref_name: Optional[str]
     ) -> dict:
 
-        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
         organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
         process_id = its_project.extra["process_id"]  # type: ignore[index]
 
@@ -539,15 +538,16 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         list_of_statuses_url = f"https://dev.azure.com/{organization}/_apis/work/processes/{process_id}/workItemTypes/{wit_ref_name}/states?api-version=6.0-preview.1"
 
-        list_of_statuses_url_response = client.get(list_of_statuses_url)
+        statuses = self.http_get_json_and_cache(
+            list_of_statuses_url, token=token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
 
-        if list_of_statuses_url_response.status_code != 200:
-            log_api_error(list_of_statuses_url_response)
+        if not statuses:
             return {}
 
-        list_of_statuses_url_response_json = list_of_statuses_url_response.json()["value"]
+        statuses_list = statuses.get("value", [])
 
-        for single_status in list_of_statuses_url_response_json:
+        for single_status in statuses_list:
             if issue_state == single_status["name"]:
                 return single_status
         return {}
@@ -559,21 +559,20 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         if not work_item_type:
             return None
 
-        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-
         organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
         single_work_item_type_url = (
             f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemtypes/{work_item_type}?api-version=6.0"
         )
 
-        single_work_item_type_response = client.get(single_work_item_type_url)
+        single_work_item_type_response = self.http_get_json_and_cache(
+            single_work_item_type_url, token=token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
 
-        if single_work_item_type_response.status_code != 200:
-            log_api_error(single_work_item_type_response)
+        if not single_work_item_type_response:
             return None
 
-        resp = single_work_item_type_response.json().get("referenceName")
-        return resp
+        res = single_work_item_type_response.get("referenceName")
+        return res
 
     def _transform_to_its_issue(
         self,
