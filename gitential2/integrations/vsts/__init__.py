@@ -288,14 +288,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
 
-        api_base_url = self.oauth_register()["api_base_url"]
-
-        accounts_resp = client.get(f"{api_base_url}/_apis/accounts?memberId={provider_user_id}&api-version=6.0")
-        if accounts_resp.status_code != 200:
-            log_api_error(accounts_resp)
-            return []
-
-        accounts = accounts_resp.json().get("value", [])
+        accounts = self._get_all_accounts(client, provider_user_id)
         repos = []
         for account in accounts:
             account_repo_url = f"https://{account['accountName']}.visualstudio.com/DefaultCollection/_apis/git/repositories?api-version=1.0"
