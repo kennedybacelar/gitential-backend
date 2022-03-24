@@ -7,12 +7,7 @@ from pydantic.datetime_parse import parse_datetime
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
-from gitential2.datatypes.its import (
-    ITSIssueHeader,
-    ITSIssueAllData,
-    ITSIssue,
-    ITSIssueComment,
-)
+from gitential2.datatypes.its import ITSIssueHeader, ITSIssueAllData, ITSIssue, ITSIssueComment
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 
@@ -33,7 +28,6 @@ from .common import (
 
 from .transformations import (
     _transform_to_its_ITSIssueAllData,
-    _transform_to_its_issues_header,
     _transform_to_its_ITSIssueComment,
 )
 
@@ -534,8 +528,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     ) -> dict:
 
         organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
-        process_id = its_project.extra["process_id"]  # type: ignore[index]
+        if not its_project.extra:
+            return {}
 
+        process_id = its_project.extra.get("process_id")  # type: ignore[index]
         if not process_id:
             return {}
 
@@ -576,6 +572,35 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         res = single_work_item_type_response.get("referenceName")
         return res
+
+    def _transform_to_its_issues_header(self, token, issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssueHeader:
+
+        wit_reference_name = self.get_work_item_type_reference_name(
+            token=token, its_project=its_project, work_item_type=issue_dict["fields"].get("System.WorkItemType")
+        )
+
+        status_category_api_mapped = self._mapping_status_id(
+            token=token,
+            its_project=its_project,
+            issue_state=issue_dict["fields"].get("System.State"),
+            wit_ref_name=wit_reference_name,
+        )
+
+        return ITSIssueHeader(
+            id=get_db_issue_id(issue_dict, its_project),
+            itsp_id=its_project.id,
+            api_url=issue_dict["url"],
+            api_id=issue_dict["id"],
+            key=issue_dict["id"],
+            status_name=issue_dict["fields"].get("System.State"),
+            status_id=status_category_api_mapped.get("id"),
+            status_category=_parse_status_category(status_category_api_mapped["stateCategory"])
+            if status_category_api_mapped.get("stateCategory")
+            else None,
+            summary=issue_dict["fields"].get("System.Title"),
+            created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
+            updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
+        )
 
     def _transform_to_its_issue(
         self,
@@ -684,7 +709,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         for single_issue in wit_by_details_batch_response_json:
             ret.append(
-                _transform_to_its_issues_header(
+                self._transform_to_its_issues_header(
+                    token=token,
                     issue_dict=single_issue,
                     its_project=its_project,
                 )
@@ -700,7 +726,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         for single_issue in wit_by_details_batch_response_json:
             ret.append(
-                _transform_to_its_issues_header(
+                self._transform_to_its_issues_header(
+                    token=token,
                     issue_dict=single_issue,
                     its_project=its_project,
                 )

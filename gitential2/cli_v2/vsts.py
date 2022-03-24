@@ -75,11 +75,12 @@ def list_wit_projects(
     workspace_id: int,
     namespace: str,
     team: str,
+    process_id: str = typer.Option(None, "--process-id"),
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10, extra={"process_id": process_id})
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
@@ -98,11 +99,12 @@ def list_recent_wit_projects(
     namespace: str,
     team: str,
     date_from: datetime = typer.Option(None, "--date-from"),
+    process_id: str = typer.Option(None, "--process-id"),
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
 ):
 
-    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10, extra={"process_id": process_id})
 
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
