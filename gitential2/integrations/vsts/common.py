@@ -6,7 +6,7 @@ from pydantic.datetime_parse import parse_datetime
 from gitential2.datatypes import RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.its_projects import ITSProjectInDB
-from gitential2.datatypes.its import ITSIssueStatusCategory
+from gitential2.datatypes.its import ITSIssueStatusCategory, ITSIssueChangeType
 
 
 def _get_organization_and_project_from_its_project(its_project_namespace: str) -> Tuple[str, str]:
@@ -37,6 +37,17 @@ def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
     if status_category_api in assignment_state_category_api_to_its:
         return ITSIssueStatusCategory(assignment_state_category_api_to_its[status_category_api])
     return ITSIssueStatusCategory.unknown
+
+
+def _parse_its_issue_change_type(field_name: str) -> ITSIssueChangeType:
+    assignment_issue_change_type = {
+        "System.IterationLevel2": "sprint",
+        "System.State": "status",
+        "System.AssignedTo": "assignee",
+    }
+    if field_name in assignment_issue_change_type:
+        return ITSIssueChangeType(assignment_issue_change_type[field_name])
+    return ITSIssueChangeType.other
 
 
 def _its_ITSIssueChange_static_part(developer_map_callback: Callable, single_update: dict, created_date: str) -> dict:

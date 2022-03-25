@@ -10,7 +10,7 @@ from gitential2.datatypes.its import (
     ITSIssueChangeType,
 )
 
-from .common import to_author_alias
+from .common import to_author_alias, _parse_its_issue_change_type
 
 
 def _transform_to_its_ITSIssueComment(
@@ -62,7 +62,7 @@ def _transform_to_ITSIssueChange(
         field_name=field_name,
         field_id=None,
         field_type=None,
-        change_type=ITSIssueChangeType.other,
+        change_type=_parse_its_issue_change_type(field_name),
         v_from=str(field_content.get("oldValue")),
         v_from_string=v_from_string,
         v_to=str(field_content.get("newValue")),
