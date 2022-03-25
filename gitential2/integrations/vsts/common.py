@@ -1,6 +1,7 @@
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 from urllib.parse import urlparse
 from email_validator import validate_email, EmailNotValidError
+from pydantic.datetime_parse import parse_datetime
 
 from gitential2.datatypes import RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
@@ -36,6 +37,21 @@ def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
     if status_category_api in assignment_state_category_api_to_its:
         return ITSIssueStatusCategory(assignment_state_category_api_to_its[status_category_api])
     return ITSIssueStatusCategory.unknown
+
+
+def _its_ITSIssueChange_static_part(developer_map_callback: Callable, single_update: dict, created_date: str) -> dict:
+
+    author_dev_id = developer_map_callback(to_author_alias(single_update.get("revisedBy")))
+    created_at = parse_datetime(created_date)
+    updated_at = parse_datetime(single_update["fields"]["System.ChangedDate"].get("newValue"))
+
+    ret = {
+        "author_dev_id": author_dev_id,
+        "created_at": created_at,
+        "updated_at": updated_at,
+    }
+
+    return ret
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:

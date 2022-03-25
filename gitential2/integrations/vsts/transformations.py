@@ -7,6 +7,7 @@ from gitential2.datatypes.its import (
     ITSIssueComment,
     ITSIssueChange,
     ITSIssueTimeInStatus,
+    ITSIssueChangeType,
 )
 
 from .common import to_author_alias
@@ -27,6 +28,61 @@ def _transform_to_its_ITSIssueComment(
         created_at=parse_datetime(comment_dict["createdDate"]),
         updated_at=parse_datetime(comment_dict["modifiedDate"]) if comment_dict.get("modifiedDate") else None,
     )
+
+
+def _transform_to_ITSIssueChange(
+    its_issue_change_static_info: dict, its_project: ITSProjectInDB, single_update: dict, single_field: dict
+):
+
+    field_name, field_content = single_field
+
+    v_from_string = (
+        field_content["oldValue"].get("displayName")
+        if isinstance(field_content.get("oldValue"), dict)
+        else field_content.get("oldValue")
+    )
+
+    v_to_string = (
+        field_content["newValue"].get("displayName")
+        if isinstance(field_content.get("newValue"), dict)
+        else field_content.get("newValue")
+    )
+
+    return ITSIssueChange(
+        id=1,  # Hardcoded - to be defined
+        issue_id=single_update["workItemId"],
+        itsp_id=its_project.id,
+        api_id=single_update["id"],
+        author_api_id=single_update["revisedBy"].get("id"),
+        author_email=single_update["revisedBy"].get("uniqueName"),
+        author_name=single_update["revisedBy"].get("displayName"),
+        author_dev_id=its_issue_change_static_info["author_dev_id"],
+        field_name=field_name,
+        field_id=None,
+        field_type=None,
+        change_type=ITSIssueChangeType.other,
+        v_from=str(field_content.get("oldValue")),
+        v_from_string=v_from_string,
+        v_to=str(field_content.get("newValue")),
+        v_to_string=v_to_string,
+        created_at=its_issue_change_static_info["created_at"],
+        updated_at=its_issue_change_static_info["updated_at"],
+    )
+
+
+def _its_ITSIssueChange_static_part(developer_map_callback: Callable, single_update: dict, created_date: str) -> dict:
+
+    author_dev_id = developer_map_callback(to_author_alias(single_update.get("revisedBy")))
+    created_at = parse_datetime(created_date)
+    updated_at = parse_datetime(single_update["fields"]["System.ChangedDate"].get("newValue"))
+
+    ret = {
+        "author_dev_id": author_dev_id,
+        "created_at": created_at,
+        "updated_at": updated_at,
+    }
+
+    return ret
 
 
 def _transform_to_its_ITSIssueAllData(
