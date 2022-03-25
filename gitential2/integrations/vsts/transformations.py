@@ -7,7 +7,6 @@ from gitential2.datatypes.its import (
     ITSIssueComment,
     ITSIssueChange,
     ITSIssueTimeInStatus,
-    ITSIssueChangeType,
 )
 
 from .common import to_author_alias, _parse_its_issue_change_type
