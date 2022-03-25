@@ -48,8 +48,10 @@ def _transform_to_ITSIssueChange(
         else field_content.get("newValue")
     )
 
+    its_change_id = f"{str(single_update['workItemId'])[:128]}-{single_update['id']}-{field_name}"
+
     return ITSIssueChange(
-        id=1,  # Hardcoded - to be defined
+        id=its_change_id,  # Hardcoded - to be defined
         issue_id=single_update["workItemId"],
         itsp_id=its_project.id,
         api_id=single_update["id"],
