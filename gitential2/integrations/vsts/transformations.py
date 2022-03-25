@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List, Tuple
 from pydantic.datetime_parse import parse_datetime
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.its import (
@@ -31,8 +31,8 @@ def _transform_to_its_ITSIssueComment(
 
 
 def _transform_to_ITSIssueChange(
-    its_issue_change_static_info: dict, its_project: ITSProjectInDB, single_update: dict, single_field: dict
-):
+    its_issue_change_static_info: dict, its_project: ITSProjectInDB, single_update: dict, single_field: Tuple[str, dict]
+) -> ITSIssueChange:
 
     field_name, field_content = single_field
 
@@ -68,21 +68,6 @@ def _transform_to_ITSIssueChange(
         created_at=its_issue_change_static_info["created_at"],
         updated_at=its_issue_change_static_info["updated_at"],
     )
-
-
-def _its_ITSIssueChange_static_part(developer_map_callback: Callable, single_update: dict, created_date: str) -> dict:
-
-    author_dev_id = developer_map_callback(to_author_alias(single_update.get("revisedBy")))
-    created_at = parse_datetime(created_date)
-    updated_at = parse_datetime(single_update["fields"]["System.ChangedDate"].get("newValue"))
-
-    ret = {
-        "author_dev_id": author_dev_id,
-        "created_at": created_at,
-        "updated_at": updated_at,
-    }
-
-    return ret
 
 
 def _transform_to_its_ITSIssueAllData(
