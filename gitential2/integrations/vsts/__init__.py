@@ -491,6 +491,13 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         list_of_updates = its_issue_updates_response_json["value"]
         ret = []
 
+        filter_out_fields = [
+            "System.Rev",
+            "System.AuthorizedDate",
+            "System.RevisedDate",
+            "System.ChangedDate",
+        ]
+
         for index, single_update in enumerate(list_of_updates):
             fields = single_update.get("fields")
             if not index:  # First revision - when the workitem itself is created
@@ -503,6 +510,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                     created_date=created_date,
                 )
                 for single_field in fields.items():
+                    if single_field[0] in filter_out_fields:
+                        continue
                     ret.append(
                         _transform_to_ITSIssueChange(
                             its_issue_change_static_info=its_issue_change_static_info,
