@@ -817,6 +817,5 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
             comment=comments[0] if comments else None,
         )
-        # changes= To be implemented
         # times_in_statuses= To be implemented
         return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments, changes=changes, times_in_statuses=[])
