@@ -7,7 +7,14 @@ from pydantic.datetime_parse import parse_datetime
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
-from gitential2.datatypes.its import ITSIssueHeader, ITSIssueAllData, ITSIssue, ITSIssueComment
+from gitential2.datatypes.its import (
+    ITSIssueHeader,
+    ITSIssueAllData,
+    ITSIssue,
+    ITSIssueComment,
+    ITSIssueChange,
+    ITSIssueChangeType,
+)
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 
@@ -460,6 +467,106 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             return ret
         return []
 
+    def get_its_issue_updates(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
+    ) -> List[ITSIssueChange]:
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+
+        its_issue_updates_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/updates?api-version=6.0"
+
+        its_issue_updates_response = client.get(its_issue_updates_url)
+
+        if its_issue_updates_response.status_code != 200:
+            log_api_error(its_issue_updates_response)
+            return []
+
+        its_issue_updates_response_json = its_issue_updates_response.json()
+
+        if its_issue_updates_response_json.get("count") < 2:
+            return []
+
+        list_of_updates = its_issue_updates_response_json["value"]
+        ret = []
+
+        for index, single_update in enumerate(list_of_updates):
+            fields = single_update.get("fields")
+            if not index:  # First revision - when the workitem itself is created
+                created_date = single_update["fields"]["System.CreatedDate"]["newValue"]
+                continue
+            if fields:
+                its_issue_change_static_info = self._its_ITSIssueChange_static_part(
+                    developer_map_callback=developer_map_callback,
+                    single_update=single_update,
+                    created_date=created_date,
+                )
+                for single_field in fields.items():
+                    ret.append(
+                        self._transform_to_ITSIssueChange(
+                            its_issue_change_static_info=its_issue_change_static_info,
+                            its_project=its_project,
+                            single_update=single_update,
+                            single_field=single_field,
+                        )
+                    )
+        return ret
+
+    def _its_ITSIssueChange_static_part(
+        self, developer_map_callback: Callable, single_update: dict, created_date: str
+    ) -> dict:
+
+        author_dev_id = developer_map_callback(to_author_alias(single_update.get("revisedBy")))
+        created_at = parse_datetime(created_date)
+        updated_at = parse_datetime(single_update["fields"]["System.ChangedDate"].get("newValue"))
+
+        ret = {
+            "author_dev_id": author_dev_id,
+            "created_at": created_at,
+            "updated_at": updated_at,
+        }
+
+        return ret
+
+    def _transform_to_ITSIssueChange(
+        self, its_issue_change_static_info: dict, its_project: ITSProjectInDB, single_update: dict, single_field: dict
+    ):
+
+        field_name, field_content = single_field
+
+        v_from_string = (
+            field_content["oldValue"].get("displayName")
+            if isinstance(field_content.get("oldValue"), dict)
+            else field_content.get("oldValue")
+        )
+
+        v_to_string = (
+            field_content["newValue"].get("displayName")
+            if isinstance(field_content.get("newValue"), dict)
+            else field_content.get("newValue")
+        )
+
+        return ITSIssueChange(
+            id=1,  # Hardcoded - to be defined
+            issue_id=single_update["workItemId"],
+            itsp_id=its_project.id,
+            api_id=single_update["id"],
+            author_api_id=single_update["revisedBy"].get("id"),
+            author_email=single_update["revisedBy"].get("uniqueName"),
+            author_name=single_update["revisedBy"].get("displayName"),
+            author_dev_id=its_issue_change_static_info["author_dev_id"],
+            field_name=field_name,
+            field_id=None,
+            field_type=None,
+            change_type=ITSIssueChangeType.other,
+            v_from=str(field_content.get("oldValue")),
+            v_from_string=v_from_string,
+            v_to=str(field_content.get("newValue")),
+            v_to_string=v_to_string,
+            created_at=its_issue_change_static_info["created_at"],
+            updated_at=its_issue_change_static_info["updated_at"],
+        )
+
     def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
@@ -750,6 +857,13 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
         )
 
+        changes: List[ITSIssueChange] = self.get_its_issue_updates(
+            token=token,
+            its_project=its_project,
+            issue_id_or_key=issue_id_or_key,
+            developer_map_callback=developer_map_callback,
+        )
+
         issue: ITSIssue = self._transform_to_its_issue(
             token=token,
             issue_dict=single_work_item_details_response_json,
@@ -759,4 +873,4 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
         # changes= To be implemented
         # times_in_statuses= To be implemented
-        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments, changes=[], times_in_statuses=[])
+        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments, changes=changes, times_in_statuses=[])

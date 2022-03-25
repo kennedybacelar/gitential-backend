@@ -2,16 +2,14 @@ from typing import Callable, List
 from pydantic.datetime_parse import parse_datetime
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.its import (
-    ITSIssueHeader,
     ITSIssueAllData,
     ITSIssue,
     ITSIssueComment,
     ITSIssueChange,
     ITSIssueTimeInStatus,
-    ITSIssueStatusCategory,
 )
 
-from .common import get_db_issue_id, to_author_alias
+from .common import to_author_alias
 
 
 def _transform_to_its_ITSIssueComment(
