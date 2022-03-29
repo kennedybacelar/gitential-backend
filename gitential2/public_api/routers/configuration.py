@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from fastapi import Request
 from gitential2.integrations import IntegrationType
 from gitential2.license import check_license
+from gitential2.settings import GitentialSettings
 
 router = APIRouter()
 
@@ -17,7 +18,7 @@ def _calculate_login_url(request: Request, backend: str) -> str:
 @router.get("/configuration")
 def configuration(request: Request):
     license_ = check_license()
-    gitential_settings = request.app.state.settings
+    gitential_settings: GitentialSettings = request.app.state.settings
     logins = {}
     sources = []
     frontend_settings = gitential_settings.frontend
@@ -43,6 +44,7 @@ def configuration(request: Request):
                     "url": _calculate_login_url(request, name),
                 }
             )
+
     return {
         "maintenance": gitential_settings.maintenance,
         "license": license_.as_config(),
@@ -55,4 +57,5 @@ def configuration(request: Request):
         "debug": "False",
         "publishable_key": gitential_settings.stripe.publishable_key,
         "features": gitential_settings.features,
+        "resellers": gitential_settings.resellers if gitential_settings.features.enable_resellers else None,
     }

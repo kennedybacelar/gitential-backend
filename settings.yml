@@ -39,6 +39,11 @@ stripe:
 features:
   enable_additional_materialized_views: true
   enable_access_approval: true
+  enable_resellers: true
+resellers:
+  - reseller_id: appsumo
+    short_name: AppSumo
+    redemption_route: AppSumo
 # frontend:
 #   inject_html:
 #     - tag: script

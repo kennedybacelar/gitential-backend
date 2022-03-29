@@ -173,7 +173,14 @@ class FeaturesSettings(BaseModel):
     enable_additional_materialized_views: bool = False
     enable_access_approval: bool = False
     enable_its_analytics: bool = False
+    enable_resellers: bool = False
     access_approval: AccessApprovalSettings = AccessApprovalSettings()
+
+
+class ResellerSettings(BaseModel):
+    reseller_id: str
+    short_name: str
+    redemption_route: str
 
 
 class GitentialSettings(BaseModel):
@@ -195,6 +202,7 @@ class GitentialSettings(BaseModel):
     contacts: ContactSettings = ContactSettings()
     stripe: StripeIntegration = StripeIntegration()
     features: FeaturesSettings = FeaturesSettings()
+    resellers: Optional[List[ResellerSettings]] = None
 
     @validator("secret")
     def secret_validation(cls, v):
