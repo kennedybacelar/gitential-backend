@@ -1,13 +1,11 @@
 from typing import Optional, Callable, List, Tuple
 from datetime import datetime, timezone, timedelta
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs
 from structlog import get_logger
 from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
-from email_validator import validate_email, EmailNotValidError
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
-from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.its import (
     ITSIssueHeader,
@@ -15,17 +13,31 @@ from gitential2.datatypes.its import (
     ITSIssue,
     ITSIssueComment,
     ITSIssueChange,
-    ITSIssueTimeInStatus,
-    ITSIssueStatusCategory,
 )
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 
-from ..utils.is_bugfix import calculate_is_bugfix
-from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData, ITSProviderMixin
+from ...utils.is_bugfix import calculate_is_bugfix
+from ..base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData, ITSProviderMixin
 
-from .common import log_api_error
+from ..common import log_api_error
 
+from .common import (
+    _get_project_organization_and_repository,
+    _get_organization_and_project_from_its_project,
+    _paginate_with_skip_top,
+    to_author_alias,
+    _parse_status_category,
+    get_db_issue_id,
+    _parse_labels,
+    _its_ITSIssueChange_static_part,
+)
+
+from .transformations import (
+    _transform_to_its_ITSIssueAllData,
+    _transform_to_its_ITSIssueComment,
+    _transform_to_ITSIssueChange,
+)
 
 logger = get_logger(__name__)
 
@@ -278,14 +290,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
 
-        api_base_url = self.oauth_register()["api_base_url"]
-
-        accounts_resp = client.get(f"{api_base_url}/_apis/accounts?memberId={provider_user_id}&api-version=6.0")
-        if accounts_resp.status_code != 200:
-            log_api_error(accounts_resp)
-            return []
-
-        accounts = accounts_resp.json().get("value", [])
+        accounts = self._get_all_accounts(client, provider_user_id)
         repos = []
         for account in accounts:
             account_repo_url = f"https://{account['accountName']}.visualstudio.com/DefaultCollection/_apis/git/repositories?api-version=1.0"
@@ -463,6 +468,60 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             return ret
         return []
 
+    def get_its_issue_updates(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
+    ) -> List[ITSIssueChange]:
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+
+        its_issue_updates_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/updates?api-version=6.0"
+
+        its_issue_updates_response = client.get(its_issue_updates_url)
+
+        if its_issue_updates_response.status_code != 200:
+            log_api_error(its_issue_updates_response)
+            return []
+
+        its_issue_updates_response_json = its_issue_updates_response.json()
+
+        if its_issue_updates_response_json.get("count") < 2:
+            return []
+
+        list_of_updates = its_issue_updates_response_json["value"]
+        ret = []
+
+        filter_out_fields = [
+            "System.Rev",
+            "System.AuthorizedDate",
+            "System.RevisedDate",
+            "System.ChangedDate",
+        ]
+
+        for index, single_update in enumerate(list_of_updates):
+            fields = single_update.get("fields")
+            if not index:  # First revision - when the workitem itself is created
+                created_date = single_update["fields"]["System.CreatedDate"]["newValue"]
+                continue
+            if fields:
+                its_issue_change_static_info = _its_ITSIssueChange_static_part(
+                    developer_map_callback=developer_map_callback,
+                    single_update=single_update,
+                    created_date=created_date,
+                )
+                for single_field in fields.items():
+                    if single_field[0] in filter_out_fields:
+                        continue
+                    ret.append(
+                        _transform_to_ITSIssueChange(
+                            its_issue_change_static_info=its_issue_change_static_info,
+                            its_project=its_project,
+                            single_update=single_update,
+                            single_field=single_field,
+                        )
+                    )
+        return ret
+
     def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
@@ -531,8 +590,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     ) -> dict:
 
         organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
-        process_id = its_project.extra["process_id"]  # type: ignore[index]
+        if not its_project.extra:
+            return {}
 
+        process_id = its_project.extra.get("process_id")  # type: ignore[index]
         if not process_id:
             return {}
 
@@ -573,6 +634,35 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         res = single_work_item_type_response.get("referenceName")
         return res
+
+    def _transform_to_its_issues_header(self, token, issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssueHeader:
+
+        wit_reference_name = self.get_work_item_type_reference_name(
+            token=token, its_project=its_project, work_item_type=issue_dict["fields"].get("System.WorkItemType")
+        )
+
+        status_category_api_mapped = self._mapping_status_id(
+            token=token,
+            its_project=its_project,
+            issue_state=issue_dict["fields"].get("System.State"),
+            wit_ref_name=wit_reference_name,
+        )
+
+        return ITSIssueHeader(
+            id=get_db_issue_id(issue_dict, its_project),
+            itsp_id=its_project.id,
+            api_url=issue_dict["url"],
+            api_id=issue_dict["id"],
+            key=issue_dict["id"],
+            status_name=issue_dict["fields"].get("System.State"),
+            status_id=status_category_api_mapped.get("id"),
+            status_category=_parse_status_category(status_category_api_mapped["stateCategory"])
+            if status_category_api_mapped.get("stateCategory")
+            else None,
+            summary=issue_dict["fields"].get("System.Title"),
+            created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
+            updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
+        )
 
     def _transform_to_its_issue(
         self,
@@ -681,7 +771,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         for single_issue in wit_by_details_batch_response_json:
             ret.append(
-                _transform_to_its_issues_header(
+                self._transform_to_its_issues_header(
+                    token=token,
                     issue_dict=single_issue,
                     its_project=its_project,
                 )
@@ -697,7 +788,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         for single_issue in wit_by_details_batch_response_json:
             ret.append(
-                _transform_to_its_issues_header(
+                self._transform_to_its_issues_header(
+                    token=token,
                     issue_dict=single_issue,
                     its_project=its_project,
                 )
@@ -720,6 +812,13 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
         )
 
+        changes: List[ITSIssueChange] = self.get_its_issue_updates(
+            token=token,
+            its_project=its_project,
+            issue_id_or_key=issue_id_or_key,
+            developer_map_callback=developer_map_callback,
+        )
+
         issue: ITSIssue = self._transform_to_its_issue(
             token=token,
             issue_dict=single_work_item_details_response_json,
@@ -727,146 +826,5 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
             comment=comments[0] if comments else None,
         )
-        # changes= To be implemented
         # times_in_statuses= To be implemented
-        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments, changes=[], times_in_statuses=[])
-
-
-def _get_organization_and_project_from_its_project(its_project_namespace: str) -> Tuple[str, str]:
-    if len(its_project_namespace.split("/")) == 2:
-        splitted = its_project_namespace.split("/")
-        return (splitted[0], splitted[1])
-    raise ValueError(f"Don't know how to parse vsts {its_project_namespace} namespace")
-
-
-def get_db_issue_id(issue_dict: dict, its_project: ITSProjectInDB) -> str:
-    return f"{its_project.id}-{issue_dict['id']}"
-
-
-def _transform_to_its_issues_header(issue_dict: dict, its_project: ITSProjectInDB) -> ITSIssueHeader:
-    return ITSIssueHeader(
-        id=get_db_issue_id(issue_dict, its_project),
-        itsp_id=its_project.id,
-        api_url=issue_dict["url"],
-        api_id=issue_dict["id"],
-        key=issue_dict["id"],
-        status_name=issue_dict["fields"].get("System.State"),
-        status_id=None,
-        status_category=ITSIssueStatusCategory.unknown,
-        summary=issue_dict["fields"].get("System.Title"),
-        created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
-        updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
-    )
-
-
-def _transform_to_its_ITSIssueComment(
-    comment_dict: dict, its_project: ITSProjectInDB, developer_map_callback: Callable
-) -> ITSIssueComment:
-    return ITSIssueComment(
-        id=comment_dict["id"],
-        issue_id=comment_dict["workItemId"],
-        itsp_id=its_project.id,
-        author_api_id=comment_dict["createdBy"].get("id"),
-        author_email=comment_dict["createdBy"].get("uniqueName"),
-        author_name=comment_dict["createdBy"].get("displayName"),
-        author_dev_id=developer_map_callback(to_author_alias(comment_dict["createdBy"])),
-        comment=comment_dict.get("text"),
-        created_at=parse_datetime(comment_dict["createdDate"]),
-        updated_at=parse_datetime(comment_dict["modifiedDate"]) if comment_dict.get("modifiedDate") else None,
-    )
-
-
-def _transform_to_its_ITSIssueAllData(
-    issue: ITSIssue,
-    comments: List[ITSIssueComment],
-    changes: List[ITSIssueChange],
-    times_in_statuses: List[ITSIssueTimeInStatus],
-) -> ITSIssueAllData:
-    return ITSIssueAllData(
-        issue=issue,
-        comments=comments,
-        changes=changes,
-        times_in_statuses=times_in_statuses,
-    )
-
-
-def _parse_labels(labels: str) -> List[str]:
-    if labels:
-        return [label.strip() for label in labels.split(";")]
-    return []
-
-
-def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
-    assignment_state_category_api_to_its = {
-        "Proposed": "new",
-        "InProgress": "in_progress",
-        "Resolved": "done",
-        "Completed": "done",
-        "Removed": "done",
-    }
-    if status_category_api in assignment_state_category_api_to_its:
-        return ITSIssueStatusCategory(assignment_state_category_api_to_its[status_category_api])
-    return ITSIssueStatusCategory.unknown
-
-
-def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
-
-    if repository.extra and "project" in repository.extra:
-        repository_url = repository.extra["url"]
-        return _parse_azure_repository_url(repository_url)
-    else:
-        return _parse_clone_url(repository.clone_url)
-
-
-def _parse_azure_repository_url(url: str) -> Tuple[str, str, str]:
-    parsed_url = urlparse(url)
-
-    if parsed_url.hostname and parsed_url.path:
-        _splitted_path = parsed_url.path.split("/")
-
-        if "visualstudio.com" in parsed_url.hostname and "_apis/git/repositories" in parsed_url.path:
-            # "https://ORGANIZATION_NAME.visualstudio.com/PROJECT_ID/_apis/git/repositories/REPOSITORY_ID"
-            organization_name = parsed_url.hostname.split(".")[0]
-            project_id = _splitted_path[1]
-            repository_id = _splitted_path[-1]
-            return organization_name, project_id, repository_id
-        elif "dev.azure.com" in parsed_url.hostname:
-            organization_name = _splitted_path[1]
-
-    raise ValueError(f"Don't know how to parse AZURE Resource URL: {url}")
-
-
-# pylint: disable=unused-argument
-def _parse_clone_url(url: str) -> Tuple[str, str, str]:
-    return ("", "", "")
-
-
-def _paginate_with_skip_top(client, starting_url, top=100) -> list:
-    ret: list = []
-    skip = 0
-
-    while True:
-        url = starting_url + f"&$top={top}&$skip={skip}"
-        resp = client.get(url)
-        if resp.status_code != 200:
-            return ret
-        elif resp.status_code == 200:
-            json_resp = resp.json()
-            count = json_resp["count"]
-            value = json_resp["value"]
-            ret += value
-            if count >= top:
-                skip = skip + top
-            else:
-                return ret
-
-
-def to_author_alias(raw_user):
-    name = raw_user.get("displayName")
-    uniq_name = raw_user.get("uniqueName")
-    try:
-        valid = validate_email(uniq_name)
-        email = valid.email
-        return AuthorAlias(name=name, email=email)
-    except EmailNotValidError:
-        return AuthorAlias(name=name, login=uniq_name)
+        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments, changes=changes, times_in_statuses=[])
