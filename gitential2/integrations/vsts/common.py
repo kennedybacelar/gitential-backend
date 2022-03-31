@@ -1,7 +1,6 @@
 from typing import List, Tuple
 from urllib.parse import urlparse
 from email_validator import validate_email, EmailNotValidError
-from pydantic.datetime_parse import parse_datetime
 
 from gitential2.datatypes import RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
