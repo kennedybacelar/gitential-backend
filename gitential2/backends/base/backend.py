@@ -13,6 +13,7 @@ from .repositories import (
     AuthorRepository,
     CalculatedPatchRepository,
     PersonalAccessTokenRepository,
+    ResellerCodeRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
@@ -59,6 +60,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def users(self) -> UserRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def reseller_codes(self) -> ResellerCodeRepository:
         pass
 
     @property

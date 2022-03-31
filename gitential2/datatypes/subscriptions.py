@@ -27,15 +27,25 @@ class CreateCheckoutSession(CoreModel):
 
 class SubscriptionCreate(SubscriptionBase):
     @classmethod
-    def default_for_new_user(cls, user_id):
-        return cls(
-            user_id=user_id,
-            subscription_start=datetime.datetime.utcnow(),
-            subscription_end=datetime.datetime.utcnow() + datetime.timedelta(days=14),
-            subscription_type=SubscriptionType.trial,
-            number_of_developers=5,
-            features=None,
-        )
+    def default_for_new_user(cls, user_id, reseller_id, reseller_code):
+        if reseller_id and reseller_code:
+            return cls(
+                user_id=user_id,
+                subscription_start=datetime.datetime.utcnow(),
+                subscription_end=None,
+                subscription_type=SubscriptionType.professional,
+                number_of_developers=20,
+                features={"reseller_id": reseller_id},
+            )
+        else:
+            return cls(
+                user_id=user_id,
+                subscription_start=datetime.datetime.utcnow(),
+                subscription_end=datetime.datetime.utcnow() + datetime.timedelta(days=14),
+                subscription_type=SubscriptionType.trial,
+                number_of_developers=5,
+                features=None,
+            )
 
 
 class SubscriptionUpdate(SubscriptionBase):

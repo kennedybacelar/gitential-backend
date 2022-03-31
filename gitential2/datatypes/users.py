@@ -40,6 +40,11 @@ class UserCreate(UserBase):
     email: str
 
 
+class UserRegister(UserCreate):
+    reseller_id: Optional[str] = None
+    reseller_code: Optional[str] = None
+
+
 class UserUpdate(UserBase):
     pass
 

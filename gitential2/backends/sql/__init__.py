@@ -23,6 +23,7 @@ from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueComment, 
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.pats import PersonalAccessToken
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
+from gitential2.datatypes.reseller_codes import ResellerCode
 from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
 from gitential2.extraction.output import OutputHandler
@@ -54,6 +55,7 @@ from .tables import (
     access_log_table,
     email_log_table,
     users_table,
+    reseller_codes_table,
     access_approvals_table,
     personal_access_tokens_table,
     user_infos_table,
@@ -92,6 +94,7 @@ from .repositories import (
     SQLPullRequestLabelRepository,
     SQLPullRequestRepository,
     SQLRepositoryRepository,
+    SQLResellerCodeRepository,
     SQLTeamMemberRepository,
     SQLTeamRepository,
     SQLUserRepository,
@@ -133,6 +136,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self.initialize()
 
         self._users = SQLUserRepository(table=users_table, engine=self._engine, in_db_cls=UserInDB)
+        self._reseller_codes = SQLResellerCodeRepository(
+            table=reseller_codes_table, engine=self._engine, in_db_cls=ResellerCode
+        )
         self._access_approvals = SQLAccessApprovalRepository(
             table=access_approvals_table, engine=self._engine, in_db_cls=AccessApprovalInDB
         )

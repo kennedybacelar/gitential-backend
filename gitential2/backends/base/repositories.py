@@ -33,6 +33,7 @@ from gitential2.datatypes.pull_requests import (
     PullRequestLabel,
     PullRequestLabelId,
 )
+from gitential2.datatypes.reseller_codes import ResellerCode
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB
 from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
@@ -90,6 +91,16 @@ class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
     def get_by_email(self, email: str) -> Optional[UserInDB]:
         pass
+
+
+class ResellerCodeRepository(BaseRepository[str, ResellerCode, ResellerCode, ResellerCode]):
+    def set_user_id(self, reseller_id: str, reseller_code: str, user_id: int) -> ResellerCode:
+        rc = self.get_or_error(reseller_code)
+        rc.user_id = user_id
+        if rc.reseller_id == reseller_id and not rc.user_id:
+            return self.update(reseller_code, rc)
+        else:
+            raise ValueError("Invalid reseller code")
 
 
 class AccessApprovalRepository(BaseRepository[int, AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB]):

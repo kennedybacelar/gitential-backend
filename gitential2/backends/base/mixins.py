@@ -8,6 +8,7 @@ from .repositories import (
     ITSProjectRepository,
     PersonalAccessTokenRepository,
     ProjectITSProjectRepository,
+    ResellerCodeRepository,
     TeamMemberRepository,
     TeamRepository,
     ExtractedCommitRepository,
@@ -42,6 +43,7 @@ from .repositories_its import (
 class WithRepositoriesMixin:
     _access_logs: AccessLogRepository
     _users: UserRepository
+    _reseller_codes: ResellerCodeRepository
     _access_approvals: AccessApprovalRepository
     _pats: PersonalAccessTokenRepository
     _user_infos: UserInfoRepository
@@ -83,6 +85,10 @@ class WithRepositoriesMixin:
     @property
     def users(self) -> UserRepository:
         return self._users
+
+    @property
+    def reseller_codes(self) -> ResellerCodeRepository:
+        return self._reseller_codes
 
     @property
     def access_approvals(self) -> AccessApprovalRepository:

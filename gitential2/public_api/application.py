@@ -1,15 +1,13 @@
 from typing import Optional
 from uuid import uuid4
-from structlog import get_logger
 
+from structlog import get_logger
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
-
-
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-
 from authlib.integrations.starlette_client import OAuth
+
 from gitential2.logging import initialize_logging
 from gitential2.settings import GitentialSettings, load_settings
 from gitential2.exceptions import AuthenticationException, NotFoundException, PermissionException
