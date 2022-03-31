@@ -1,4 +1,4 @@
-from typing import List, Tuple, Callable
+from typing import List, Tuple
 from urllib.parse import urlparse
 from email_validator import validate_email, EmailNotValidError
 from pydantic.datetime_parse import parse_datetime
@@ -48,21 +48,6 @@ def _parse_its_issue_change_type(field_name: str) -> ITSIssueChangeType:
     if field_name in assignment_issue_change_type:
         return ITSIssueChangeType(assignment_issue_change_type[field_name])
     return ITSIssueChangeType.other
-
-
-def _its_ITSIssueChange_static_part(developer_map_callback: Callable, single_update: dict, created_date: str) -> dict:
-
-    author_dev_id = developer_map_callback(to_author_alias(single_update.get("revisedBy")))
-    created_at = parse_datetime(created_date)
-    updated_at = parse_datetime(single_update["fields"]["System.ChangedDate"].get("newValue"))
-
-    ret = {
-        "author_dev_id": author_dev_id,
-        "created_at": created_at,
-        "updated_at": updated_at,
-    }
-
-    return ret
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:

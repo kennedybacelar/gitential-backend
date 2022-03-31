@@ -53,7 +53,10 @@ def _initial_status_transform_to_ITSIssueChange(
 
 
 def _transform_to_ITSIssueChange(
-    its_issue_change_static_info: dict, its_project: ITSProjectInDB, single_update: dict, single_field: Tuple[str, dict]
+    its_project: ITSProjectInDB,
+    single_update: dict,
+    single_field: Tuple[str, dict],
+    developer_map_callback: Callable,
 ) -> ITSIssueChange:
 
     field_name, field_content = single_field
@@ -70,6 +73,7 @@ def _transform_to_ITSIssueChange(
         else field_content.get("newValue")
     )
 
+    author_dev_id = developer_map_callback(to_author_alias(single_update.get("revisedBy")))
     its_change_id = f"{str(single_update['workItemId'])[:128]}-{single_update['id']}-{field_name}"
 
     return ITSIssueChange(
@@ -80,7 +84,7 @@ def _transform_to_ITSIssueChange(
         author_api_id=single_update["revisedBy"].get("id"),
         author_email=single_update["revisedBy"].get("uniqueName"),
         author_name=single_update["revisedBy"].get("displayName"),
-        author_dev_id=its_issue_change_static_info.get("author_dev_id"),
+        author_dev_id=author_dev_id,
         field_name=field_name,
         field_id=None,
         field_type=None,
@@ -89,8 +93,8 @@ def _transform_to_ITSIssueChange(
         v_from_string=v_from_string,
         v_to=str(field_content.get("newValue")),
         v_to_string=v_to_string,
-        created_at=single_update["revisedDate"],
-        updated_at=its_issue_change_static_info["updated_at"],
+        created_at=single_update["fields"]["System.ChangedDate"]["oldValue"],
+        updated_at=single_update["fields"]["System.ChangedDate"]["newValue"],
     )
 
 

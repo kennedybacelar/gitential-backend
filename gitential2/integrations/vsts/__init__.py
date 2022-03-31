@@ -32,7 +32,6 @@ from .common import (
     _parse_status_category,
     get_db_issue_id,
     _parse_labels,
-    _its_ITSIssueChange_static_part,
 )
 
 from .transformations import (
@@ -340,7 +339,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     def _get_all_teams(self, client, organization: str) -> List[dict]:
 
         all_teams_per_organization_url = f"https://dev.azure.com/{organization}/_apis/teams?api-version=4.1-preview.2"
-        # Organization>Settings>Security>Policies>Third-party application access vai OAuth
+        # Organization>Settings>Security>Policies>Third-party application access via OAuth
 
         teams_resp = client.get(all_teams_per_organization_url)
 
@@ -510,17 +509,12 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                 update_api_id = single_update["id"]
                 continue
             if fields:
-                its_issue_change_static_info = _its_ITSIssueChange_static_part(
-                    developer_map_callback=developer_map_callback,
-                    single_update=single_update,
-                    created_date=created_date,
-                )
                 for single_field in fields.items():
                     if single_field[0] in filter_out_fields:
                         continue
                     ret.append(
                         _transform_to_ITSIssueChange(
-                            its_issue_change_static_info=its_issue_change_static_info,
+                            developer_map_callback=developer_map_callback,
                             its_project=its_project,
                             single_update=single_update,
                             single_field=single_field,
@@ -698,53 +692,53 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         _issue_id = issue_dict["id"]
 
-        previous = None
+        previous_change = None
         ret: List[ITSIssueTimeInStatus] = []
 
-        for single_change in changes:
+        for current_change in changes:
 
-            if single_change.field_name == "System.WorkItemType":
+            if current_change.field_name == "System.WorkItemType":
 
-                new_work_item_type = single_change.v_to_string
+                new_work_item_type = current_change.v_to_string
                 wit_reference_name = self.get_work_item_type_reference_name(
                     token=token, its_project=its_project, work_item_type=new_work_item_type
                 )
 
-            if single_change.change_type == ITSIssueChangeType.status:
+            if current_change.change_type == ITSIssueChangeType.status:
 
-                if not previous:
-                    previous = single_change
+                if not previous_change:
+                    previous_change = current_change
                     continue
 
                 status_category_api_mapped = self._mapping_status_id(
                     token=token,
                     its_project=its_project,
-                    issue_state=previous.v_to_string,
+                    issue_state=previous_change.v_to_string,
                     wit_ref_name=wit_reference_name,
                 )
 
                 timeSpent = ITSIssueTimeInStatus(
                     issue_id=_issue_id,
-                    itsp_id=previous.itsp_id,
-                    created_at=previous.created_at,
-                    updated_at=single_change.created_at,
-                    id=f"{_issue_id}-{previous.api_id}",
-                    status_name=previous.v_to_string,
+                    itsp_id=previous_change.itsp_id,
+                    created_at=previous_change.updated_at,
+                    updated_at=current_change.updated_at,
+                    id=f"{_issue_id}-{previous_change.api_id}",
+                    status_name=previous_change.v_to_string,
                     status_id=status_category_api_mapped.get("id"),
                     status_category_api=status_category_api_mapped.get("stateCategory"),
                     status_category=_parse_status_category(status_category_api_mapped["stateCategory"]),
-                    started_issue_change_id=previous.id,
-                    started_at=previous.updated_at,
-                    ended_issue_change_id=single_change.id,
-                    ended_at=single_change.updated_at,
-                    ended_with_status_name=single_change.v_to_string,
-                    ended_with_status_id=single_change.v_to_string,
-                    seconds_in_status=(single_change.updated_at - previous.updated_at).total_seconds()
-                    if (single_change.updated_at and previous.updated_at)
+                    started_issue_change_id=previous_change.id,
+                    started_at=previous_change.updated_at,
+                    ended_issue_change_id=current_change.id,
+                    ended_at=current_change.updated_at,
+                    ended_with_status_name=current_change.v_to_string,
+                    ended_with_status_id=current_change.v_to_string,
+                    seconds_in_status=(current_change.updated_at - previous_change.updated_at).total_seconds()
+                    if (current_change.updated_at and previous_change.updated_at)
                     else "",
                 )
                 ret.append(timeSpent)
-                previous = single_change
+                previous_change = current_change
         return ret
 
     def _transform_to_its_issue(
