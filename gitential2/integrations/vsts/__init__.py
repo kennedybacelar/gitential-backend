@@ -13,6 +13,8 @@ from gitential2.datatypes.its import (
     ITSIssue,
     ITSIssueComment,
     ITSIssueChange,
+    ITSIssueTimeInStatus,
+    ITSIssueChangeType,
 )
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
@@ -37,6 +39,7 @@ from .transformations import (
     _transform_to_its_ITSIssueAllData,
     _transform_to_its_ITSIssueComment,
     _transform_to_ITSIssueChange,
+    _initial_status_transform_to_ITSIssueChange,
 )
 
 logger = get_logger(__name__)
@@ -502,6 +505,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             fields = single_update.get("fields")
             if not index:  # First revision - when the workitem itself is created
                 created_date = single_update["fields"]["System.CreatedDate"]["newValue"]
+                initial_issue_state = single_update["fields"]["System.State"]["newValue"]
+                initial_work_item_type = single_update["fields"]["System.WorkItemType"]["newValue"]
+                update_api_id = single_update["id"]
                 continue
             if fields:
                 its_issue_change_static_info = _its_ITSIssueChange_static_part(
@@ -520,6 +526,22 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                             single_field=single_field,
                         )
                     )
+        initial_change_status_dict = {
+            "created_date": created_date,
+            "updated_at": created_date,
+            "initial_issue_state": initial_issue_state,
+            "update_api_id": update_api_id,
+            "issue_id_or_key": issue_id_or_key,
+            "initial_work_item_type": initial_work_item_type,
+        }
+
+        initial_change_status_obj = _initial_status_transform_to_ITSIssueChange(
+            initial_change_status=initial_change_status_dict,
+            its_project=its_project,
+        )
+
+        ret.insert(0, initial_change_status_obj)
+
         return ret
 
     def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
@@ -663,6 +685,67 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
             updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
         )
+
+    def _transform_to_its_ITSIssueTimeInStatus(
+        self, token, changes: List[ITSIssueChange], its_project: ITSProjectInDB, issue_dict: dict
+    ) -> List[ITSIssueTimeInStatus]:
+
+        initial_work_item_type = changes[0].extra["initial_work_item_type"]  # type: ignore[index]
+
+        wit_reference_name = self.get_work_item_type_reference_name(
+            token=token, its_project=its_project, work_item_type=initial_work_item_type
+        )
+
+        _issue_id = issue_dict["id"]
+
+        previous = None
+        ret: List[ITSIssueTimeInStatus] = []
+
+        for single_change in changes:
+
+            if single_change.field_name == "System.WorkItemType":
+
+                new_work_item_type = single_change.v_to_string
+                wit_reference_name = self.get_work_item_type_reference_name(
+                    token=token, its_project=its_project, work_item_type=new_work_item_type
+                )
+
+            if single_change.change_type == ITSIssueChangeType.status:
+
+                if not previous:
+                    previous = single_change
+                    continue
+
+                status_category_api_mapped = self._mapping_status_id(
+                    token=token,
+                    its_project=its_project,
+                    issue_state=previous.v_to_string,
+                    wit_ref_name=wit_reference_name,
+                )
+
+                timeSpent = ITSIssueTimeInStatus(
+                    issue_id=_issue_id,
+                    itsp_id=previous.itsp_id,
+                    created_at=previous.created_at,
+                    updated_at=single_change.created_at,
+                    id=f"{_issue_id}-{previous.api_id}",
+                    status_name=previous.v_to_string,
+                    status_id=status_category_api_mapped.get("id"),
+                    status_category_api=status_category_api_mapped.get("stateCategory"),
+                    status_category=_parse_status_category(status_category_api_mapped["stateCategory"]),
+                    started_issue_change_id=previous.id,
+                    started_at=previous.updated_at,
+                    ended_issue_change_id=single_change.id,
+                    ended_at=single_change.updated_at,
+                    ended_with_status_name=single_change.v_to_string,
+                    ended_with_status_id=single_change.v_to_string,
+                    seconds_in_status=(single_change.updated_at - previous.updated_at).total_seconds()
+                    if (single_change.updated_at and previous.updated_at)
+                    else "",
+                )
+                ret.append(timeSpent)
+                previous = single_change
+        return ret
 
     def _transform_to_its_issue(
         self,
@@ -819,6 +902,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
         )
 
+        times_in_statuses: List[ITSIssueTimeInStatus] = self._transform_to_its_ITSIssueTimeInStatus(
+            token=token, changes=changes, its_project=its_project, issue_dict=single_work_item_details_response_json
+        )
+
         issue: ITSIssue = self._transform_to_its_issue(
             token=token,
             issue_dict=single_work_item_details_response_json,
@@ -827,4 +914,6 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             comment=comments[0] if comments else None,
         )
         # times_in_statuses= To be implemented
-        return _transform_to_its_ITSIssueAllData(issue=issue, comments=comments, changes=changes, times_in_statuses=[])
+        return _transform_to_its_ITSIssueAllData(
+            issue=issue, comments=comments, changes=changes, times_in_statuses=times_in_statuses
+        )

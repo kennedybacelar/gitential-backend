@@ -1,4 +1,5 @@
 from typing import Callable, List, Tuple
+
 from pydantic.datetime_parse import parse_datetime
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.its import (
@@ -7,6 +8,7 @@ from gitential2.datatypes.its import (
     ITSIssueComment,
     ITSIssueChange,
     ITSIssueTimeInStatus,
+    ITSIssueChangeType,
 )
 
 from .common import to_author_alias, _parse_its_issue_change_type
@@ -26,6 +28,27 @@ def _transform_to_its_ITSIssueComment(
         comment=comment_dict.get("text"),
         created_at=parse_datetime(comment_dict["createdDate"]),
         updated_at=parse_datetime(comment_dict["modifiedDate"]) if comment_dict.get("modifiedDate") else None,
+    )
+
+
+def _initial_status_transform_to_ITSIssueChange(
+    initial_change_status: dict,
+    its_project: ITSProjectInDB,
+) -> ITSIssueChange:
+
+    its_change_id = f"{initial_change_status['issue_id_or_key']}-{initial_change_status['update_api_id']}-System.State"
+
+    return ITSIssueChange(
+        id=its_change_id,
+        issue_id=initial_change_status["issue_id_or_key"],
+        itsp_id=its_project.id,
+        api_id=initial_change_status["update_api_id"],
+        v_to=initial_change_status["initial_issue_state"],
+        v_to_string=initial_change_status["initial_issue_state"],
+        change_type=ITSIssueChangeType.status,
+        created_at=parse_datetime(initial_change_status["created_date"]),
+        updated_at=parse_datetime(initial_change_status["updated_at"]),
+        extra={"initial_work_item_type": initial_change_status["initial_work_item_type"]},
     )
 
 
@@ -57,7 +80,7 @@ def _transform_to_ITSIssueChange(
         author_api_id=single_update["revisedBy"].get("id"),
         author_email=single_update["revisedBy"].get("uniqueName"),
         author_name=single_update["revisedBy"].get("displayName"),
-        author_dev_id=its_issue_change_static_info["author_dev_id"],
+        author_dev_id=its_issue_change_static_info.get("author_dev_id"),
         field_name=field_name,
         field_id=None,
         field_type=None,
@@ -66,7 +89,7 @@ def _transform_to_ITSIssueChange(
         v_from_string=v_from_string,
         v_to=str(field_content.get("newValue")),
         v_to_string=v_to_string,
-        created_at=its_issue_change_static_info["created_at"],
+        created_at=single_update["revisedDate"],
         updated_at=its_issue_change_static_info["updated_at"],
     )
 
