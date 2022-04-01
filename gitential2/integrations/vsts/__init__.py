@@ -681,7 +681,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
 
     def _transform_to_its_ITSIssueTimeInStatus(
-        self, token, changes: List[ITSIssueChange], its_project: ITSProjectInDB, issue_dict: dict
+        self, token, changes: List[ITSIssueChange], its_project: ITSProjectInDB, issue_id_or_key: str
     ) -> List[ITSIssueTimeInStatus]:
 
         initial_work_item_type = changes[0].extra["initial_work_item_type"]  # type: ignore[index]
@@ -689,8 +689,6 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         wit_reference_name = self.get_work_item_type_reference_name(
             token=token, its_project=its_project, work_item_type=initial_work_item_type
         )
-
-        _issue_id = issue_dict["id"]
 
         previous_change = None
         ret: List[ITSIssueTimeInStatus] = []
@@ -718,11 +716,11 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                 )
 
                 timeSpent = ITSIssueTimeInStatus(
-                    issue_id=_issue_id,
+                    issue_id=issue_id_or_key,
                     itsp_id=previous_change.itsp_id,
                     created_at=previous_change.updated_at,
                     updated_at=current_change.updated_at,
-                    id=f"{_issue_id}-{previous_change.api_id}",
+                    id=f"{issue_id_or_key}-{previous_change.api_id}",
                     status_name=previous_change.v_to_string,
                     status_id=status_category_api_mapped.get("id"),
                     status_category_api=status_category_api_mapped.get("stateCategory"),
@@ -897,7 +895,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
 
         times_in_statuses: List[ITSIssueTimeInStatus] = self._transform_to_its_ITSIssueTimeInStatus(
-            token=token, changes=changes, its_project=its_project, issue_dict=single_work_item_details_response_json
+            token=token, changes=changes, its_project=its_project, issue_id_or_key=issue_id_or_key
         )
 
         issue: ITSIssue = self._transform_to_its_issue(
