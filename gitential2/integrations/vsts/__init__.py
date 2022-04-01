@@ -733,7 +733,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                     ended_with_status_id=current_change.v_to_string,
                     seconds_in_status=(current_change.updated_at - previous_change.updated_at).total_seconds()
                     if (current_change.updated_at and previous_change.updated_at)
-                    else "",
+                    else 0,
                 )
                 ret.append(timeSpent)
                 previous_change = current_change
@@ -905,7 +905,6 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
             comment=comments[0] if comments else None,
         )
-        # times_in_statuses= To be implemented
         return _transform_to_its_ITSIssueAllData(
             issue=issue, comments=comments, changes=changes, times_in_statuses=times_in_statuses
         )
