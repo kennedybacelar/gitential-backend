@@ -261,7 +261,7 @@ def _validate_reseller_code(
         reseller_id: str
         reseller_code: str
 
-        @validator("reseller_code")
+        @validator("reseller_code", allow_reuse=True)
         def rcode_validator(cls, rcode, values):
             reseller_code_obj = g.backend.reseller_codes.get(rcode)
             if (

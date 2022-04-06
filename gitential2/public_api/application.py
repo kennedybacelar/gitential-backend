@@ -2,9 +2,12 @@ from typing import Optional
 from uuid import uuid4
 
 from structlog import get_logger
+from pydantic import ValidationError
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exception_handlers import request_validation_exception_handler
+
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 
@@ -124,6 +127,11 @@ def _error_page(request, error_code):
 
 
 def _configure_error_handling(app: FastAPI):
+    @app.exception_handler(ValidationError)
+    async def validation_exception_handler(request, exc):
+        print(f"OMG! The client sent invalid data!: {exc}")
+        return await request_validation_exception_handler(request, exc)
+
     @app.exception_handler(500)
     async def custom_http_exception_handler(request, exc):
         error_code = uuid4()
@@ -185,4 +193,4 @@ def _configure_error_handling(app: FastAPI):
 
         return response
 
-    return custom_http_exception_handler
+    return validation_exception_handler, custom_http_exception_handler
