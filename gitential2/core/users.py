@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Iterable, Optional, Tuple, cast
 from structlog import get_logger
-from pydantic import BaseModel, validator
 from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB
 from gitential2.datatypes.subscriptions import (
     SubscriptionInDB,
@@ -15,6 +14,7 @@ from gitential2.core.workspace_common import create_workspace
 
 from .context import GitentialContext
 from .emails import send_email_to_user, send_system_notification_email
+from .reseller_codes import validate_reseller_code
 
 
 logger = get_logger(__name__)
@@ -50,7 +50,7 @@ def register_user(
     g: GitentialContext, registration: UserRegister, current_user: Optional[UserInDB] = None
 ) -> Tuple[UserInDB, Optional[SubscriptionInDB]]:
     user = UserCreate(**registration.dict(exclude={"reseller_id, reseller_code"}))
-    reseller_id, reseller_code = _validate_reseller_code(g, registration.reseller_id, registration.reseller_code)
+    reseller_id, reseller_code = validate_reseller_code(g, registration.reseller_id, registration.reseller_code)
 
     if not current_user:
         existing_user = g.backend.users.get_by_email(user.email)
@@ -252,29 +252,3 @@ def send_trial_ended_emails(g: GitentialContext, user_id: int):
 
 def send_getting_started_emails(g: GitentialContext, user_id: int, template_name):
     send_email_to_user(g, user=g.backend.users.get_or_error(user_id), template_name=template_name)
-
-
-def _validate_reseller_code(
-    g: GitentialContext, reseller_id: Optional[str], reseller_code: Optional[str]
-) -> Tuple[Optional[str], Optional[str]]:
-    class RC(BaseModel):
-        reseller_id: str
-        reseller_code: str
-
-        @validator("reseller_code", allow_reuse=True)
-        def rcode_validator(cls, rcode, values):
-            reseller_code_obj = g.backend.reseller_codes.get(rcode)
-            if (
-                reseller_code_obj
-                and reseller_code_obj.reseller_id == values["reseller_id"]
-                and reseller_code_obj.user_id is None
-            ):
-                return rcode
-            else:
-                raise ValueError("Invalid reseller code")
-
-    if not reseller_id and not reseller_code:
-        return None, None
-    else:
-        rc = RC(reseller_id=reseller_id, reseller_code=reseller_code)  # this is where the validation is happening
-        return rc.reseller_id, rc.reseller_code

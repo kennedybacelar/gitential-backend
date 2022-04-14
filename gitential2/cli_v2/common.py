@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Any
 from pathlib import Path
 from pprint import pprint
 import json
@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 class OutputFormat(str, Enum):
     json = "json"
     tabulate = "tabulate"
+    csv = "csv"
     pprint = "pprint"
 
 
@@ -47,6 +48,8 @@ def print_results(
         return _print_tabulate(results, fields)
     elif format_ == OutputFormat.json:
         return _print_json(results, fields)
+    elif format_ == OutputFormat.csv:
+        return _print_csv(results, fields)
     else:
         return pprint(results)
 
@@ -88,6 +91,29 @@ def _print_json(
         ret = ret.where(pd.notnull(ret), None)
         jsonable = ret.to_dict(orient="list")
         print(json.dumps(jsonable, indent=2))
+
+
+def _print_csv(
+    results: Optional[Union[list, pd.DataFrame]],
+    fields: Optional[List[str]] = None,
+):
+    if isinstance(results, list) and results:
+        jsonable_results = _fix_fields_ordering(
+            [jsonable_encoder(e, include=set(fields) if fields else None) for e in results], fields
+        )
+        headers = jsonable_results[0].keys()
+        print(",".join(headers))
+        for r in jsonable_results:
+            print(",".join(_as_string(v) for v in r.values()))
+
+
+def _as_string(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str) and "," in value:
+        return f'"{value}"'
+    else:
+        return value
 
 
 def _fix_fields_ordering(results: list, fields: Optional[List[str]]) -> list:
