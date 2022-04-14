@@ -3,7 +3,7 @@ from typing import Optional
 from structlog import get_logger
 from fastapi import APIRouter, Request, HTTPException, Depends, Header
 from fastapi.responses import RedirectResponse
-from gitential2.datatypes.users import UserCreate
+from gitential2.datatypes.users import UserRegister
 from gitential2.datatypes.subscriptions import SubscriptionType
 from gitential2.exceptions import AuthenticationException
 from gitential2.core.context import GitentialContext
@@ -170,7 +170,7 @@ def session(
 
 @router.post("/registration")
 def registration(
-    registration_data: UserCreate,
+    registration_data: UserRegister,
     request: Request,
     g: GitentialContext = Depends(gitential_context),
     verify_recaptcha_token=Depends(verify_recaptcha_token),  # pylint: disable=unused-argument

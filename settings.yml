@@ -38,12 +38,16 @@ stripe:
   webhook_secret: "whsec_J3wwXzXQOklhlC5qS9iCFynVkiHzXZ9g"
 features:
   enable_additional_materialized_views: true
-  enable_access_approval: true
+  enable_access_approval: false
   enable_resellers: true
 resellers:
   - reseller_id: appsumo
     short_name: AppSumo
     redemption_route: AppSumo
+  - reseller_id: reseller1
+    short_name: reseller1
+    redemption_route: reseller1
+
 # frontend:
 #   inject_html:
 #     - tag: script

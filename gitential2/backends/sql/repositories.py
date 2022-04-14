@@ -15,6 +15,7 @@ from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectInDB,
     ProjectITSProjectUpdate,
 )
+from gitential2.datatypes.reseller_codes import ResellerCode
 from gitential2.exceptions import NotFoundException
 
 
@@ -80,6 +81,7 @@ from gitential2.backends.base.repositories import (
     ITSProjectRepository,
     PersonalAccessTokenRepository,
     ProjectITSProjectRepository,
+    ResellerCodeRepository,
     UserRepository,
     SubscriptionRepository,
     UserInfoRepository,
@@ -376,6 +378,11 @@ class SQLUserRepository(UserRepository, SQLRepository[int, UserCreate, UserUpdat
         result = self._execute_query(query)
         row = result.fetchone()
         return UserInDB(**row) if row else None
+
+
+class SQLResellerCodeRepository(ResellerCodeRepository, SQLRepository[str, ResellerCode, ResellerCode, ResellerCode]):
+
+    pass
 
 
 class SQLPersonalAccessTokenRepository(

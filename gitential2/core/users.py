@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Iterable, Optional, Tuple, cast
 from structlog import get_logger
-from gitential2.datatypes.users import UserCreate, UserUpdate, UserInDB
+from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB
 from gitential2.datatypes.subscriptions import (
     SubscriptionInDB,
     SubscriptionCreate,
@@ -14,6 +14,7 @@ from gitential2.core.workspace_common import create_workspace
 
 from .context import GitentialContext
 from .emails import send_email_to_user, send_system_notification_email
+from .reseller_codes import validate_reseller_code
 
 
 logger = get_logger(__name__)
@@ -46,8 +47,11 @@ def _calc_user_login(user_create: UserCreate):
 
 
 def register_user(
-    g: GitentialContext, user: UserCreate, current_user: Optional[UserInDB] = None
+    g: GitentialContext, registration: UserRegister, current_user: Optional[UserInDB] = None
 ) -> Tuple[UserInDB, Optional[SubscriptionInDB]]:
+    user = UserCreate(**registration.dict(exclude={"reseller_id, reseller_code"}))
+    reseller_id, reseller_code = validate_reseller_code(g, registration.reseller_id, registration.reseller_code)
+
     if not current_user:
         existing_user = g.backend.users.get_by_email(user.email)
         if existing_user:
@@ -55,17 +59,19 @@ def register_user(
         user.registration_ready = True
         user.login = _calc_user_login(user)
         user_in_db = g.backend.users.create(user)
-        subscription = _create_default_subscription_after_reg(g, user_in_db)
+        subscription = _create_default_subscription_after_reg(g, user_in_db, reseller_id, reseller_code)
         _create_primary_workspace_if_missing(g, user_in_db)
     else:
         user.registration_ready = True
         user.login = _calc_user_login(user)
         user_in_db = g.backend.users.update(current_user.id, cast(UserUpdate, user))
-        subscription = _create_default_subscription_after_reg(g, user_in_db)
+        subscription = _create_default_subscription_after_reg(g, user_in_db, reseller_id, reseller_code)
     if g.license.is_cloud and subscription:
         send_email_to_user(g, user_in_db, template_name="welcome")
         if g.settings.notifications.request_free_trial:
             send_system_notification_email(g, user_in_db, template_name="request_free_trial")
+    if reseller_id and reseller_code:
+        g.backend.reseller_codes.set_user_id(reseller_id, reseller_code, user_in_db.id)
     return user_in_db, subscription
 
 
@@ -167,14 +173,18 @@ def _create_primary_workspace_if_missing(g: GitentialContext, user: UserInDB):
         create_workspace(g, workspace, current_user=user, primary=True)
 
 
-def _create_default_subscription_after_reg(g: GitentialContext, user) -> Optional[SubscriptionInDB]:
+def _create_default_subscription_after_reg(
+    g: GitentialContext, user, reseller_id: Optional[str], reseller_code: Optional[str]
+) -> Optional[SubscriptionInDB]:
     subscriptions = g.backend.subscriptions.get_subscriptions_for_user(user.id)
     if subscriptions:
         return None
     else:
         # TEMPORARY DISABLED
         # _schedule_marketing_emails(g, user)
-        return g.backend.subscriptions.create(SubscriptionCreate.default_for_new_user(user.id))
+        return g.backend.subscriptions.create(
+            SubscriptionCreate.default_for_new_user(user.id, reseller_id, reseller_code)
+        )
 
 
 def _schedule_marketing_emails(g: GitentialContext, user: UserInDB):

@@ -32,6 +32,7 @@ from .jira import app as jira_app
 from .vsts import app as vsts_app
 from .its import app as its_app
 from .data_queries import app as data_queries_app
+from .reseller_codes import app as reseller_codes
 
 logger = get_logger(__name__)
 
@@ -53,6 +54,7 @@ app.add_typer(jira_app, name="jira")
 app.add_typer(vsts_app, name="vsts")
 app.add_typer(its_app, name="its")
 app.add_typer(data_queries_app, name="data-query")
+app.add_typer(reseller_codes, name="reseller-codes")
 
 
 @app.command("public-api")
