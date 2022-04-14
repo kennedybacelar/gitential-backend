@@ -1,5 +1,5 @@
 from typing import Optional, Tuple, List
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, validator
 
 from gitential2.datatypes.reseller_codes import ResellerCode, generate_reseller_code
@@ -20,7 +20,10 @@ def validate_reseller_code(
                 reseller_code_obj
                 and reseller_code_obj.reseller_id == values["reseller_id"]
                 and reseller_code_obj.user_id is None
-                and (reseller_code_obj.expire_at is None or reseller_code_obj.expire_at > g.current_time())
+                and (
+                    reseller_code_obj.expire_at is None
+                    or reseller_code_obj.expire_at.replace(tzinfo=timezone.utc) > g.current_time()
+                )
             ):
                 return rcode
             else:
