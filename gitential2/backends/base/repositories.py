@@ -96,11 +96,13 @@ class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
 class ResellerCodeRepository(BaseRepository[str, ResellerCode, ResellerCode, ResellerCode]):
     def set_user_id(self, reseller_id: str, reseller_code: str, user_id: int) -> ResellerCode:
         rc = self.get_or_error(reseller_code)
-        rc.user_id = user_id
-        if rc.reseller_id == reseller_id and not rc.user_id:
+        if (rc.reseller_id == reseller_id) and not rc.user_id:
+            rc.user_id = user_id
             return self.update(reseller_code, rc)
         else:
-            raise ValueError("Invalid reseller code")
+            raise ValueError(
+                f"Invalid reseller code reseller_id={reseller_id}, reseller_code={reseller_code}, user_id={user_id}"
+            )
 
 
 class AccessApprovalRepository(BaseRepository[int, AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB]):
