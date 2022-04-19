@@ -29,7 +29,7 @@ def validate_reseller_code(
             else:
                 raise ValueError("Invalid reseller code")
 
-    if not reseller_id and not reseller_code:
+    if (not reseller_id and not reseller_code) or (reseller_id in ["registration", "", None]):
         return None, None
     else:
         rc = RC(reseller_id=reseller_id, reseller_code=reseller_code)  # this is where the validation is happening
