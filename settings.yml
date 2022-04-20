@@ -170,5 +170,5 @@ integrations:
     type: jira
     login: false
     oauth:
-      client_id: uBMcWdotssP2J9uwCQhht9KxLFTe9wM1
-      client_secret: SH29iWEOfE5tcxFXkaJ1Eug5J0oCWFOa-UoPllVa2x8unU5bIny-u76d8PtNID46
+      client_id: 2hPW4NqlNcXrZxcn6JtjqUEhhOIiXtjp
+      client_secret: FLvyq-K5SKN5VqASIFJw8Zf5dbWg8mvpyM9txED_o9eujKJ1TAJxCUHLmF6fWX72

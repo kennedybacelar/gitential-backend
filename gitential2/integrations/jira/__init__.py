@@ -33,6 +33,86 @@ from .transformations import (
 logger = get_logger(__name__)
 
 
+_OAUTH_SCOPES = [
+    # Personal data reporting API
+    # Report user accounts that an app is storing personal data for.
+    "report:personal-data",
+    #
+    # General
+    "read:me, offline_access",
+    #
+    # Get projects paginated
+    # GET /rest/api/3/project/search
+    "read:issue-type:jira, read:project:jira, read:project.property:jira, read:user:jira, read:application-role:jira, read:avatar:jira, read:group:jira, read:issue-type-hierarchy:jira, read:project-category:jira, read:project-version:jira, read:project.component:jira",
+    #
+    # Get changelogs
+    # GET /rest/api/3/issue/{issueIdOrKey}/changelog
+    "read:issue-meta:jira, read:avatar:jira, read:issue.changelog:jira",
+    #
+    # Get issue
+    # GET /rest/api/3/issue/{issueIdOrKey}
+    "read:issue-meta:jira, read:issue-security-level:jira, read:issue.vote:jira, read:issue.changelog:jira, read:avatar:jira, read:issue:jira, read:status:jira, read:user:jira, read:field-configuration:jira",
+    #
+    # Search for issues using JQL (GET)
+    # GET /rest/api/3/search
+    "read:issue-details:jira, read:audit-log:jira, read:avatar:jira, read:field-configuration:jira, read:issue-meta:jira",
+    #
+    # Get changelogs
+    # GET /rest/api/3/issue/{issueIdOrKey}/changelog
+    "read:issue-meta:jira, read:avatar:jira, read:issue.changelog:jira",
+    #
+    # Get comments
+    # GET /rest/api/3/issue/{issueIdOrKey}/comment
+    "read:comment:jira, read:comment.property:jira, read:group:jira, read:project:jira, read:project-role:jira, read:user:jira, read:avatar:jira",
+    #
+    # Get priorities
+    # GET /rest/api/3/priority
+    "read:priority:jira",
+    #
+    # Get fields
+    # GET /rest/api/3/field
+    "read:field:jira, read:avatar:jira, read:project-category:jira, read:project:jira, read:field-configuration:jira",
+    #
+    # Get all statuses
+    # GET /rest/api/3/status
+    "read:status:jira",
+    #
+    # Get user
+    # GET /rest/api/3/user
+    "read:application-role:jira, read:group:jira, read:user:jira, read:avatar:jira",
+    #
+    # Get issue link types
+    # GET /rest/api/3/issueLinkType
+    "read:issue-link-type:jira",
+    #
+    # Jira software read scopes
+    # "read:board-scope:jira-software",
+    # "read:epic:jira-software",
+    # "read:issue:jira-software",
+    # "read:sprint:jira-software",
+    # "read:source-code:jira-software",
+    # "read:feature-flag:jira-software",
+    # "read:deployment:jira-software",
+    # "read:build:jira-software",
+    # "read:remote-link:jira-software",
+    #
+    # Get issues for sprint
+    # GET /rest/agile/1.0/sprint/{sprintId}/issue
+    "read:sprint:jira-software, read:issue-details:jira, read:jql:jira",
+    #
+    # Get all boards
+    # GET /rest/agile/1.0/board
+    # ?
+    # Get all sprints
+    # GET /rest/agile/1.0/board/{boardId}/sprint
+    "read:sprint:jira-software",
+]
+
+OAUTH_SCOPES = " ".join(
+    sorted(set(s.strip() for sd in _OAUTH_SCOPES for s in sd.split(",")), key=lambda x: (x.split(":")[-1], x))
+)
+
+
 class AtlassianSite(BaseModel):
     id: str
     name: str
@@ -43,16 +123,16 @@ class AtlassianSite(BaseModel):
 
 class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
     def oauth_register(self) -> dict:
-        return {
+        logger.debug("Jira Integration Scopes", integration_name=self.name, scopes=OAUTH_SCOPES)
+        ret = {
             "access_token_url": "https://auth.atlassian.com/oauth/token",
             "authorize_url": "https://auth.atlassian.com/authorize?audience=api.atlassian.com",
             "userinfo_endpoint": "https://api.atlassian.com/me",
-            "client_kwargs": {
-                "scope": "read:me read:jira-user read:jira-work offline_access",
-            },
+            "client_kwargs": {"scope": OAUTH_SCOPES},
             "client_id": self.settings.oauth.client_id if self.settings.oauth else None,
             "client_secret": self.settings.oauth.client_secret if self.settings.oauth else None,
         }
+        return ret
 
     def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
         return False, token
@@ -68,7 +148,7 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
         client = self.get_oauth2_client(token=token)
         ret = []
         for site in sites:
-            if "read:jira-work" in site.scopes:
+            if "read:project:jira" in site.scopes:
                 site_id = site.id
                 resp = client.get(f"https://api.atlassian.com/ex/jira/{site_id}/rest/api/2/project")
                 resp_json = resp.json()
