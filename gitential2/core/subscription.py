@@ -46,14 +46,24 @@ def get_current_subscription(g: GitentialContext, user_id: int) -> SubscriptionI
 
     current_subscription_from_db = _get_current_subscription_from_db(g, user_id)
     if current_subscription_from_db:
-        return current_subscription_from_db
+        return _add_its_integration(g, current_subscription_from_db)
     else:
-        return SubscriptionInDB(
-            id=0,
-            user_id=user_id,
-            subscription_type=SubscriptionType.free,
-            subscription_start=datetime.utcnow(),
+        return _add_its_integration(
+            g,
+            SubscriptionInDB(
+                id=0,
+                user_id=user_id,
+                subscription_type=SubscriptionType.free,
+                subscription_start=datetime.utcnow(),
+            ),
         )
+
+
+def _add_its_integration(g: GitentialContext, subscription: SubscriptionInDB):
+    if g.settings.features.enable_its_analytics:
+        features = subscription.features or {}
+        subscription.features = deep_merge_dicts(features, {"jira": {"enabled": True}})
+    return subscription
 
 
 def _get_current_subscription_from_db(g: GitentialContext, user_id: int) -> Optional[SubscriptionInDB]:

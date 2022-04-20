@@ -40,6 +40,7 @@ features:
   enable_additional_materialized_views: true
   enable_access_approval: false
   enable_resellers: true
+  enable_its_analytics: true
 resellers:
   - reseller_id: appsumo
     short_name: AppSumo
