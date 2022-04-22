@@ -290,6 +290,9 @@ class ITSIssueLinkedIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixi
     issue_id: str
     itsp_id: int
 
+    other_issue_id: str
+    # related issue
+
     linked_issue_id: str
     # link_type
 

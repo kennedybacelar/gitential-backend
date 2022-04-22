@@ -715,6 +715,15 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     )
 
+    its_issue_linked_issue = sa.Table(
+        "its_issue_linked_issue",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("issue_id", sa.String(128), nullable=False),  # todo foreign key
+        sa.Column("other_issue_id", sa.String(128), nullable=False),  # todo related issue
+        sa.Column("linked_issue_id", sa.String(128), nullable=False),  # todo link_type
+    )
+
     return metadata, {
         "projects": projects,
         "repositories": repositories,
@@ -739,4 +748,5 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "its_issue_changes": its_issue_changes,
         "its_issue_times_in_statuses": its_issue_times_in_statuses,
         "its_issue_comments": its_issue_comments,
+        "its_issue_linked_issue": its_issue_linked_issue,
     }

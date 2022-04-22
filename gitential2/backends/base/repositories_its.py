@@ -1,6 +1,13 @@
 from abc import abstractmethod
 from typing import Optional
-from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueHeader, ITSIssueTimeInStatus, ITSIssueComment
+from gitential2.datatypes.its import (
+    ITSIssue,
+    ITSIssueChange,
+    ITSIssueHeader,
+    ITSIssueTimeInStatus,
+    ITSIssueComment,
+    ITSIssueLinkedIssue,
+)
 from .repositories_base import BaseWorkspaceScopedRepository
 
 
@@ -26,5 +33,11 @@ class ITSIssueTimeInStatusRepository(
 
 class ITSIssueCommentRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueComment, ITSIssueComment, ITSIssueComment],
+):
+    pass
+
+
+class ITSIssueLinkedIssueRepository(
+    BaseWorkspaceScopedRepository[str, ITSIssueLinkedIssue, ITSIssueLinkedIssue, ITSIssueLinkedIssue],
 ):
     pass

@@ -1,11 +1,19 @@
 from typing import Optional
 from sqlalchemy.sql import select
-from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueTimeInStatus, ITSIssueComment, ITSIssueHeader
+from gitential2.datatypes.its import (
+    ITSIssue,
+    ITSIssueChange,
+    ITSIssueTimeInStatus,
+    ITSIssueComment,
+    ITSIssueHeader,
+    ITSIssueLinkedIssue,
+)
 from gitential2.backends.base import (
     ITSIssueRepository,
     ITSIssueChangeRepository,
     ITSIssueTimeInStatusRepository,
     ITSIssueCommentRepository,
+    ITSIssueLinkedIssueRepository,
 )
 from .repositories import SQLWorkspaceScopedRepository, fetchone_
 
@@ -55,5 +63,12 @@ class SQLITSIssueTimeInStatusRepository(
 class SQLITSIssueCommentRepository(
     ITSIssueCommentRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueComment, ITSIssueComment, ITSIssueComment],
+):
+    pass
+
+
+class SQLITSIssueLinkedIssueRepository(
+    ITSIssueLinkedIssueRepository,
+    SQLWorkspaceScopedRepository[str, ITSIssueLinkedIssue, ITSIssueLinkedIssue, ITSIssueLinkedIssue],
 ):
     pass
