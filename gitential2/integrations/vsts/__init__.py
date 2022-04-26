@@ -15,6 +15,7 @@ from gitential2.datatypes.its import (
     ITSIssueChange,
     ITSIssueTimeInStatus,
     ITSIssueChangeType,
+    ITSIssueLinkedIssue,
 )
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
@@ -39,6 +40,7 @@ from .transformations import (
     _transform_to_its_ITSIssueComment,
     _transform_to_ITSIssueChange,
     _initial_status_transform_to_ITSIssueChange,
+    _transform_to_its_ITSIssueLinkedIssue,
 )
 
 logger = get_logger(__name__)
@@ -577,6 +579,34 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             ret.append(
                 _transform_to_its_ITSIssueComment(
                     comment_dict=single_comment, its_project=its_project, developer_map_callback=developer_map_callback
+                )
+            )
+        return ret
+
+    def _get_linked_issues(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> List[ITSIssueLinkedIssue]:
+
+        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
+        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        version = "v2.0"
+
+        linked_issues_url = f"https://analytics.dev.azure.com/{organization}/{project}/_odata/{version}//WorkItems?$select=WorkItemId&$filter=WorkItemId eq {issue_id_or_key} &$expand=Links($select=SourceWorkItemId,TargetWorkItemId,LinkTypeName;$expand=TargetWorkItem($select=WorkItemId))"
+
+        linked_issues_response = client.get(linked_issues_url)
+
+        if linked_issues_response.status_code != 200:
+            log_api_error(linked_issues_response)
+            return []
+
+        ret = []
+        list_linked_issues_response = linked_issues_response.json().get("value")[0].get("Links")
+
+        if not list_linked_issues_response:
+            return []
+
+        for single_linked_issue in list_linked_issues_response:
+            ret.append(
+                _transform_to_its_ITSIssueLinkedIssue(
+                    its_project=its_project, issue_id_or_key=issue_id_or_key, single_linked_issue=single_linked_issue
                 )
             )
         return ret

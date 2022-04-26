@@ -9,6 +9,7 @@ from gitential2.datatypes.its import (
     ITSIssueChange,
     ITSIssueTimeInStatus,
     ITSIssueChangeType,
+    ITSIssueLinkedIssue,
 )
 
 from .common import to_author_alias, _parse_its_issue_change_type
@@ -98,12 +99,31 @@ def _transform_to_ITSIssueChange(
     )
 
 
+def _transform_to_its_ITSIssueLinkedIssue(
+    its_project: ITSProjectInDB,
+    issue_id_or_key: str,
+    single_linked_issue: dict,
+) -> ITSIssueLinkedIssue:
+
+    target_linked_issue_id = single_linked_issue.get("TargetWorkItemId")
+    its_linked_issue_id = f"{its_project.id}-{issue_id_or_key}-{target_linked_issue_id}"
+
+    return ITSIssueLinkedIssue(
+        id=its_linked_issue_id,
+        issue_id=int(issue_id_or_key),
+        itsp_id=its_project.id,
+        other_issue_id=target_linked_issue_id,
+        linked_issue_id=single_linked_issue.get("LinkTypeName"),
+    )
+
+
 def _transform_to_its_ITSIssueAllData(
     issue: ITSIssue,
     comments: List[ITSIssueComment],
     changes: List[ITSIssueChange],
     times_in_statuses: List[ITSIssueTimeInStatus],
 ) -> ITSIssueAllData:
+
     return ITSIssueAllData(
         issue=issue,
         comments=comments,

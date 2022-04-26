@@ -140,13 +140,13 @@ def list_all_data_for_issue(
     if vsts_credential and vsts_integration:
         vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
-        recent_work_items = vsts_integration.get_all_data_for_issue(
+        all_data_issue = vsts_integration.get_all_data_for_issue(
             token=token,
             its_project=its_project_mock,
             issue_id_or_key=issue_id_or_key,
             developer_map_callback=dev_map_callback,
         )
-        print_results([recent_work_items], format_=format_, fields=fields)
+        print_results([all_data_issue], format_=format_, fields=fields)
 
 
 @app.command("raw-data-issue")
@@ -169,10 +169,10 @@ def list_raw_data_for_issues_per_project(
         vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
         # pylint: disable=protected-access
-        recent_work_items = vsts_integration._raw_fetching_all_issues_per_project(
+        issues_per_project = vsts_integration._raw_fetching_all_issues_per_project(
             token=token, its_project=its_project_mock, date_from=date_from
         )
-        print_results(recent_work_items, format_=format_, fields=fields)
+        print_results(issues_per_project, format_=format_, fields=fields)
 
 
 @app.command("single-issue")
@@ -195,7 +195,33 @@ def list_all_data_single_issue(
         vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
         # pylint: disable=protected-access
-        recent_work_items = vsts_integration._get_single_work_item_all_data(
+        single_work_item = vsts_integration._get_single_work_item_all_data(
             token=token, its_project=its_project_mock, issue_id_or_key=issue_id_or_key
         )
-        print_results([recent_work_items], format_=format_, fields=fields)
+        print_results([single_work_item], format_=format_, fields=fields)
+
+
+@app.command("linked-issues")
+def list_all_linked_issues(
+    workspace_id: int,
+    namespace: str,
+    team: str,
+    issue_id_or_key: str = typer.Option(None, "--issue-id"),
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+
+    its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
+
+    g = get_context()
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        # pylint: disable=protected-access
+        linked_issues = vsts_integration._get_linked_issues(
+            token=token, its_project=its_project_mock, issue_id_or_key=issue_id_or_key
+        )
+        print_results(linked_issues, format_=format_, fields=fields)
