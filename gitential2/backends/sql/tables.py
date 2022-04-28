@@ -597,19 +597,19 @@ def get_workspace_metadata(schema: Optional[str] = None):
         # status fields
         sa.Column("status_name", sa.String(64)),
         sa.Column("status_id", sa.String(64)),
-        sa.Column("status_category_api", sa.String(16)),
+        sa.Column("status_category_api", sa.String(32)),
         sa.Column("status_category", sa.String(16)),
         # issue types and parent
-        sa.Column("issue_type_name", sa.String(32)),
-        sa.Column("issue_type_id", sa.String(32)),
+        sa.Column("issue_type_name", sa.String(48)),
+        sa.Column("issue_type_id", sa.String(48)),
         sa.Column("parent_id", sa.String(128)),
         # resolution fields
         sa.Column("resolution_name", sa.String(32)),
-        sa.Column("resolution_id", sa.String(32)),
+        sa.Column("resolution_id", sa.String(48)),
         sa.Column("resolution_date", sa.DateTime, default=dt.datetime.utcnow, nullable=True),
         # priority fields
-        sa.Column("priority_name", sa.String(16)),
-        sa.Column("priority_id", sa.String(32)),
+        sa.Column("priority_name", sa.String(32)),
+        sa.Column("priority_id", sa.String(48)),
         sa.Column("priority_order", sa.Integer(), nullable=True),
         # summary and description
         sa.Column("summary", sa.String(256)),

@@ -684,6 +684,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         self, token, changes: List[ITSIssueChange], its_project: ITSProjectInDB, issue_id_or_key: str
     ) -> List[ITSIssueTimeInStatus]:
 
+        if not changes:
+            return []
+
         initial_work_item_type = changes[0].extra["initial_work_item_type"]  # type: ignore[index]
 
         wit_reference_name = self.get_work_item_type_reference_name(
