@@ -105,15 +105,14 @@ def _transform_to_its_ITSIssueLinkedIssue(
     single_linked_issue: dict,
 ) -> ITSIssueLinkedIssue:
 
-    target_linked_issue_id = single_linked_issue.get("TargetWorkItemId")
-    its_linked_issue_id = f"{its_project.id}-{issue_id_or_key}-{target_linked_issue_id}"
+    _linked_issue_id = single_linked_issue.get("url", "").split("/")[-1]
 
     return ITSIssueLinkedIssue(
-        id=its_linked_issue_id,
+        id=f"{its_project.id}-{issue_id_or_key}-{_linked_issue_id}",
         issue_id=int(issue_id_or_key),
         itsp_id=its_project.id,
-        other_issue_id=target_linked_issue_id,
-        linked_issue_id=single_linked_issue.get("LinkTypeName"),
+        linked_issue_id=_linked_issue_id,
+        link_type=single_linked_issue.get("attributes", {}).get("name"),
     )
 
 

@@ -720,8 +720,9 @@ def get_workspace_metadata(schema: Optional[str] = None):
         metadata,
         sa.Column("id", sa.String(128), primary_key=True),
         sa.Column("issue_id", sa.String(128), nullable=False),  # todo foreign key
-        sa.Column("other_issue_id", sa.String(128), nullable=False),  # todo related issue
-        sa.Column("linked_issue_id", sa.String(128), nullable=False),  # todo link_type
+        sa.Column("itsp_id", sa.String(128), nullable=False),  # todo foreign key
+        sa.Column("linked_issue_id", sa.String(128), nullable=False),  # todo related issue
+        sa.Column("link_type", sa.String(128), nullable=False),  # todo link_type
     )
 
     return metadata, {

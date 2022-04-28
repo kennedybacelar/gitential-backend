@@ -540,7 +540,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         return ret
 
-    def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
+    def _get_single_work_item_all_data(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, request_params: Optional[dict] = None
+    ) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
         organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
@@ -549,7 +551,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{issue_id_or_key}?api-version=6.0"
         )
 
-        single_work_item_details_response = client.get(single_work_item_details_url)
+        single_work_item_details_response = client.get(single_work_item_details_url, params=request_params)
 
         if single_work_item_details_response.status_code != 200:
             log_api_error(single_work_item_details_response)
@@ -585,24 +587,18 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
     def _get_linked_issues(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> List[ITSIssueLinkedIssue]:
 
-        client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
-        version = "v2.0"
+        linked_issues_response = self._get_single_work_item_all_data(
+            token=token,
+            its_project=its_project,
+            issue_id_or_key=issue_id_or_key,
+            request_params={"$expand": "relations"},
+        )
 
-        linked_issues_url = f"https://analytics.dev.azure.com/{organization}/{project}/_odata/{version}//WorkItems?$select=WorkItemId&$filter=WorkItemId eq {issue_id_or_key} &$expand=Links($select=SourceWorkItemId,TargetWorkItemId,LinkTypeName;$expand=TargetWorkItem($select=WorkItemId))"
-
-        linked_issues_response = client.get(linked_issues_url)
-
-        if linked_issues_response.status_code != 200:
-            log_api_error(linked_issues_response)
-            return []
-
-        ret = []
-        list_linked_issues_response = linked_issues_response.json().get("value")[0].get("Links")
-
+        list_linked_issues_response = linked_issues_response.get("relations")
         if not list_linked_issues_response:
             return []
 
+        ret = []
         for single_linked_issue in list_linked_issues_response:
             ret.append(
                 _transform_to_its_ITSIssueLinkedIssue(
@@ -713,6 +709,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     def _transform_to_its_ITSIssueTimeInStatus(
         self, token, changes: List[ITSIssueChange], its_project: ITSProjectInDB, issue_id_or_key: str
     ) -> List[ITSIssueTimeInStatus]:
+
+        if not changes:
+            return []
 
         initial_work_item_type = changes[0].extra["initial_work_item_type"]  # type: ignore[index]
 
