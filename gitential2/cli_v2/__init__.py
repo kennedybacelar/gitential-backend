@@ -62,7 +62,11 @@ def public_api(
     host: str = typer.Option("0.0.0.0", "--host", "-h"),
     port: int = typer.Option(7999, "--port", "-p"),
     reload: bool = False,
+    update_database: bool = False,
 ):
+    if update_database:
+        initialize_database()
+
     uvicorn.run(
         "gitential2.public_api.main:app",
         host=host,
