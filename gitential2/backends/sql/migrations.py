@@ -77,7 +77,18 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
                 f"CREATE INDEX IF NOT EXISTS calculated_patches_date_idx ON {schema_name}.calculated_patches USING btree (date);",
                 f"CREATE INDEX IF NOT EXISTS calculated_commits_date_idx ON {schema_name}.calculated_commits USING btree (date);",
             ],
-        )
+        ),
+        MigrationRevision(
+            revision_id="001",
+            steps=[
+                f"ALTER TABLE {schema_name}.its_issues ALTER COLUMN status_category_api TYPE VARCHAR(32);",
+                f"ALTER TABLE {schema_name}.its_issues ALTER COLUMN issue_type_name TYPE VARCHAR(48);",
+                f"ALTER TABLE {schema_name}.its_issues ALTER COLUMN issue_type_id TYPE VARCHAR(48);",
+                f"ALTER TABLE {schema_name}.its_issues ALTER COLUMN resolution_id TYPE VARCHAR(48);",
+                f"ALTER TABLE {schema_name}.its_issues ALTER COLUMN priority_name TYPE VARCHAR(32);",
+                f"ALTER TABLE {schema_name}.its_issues ALTER COLUMN priority_id TYPE VARCHAR(48);",
+            ],
+        ),
     ]
 
 
