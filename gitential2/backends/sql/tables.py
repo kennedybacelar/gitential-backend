@@ -609,7 +609,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("resolution_date", sa.DateTime, default=dt.datetime.utcnow, nullable=True),
         # priority fields
         sa.Column("priority_name", sa.String(32)),
-        sa.Column("priority_id", sa.String(32)),
+        sa.Column("priority_id", sa.String(48)),
         sa.Column("priority_order", sa.Integer(), nullable=True),
         # summary and description
         sa.Column("summary", sa.String(256)),
