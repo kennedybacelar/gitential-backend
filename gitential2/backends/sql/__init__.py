@@ -119,6 +119,8 @@ from .repositories_its import (
     SQLITSIssueCommentRepository,
 )
 
+from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
+
 
 def json_dumps(obj):
     return json.dumps(jsonable_encoder(obj))
@@ -329,46 +331,13 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
         workspace_metadata, _ = get_workspace_metadata(schema_name)
         workspace_metadata.create_all(self._engine)
+        set_ws_migration_revision_after_create(workspace_id, self._engine)
 
     def migrate(self):
-        migration_steps = [
-            # users
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(256);"
-            # subscriptions
-            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(256);"
-            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS features JSON;"
-        ]
-        for migration_query_ in migration_steps:
-            self._engine.execute(migration_query_)
+        migrate_database(self._engine, [w.id for w in self.workspaces.all()])
 
     def migrate_workspace(self, workspace_id: int):
-        schema_name = self._workspace_schema_name(workspace_id)
-        # add missing fields to existing tables, temporary
-        migration_steps = [
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_id_external VARCHAR(64);"
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_name_external VARCHAR(128);"
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_username_external VARCHAR(128);"
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS user_aid INTEGER;"
-            # merged_by who?
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_id_external VARCHAR(64);"
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_name_external VARCHAR(128);"
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_username_external VARCHAR(128);"
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS merged_by_aid INTEGER;"
-            # calculated_patches & pull_requests & calculated_commits
-            f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS loc_effort_p INTEGER;"
-            f"ALTER TABLE {schema_name}.pull_requests ADD COLUMN IF NOT EXISTS is_bugfix BOOLEAN;"
-            f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_collaboration BOOLEAN;"
-            f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_new_code BOOLEAN;"
-            f"ALTER TABLE {schema_name}.calculated_patches ADD COLUMN IF NOT EXISTS is_bugfix BOOLEAN;"
-            f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_exists BOOLEAN;"
-            f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_open BOOLEAN;"
-            f"ALTER TABLE {schema_name}.calculated_commits ADD COLUMN IF NOT EXISTS is_pr_closed BOOLEAN;"
-            # add extra indexes to calculated_patches and calculated_commits
-            f"CREATE INDEX IF NOT EXISTS calculated_patches_date_idx ON {schema_name}.calculated_patches USING btree (date);"
-            f"CREATE INDEX IF NOT EXISTS calculated_commits_date_idx ON {schema_name}.calculated_commits USING btree (date);"
-        ]
-        for migration_query_ in migration_steps:
-            self._engine.execute(migration_query_)
+        migrate_workspace(self._engine, workspace_id)
 
     def create_missing_materialized_views(self, workspace_id: int):
         queries = [
