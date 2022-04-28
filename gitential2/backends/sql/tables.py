@@ -12,6 +12,13 @@ from gitential2.datatypes.extraction import Langtype
 
 metadata = sa.MetaData()
 
+schema_revisions_table = sa.Table(
+    "schema_revisions",
+    metadata,
+    sa.Column("id", sa.String(32), primary_key=True),
+    sa.Column("revision_id", sa.String(32), nullable=False),
+)
+
 users_table = sa.Table(
     "users",
     metadata,

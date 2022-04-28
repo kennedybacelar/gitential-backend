@@ -85,10 +85,10 @@ def initialize_database():
     g.backend.migrate()
     workspaces = g.backend.workspaces.all()
     for w in workspaces:
-        logger.info("Initializing workspace schema", workspace_id=w.id)
+        # logger.info("Initializing workspace schema", workspace_id=w.id)
         try:
-            g.backend.initialize_workspace(w.id)
-            g.backend.migrate_workspace(w.id)
+            # g.backend.initialize_workspace(w.id)
+            # g.backend.migrate_workspace(w.id)
 
             if g.settings.features.enable_additional_materialized_views:
                 g.backend.create_missing_materialized_views(w.id)
