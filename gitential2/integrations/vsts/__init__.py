@@ -799,9 +799,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             status_name=issue_dict["fields"].get("System.State"),
             status_id=status_category_api_mapped.get("id"),
             status_category_api=status_category_api_mapped.get("stateCategory"),
-            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory"))
-            if status_category_api_mapped.get("stateCategory")
-            else None,
+            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory")),
             issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
             issue_type_id=wit_id,
             resolution_name=issue_dict["fields"]["System.Reason"]
