@@ -698,7 +698,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             key=issue_dict["id"],
             status_name=issue_dict["fields"].get("System.State"),
             status_id=status_category_api_mapped.get("id"),
-            status_category=_parse_status_category(status_category_api_mapped["stateCategory"])
+            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory"))
             if status_category_api_mapped.get("stateCategory")
             else None,
             summary=issue_dict["fields"].get("System.Title"),
@@ -753,7 +753,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                     status_name=previous_change.v_to_string,
                     status_id=status_category_api_mapped.get("id"),
                     status_category_api=status_category_api_mapped.get("stateCategory"),
-                    status_category=_parse_status_category(status_category_api_mapped["stateCategory"]),
+                    status_category=_parse_status_category(status_category_api_mapped.get("stateCategory")),
                     started_issue_change_id=previous_change.id,
                     started_at=previous_change.updated_at,
                     ended_issue_change_id=current_change.id,
@@ -801,7 +801,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             status_name=issue_dict["fields"].get("System.State"),
             status_id=status_category_api_mapped.get("id"),
             status_category_api=status_category_api_mapped.get("stateCategory"),
-            status_category=_parse_status_category(status_category_api_mapped["stateCategory"])
+            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory"))
             if status_category_api_mapped.get("stateCategory")
             else None,
             issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
