@@ -698,9 +698,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             key=issue_dict["id"],
             status_name=issue_dict["fields"].get("System.State"),
             status_id=status_category_api_mapped.get("id"),
-            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory"))
-            if status_category_api_mapped.get("stateCategory")
-            else None,
+            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory")),
             summary=issue_dict["fields"].get("System.Title"),
             created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
             updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
