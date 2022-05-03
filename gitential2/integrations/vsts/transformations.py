@@ -121,6 +121,7 @@ def _transform_to_its_ITSIssueAllData(
     comments: List[ITSIssueComment],
     changes: List[ITSIssueChange],
     times_in_statuses: List[ITSIssueTimeInStatus],
+    linked_issues: List[ITSIssueLinkedIssue],
 ) -> ITSIssueAllData:
 
     return ITSIssueAllData(
@@ -128,4 +129,5 @@ def _transform_to_its_ITSIssueAllData(
         comments=comments,
         changes=changes,
         times_in_statuses=times_in_statuses,
+        linked_issues=linked_issues,
     )

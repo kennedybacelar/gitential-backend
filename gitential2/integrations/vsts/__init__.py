@@ -923,6 +923,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, changes=changes, its_project=its_project, issue_id_or_key=issue_id_or_key
         )
 
+        linked_issues: List[ITSIssueLinkedIssue] = self._get_linked_issues(
+            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        )
+
         issue: ITSIssue = self._transform_to_its_issue(
             token=token,
             issue_dict=single_work_item_details_response_json,
@@ -930,6 +934,11 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
             comment=comments[0] if comments else None,
         )
+
         return _transform_to_its_ITSIssueAllData(
-            issue=issue, comments=comments, changes=changes, times_in_statuses=times_in_statuses
+            issue=issue,
+            comments=comments,
+            changes=changes,
+            times_in_statuses=times_in_statuses,
+            linked_issues=linked_issues,
         )

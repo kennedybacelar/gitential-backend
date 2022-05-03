@@ -301,3 +301,4 @@ class ITSIssueAllData(BaseModel):
     comments: List[ITSIssueComment]
     changes: List[ITSIssueChange]
     times_in_statuses: List[ITSIssueTimeInStatus]
+    linked_issues: List[ITSIssueLinkedIssue]
