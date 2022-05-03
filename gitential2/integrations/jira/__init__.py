@@ -263,14 +263,11 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
         self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
     ) -> ITSIssueAllData:
 
-        client = self.get_oauth2_client(token=token)
-        base_url = get_rest_api_base_url_from_project_api_url(its_project.api_url)
         priority_orders = self._get_site_priority_orders(token, its_project)
 
-        issue_api_url = base_url + f"/rest/api/3/issue/{issue_id_or_key}?fields=*all&expand=renderedFields"
-        resp = client.get(issue_api_url)
-        resp.raise_for_status()
-        issue_dict = resp.json()
+        issue_dict = self._get_single_issue_raw_data(
+            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        )
         db_issue_id = get_db_issue_id(its_project, issue_dict)
 
         all_statuses = self._get_site_statuses(token, its_project)
