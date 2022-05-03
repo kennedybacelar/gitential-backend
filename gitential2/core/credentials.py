@@ -2,6 +2,7 @@ import contextlib
 from datetime import datetime, timedelta
 from typing import List, Optional, cast
 from structlog import get_logger
+from authlib.integrations.base_client.errors import OAuthError
 from gitential2.datatypes.credentials import CredentialInDB, CredentialCreate, CredentialType, CredentialUpdate
 from gitential2.datatypes.repositories import RepositoryInDB
 
@@ -128,18 +129,22 @@ def _refresh_token_credential_if_its_going_to_expire(
                 logger.info(
                     "Trying to refresh token", credential_id=credential.id, integration_name=credential.integration_name
                 )
-                updated_token = integration.refresh_token(token)
-                if updated_token:
-                    logger.debug("Updating credential with the new token")
-                    credential.update_token(updated_token, g.fernet)
-                    callback = get_update_token_callback(g, credential)
-                    callback(updated_token)
-                else:
-                    logger.warning(
-                        "Failed to refresh expired token",
-                        credential_id=credential.id,
-                        integration_name=credential.integration_name,
-                    )
+                try:
+                    updated_token = integration.refresh_token(token)
+                    if updated_token:
+                        logger.debug("Updating credential with the new token")
+                        credential.update_token(updated_token, g.fernet)
+                        callback = get_update_token_callback(g, credential)
+                        callback(updated_token)
+                    else:
+                        logger.warning(
+                            "Failed to refresh expired token",
+                            credential_id=credential.id,
+                            integration_name=credential.integration_name,
+                        )
+                        return None
+                except OAuthError:
+                    logger.exception("Failed to refresh token, OAuthError")
                     return None
     else:
         logger.info(
