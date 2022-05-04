@@ -236,14 +236,10 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
 
     def _get_linked_issues_for_issue(
         self,
-        token,
         its_project: ITSProjectInDB,
         issue_id_or_key: str,
+        issue_dict: dict,
     ) -> List[ITSIssueLinkedIssue]:
-
-        issue_dict = self._get_single_issue_raw_data(
-            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
-        )
 
         list_of_linked_issues = issue_dict.get("fields", {}).get("issuelinks")
 
@@ -281,7 +277,7 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
             db_issue_id, its_project.id, issue_dict["fields"]["created"], changes, all_statuses
         )
         linked_issues = self._get_linked_issues_for_issue(
-            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+            its_project=its_project, issue_id_or_key=issue_id_or_key, issue_dict=issue_dict
         )
 
         calculated_fields = _calc_additional_fields_for_issue(changes, comments, all_statuses)
