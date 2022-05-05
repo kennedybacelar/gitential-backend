@@ -194,8 +194,11 @@ def get_linked_issues(
         jira_integration = cast(JiraIntegration, jira_integration)
         token = jira_credential.to_token_dict(g.fernet)
         # pylint: disable=protected-access
-        linked_issues = jira_integration._get_linked_issues_for_issue(
+        issue_dict = jira_integration._get_single_issue_raw_data(
             token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        )
+        linked_issues = jira_integration._get_linked_issues_for_issue(
+            its_project=its_project, issue_id_or_key=issue_id_or_key, issue_dict=issue_dict
         )
         print_results(linked_issues, format_=format_, fields=fields)
 
