@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from urllib.parse import urlparse
 from email_validator import validate_email, EmailNotValidError
 
@@ -25,7 +25,7 @@ def _parse_labels(labels: str) -> List[str]:
     return []
 
 
-def _parse_status_category(status_category_api: str) -> ITSIssueStatusCategory:
+def _parse_status_category(status_category_api: Optional[str]) -> ITSIssueStatusCategory:
     assignment_state_category_api_to_its = {
         "Proposed": "new",
         "InProgress": "in_progress",

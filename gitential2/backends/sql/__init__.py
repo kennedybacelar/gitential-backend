@@ -19,7 +19,13 @@ from gitential2.datatypes.extraction import (
     ExtractedPatchRewrite,
     ExtractedCommitBranch,
 )
-from gitential2.datatypes.its import ITSIssue, ITSIssueChange, ITSIssueComment, ITSIssueTimeInStatus
+from gitential2.datatypes.its import (
+    ITSIssue,
+    ITSIssueChange,
+    ITSIssueComment,
+    ITSIssueTimeInStatus,
+    ITSIssueLinkedIssue,
+)
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.pats import PersonalAccessToken
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
@@ -117,6 +123,7 @@ from .repositories_its import (
     SQLITSIssueChangeRepository,
     SQLITSIssueTimeInStatusRepository,
     SQLITSIssueCommentRepository,
+    SQLITSIssueLinkedIssueRepository,
 )
 
 from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
@@ -313,6 +320,13 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ITSIssueComment,
+        )
+
+        self._its_issue_linked_issue = SQLITSIssueLinkedIssueRepository(
+            table=self._workspace_tables.tables["its_issue_linked_issue"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSIssueLinkedIssue,
         )
 
     def _execute_query(self, query):

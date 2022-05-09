@@ -289,9 +289,8 @@ class ITSIssueComment(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, C
 class ITSIssueLinkedIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
     issue_id: str
     itsp_id: int
-
     linked_issue_id: str
-    # link_type
+    link_type: str
 
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_linked_issue", "its_issue_linked_issues")
@@ -302,3 +301,4 @@ class ITSIssueAllData(BaseModel):
     comments: List[ITSIssueComment]
     changes: List[ITSIssueChange]
     times_in_statuses: List[ITSIssueTimeInStatus]
+    linked_issues: List[ITSIssueLinkedIssue]

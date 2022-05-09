@@ -15,6 +15,7 @@ from gitential2.datatypes.its import (
     ITSIssueChange,
     ITSIssueTimeInStatus,
     ITSIssueChangeType,
+    ITSIssueLinkedIssue,
 )
 
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
@@ -39,6 +40,7 @@ from .transformations import (
     _transform_to_its_ITSIssueComment,
     _transform_to_ITSIssueChange,
     _initial_status_transform_to_ITSIssueChange,
+    _transform_to_its_ITSIssueLinkedIssue,
 )
 
 logger = get_logger(__name__)
@@ -538,7 +540,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         return ret
 
-    def _get_single_work_item_all_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
+    def _get_single_work_item_all_data(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, request_params: Optional[dict] = None
+    ) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
         organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
@@ -547,7 +551,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{issue_id_or_key}?api-version=6.0"
         )
 
-        single_work_item_details_response = client.get(single_work_item_details_url)
+        single_work_item_details_response = client.get(single_work_item_details_url, params=request_params)
 
         if single_work_item_details_response.status_code != 200:
             log_api_error(single_work_item_details_response)
@@ -577,6 +581,28 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             ret.append(
                 _transform_to_its_ITSIssueComment(
                     comment_dict=single_comment, its_project=its_project, developer_map_callback=developer_map_callback
+                )
+            )
+        return ret
+
+    def _get_linked_issues(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> List[ITSIssueLinkedIssue]:
+
+        linked_issues_response = self._get_single_work_item_all_data(
+            token=token,
+            its_project=its_project,
+            issue_id_or_key=issue_id_or_key,
+            request_params={"$expand": "relations"},
+        )
+
+        list_linked_issues_response = linked_issues_response.get("relations")
+        if not list_linked_issues_response:
+            return []
+
+        ret = []
+        for single_linked_issue in list_linked_issues_response:
+            ret.append(
+                _transform_to_its_ITSIssueLinkedIssue(
+                    its_project=its_project, issue_id_or_key=issue_id_or_key, single_linked_issue=single_linked_issue
                 )
             )
         return ret
@@ -672,9 +698,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             key=issue_dict["id"],
             status_name=issue_dict["fields"].get("System.State"),
             status_id=status_category_api_mapped.get("id"),
-            status_category=_parse_status_category(status_category_api_mapped["stateCategory"])
-            if status_category_api_mapped.get("stateCategory")
-            else None,
+            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory")),
             summary=issue_dict["fields"].get("System.Title"),
             created_at=parse_datetime(issue_dict["fields"].get("System.CreatedDate")),
             updated_at=parse_datetime(issue_dict["fields"].get("System.ChangedDate")),
@@ -727,7 +751,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                     status_name=previous_change.v_to_string,
                     status_id=status_category_api_mapped.get("id"),
                     status_category_api=status_category_api_mapped.get("stateCategory"),
-                    status_category=_parse_status_category(status_category_api_mapped["stateCategory"]),
+                    status_category=_parse_status_category(status_category_api_mapped.get("stateCategory")),
                     started_issue_change_id=previous_change.id,
                     started_at=previous_change.updated_at,
                     ended_issue_change_id=current_change.id,
@@ -775,9 +799,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             status_name=issue_dict["fields"].get("System.State"),
             status_id=status_category_api_mapped.get("id"),
             status_category_api=status_category_api_mapped.get("stateCategory"),
-            status_category=_parse_status_category(status_category_api_mapped["stateCategory"])
-            if status_category_api_mapped.get("stateCategory")
-            else None,
+            status_category=_parse_status_category(status_category_api_mapped.get("stateCategory")),
             issue_type_name=issue_dict["fields"].get("System.WorkItemType"),
             issue_type_id=wit_id,
             resolution_name=issue_dict["fields"]["System.Reason"]
@@ -901,6 +923,10 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, changes=changes, its_project=its_project, issue_id_or_key=issue_id_or_key
         )
 
+        linked_issues: List[ITSIssueLinkedIssue] = self._get_linked_issues(
+            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        )
+
         issue: ITSIssue = self._transform_to_its_issue(
             token=token,
             issue_dict=single_work_item_details_response_json,
@@ -908,6 +934,11 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             developer_map_callback=developer_map_callback,
             comment=comments[0] if comments else None,
         )
+
         return _transform_to_its_ITSIssueAllData(
-            issue=issue, comments=comments, changes=changes, times_in_statuses=times_in_statuses
+            issue=issue,
+            comments=comments,
+            changes=changes,
+            times_in_statuses=times_in_statuses,
+            linked_issues=linked_issues,
         )

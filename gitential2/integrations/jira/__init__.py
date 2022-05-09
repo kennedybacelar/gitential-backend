@@ -12,6 +12,7 @@ from gitential2.datatypes.its import (
     ITSIssueHeader,
     ITSIssueAllData,
     its_issue_status_category_from_str,
+    ITSIssueLinkedIssue,
 )
 from gitential2.datatypes.userinfos import UserInfoCreate
 
@@ -28,6 +29,7 @@ from .transformations import (
     transform_dicts_to_issue_changes,
     transform_dicts_to_issue_comments,
     transform_changes_to_times_in_statuses,
+    transform_to_its_ITSIssueLinkedIssue,
 )
 
 logger = get_logger(__name__)
@@ -221,18 +223,47 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
 
     #     pprint(res)
 
-    def get_all_data_for_issue(
-        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
-    ) -> ITSIssueAllData:
-
+    def _get_single_issue_raw_data(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> dict:
         client = self.get_oauth2_client(token=token)
         base_url = get_rest_api_base_url_from_project_api_url(its_project.api_url)
-        priority_orders = self._get_site_priority_orders(token, its_project)
 
         issue_api_url = base_url + f"/rest/api/3/issue/{issue_id_or_key}?fields=*all&expand=renderedFields"
         resp = client.get(issue_api_url)
         resp.raise_for_status()
         issue_dict = resp.json()
+
+        return issue_dict
+
+    def _get_linked_issues_for_issue(
+        self,
+        its_project: ITSProjectInDB,
+        issue_id_or_key: str,
+        issue_dict: dict,
+    ) -> List[ITSIssueLinkedIssue]:
+
+        list_of_linked_issues = issue_dict.get("fields", {}).get("issuelinks")
+
+        if not list_of_linked_issues:
+            return []
+
+        ret = []
+        for single_linked_issue in list_of_linked_issues:
+            ret.append(
+                transform_to_its_ITSIssueLinkedIssue(
+                    its_project=its_project, issue_id_or_key=issue_id_or_key, single_linked_issue=single_linked_issue
+                )
+            )
+        return ret
+
+    def get_all_data_for_issue(
+        self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
+    ) -> ITSIssueAllData:
+
+        priority_orders = self._get_site_priority_orders(token, its_project)
+
+        issue_dict = self._get_single_issue_raw_data(
+            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        )
         db_issue_id = get_db_issue_id(its_project, issue_dict)
 
         all_statuses = self._get_site_statuses(token, its_project)
@@ -244,6 +275,9 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
         )
         times_in_statuses = transform_changes_to_times_in_statuses(
             db_issue_id, its_project.id, issue_dict["fields"]["created"], changes, all_statuses
+        )
+        linked_issues = self._get_linked_issues_for_issue(
+            its_project=its_project, issue_id_or_key=issue_id_or_key, issue_dict=issue_dict
         )
 
         calculated_fields = _calc_additional_fields_for_issue(changes, comments, all_statuses)
@@ -263,6 +297,7 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
             comments=comments,
             changes=changes,
             times_in_statuses=times_in_statuses,
+            linked_issues=linked_issues,
         )
 
     def _get_issue_changes_for_issue(

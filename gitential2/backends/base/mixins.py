@@ -37,6 +37,7 @@ from .repositories_its import (
     ITSIssueChangeRepository,
     ITSIssueCommentRepository,
     ITSIssueTimeInStatusRepository,
+    ITSIssueLinkedIssueRepository,
 )
 
 
@@ -77,6 +78,7 @@ class WithRepositoriesMixin:
     _its_issue_changes: ITSIssueChangeRepository
     _its_issue_times_in_statuses: ITSIssueTimeInStatusRepository
     _its_issue_comments: ITSIssueCommentRepository
+    _its_issue_linked_issue: ITSIssueLinkedIssueRepository
 
     @property
     def access_logs(self):
@@ -209,6 +211,10 @@ class WithRepositoriesMixin:
     @property
     def its_issue_comments(self) -> ITSIssueCommentRepository:
         return self._its_issue_comments
+
+    @property
+    def its_issue_linked_issue(self) -> ITSIssueLinkedIssueRepository:
+        return self._its_issue_linked_issue
 
     @property
     def email_log(self) -> EmailLogRepository:

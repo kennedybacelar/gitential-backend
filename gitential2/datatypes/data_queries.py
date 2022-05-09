@@ -13,6 +13,7 @@ class DQSourceName(str, Enum):
     # its
     its_issues = "its_issues"
     its_issue_comments = "its_issue_comments"
+    its_issue_linked_issue = "its_issue_linked_issue"
     # pull requests
     pull_requests = "pull_requests"
     pull_request_comments = "pull_request_comments"
@@ -22,7 +23,7 @@ class DQSourceName(str, Enum):
     calculated_patches = "calculated_patches"
 
 
-DQ_ITS_SOURCE_NAMES = [DQSourceName.its_issues, DQSourceName.its_issue_comments]
+DQ_ITS_SOURCE_NAMES = [DQSourceName.its_issues, DQSourceName.its_issue_comments, DQSourceName.its_issue_linked_issue]
 
 
 class DQType(str, Enum):
