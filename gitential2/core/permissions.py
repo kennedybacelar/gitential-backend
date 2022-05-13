@@ -37,6 +37,7 @@ def check_permission(
                                 Entity.project,
                                 Entity.team,
                                 Entity.repository,
+                                Entity.dashboard
                             ]
                             or action in [Action.read]
                         )

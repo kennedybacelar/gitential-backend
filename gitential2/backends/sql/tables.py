@@ -271,6 +271,18 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("itsp_id", sa.Integer, sa.ForeignKey("its_projects.id"), nullable=False),
     )
 
+    dashboards = sa.Table(
+        "dashboards",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("title", sa.String(128), nullable=False),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("config", sa.JSON, nullable=False),
+        sa.Column("charts", sa.JSON, nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
     # Extracted Commits
     extracted_commits = sa.Table(
         "extracted_commits",
@@ -739,6 +751,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "project_repositories": project_repositories,
         "project_its_projects": project_its_projects,
         "extracted_commits": extracted_commits,
+        "dashboards": dashboards,
         "calculated_commits": calculated_commits,
         "extracted_patches": extracted_patches,
         "calculated_patches": calculated_patches,
