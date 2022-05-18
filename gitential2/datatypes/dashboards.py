@@ -3,12 +3,7 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from pydantic import Field
 
-from gitential2.datatypes.stats import (
-    MetricName,
-    DimensionName,
-    FilterName,
-    QueryType
-)
+from gitential2.datatypes.stats import MetricName, DimensionName, FilterName, QueryType
 from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
 from .export import ExportableModel
 
