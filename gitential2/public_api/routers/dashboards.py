@@ -24,7 +24,7 @@ def workspace_dashboards(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.dashboard, Action.read, workspace_id=workspace_id)
-    list_dashboards(g, workspace_id=workspace_id)
+    return list_dashboards(g, workspace_id=workspace_id)
 
 
 @router.get("/workspaces/{workspace_id}/dashboards/{dashboard_id}", response_model=DashboardPublic)

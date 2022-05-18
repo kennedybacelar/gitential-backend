@@ -569,8 +569,7 @@ class SQLProjectITSProjectRepository(
 
 
 class SQLDashboardRepository(
-    DashboardRepository,
-    SQLWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]
+    DashboardRepository, SQLWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]
 ):
     def search(self, workspace_id: int, q: str) -> List[DashboardInDB]:
         query = self.table.select().where(self.table.c.name.ilike(f"%{q}%"))

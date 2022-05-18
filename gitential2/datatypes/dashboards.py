@@ -29,10 +29,12 @@ class DashboardInDB(IDModelMixin, DateTimeModelMixin, DashboardBase, ExportableM
         return "dashboard", "dashboards"
 
     def export_fields(self) -> List[str]:
-        return ["id",
-                "title",
-                "created_at",
-                "updated_at",
-                "config",
-                "charts",
-                "extra", ]
+        return [
+            "id",
+            "title",
+            "created_at",
+            "updated_at",
+            "config",
+            "charts",
+            "extra",
+        ]

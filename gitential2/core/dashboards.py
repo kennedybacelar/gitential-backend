@@ -21,8 +21,9 @@ def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: D
     return g.backend.dashboards.create(workspace_id, dashboard_create)
 
 
-def update_project(g: GitentialContext, workspace_id: int, dashboard_id: int,
-                   dashboard_update: DashboardUpdate) -> DashboardInDB:
+def update_project(
+    g: GitentialContext, workspace_id: int, dashboard_id: int, dashboard_update: DashboardUpdate
+) -> DashboardInDB:
     return g.backend.dashboards.update(workspace_id, dashboard_id, dashboard_update)
 
 

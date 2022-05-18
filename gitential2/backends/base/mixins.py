@@ -28,7 +28,8 @@ from .repositories import (
     WorkspaceMemberRepository,
     CredentialRepository,
     ProjectRepository,
-    ExtractedCommitBranchRepository, DashboardRepository,
+    ExtractedCommitBranchRepository,
+    DashboardRepository,
 )
 
 

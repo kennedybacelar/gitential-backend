@@ -32,13 +32,7 @@ def check_permission(
                     or (
                         workspace.membership.role == WorkspaceRole.collaborator
                         and (
-                            entity
-                            in [
-                                Entity.project,
-                                Entity.team,
-                                Entity.repository,
-                                Entity.dashboard
-                            ]
+                            entity in [Entity.project, Entity.team, Entity.repository, Entity.dashboard]
                             or action in [Action.read]
                         )
                     ),
