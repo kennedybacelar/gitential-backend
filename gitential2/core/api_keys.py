@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 from datetime import datetime
 from itsdangerous import URLSafeSerializer, BadData
 from structlog import get_logger
-from gitential2.datatypes.pats import PersonalAccessToken
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 
 from .context import GitentialContext
 
@@ -77,5 +77,63 @@ def _parse_token(g: GitentialContext, token: str):
         user_id,
         pat_name,
         datetime.fromisoformat(expire_at_str) if expire_at_str else None,
+        datetime.fromisoformat(created_at_str),
+    )
+
+
+def create_workspace_api_key(g: GitentialContext, workspace_id: int) -> Tuple[WorkspaceAPIKey, str]:
+    workspace_api_key_id = _generate_random_hash(24)
+    token = _generate_api_key(g, workspace_api_key_id, workspace_id)
+    workspace_api_key = g.backend.workspace_api_keys.create(
+        WorkspaceAPIKey(id=workspace_api_key_id, workspace_id=workspace_id)
+    )
+    return workspace_api_key, token
+
+
+def _generate_api_key(g: GitentialContext, workspace_api_key_id: str, workspace_id: int) -> str:
+    salt = _generate_random_hash(8)
+    current_time = g.current_time().isoformat()
+    serializer = URLSafeSerializer(g.settings.secret, salt=salt)
+    code = serializer.dumps([workspace_api_key_id, workspace_id, current_time])
+    return f"g2p_{salt}_{code}"
+
+
+def validate_workspace_api_key(g: GitentialContext, token: str) -> Tuple[int, bool]:
+    try:
+        parsed_api_key = _parse_api_key(g, token)
+    except (BadData, ValueError):
+        logger.warning("Bad or expired token", exc_info=True)
+        return 0, False
+
+    workspace_api_key_id, workspace_id, _ = parsed_api_key
+    workspace_api_key_id_in_db = g.backend.workspace_api_keys.get(workspace_api_key_id)
+    if workspace_api_key_id_in_db:
+        if workspace_api_key_id_in_db.workspace_id == workspace_id:
+            return workspace_id, True
+        else:
+            return workspace_id, False
+    else:
+        return workspace_id, False
+
+
+def delete_workspace_api_key(g: GitentialContext, workspace_api_key_id: str) -> int:
+    return g.backend.workspace_api_keys.delete(workspace_api_key_id)
+
+
+def delete_api_keys_for_workspace(g: GitentialContext, workspace_id: int):
+    for workspace_api_key in g.backend.workspace_api_keys.all():
+        if workspace_api_key.workspace_id == workspace_id:
+            delete_workspace_api_key(g, workspace_api_key.id)
+
+
+def _parse_api_key(g: GitentialContext, token: str):
+    _, salt, *code_parts = token.split("_")
+    code = "_".join(code_parts)
+
+    serializer = URLSafeSerializer(g.settings.secret, salt=salt)
+    workspace_api_key_id, workspace_id, created_at_str = serializer.loads(code)
+    return (
+        workspace_api_key_id,
+        workspace_id,
         datetime.fromisoformat(created_at_str),
     )

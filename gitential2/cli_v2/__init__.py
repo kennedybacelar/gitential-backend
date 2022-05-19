@@ -13,7 +13,7 @@ from gitential2.core.users import get_user
 from gitential2.logging import initialize_logging
 from gitential2.settings import load_settings
 from gitential2.core.quick_login import generate_quick_login
-from gitential2.core.pats import create_personal_access_token, delete_personal_access_tokens_for_user
+from gitential2.core.api_keys import create_personal_access_token, delete_personal_access_tokens_for_user
 from .common import OutputFormat, get_context, print_results
 from .emails import app as emails_app
 from .export import app as export_app

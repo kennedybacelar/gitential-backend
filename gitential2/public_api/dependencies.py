@@ -6,7 +6,7 @@ from fastapi.exceptions import HTTPException
 from gitential2.core.context import GitentialContext
 from gitential2.core.users import get_user
 from gitential2.core.access_log import create_access_log
-from gitential2.core.pats import validate_personal_access_token
+from gitential2.core.api_keys import validate_personal_access_token
 
 logger = get_logger(__name__)
 

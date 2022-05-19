@@ -27,7 +27,7 @@ from gitential2.datatypes.its import (
     ITSIssueLinkedIssue,
 )
 from gitential2.datatypes.its_projects import ITSProjectInDB
-from gitential2.datatypes.pats import PersonalAccessToken
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
 from gitential2.datatypes.reseller_codes import ResellerCode
 from gitential2.datatypes.subscriptions import SubscriptionInDB
@@ -66,6 +66,7 @@ from .tables import (
     personal_access_tokens_table,
     user_infos_table,
     credentials_table,
+    workspace_api_keys_table,
     workspaces_table,
     workspace_invitations_table,
     workspace_members_table,
@@ -107,6 +108,7 @@ from .repositories import (
     SQLSubscriptionRepository,
     SQLUserInfoRepository,
     SQLCredentialRepository,
+    SQLWorkspaceAPIKeyRepository,
     SQLWorkspaceRepository,
     SQLWorkspaceInvitationRepository,
     SQLWorkspaceMemberRepository,
@@ -162,6 +164,11 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._credentials = SQLCredentialRepository(
             table=credentials_table, engine=self._engine, in_db_cls=CredentialInDB
         )
+
+        self._workspace_api_keys = SQLWorkspaceAPIKeyRepository(
+            table=workspace_api_keys_table, engine=self._engine, in_db_cls=WorkspaceAPIKey
+        )
+
         self._workspaces = SQLWorkspaceRepository(table=workspaces_table, engine=self._engine, in_db_cls=WorkspaceInDB)
 
         self._workspace_invitations = SQLWorkspaceInvitationRepository(

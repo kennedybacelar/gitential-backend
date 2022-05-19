@@ -9,7 +9,7 @@ from sqlalchemy.sql import and_, select, desc, or_
 from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
-from gitential2.datatypes.pats import PersonalAccessToken
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectCreate,
     ProjectITSProjectInDB,
@@ -107,6 +107,7 @@ from gitential2.backends.base.repositories import (
     TeamMemberRepository,
     ExtractedCommitBranchRepository,
     WorkspaceInvitationRepository,
+    WorkspaceAPIKeyRepository,
 )
 
 from gitential2.datatypes.email_log import (
@@ -387,6 +388,12 @@ class SQLResellerCodeRepository(ResellerCodeRepository, SQLRepository[str, Resel
 
 class SQLPersonalAccessTokenRepository(
     PersonalAccessTokenRepository, SQLRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]
+):
+    pass
+
+
+class SQLWorkspaceAPIKeyRepository(
+    WorkspaceAPIKeyRepository, SQLRepository[str, WorkspaceAPIKey, WorkspaceAPIKey, WorkspaceAPIKey]
 ):
     pass
 

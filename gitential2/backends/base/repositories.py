@@ -21,7 +21,7 @@ from gitential2.datatypes import (
     AccessLog,
 )
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
-from gitential2.datatypes.pats import PersonalAccessToken
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 
 from gitential2.datatypes.pull_requests import (
     PullRequest,
@@ -110,6 +110,10 @@ class AccessApprovalRepository(BaseRepository[int, AccessApprovalCreate, AccessA
 
 
 class PersonalAccessTokenRepository(BaseRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]):
+    pass
+
+
+class WorkspaceAPIKeyRepository(BaseRepository[str, WorkspaceAPIKey, WorkspaceAPIKey, WorkspaceAPIKey]):
     pass
 
 
