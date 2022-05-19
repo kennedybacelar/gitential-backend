@@ -26,7 +26,6 @@ from gitential2.core.credentials import (
 from gitential2.core.refresh_v2 import refresh_workspace
 from gitential2.core.workspace_common import create_workspace
 from gitential2.core.api_keys import (
-    create_workspace_api_key,
     delete_api_keys_for_workspace,
     get_api_key_by_workspace_id,
 )
