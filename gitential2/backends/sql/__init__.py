@@ -54,7 +54,7 @@ from gitential2.datatypes.email_log import EmailLogInDB
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
 from gitential2.settings import GitentialSettings
 
-from ..base import GitentialBackend
+from ..base import GitentialBackend, DashboardRepository
 from ..base.mixins import WithRepositoriesMixin
 
 from .tables import (
@@ -116,6 +116,7 @@ from .repositories import (
     SQLExtractedCommitBranchRepository,
     SQLExtractedPatchRewriteRepository,
     SQLCalculatedCommitRepository,
+    SQLDashboardRepository,
 )
 
 from .repositories_its import (
@@ -127,6 +128,7 @@ from .repositories_its import (
 )
 
 from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
+from ...datatypes.dashboards import DashboardInDB
 
 
 def json_dumps(obj):
@@ -204,6 +206,12 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ProjectITSProjectInDB,
+        )
+        self._dashboards = SQLDashboardRepository(
+            table=self._workspace_tables.tables["dashboards"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=DashboardInDB,
         )
         self._authors = SQLAuthorRepository(
             table=self._workspace_tables.tables["authors"],

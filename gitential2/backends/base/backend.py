@@ -38,6 +38,7 @@ from .repositories import (
     PullRequestLabelRepository,
     EmailLogRepository,
     ExtractedCommitBranchRepository,
+    DashboardRepository,
 )
 
 from .repositories_its import (
@@ -131,6 +132,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def project_its_projects(self) -> ProjectITSProjectRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def dashboards(self) -> DashboardRepository:
         pass
 
     @property

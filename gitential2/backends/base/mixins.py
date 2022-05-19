@@ -29,6 +29,7 @@ from .repositories import (
     CredentialRepository,
     ProjectRepository,
     ExtractedCommitBranchRepository,
+    DashboardRepository,
 )
 
 
@@ -57,6 +58,7 @@ class WithRepositoriesMixin:
     _its_projects: ITSProjectRepository
     _project_repositories: ProjectRepositoryRepository
     _project_its_projects: ProjectITSProjectRepository
+    _dashboards: DashboardRepository
     _authors: AuthorRepository
     _teams: TeamRepository
     _team_members: TeamMemberRepository
@@ -143,6 +145,10 @@ class WithRepositoriesMixin:
     @property
     def project_its_projects(self) -> ProjectITSProjectRepository:
         return self._project_its_projects
+
+    @property
+    def dashboards(self) -> DashboardRepository:
+        return self._dashboards
 
     @property
     def authors(self) -> AuthorRepository:
