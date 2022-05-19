@@ -13,7 +13,12 @@ from gitential2.core.users import get_user
 from gitential2.logging import initialize_logging
 from gitential2.settings import load_settings
 from gitential2.core.quick_login import generate_quick_login
-from gitential2.core.api_keys import create_personal_access_token, delete_personal_access_tokens_for_user
+from gitential2.core.api_keys import (
+    create_personal_access_token,
+    delete_personal_access_tokens_for_user,
+    create_workspace_api_key,
+    delete_api_keys_for_workspace,
+)
 from .common import OutputFormat, get_context, print_results
 from .emails import app as emails_app
 from .export import app as export_app
@@ -179,6 +184,22 @@ def generate_pat_(user_id: int, name: str, expire_at: Optional[datetime] = None)
 def delete_pat_for_user_(user_id: int):
     g = get_context()
     delete_personal_access_tokens_for_user(g, user_id)
+
+
+@app.command("create-workspace-api-key")
+def generate_workspace_api_key(workspace_id: int):
+    g = get_context()
+    workspace_api_key, token = create_workspace_api_key(g, workspace_id)
+    print(workspace_api_key)
+    print("------")
+    print(token)
+    print("------")
+
+
+@app.command("delete-api-keys-for-workspace")
+def delete_keys_for_workspace(workspace_id: int):
+    g = get_context()
+    delete_api_keys_for_workspace(g, workspace_id)
 
 
 def main(prog_name: Optional[str] = None):
