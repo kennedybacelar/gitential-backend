@@ -114,7 +114,13 @@ class PersonalAccessTokenRepository(BaseRepository[str, PersonalAccessToken, Per
 
 
 class WorkspaceAPIKeyRepository(BaseRepository[str, WorkspaceAPIKey, WorkspaceAPIKey, WorkspaceAPIKey]):
-    pass
+    @abstractmethod
+    def get_all_api_keys_by_workspace_id(self, workspace_id: int) -> List[WorkspaceAPIKey]:
+        pass
+
+    @abstractmethod
+    def get_single_api_key_by_workspace_id(self, workspace_id: int) -> Optional[WorkspaceAPIKey]:
+        pass
 
 
 class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB]):

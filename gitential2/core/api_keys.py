@@ -2,7 +2,7 @@ import json
 import random
 import string
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from datetime import datetime
 from itsdangerous import URLSafeSerializer, BadData
 from structlog import get_logger
@@ -95,7 +95,7 @@ def _generate_api_key(g: GitentialContext, workspace_api_key_id: str, workspace_
     current_time = g.current_time().isoformat()
     serializer = URLSafeSerializer(g.settings.secret, salt=salt)
     code = serializer.dumps([workspace_api_key_id, workspace_id, current_time])
-    return f"g2p_{salt}_{code}"
+    return f"g2w_{salt}_{code}"
 
 
 def validate_workspace_api_key(g: GitentialContext, token: str) -> Tuple[int, bool]:
@@ -137,3 +137,15 @@ def _parse_api_key(g: GitentialContext, token: str):
         workspace_id,
         datetime.fromisoformat(created_at_str),
     )
+
+
+def get_all_api_keys_by_workspace_id(g: GitentialContext, workspace_id: int) -> List[WorkspaceAPIKey]:
+    workspace_api_keys = g.backend.workspace_api_keys.get_all_api_keys_by_workspace_id(workspace_id)
+    return workspace_api_keys
+
+
+def get_api_key_by_workspace_id(g: GitentialContext, workspace_id: int) -> WorkspaceAPIKey:
+    single_workspace_api_key = g.backend.workspace_api_keys.get_single_api_key_by_workspace_id(workspace_id)
+    if not single_workspace_api_key:
+        single_workspace_api_key, _token = create_workspace_api_key(g, workspace_id)
+    return single_workspace_api_key

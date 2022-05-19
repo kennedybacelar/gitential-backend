@@ -14,7 +14,6 @@ from gitential2.core.legacy import (
     get_dev_top_repos,
     get_developers,
 )
-from gitential2.core.api_keys import create_workspace_api_key, delete_api_keys_for_workspace
 
 from gitential2.exceptions import AuthenticationException
 
@@ -149,23 +148,3 @@ def dev_related_projects(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return get_dev_related_projects(g, workspace_id)
-
-
-@router.get("/v2/workspaces/{workspace_id}/api-key")
-def workspace_api_key(
-    workspace_id: int,
-    g: GitentialContext = Depends(gitential_context),
-):
-
-    for key in g.backend.workspace_api_keys.all():
-        return key
-    workspace_api_key, _token = create_workspace_api_key(g, workspace_id)
-    return workspace_api_key
-
-
-@router.delete("/v2/workspaces/{workspace_id}/api-key")
-def delete_workspace_api_key_for_workspace(
-    workspace_id: int,
-    g: GitentialContext = Depends(gitential_context),
-):
-    delete_api_keys_for_workspace(g, workspace_id)

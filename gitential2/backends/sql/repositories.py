@@ -395,7 +395,17 @@ class SQLPersonalAccessTokenRepository(
 class SQLWorkspaceAPIKeyRepository(
     WorkspaceAPIKeyRepository, SQLRepository[str, WorkspaceAPIKey, WorkspaceAPIKey, WorkspaceAPIKey]
 ):
-    pass
+    def get_all_api_keys_by_workspace_id(self, workspace_id: int) -> List[WorkspaceAPIKey]:
+        query = self.table.select().where(self.table.c.workspace_id == workspace_id)
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [WorkspaceAPIKey(**row) for row in rows]
+
+    def get_single_api_key_by_workspace_id(self, workspace_id: int):
+        query = self.table.select().where(self.table.c.workspace_id == workspace_id)
+        row = self._execute_query(query, callback_fn=fetchone_)
+        if row:
+            return WorkspaceAPIKey(**row)
+        return None
 
 
 class SQLAccessApprovalRepository(
