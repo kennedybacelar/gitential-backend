@@ -14,6 +14,7 @@ from gitential2.core.legacy import (
     get_dev_top_repos,
     get_developers,
 )
+
 from gitential2.exceptions import AuthenticationException
 
 from ..dependencies import gitential_context, OAuth, current_user

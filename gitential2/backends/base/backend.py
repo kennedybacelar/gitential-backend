@@ -38,6 +38,7 @@ from .repositories import (
     PullRequestLabelRepository,
     EmailLogRepository,
     ExtractedCommitBranchRepository,
+    WorkspaceAPIKeyRepository,
     DashboardRepository,
 )
 
@@ -77,6 +78,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def pats(self) -> PersonalAccessTokenRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def workspace_api_keys(self) -> WorkspaceAPIKeyRepository:
         pass
 
     @property
