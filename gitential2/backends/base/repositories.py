@@ -22,6 +22,7 @@ from gitential2.datatypes import (
 )
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
+from gitential2.datatypes.deploys import Deploy
 
 from gitential2.datatypes.pull_requests import (
     PullRequest,
@@ -121,6 +122,10 @@ class WorkspaceAPIKeyRepository(BaseRepository[str, WorkspaceAPIKey, WorkspaceAP
     @abstractmethod
     def get_single_api_key_by_workspace_id(self, workspace_id: int) -> Optional[WorkspaceAPIKey]:
         pass
+
+
+class DeployRepository(BaseWorkspaceScopedRepository[str, Deploy, Deploy, Deploy]):
+    pass
 
 
 class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB]):

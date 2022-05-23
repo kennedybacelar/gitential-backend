@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
+from gitential2.datatypes.deploys import Deploy
 from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectCreate,
     ProjectITSProjectInDB,
@@ -108,6 +109,7 @@ from gitential2.backends.base.repositories import (
     ExtractedCommitBranchRepository,
     WorkspaceInvitationRepository,
     WorkspaceAPIKeyRepository,
+    DeployRepository,
 )
 
 from gitential2.datatypes.email_log import (
@@ -406,6 +408,10 @@ class SQLWorkspaceAPIKeyRepository(
         if row:
             return WorkspaceAPIKey(**row)
         return None
+
+
+class SQLDeployRepository(DeployRepository, SQLWorkspaceScopedRepository[str, Deploy, Deploy, Deploy]):
+    pass
 
 
 class SQLAccessApprovalRepository(
