@@ -75,6 +75,7 @@ from gitential2.datatypes.email_log import (
 )
 
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
+from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
 
 
 class AccessLogRepository(ABC):
@@ -285,6 +286,12 @@ class ProjectITSProjectRepository(
         if ids_needs_removal:
             self.remove_itsp_ids_from_project(workspace_id, project_id, ids_needs_removal)
         return ids_needs_addition, ids_needs_removal, ids_kept
+
+
+class DashboardRepository(BaseWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]):
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[DashboardInDB]:
+        pass
 
 
 class RepoDFMixin(ABC):

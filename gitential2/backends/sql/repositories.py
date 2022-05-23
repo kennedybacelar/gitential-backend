@@ -108,6 +108,7 @@ from gitential2.backends.base.repositories import (
     ExtractedCommitBranchRepository,
     WorkspaceInvitationRepository,
     WorkspaceAPIKeyRepository,
+    DashboardRepository,
 )
 
 from gitential2.datatypes.email_log import (
@@ -122,6 +123,7 @@ from ..base import (
     UpdateType,
     InDBType,
 )
+from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
@@ -581,6 +583,15 @@ class SQLProjectITSProjectRepository(
     def remove_itsp_ids_from_project(self, workspace_id: int, project_id: int, itsp_ids: List[int]):
         query = self.table.delete().where(self.table.c.itsp_id.in_(itsp_ids))
         self._execute_query(query, workspace_id=workspace_id)
+
+
+class SQLDashboardRepository(
+    DashboardRepository, SQLWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]
+):
+    def search(self, workspace_id: int, q: str) -> List[DashboardInDB]:
+        query = self.table.select().where(self.table.c.name.ilike(f"%{q}%"))
+        rows = self._execute_query(query, workspace_id)
+        return [DashboardInDB(**row) for row in rows]
 
 
 class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):
