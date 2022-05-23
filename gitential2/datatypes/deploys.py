@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 
-from .common import CoreModel, ExtraFieldMixin, StringIdModelMixin, DateTimeModelMixin
+from .common import CoreModel, ExtraFieldMixin, StringIdModelMixin
 
 
 class DeployedPullRequest(StringIdModelMixin, ExtraFieldMixin, CoreModel):
