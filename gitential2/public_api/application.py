@@ -35,6 +35,7 @@ from .routers import (
     its,
     data_queries,
     admin,
+    deploys,
 )
 
 logger = get_logger(__name__)
@@ -91,6 +92,7 @@ def _configure_routes(app: FastAPI):
         its.router,
         data_queries.router,
         admin.router,
+        deploys.router,
     ]:
         app.include_router(router, prefix="/v2")
 

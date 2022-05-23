@@ -10,7 +10,9 @@ from gitential2.core.emails import send_email_to_user
 from gitential2.core.maintenance import maintenance
 from gitential2.core.tasks import configure_celery
 from gitential2.core.users import get_user
+from gitential2.datatypes.deploys import Deploy
 from gitential2.logging import initialize_logging
+from gitential2.public_api.dependencies import gitential_context
 from gitential2.settings import load_settings
 from gitential2.core.quick_login import generate_quick_login
 from gitential2.core.api_keys import (
@@ -19,6 +21,7 @@ from gitential2.core.api_keys import (
     create_workspace_api_key,
     delete_api_keys_for_workspace,
 )
+from gitential2.core.deploys import get_all_deploys
 from .common import OutputFormat, get_context, print_results
 from .emails import app as emails_app
 from .export import app as export_app
@@ -200,6 +203,13 @@ def generate_workspace_api_key(workspace_id: int):
 def delete_keys_for_workspace(workspace_id: int):
     g = get_context()
     delete_api_keys_for_workspace(g, workspace_id)
+
+
+@app.command("get-all-deploys")
+def deploys(workspace_id: int):
+    g = get_context()
+    deploys = get_all_deploys(g=g, workspace_id=workspace_id)
+    print_results([deploys], format_=OutputFormat.json)
 
 
 def main(prog_name: Optional[str] = None):
