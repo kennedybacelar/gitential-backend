@@ -591,6 +591,7 @@ class SQLOutputHandler(OutputHandler):
             ExtractedKind.ITS_ISSUE_CHANGE: self.backend.its_issue_changes,
             ExtractedKind.ITS_ISSUE_TIME_IN_STATUS: self.backend.its_issue_times_in_statuses,
             ExtractedKind.ITS_ISSUE_COMMENT: self.backend.its_issue_comments,
+            ExtractedKind.ITS_ISSUE_LINKED_ISSUE: self.backend.its_issue_linked_issue,
         }
 
         if kind in kind_to_backend_repository:

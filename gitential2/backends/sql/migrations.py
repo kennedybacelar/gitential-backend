@@ -6,7 +6,7 @@ from structlog import get_logger
 from gitential2.datatypes.common import CoreModel
 from ..base.repositories import BaseRepository
 from .repositories import SQLRepository
-from .tables import schema_revisions_table
+from .tables import schema_revisions_table, get_workspace_metadata
 
 
 logger = get_logger(__name__)
@@ -106,7 +106,13 @@ def migrate_workspace(engine: Engine, workspace_id: int, _schema_revisions: Opti
         table=schema_revisions_table, engine=engine, in_db_cls=SchemaRevision
     )
     schema_name = f"ws_{workspace_id}"
+    create_missing_workspace_tables(engine, schema_name)
     _do_migration(schema_name, workspace_schema_migrations(schema_name), schema_revisions, engine)
+
+
+def create_missing_workspace_tables(engine: Engine, schema_name: str):
+    workspace_metadata, _ = get_workspace_metadata(schema_name)
+    workspace_metadata.create_all(engine)
 
 
 def _do_migration(
