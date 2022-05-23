@@ -19,10 +19,10 @@ class DeployedCommit(CoreModel):
     commit_id: str
 
 
-class DeployedIssue(StringIdModelMixin, DateTimeModelMixin, CoreModel):
+class DeployedIssue(CoreModel):
     repo_id: int
     pr_number: int
-    issue_id: int
+    issue_id: str
 
 
 class Deploy(StringIdModelMixin, ExtraFieldMixin, CoreModel):
