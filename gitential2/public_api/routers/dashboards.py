@@ -8,7 +8,7 @@ from gitential2.core.permissions import check_permission
 from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import gitential_context, current_user
 from ...core.dashboards import list_dashboards, get_dashboard, delete_dashboard, create_dashboard, update_dashboard
-from ...datatypes.dashboards import DashboardPublic, DashboardCreateRequest, DashboardUpdateRequest
+from ...datatypes.dashboards import DashboardPublic, DashboardUpdate, DashboardCreate
 
 router = APIRouter(tags=["dashboards"])
 
@@ -38,7 +38,7 @@ def get_dashboard_(
 
 @router.post("/workspaces/{workspace_id}/dashboards", response_model=DashboardPublic)
 def create_dashboard_(
-    dashboard_create: DashboardCreateRequest,
+    dashboard_create: DashboardCreate,
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
@@ -49,7 +49,7 @@ def create_dashboard_(
 
 @router.put("/workspaces/{workspace_id}/dashboards/{dashboard_id}", response_model=DashboardPublic)
 def update_dashboard_(
-    dashboard_update: DashboardUpdateRequest,
+    dashboard_update: DashboardUpdate,
     workspace_id: int,
     dashboard_id: int,
     current_user=Depends(current_user),

@@ -27,17 +27,7 @@ class DashboardCreate(DashboardBase):
     title: str = Field(..., min_length=2, max_length=128)
 
 
-class DashboardCreateRequest(CoreModel):
-    title: Optional[str]
-    config: DashboardConfig
-    charts: List[int]
-
-
-class DashboardUpdate(DashboardBase):
-    pass
-
-
-class DashboardUpdateRequest(DashboardCreateRequest):
+class DashboardUpdate(DashboardCreate):
     pass
 
 

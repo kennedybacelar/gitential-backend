@@ -7,8 +7,6 @@ from gitential2.datatypes.charts import ChartInDB, ChartCreate, ChartUpdate, Cha
 from gitential2.datatypes.dashboards import (
     DashboardInDB,
     DashboardUpdate,
-    DashboardCreateRequest,
-    DashboardUpdateRequest,
     DashboardCreate,
 )
 from gitential2.exceptions import SettingsException
@@ -39,11 +37,11 @@ def get_chart_public_from_chart_in_db(chart_in_db: ChartInDB) -> ChartPublic:
     )
 
 
-def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: DashboardCreateRequest) -> DashboardInDB:
+def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: DashboardCreate) -> DashboardInDB:
     if not dashboard_create.charts:
         raise SettingsException("Can not create dashboard with no charts!")
     logger.info("creating dashboard", workspace_id=workspace_id, title=dashboard_create.title)
-    charts = [get_chart(g, workspace_id, chart_id) for chart_id in dashboard_create.charts]
+    charts = [get_chart(g, workspace_id, chart.id) for chart in dashboard_create.charts]
     d = DashboardCreate(
         title=dashboard_create.title,
         config=dashboard_create.config,
@@ -53,11 +51,11 @@ def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: D
 
 
 def update_dashboard(
-    g: GitentialContext, workspace_id: int, dashboard_id: int, dashboard_update: DashboardUpdateRequest
+    g: GitentialContext, workspace_id: int, dashboard_id: int, dashboard_update: DashboardUpdate
 ) -> DashboardInDB:
     if not dashboard_update.charts:
         raise SettingsException("Can not update dashboard with no charts!")
-    charts = [get_chart(g, workspace_id, chart_id) for chart_id in dashboard_update.charts]
+    charts = [get_chart(g, workspace_id, chart.id) for chart in dashboard_update.charts]
     d = DashboardUpdate(
         title=dashboard_update.title,
         config=dashboard_update.config,
@@ -98,7 +96,7 @@ def update_chart(g: GitentialContext, workspace_id: int, chart_id: int, chart_up
         dashboard_chart_ids = [c.id for c in d.charts]
         is_dashboard_need_to_be_updated = any(cid == chart_id for cid in dashboard_chart_ids)
         if is_dashboard_need_to_be_updated:
-            dashboard_update = DashboardUpdateRequest(title=d.title, config=d.config, charts=dashboard_chart_ids)
+            dashboard_update = DashboardUpdate(title=d.title, config=d.config, charts=d.charts)
             update_dashboard(g, workspace_id=workspace_id, dashboard_id=d.id, dashboard_update=dashboard_update)
     return chart_updated
 
