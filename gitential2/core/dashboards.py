@@ -4,8 +4,13 @@ from structlog import get_logger
 
 from gitential2.core import GitentialContext
 from gitential2.datatypes.charts import ChartInDB, ChartCreate, ChartUpdate, ChartPublic
-from gitential2.datatypes.dashboards import DashboardInDB, DashboardUpdate, \
-    DashboardCreateRequest, DashboardUpdateRequest, DashboardCreate
+from gitential2.datatypes.dashboards import (
+    DashboardInDB,
+    DashboardUpdate,
+    DashboardCreateRequest,
+    DashboardUpdateRequest,
+    DashboardCreate,
+)
 from gitential2.exceptions import SettingsException
 
 logger = get_logger(__name__)
@@ -42,7 +47,7 @@ def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: D
     d = DashboardCreate(
         title=dashboard_create.title,
         config=dashboard_create.config,
-        charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts]
+        charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts],
     )
     return g.backend.dashboards.create(workspace_id, d)
 
@@ -56,7 +61,7 @@ def update_dashboard(
     d = DashboardUpdate(
         title=dashboard_update.title,
         config=dashboard_update.config,
-        charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts]
+        charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts],
     )
     return g.backend.dashboards.update(workspace_id, dashboard_id, d)
 

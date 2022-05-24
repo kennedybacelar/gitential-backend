@@ -8,8 +8,7 @@ from gitential2.core.permissions import check_permission
 from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import gitential_context, current_user
 from ...core.dashboards import list_dashboards, get_dashboard, delete_dashboard, create_dashboard, update_dashboard
-from ...datatypes.dashboards import DashboardPublic, DashboardCreateRequest, \
-    DashboardUpdateRequest
+from ...datatypes.dashboards import DashboardPublic, DashboardCreateRequest, DashboardUpdateRequest
 
 router = APIRouter(tags=["dashboards"])
 
