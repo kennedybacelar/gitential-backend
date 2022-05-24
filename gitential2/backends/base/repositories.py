@@ -75,6 +75,7 @@ from gitential2.datatypes.email_log import (
 )
 
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
+from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
 
 
@@ -291,6 +292,12 @@ class ProjectITSProjectRepository(
 class DashboardRepository(BaseWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]):
     @abstractmethod
     def search(self, workspace_id: int, q: str) -> List[DashboardInDB]:
+        pass
+
+
+class ChartRepository(BaseWorkspaceScopedRepository[int, ChartCreate, ChartUpdate, ChartInDB]):
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[ChartInDB]:
         pass
 
 

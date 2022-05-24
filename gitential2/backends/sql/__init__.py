@@ -119,6 +119,7 @@ from .repositories import (
     SQLExtractedPatchRewriteRepository,
     SQLCalculatedCommitRepository,
     SQLDashboardRepository,
+    SQLChartRepository,
 )
 
 from .repositories_its import (
@@ -130,6 +131,7 @@ from .repositories_its import (
 )
 
 from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
+from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 
 
@@ -219,6 +221,12 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=DashboardInDB,
+        )
+        self._charts = SQLChartRepository(
+            table=self._workspace_tables.tables["charts"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ChartInDB,
         )
         self._authors = SQLAuthorRepository(
             table=self._workspace_tables.tables["authors"],

@@ -7,6 +7,7 @@ class Entity(str, Enum):
     project = "project"
     team = "team"
     dashboard = "dashboard"
+    chart = "chart"
     membership = "membership"
     invitation = "invitation"
     credential = "credential"
