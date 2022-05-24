@@ -1,10 +1,10 @@
 # pylint: disable=unsubscriptable-object
-from datetime import datetime
 from abc import ABC, abstractmethod
-
+from datetime import datetime
 from typing import Iterable, Optional, List, Tuple, Dict, Union, cast
 
 import pandas
+
 from gitential2.datatypes import (
     UserCreate,
     UserUpdate,
@@ -20,44 +20,14 @@ from gitential2.datatypes import (
     CredentialInDB,
     AccessLog,
 )
-from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
-from gitential2.datatypes.pats import PersonalAccessToken
-
-from gitential2.datatypes.pull_requests import (
-    PullRequest,
-    PullRequestId,
-    PullRequestComment,
-    PullRequestCommentId,
-    PullRequestCommit,
-    PullRequestCommitId,
-    PullRequestLabel,
-    PullRequestLabelId,
-)
-from gitential2.datatypes.reseller_codes import ResellerCode
-from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB
-from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
-from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
-from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
-from gitential2.datatypes.project_repositories import (
-    ProjectRepositoryCreate,
-    ProjectRepositoryInDB,
-    ProjectRepositoryUpdate,
-)
-from gitential2.datatypes.project_its_projects import (
-    ProjectITSProjectCreate,
-    ProjectITSProjectUpdate,
-    ProjectITSProjectInDB,
-)
 from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB
-from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
-from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
-from gitential2.datatypes.workspace_invitations import (
-    WorkspaceInvitationCreate,
-    WorkspaceInvitationUpdate,
-    WorkspaceInvitationInDB,
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
+from gitential2.datatypes.email_log import (
+    EmailLogCreate,
+    EmailLogUpdate,
+    EmailLogInDB,
 )
-from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.extraction import (
     ExtractedCommit,
     ExtractedCommitId,
@@ -68,13 +38,42 @@ from gitential2.datatypes.extraction import (
     ExtractedCommitBranch,
     ExtractedCommitBranchId,
 )
-from gitential2.datatypes.email_log import (
-    EmailLogCreate,
-    EmailLogUpdate,
-    EmailLogInDB,
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
+from gitential2.datatypes.pats import PersonalAccessToken
+from gitential2.datatypes.project_its_projects import (
+    ProjectITSProjectCreate,
+    ProjectITSProjectUpdate,
+    ProjectITSProjectInDB,
 )
-
+from gitential2.datatypes.project_repositories import (
+    ProjectRepositoryCreate,
+    ProjectRepositoryInDB,
+    ProjectRepositoryUpdate,
+)
+from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.pull_requests import (
+    PullRequest,
+    PullRequestId,
+    PullRequestComment,
+    PullRequestCommentId,
+    PullRequestCommit,
+    PullRequestCommitId,
+    PullRequestLabel,
+    PullRequestLabelId,
+)
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
+from gitential2.datatypes.reseller_codes import ResellerCode
+from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
+from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
+from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
+from gitential2.datatypes.workspace_invitations import (
+    WorkspaceInvitationCreate,
+    WorkspaceInvitationUpdate,
+    WorkspaceInvitationInDB,
+)
+from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
+from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
 
 
@@ -281,6 +280,12 @@ class ProjectITSProjectRepository(
 class DashboardRepository(BaseWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]):
     @abstractmethod
     def search(self, workspace_id: int, q: str) -> List[DashboardInDB]:
+        pass
+
+
+class ChartRepository(BaseWorkspaceScopedRepository[int, ChartCreate, ChartUpdate, ChartInDB]):
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[ChartInDB]:
         pass
 
 

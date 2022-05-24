@@ -283,6 +283,21 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("extra", sa.JSON, nullable=True),
     )
 
+    charts = sa.Table(
+        "charts",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("is_editable", sa.Boolean, default=True, nullable=False),
+        sa.Column("title", sa.String(128), nullable=False),
+        sa.Column("chart_type", sa.String(128), nullable=False),
+        sa.Column("layout", sa.JSON, nullable=False),
+        sa.Column("metrics", sa.JSON, nullable=False),
+        sa.Column("dimensions", sa.JSON, nullable=False),
+    )
+
     # Extracted Commits
     extracted_commits = sa.Table(
         "extracted_commits",
@@ -752,6 +767,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "project_its_projects": project_its_projects,
         "extracted_commits": extracted_commits,
         "dashboards": dashboards,
+        "charts": charts,
         "calculated_commits": calculated_commits,
         "extracted_patches": extracted_patches,
         "calculated_patches": calculated_patches,

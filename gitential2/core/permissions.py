@@ -15,7 +15,6 @@ def _return(has_permission: bool, raise_exc: bool = True):
 def check_permission(
     g: GitentialContext, current_user: UserInDB, entity: Entity, action: Action, raise_exc=True, **kwargs
 ) -> bool:
-
     if not current_user:
         return _return(False, raise_exc)
     if not current_user.is_active:
@@ -32,7 +31,7 @@ def check_permission(
                     or (
                         workspace.membership.role == WorkspaceRole.collaborator
                         and (
-                            entity in [Entity.project, Entity.team, Entity.repository, Entity.dashboard]
+                            entity in [Entity.project, Entity.team, Entity.repository, Entity.dashboard, Entity.chart]
                             or action in [Action.read]
                         )
                     ),

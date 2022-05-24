@@ -1,17 +1,29 @@
-from datetime import datetime
 import json
-from typing import Any, Tuple, Set
+from datetime import datetime
 from threading import Lock
+from typing import Any, Tuple, Set
 
+import ibis
 import pandas as pd
 import sqlalchemy as sa
-import ibis
+from fastapi.encoders import jsonable_encoder
 from ibis.expr.types import TableExpr
 from sqlalchemy.sql import and_, select
 
-from fastapi.encoders import jsonable_encoder
+from gitential2.datatypes import (
+    UserInDB,
+    UserInfoInDB,
+    CredentialInDB,
+    WorkspaceInDB,
+    ProjectInDB,
+    RepositoryInDB,
+    ProjectRepositoryInDB,
+    WorkspaceMemberInDB,
+    AuthorInDB,
+)
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
-
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
+from gitential2.datatypes.email_log import EmailLogInDB
 from gitential2.datatypes.extraction import (
     ExtractedCommit,
     ExtractedKind,
@@ -29,51 +41,15 @@ from gitential2.datatypes.its import (
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.pats import PersonalAccessToken
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
-from gitential2.datatypes.reseller_codes import ResellerCode
-from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
-from gitential2.extraction.output import OutputHandler
-from gitential2.datatypes.workspace_invitations import WorkspaceInvitationInDB
+from gitential2.datatypes.reseller_codes import ResellerCode
+from gitential2.datatypes.stats import IbisTables
+from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
-from gitential2.datatypes.stats import IbisTables
-from gitential2.datatypes import (
-    UserInDB,
-    UserInfoInDB,
-    CredentialInDB,
-    WorkspaceInDB,
-    ProjectInDB,
-    RepositoryInDB,
-    ProjectRepositoryInDB,
-    WorkspaceMemberInDB,
-    AuthorInDB,
-)
-
-from gitential2.datatypes.email_log import EmailLogInDB
-
-from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
+from gitential2.datatypes.workspace_invitations import WorkspaceInvitationInDB
+from gitential2.extraction.output import OutputHandler
 from gitential2.settings import GitentialSettings
-
-from ..base import GitentialBackend, DashboardRepository
-from ..base.mixins import WithRepositoriesMixin
-
-from .tables import (
-    access_log_table,
-    email_log_table,
-    users_table,
-    reseller_codes_table,
-    access_approvals_table,
-    personal_access_tokens_table,
-    user_infos_table,
-    credentials_table,
-    workspaces_table,
-    workspace_invitations_table,
-    workspace_members_table,
-    metadata,
-    subscriptions_table,
-    get_workspace_metadata,
-)
-
 from .materialized_views import (
     _create_commits_v,
     _create_patches_v,
@@ -84,7 +60,7 @@ from .materialized_views import (
     _drop_pull_requests_v,
     _drop_pull_request_comments_v,
 )
-
+from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
 from .repositories import (
     SQLAccessApprovalRepository,
     SQLAccessLogRepository,
@@ -117,8 +93,8 @@ from .repositories import (
     SQLExtractedPatchRewriteRepository,
     SQLCalculatedCommitRepository,
     SQLDashboardRepository,
+    SQLChartRepository,
 )
-
 from .repositories_its import (
     SQLITSIssueRepository,
     SQLITSIssueChangeRepository,
@@ -126,8 +102,25 @@ from .repositories_its import (
     SQLITSIssueCommentRepository,
     SQLITSIssueLinkedIssueRepository,
 )
-
-from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
+from .tables import (
+    access_log_table,
+    email_log_table,
+    users_table,
+    reseller_codes_table,
+    access_approvals_table,
+    personal_access_tokens_table,
+    user_infos_table,
+    credentials_table,
+    workspaces_table,
+    workspace_invitations_table,
+    workspace_members_table,
+    metadata,
+    subscriptions_table,
+    get_workspace_metadata,
+)
+from ..base import GitentialBackend
+from ..base.mixins import WithRepositoriesMixin
+from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 
 
@@ -212,6 +205,12 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=DashboardInDB,
+        )
+        self._charts = SQLChartRepository(
+            table=self._workspace_tables.tables["charts"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ChartInDB,
         )
         self._authors = SQLAuthorRepository(
             table=self._workspace_tables.tables["authors"],

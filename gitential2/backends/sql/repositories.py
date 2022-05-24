@@ -108,6 +108,7 @@ from gitential2.backends.base.repositories import (
     ExtractedCommitBranchRepository,
     WorkspaceInvitationRepository,
     DashboardRepository,
+    ChartRepository,
 )
 
 from gitential2.datatypes.email_log import (
@@ -122,6 +123,7 @@ from ..base import (
     UpdateType,
     InDBType,
 )
+from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 
 fetchone_ = lambda result: result.fetchone()
@@ -575,6 +577,13 @@ class SQLDashboardRepository(
         query = self.table.select().where(self.table.c.name.ilike(f"%{q}%"))
         rows = self._execute_query(query, workspace_id)
         return [DashboardInDB(**row) for row in rows]
+
+
+class SQLChartRepository(ChartRepository, SQLWorkspaceScopedRepository[int, ChartCreate, ChartUpdate, ChartInDB]):
+    def search(self, workspace_id: int, q: str) -> List[ChartInDB]:
+        query = self.table.select().where(self.table.c.name.ilike(f"%{q}%"))
+        rows = self._execute_query(query, workspace_id)
+        return [ChartInDB(**row) for row in rows]
 
 
 class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):

@@ -9,7 +9,7 @@ from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
 
 from ..dependencies import gitential_context, current_user
-from ...core.dashboards import list_dashboards, get_dashboard, delete_dashboard, create_dashboard, update_project
+from ...core.dashboards import list_dashboards, get_dashboard, delete_dashboard, create_dashboard, update_dashboard
 from ...datatypes.dashboards import DashboardPublic, DashboardCreate, DashboardUpdate
 
 router = APIRouter(tags=["dashboards"])
@@ -58,7 +58,7 @@ def update_dashboard_(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.dashboard, Action.update, workspace_id=workspace_id)
-    return update_project(g, workspace_id=workspace_id, dashboard_id=dashboard_id, dashboard_update=dashboard_update)
+    return update_dashboard(g, workspace_id=workspace_id, dashboard_id=dashboard_id, dashboard_update=dashboard_update)
 
 
 @router.delete("/workspaces/{workspace_id}/dashboards/{dashboard_id}", response_model=bool)
