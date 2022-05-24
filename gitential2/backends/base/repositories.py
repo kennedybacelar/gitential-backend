@@ -1,10 +1,10 @@
 # pylint: disable=unsubscriptable-object
-from abc import ABC, abstractmethod
 from datetime import datetime
+from abc import ABC, abstractmethod
+
 from typing import Iterable, Optional, List, Tuple, Dict, Union, cast
 
 import pandas
-
 from gitential2.datatypes import (
     UserCreate,
     UserUpdate,
@@ -20,37 +20,9 @@ from gitential2.datatypes import (
     CredentialInDB,
     AccessLog,
 )
-from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB
-from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
-from gitential2.datatypes.email_log import (
-    EmailLogCreate,
-    EmailLogUpdate,
-    EmailLogInDB,
-)
-from gitential2.datatypes.extraction import (
-    ExtractedCommit,
-    ExtractedCommitId,
-    ExtractedPatch,
-    ExtractedPatchId,
-    ExtractedPatchRewrite,
-    ExtractedPatchRewriteId,
-    ExtractedCommitBranch,
-    ExtractedCommitBranchId,
-)
-from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
-from gitential2.datatypes.pats import PersonalAccessToken
-from gitential2.datatypes.project_its_projects import (
-    ProjectITSProjectCreate,
-    ProjectITSProjectUpdate,
-    ProjectITSProjectInDB,
-)
-from gitential2.datatypes.project_repositories import (
-    ProjectRepositoryCreate,
-    ProjectRepositoryInDB,
-    ProjectRepositoryUpdate,
-)
-from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
+
 from gitential2.datatypes.pull_requests import (
     PullRequest,
     PullRequestId,
@@ -61,17 +33,47 @@ from gitential2.datatypes.pull_requests import (
     PullRequestLabel,
     PullRequestLabelId,
 )
-from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
 from gitential2.datatypes.reseller_codes import ResellerCode
 from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
-from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
+from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB
+from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
+from gitential2.datatypes.project_repositories import (
+    ProjectRepositoryCreate,
+    ProjectRepositoryInDB,
+    ProjectRepositoryUpdate,
+)
+from gitential2.datatypes.project_its_projects import (
+    ProjectITSProjectCreate,
+    ProjectITSProjectUpdate,
+    ProjectITSProjectInDB,
+)
+from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB
 from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
+from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
 from gitential2.datatypes.workspace_invitations import (
     WorkspaceInvitationCreate,
     WorkspaceInvitationUpdate,
     WorkspaceInvitationInDB,
 )
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
+from gitential2.datatypes.extraction import (
+    ExtractedCommit,
+    ExtractedCommitId,
+    ExtractedPatch,
+    ExtractedPatchId,
+    ExtractedPatchRewrite,
+    ExtractedPatchRewriteId,
+    ExtractedCommitBranch,
+    ExtractedCommitBranchId,
+)
+from gitential2.datatypes.email_log import (
+    EmailLogCreate,
+    EmailLogUpdate,
+    EmailLogInDB,
+)
+
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
 from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
@@ -111,6 +113,16 @@ class AccessApprovalRepository(BaseRepository[int, AccessApprovalCreate, AccessA
 
 class PersonalAccessTokenRepository(BaseRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]):
     pass
+
+
+class WorkspaceAPIKeyRepository(BaseRepository[str, WorkspaceAPIKey, WorkspaceAPIKey, WorkspaceAPIKey]):
+    @abstractmethod
+    def get_all_api_keys_by_workspace_id(self, workspace_id: int) -> List[WorkspaceAPIKey]:
+        pass
+
+    @abstractmethod
+    def get_single_api_key_by_workspace_id(self, workspace_id: int) -> Optional[WorkspaceAPIKey]:
+        pass
 
 
 class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB]):

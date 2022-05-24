@@ -53,6 +53,16 @@ personal_access_tokens_table = sa.Table(
     sa.Column("extra", sa.JSON, nullable=True),
 )
 
+workspace_api_keys_table = sa.Table(
+    "workspace_api_keys",
+    metadata,
+    sa.Column("id", sa.String(128), primary_key=True),
+    sa.Column("workspace_id", sa.Integer(), nullable=False),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("extra", sa.JSON, nullable=True),
+)
+
 reseller_codes_table = sa.Table(
     "reseller_codes",
     metadata,

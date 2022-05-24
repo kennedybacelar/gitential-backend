@@ -25,6 +25,10 @@ from gitential2.core.credentials import (
 )
 from gitential2.core.refresh_v2 import refresh_workspace
 from gitential2.core.workspace_common import create_workspace
+from gitential2.core.api_keys import (
+    delete_api_keys_for_workspace,
+    get_api_key_by_workspace_id,
+)
 
 from ..dependencies import current_user, gitential_context
 from ...core.search import search_entity
@@ -210,3 +214,19 @@ def refresh_workspace_(
     check_permission(g, current_user, Entity.workspace, Action.update, workspace_id=workspace_id)
     refresh_workspace(g, workspace_id)
     return True
+
+
+@router.get("/workspaces/{workspace_id}/api-key")
+def workspace_api_key(
+    workspace_id: int,
+    g: GitentialContext = Depends(gitential_context),
+):
+    return get_api_key_by_workspace_id(g, workspace_id)
+
+
+@router.delete("/workspaces/{workspace_id}/api-key")
+def delete_workspace_api_key_for_workspace(
+    workspace_id: int,
+    g: GitentialContext = Depends(gitential_context),
+):
+    delete_api_keys_for_workspace(g, workspace_id)

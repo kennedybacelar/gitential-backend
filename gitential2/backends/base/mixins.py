@@ -29,6 +29,7 @@ from .repositories import (
     CredentialRepository,
     ProjectRepository,
     ExtractedCommitBranchRepository,
+    WorkspaceAPIKeyRepository,
     DashboardRepository,
     ChartRepository,
 )
@@ -50,6 +51,7 @@ class WithRepositoriesMixin:
     _access_approvals: AccessApprovalRepository
     _pats: PersonalAccessTokenRepository
     _user_infos: UserInfoRepository
+    _workspace_api_keys: WorkspaceAPIKeyRepository
     _workspaces: WorkspaceRepository
     _workspace_invitations: WorkspaceInvitationRepository
     _workspace_members: WorkspaceMemberRepository
@@ -111,6 +113,10 @@ class WithRepositoriesMixin:
     @property
     def user_infos(self) -> UserInfoRepository:
         return self._user_infos
+
+    @property
+    def workspace_api_keys(self) -> WorkspaceAPIKeyRepository:
+        return self._workspace_api_keys
 
     @property
     def workspaces(self) -> WorkspaceRepository:
