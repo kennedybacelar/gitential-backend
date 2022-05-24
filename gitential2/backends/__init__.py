@@ -1,4 +1,3 @@
-from typing import Optional
 from structlog import get_logger
 from gitential2.settings import GitentialSettings, BackendType
 from .base import GitentialBackend

@@ -3,8 +3,9 @@ from typing import List
 from structlog import get_logger
 
 from gitential2.core import GitentialContext
-from gitential2.datatypes.charts import ChartInDB, ChartCreate, ChartUpdate
-from gitential2.datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate, DashboardPublic
+from gitential2.datatypes.charts import ChartInDB, ChartCreate, ChartUpdate, ChartPublic
+from gitential2.datatypes.dashboards import DashboardInDB, DashboardUpdate, \
+    DashboardCreateRequest, DashboardUpdateRequest, DashboardCreate
 from gitential2.exceptions import SettingsException
 
 logger = get_logger(__name__)
@@ -18,23 +19,46 @@ def get_dashboard(g: GitentialContext, workspace_id: int, dashboard_id: int) -> 
     return g.backend.dashboards.get_or_error(workspace_id=workspace_id, id_=dashboard_id)
 
 
-def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: DashboardCreate) -> DashboardInDB:
-    if len(dashboard_create.charts) == 0:
+def get_chart_public_from_chart_in_db(chart_in_db: ChartInDB) -> ChartPublic:
+    return ChartPublic(
+        id=chart_in_db.id,
+        created_at=chart_in_db.created_at,
+        updated_at=chart_in_db.updated_at,
+        extra=chart_in_db.extra,
+        is_custom=True,
+        title=chart_in_db.title,
+        chart_type=chart_in_db.chart_type,
+        layout=chart_in_db.layout,
+        metrics=chart_in_db.metrics,
+        dimensions=chart_in_db.dimensions,
+    )
+
+
+def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: DashboardCreateRequest) -> DashboardInDB:
+    if not dashboard_create.charts:
         raise SettingsException("Can not create dashboard with no charts!")
     logger.info("creating dashboard", workspace_id=workspace_id, title=dashboard_create.title)
     charts = [get_chart(g, workspace_id, chart_id) for chart_id in dashboard_create.charts]
-    dashboard_create.charts = charts
-    return g.backend.dashboards.create(workspace_id, dashboard_create)
+    d = DashboardCreate(
+        title=dashboard_create.title,
+        config=dashboard_create.config,
+        charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts]
+    )
+    return g.backend.dashboards.create(workspace_id, d)
 
 
 def update_dashboard(
-    g: GitentialContext, workspace_id: int, dashboard_id: int, dashboard_update: DashboardUpdate
+    g: GitentialContext, workspace_id: int, dashboard_id: int, dashboard_update: DashboardUpdateRequest
 ) -> DashboardInDB:
-    if len(dashboard_update.charts) == 0:
+    if not dashboard_update.charts:
         raise SettingsException("Can not update dashboard with no charts!")
     charts = [get_chart(g, workspace_id, chart_id) for chart_id in dashboard_update.charts]
-    dashboard_update.charts = charts
-    return g.backend.dashboards.update(workspace_id, dashboard_id, dashboard_update)
+    d = DashboardUpdate(
+        title=dashboard_update.title,
+        config=dashboard_update.config,
+        charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts]
+    )
+    return g.backend.dashboards.update(workspace_id, dashboard_id, d)
 
 
 def delete_dashboard(g: GitentialContext, workspace_id: int, dashboard_id: int) -> bool:
@@ -69,7 +93,7 @@ def update_chart(g: GitentialContext, workspace_id: int, chart_id: int, chart_up
         dashboard_chart_ids = [c.id for c in d.charts]
         is_dashboard_need_to_be_updated = any(cid == chart_id for cid in dashboard_chart_ids)
         if is_dashboard_need_to_be_updated:
-            dashboard_update = DashboardUpdate(title=d.title, config=d.config, charts=dashboard_chart_ids)
+            dashboard_update = DashboardUpdateRequest(title=d.title, config=d.config, charts=dashboard_chart_ids)
             update_dashboard(g, workspace_id=workspace_id, dashboard_id=d.id, dashboard_update=dashboard_update)
     return chart_updated
 
@@ -77,10 +101,10 @@ def update_chart(g: GitentialContext, workspace_id: int, chart_id: int, chart_up
 def delete_chart(g: GitentialContext, workspace_id: int, chart_id: int) -> bool:
     dashboards = list(g.backend.dashboards.all(workspace_id=workspace_id))
     is_chart_exists_in_dashboards = all(all(c.id != chart_id for c in d.charts) for d in dashboards)
-    if len(dashboards) == 0 or is_chart_exists_in_dashboards:
+    if not dashboards or is_chart_exists_in_dashboards:
         delete_result = g.backend.charts.delete(workspace_id=workspace_id, id_=chart_id)
         if not delete_result:
-            logger.info("Chart delete failed! Not able to find chart with id: {}".format(chart_id))
+            logger.info(f"Chart delete failed! Not able to find chart with id: {chart_id}")
         return bool(delete_result)
-    logger.info("Chart delete failed! Chart is already in one of the dashboards! chart_id={}".format(chart_id))
+    logger.info(f"Chart delete failed! Chart is already in one of the dashboards! chart_id={chart_id}")
     return False

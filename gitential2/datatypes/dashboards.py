@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Optional, List, Dict, Any, Tuple
 
 from pydantic import Field
@@ -26,11 +25,20 @@ class DashboardPublic(IDModelMixin, DateTimeModelMixin, DashboardBase):
 
 class DashboardCreate(DashboardBase):
     title: str = Field(..., min_length=2, max_length=128)
+
+
+class DashboardCreateRequest(CoreModel):
+    title: Optional[str]
+    config: DashboardConfig
     charts: List[int]
 
 
 class DashboardUpdate(DashboardBase):
-    charts: List[int]
+    pass
+
+
+class DashboardUpdateRequest(DashboardCreateRequest):
+    pass
 
 
 class DashboardInDB(IDModelMixin, DateTimeModelMixin, DashboardBase, ExportableModel):

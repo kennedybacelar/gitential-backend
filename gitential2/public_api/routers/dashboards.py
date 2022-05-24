@@ -3,14 +3,13 @@ from typing import List
 from fastapi import APIRouter, Depends
 from structlog import get_logger
 
-from gitential2.datatypes.permissions import Entity, Action
-
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
-
+from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import gitential_context, current_user
 from ...core.dashboards import list_dashboards, get_dashboard, delete_dashboard, create_dashboard, update_dashboard
-from ...datatypes.dashboards import DashboardPublic, DashboardCreate, DashboardUpdate
+from ...datatypes.dashboards import DashboardPublic, DashboardCreateRequest, \
+    DashboardUpdateRequest
 
 router = APIRouter(tags=["dashboards"])
 
@@ -40,7 +39,7 @@ def get_dashboard_(
 
 @router.post("/workspaces/{workspace_id}/dashboards", response_model=DashboardPublic)
 def create_dashboard_(
-    dashboard_create: DashboardCreate,
+    dashboard_create: DashboardCreateRequest,
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
@@ -51,7 +50,7 @@ def create_dashboard_(
 
 @router.put("/workspaces/{workspace_id}/dashboards/{dashboard_id}", response_model=DashboardPublic)
 def update_dashboard_(
-    dashboard_update: DashboardUpdate,
+    dashboard_update: DashboardUpdateRequest,
     workspace_id: int,
     dashboard_id: int,
     current_user=Depends(current_user),
