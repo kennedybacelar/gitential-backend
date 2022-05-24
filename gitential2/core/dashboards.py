@@ -55,11 +55,15 @@ def get_chart(g: GitentialContext, workspace_id: int, chart_id: int) -> ChartInD
 
 def create_chart(g: GitentialContext, workspace_id: int, chart_create: ChartCreate) -> ChartInDB:
     logger.info("creating chart", workspace_id=workspace_id, title=chart_create.title)
+    chart_create.is_custom = True
     return g.backend.charts.create(workspace_id, chart_create)
 
 
 def update_chart(g: GitentialContext, workspace_id: int, chart_id: int, chart_update: ChartUpdate) -> ChartInDB:
+    if chart_id < 0:
+        raise SettingsException("Can not update not custom chart!")
     logger.info("updating chart", workspace_id=workspace_id, title=chart_update.title)
+    chart_update.is_custom = True
     chart_updated = g.backend.charts.update(workspace_id, chart_id, chart_update)
     for d in list(g.backend.dashboards.all(workspace_id=workspace_id)):
         dashboard_chart_ids = [c.id for c in d.charts]

@@ -25,7 +25,7 @@ class ChartLayout(CoreModel):
 
 
 class ChartBase(ExtraFieldMixin, CoreModel):
-    is_editable: Optional[bool] = True
+    is_custom: Optional[bool] = True
     title: Optional[str]
     layout: ChartLayout
     chart_type: ChartVisualizationTypes
@@ -55,7 +55,7 @@ class ChartInDB(IDModelMixin, DateTimeModelMixin, ChartBase, ExportableModel):
             "created_at",
             "updated_at",
             "extra",
-            "is_editable",
+            "is_custom",
             "title",
             "chart_type",
             "layout",
