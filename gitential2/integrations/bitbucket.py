@@ -137,12 +137,15 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 else raw_pr.get("merged_on", raw_pr.get("closed_on"))
             )
 
+        def _zero_if_none(n):
+            return 0 if n is None else n
+
         def _calc_addition_and_deletion_changed_files(diffstat):
             additions, deletions, changed_files = 0, 0, 0
             for change in diffstat:
                 changed_files += 1
-                additions += change["lines_added"]
-                deletions += change["lines_removed"]
+                additions += _zero_if_none(change.get("lines_added"))
+                deletions += _zero_if_none(change.get("lines_removed"))
 
             return additions, deletions, changed_files
 
