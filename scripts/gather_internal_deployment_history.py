@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 from datetime import timezone, timedelta, datetime
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Set
 import pygit2
 from pygit2 import Repository
 
@@ -52,7 +52,7 @@ def _parse_patch(patch: str, commit) -> Optional[Deploy]:
     return _transform_to_deploy(environments, repositories, commit)
 
 
-def _transform_to_deployed_commits(_commit_id: str, repositories: Tuple[str, str]) -> List[DeployedCommit]:
+def _transform_to_deployed_commits(_commit_id: str, repositories: Set[Tuple[str, str]]) -> List[DeployedCommit]:
     ret = []
     for repository in repositories:
         deployed_commit = DeployedCommit(
@@ -71,14 +71,14 @@ def _transform_to_deploy(environments, repositories, commit) -> Deploy:
 
     deployed_pull_requests = []
     deployed_issues = []
-    deployed_commits = _transform_to_deployed_commits(_commit_id, repositories)
+    deployed_commits = _transform_to_deployed_commits(_commit_id, list(set(repositories)))
 
     list_of_repo_names = []
 
     for repo in repositories:
         list_of_repo_names.append(repo[0])
 
-    list_of_repo_names = list(set(list_of_repo_names))
+    list_of_repo_names = set(list_of_repo_names)
 
     deploy = Deploy(
         id=f"{_commit_id}X{'Y'.join(environments).split()[0]}" if environments else f"{_commit_id}-untracked_env",
