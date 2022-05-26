@@ -12,7 +12,8 @@ class DeployedPullRequest(StringIdModelMixin, ExtraFieldMixin, CoreModel):
 
 
 class DeployedCommit(CoreModel):
-    commit_id: str
+    id: str
+    title: str
     repository_name: str
     git_ref: str
 

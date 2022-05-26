@@ -52,11 +52,14 @@ def _parse_patch(patch: str, commit) -> Optional[Deploy]:
     return _transform_to_deploy(environments, repositories, commit)
 
 
-def _transform_to_deployed_commits(_commit_id: str, repositories: Set[Tuple[str, str]]) -> List[DeployedCommit]:
+def _transform_to_deployed_commits(
+    _commit_id: str, title: str, repositories: Set[Tuple[str, str]]
+) -> List[DeployedCommit]:
     ret = []
     for repository in repositories:
         deployed_commit = DeployedCommit(
-            commit_id=_commit_id,
+            id=_commit_id,
+            title=title,
             repository_name=repository[0],
             git_ref=repository[1],
         )
@@ -68,10 +71,11 @@ def _transform_to_deploy(environments, repositories, commit) -> Deploy:
     tzinfo = timezone(timedelta(minutes=commit.author.offset))
     _deployed_at = datetime.fromtimestamp(float(commit.author.time), tzinfo)
     _commit_id = str(commit.id)
+    _commit_title = str(commit.message)
 
     deployed_pull_requests = []
     deployed_issues = []
-    deployed_commits = _transform_to_deployed_commits(_commit_id, list(set(repositories)))
+    deployed_commits = _transform_to_deployed_commits(_commit_id, _commit_title, list(set(repositories)))
 
     list_of_repo_names = []
 
