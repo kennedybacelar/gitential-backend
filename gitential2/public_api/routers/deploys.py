@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from structlog import get_logger
 
 from gitential2.datatypes.deploys import Deploy
@@ -23,11 +23,10 @@ def get_deploys(
 
 
 @router.post("/workspaces/{workspace_id}/deploys", response_model=Deploy)
-async def record_deploy(
-    request: Request,
+def record_deploy(
+    deploy: Deploy,
     workspace_id: int,
     g: GitentialContext = Depends(gitential_context),
 ):
 
-    deploy_json = await request.json()
-    return register_deploy(g, workspace_id=workspace_id, deploy_json=deploy_json)
+    return register_deploy(g, workspace_id=workspace_id, deploy=deploy)

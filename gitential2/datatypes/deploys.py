@@ -12,8 +12,7 @@ class DeployedPullRequest(StringIdModelMixin, ExtraFieldMixin, CoreModel):
     merged_at: Optional[datetime]
 
 
-class DeployedCommit(StringIdModelMixin, CoreModel):
-    title: str
+class DeployedCommit(CoreModel):
     repository_name: str
     git_ref: str
 
@@ -24,7 +23,6 @@ class DeployedIssue(CoreModel):
 
 
 class Deploy(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
-    repositories: Optional[List[str]]
     environments: Optional[List[str]]
     pull_requests: Optional[List[DeployedPullRequest]]
     commits: List[DeployedCommit]
@@ -37,7 +35,6 @@ class Deploy(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
     def export_fields(self) -> List[str]:
         return [
             "id",
-            "repositories",
             "environments",
             "pull_requests",
             "commits",

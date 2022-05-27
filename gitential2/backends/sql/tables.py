@@ -746,10 +746,10 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "deploys",
         metadata,
         sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("environments", sa.ARRAY(sa.String(length=256)), nullable=True),
         sa.Column("pull_requests", sa.JSON, nullable=True),
         sa.Column("commits", sa.JSON, nullable=True),
         sa.Column("issues", sa.JSON, nullable=True),
-        sa.Column("environment", sa.String, nullable=True),
         sa.Column("deployed_at", sa.DateTime, nullable=False),
         sa.Column("extra", sa.JSON, nullable=True),
     )
