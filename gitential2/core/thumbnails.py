@@ -10,9 +10,7 @@ def get_thumbnail(g: GitentialContext, workspace_id: int, image_id: str) -> Thum
     return g.backend.thumbnails.get_or_error(workspace_id=workspace_id, id_=image_id)
 
 
-def create_thumbnail(
-    g: GitentialContext, workspace_id: int, thumbnail_create: ThumbnailCreate
-) -> ThumbnailInDB:
+def create_thumbnail(g: GitentialContext, workspace_id: int, thumbnail_create: ThumbnailCreate) -> ThumbnailInDB:
     logger.info("creating thumbnail", workspace_id=workspace_id, title=thumbnail_create.id)
     return g.backend.thumbnails.create(workspace_id, thumbnail_create)
 
