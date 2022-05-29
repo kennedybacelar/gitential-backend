@@ -41,6 +41,7 @@ from .repositories import (
     WorkspaceAPIKeyRepository,
     DashboardRepository,
     ChartRepository,
+    ThumbnailRepository,
 )
 
 from .repositories_its import (
@@ -149,6 +150,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def charts(self) -> ChartRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def thumbnails(self) -> ThumbnailRepository:
         pass
 
     @property

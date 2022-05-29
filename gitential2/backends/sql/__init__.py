@@ -120,6 +120,7 @@ from .repositories import (
     SQLCalculatedCommitRepository,
     SQLDashboardRepository,
     SQLChartRepository,
+    SQLThumbnailRepository,
 )
 
 from .repositories_its import (
@@ -133,6 +134,7 @@ from .repositories_its import (
 from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
+from ...datatypes.thumbnails import ThumbnailInDB
 
 
 def json_dumps(obj):
@@ -227,6 +229,12 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ChartInDB,
+        )
+        self._thumbnails = SQLThumbnailRepository(
+            table=self._workspace_tables.tables["thumbnails"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ThumbnailInDB,
         )
         self._authors = SQLAuthorRepository(
             table=self._workspace_tables.tables["authors"],
