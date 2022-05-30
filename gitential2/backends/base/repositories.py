@@ -76,6 +76,9 @@ from gitential2.datatypes.email_log import (
 )
 
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
+from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
+from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
+from ...datatypes.thumbnails import ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB
 
 
 class AccessLogRepository(ABC):
@@ -290,6 +293,22 @@ class ProjectITSProjectRepository(
         if ids_needs_removal:
             self.remove_itsp_ids_from_project(workspace_id, project_id, ids_needs_removal)
         return ids_needs_addition, ids_needs_removal, ids_kept
+
+
+class DashboardRepository(BaseWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]):
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[DashboardInDB]:
+        pass
+
+
+class ChartRepository(BaseWorkspaceScopedRepository[int, ChartCreate, ChartUpdate, ChartInDB]):
+    @abstractmethod
+    def search(self, workspace_id: int, q: str) -> List[ChartInDB]:
+        pass
+
+
+class ThumbnailRepository(BaseWorkspaceScopedRepository[str, ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB]):
+    pass
 
 
 class RepoDFMixin(ABC):

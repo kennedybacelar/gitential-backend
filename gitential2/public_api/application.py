@@ -35,7 +35,13 @@ from .routers import (
     its,
     data_queries,
     admin,
+<<<<<<< gitential2/public_api/application.py
     deploys,
+=======
+    dashboards,
+    charts,
+    thumbnails,
+>>>>>>> gitential2/public_api/application.py
 )
 
 logger = get_logger(__name__)
@@ -93,6 +99,9 @@ def _configure_routes(app: FastAPI):
         data_queries.router,
         admin.router,
         deploys.router,
+        dashboards.router,
+        charts.router,
+        thumbnails.router,
     ]:
         app.include_router(router, prefix="/v2")
 

@@ -40,6 +40,9 @@ from .repositories import (
     ExtractedCommitBranchRepository,
     WorkspaceAPIKeyRepository,
     DeployRepository,
+    DashboardRepository,
+    ChartRepository,
+    ThumbnailRepository,
 )
 
 from .repositories_its import (
@@ -138,6 +141,21 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def project_its_projects(self) -> ProjectITSProjectRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def dashboards(self) -> DashboardRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def charts(self) -> ChartRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def thumbnails(self) -> ThumbnailRepository:
         pass
 
     @property

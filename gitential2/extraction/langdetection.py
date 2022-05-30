@@ -1112,7 +1112,7 @@ DEFAULT_EXTENSION_INDEX = {
     ".sublime_metrics": (("Sublime Text Config", 4),),
     ".sublime_session": (("Sublime Text Config", 4),),
     ".sv": (("SystemVerilog", 1),),
-    ".svg": (("SVG", 4),),
+    ".svg": (("SVG", 0),),
     ".svh": (("SystemVerilog", 1),),
     ".swift": (("Swift", 1),),
     ".syntax": (("YAML", 4),),

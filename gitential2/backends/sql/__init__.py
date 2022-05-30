@@ -55,7 +55,7 @@ from gitential2.datatypes.email_log import EmailLogInDB
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
 from gitential2.settings import GitentialSettings
 
-from ..base import GitentialBackend
+from ..base import GitentialBackend, DashboardRepository
 from ..base.mixins import WithRepositoriesMixin
 
 from .tables import (
@@ -120,6 +120,9 @@ from .repositories import (
     SQLExtractedCommitBranchRepository,
     SQLExtractedPatchRewriteRepository,
     SQLCalculatedCommitRepository,
+    SQLDashboardRepository,
+    SQLChartRepository,
+    SQLThumbnailRepository,
 )
 
 from .repositories_its import (
@@ -131,6 +134,9 @@ from .repositories_its import (
 )
 
 from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
+from ...datatypes.charts import ChartInDB
+from ...datatypes.dashboards import DashboardInDB
+from ...datatypes.thumbnails import ThumbnailInDB
 
 
 def json_dumps(obj):
@@ -213,6 +219,24 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ProjectITSProjectInDB,
+        )
+        self._dashboards = SQLDashboardRepository(
+            table=self._workspace_tables.tables["dashboards"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=DashboardInDB,
+        )
+        self._charts = SQLChartRepository(
+            table=self._workspace_tables.tables["charts"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ChartInDB,
+        )
+        self._thumbnails = SQLThumbnailRepository(
+            table=self._workspace_tables.tables["thumbnails"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ThumbnailInDB,
         )
         self._authors = SQLAuthorRepository(
             table=self._workspace_tables.tables["authors"],
@@ -599,6 +623,7 @@ class SQLOutputHandler(OutputHandler):
             ExtractedKind.ITS_ISSUE_CHANGE: self.backend.its_issue_changes,
             ExtractedKind.ITS_ISSUE_TIME_IN_STATUS: self.backend.its_issue_times_in_statuses,
             ExtractedKind.ITS_ISSUE_COMMENT: self.backend.its_issue_comments,
+            ExtractedKind.ITS_ISSUE_LINKED_ISSUE: self.backend.its_issue_linked_issue,
         }
 
         if kind in kind_to_backend_repository:

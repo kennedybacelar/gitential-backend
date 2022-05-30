@@ -26,6 +26,7 @@ class ExtractedKind(str, Enum):
     ITS_ISSUE_CHANGE = "its_issue_change"
     ITS_ISSUE_TIME_IN_STATUS = "its_issue_time_in_status"
     ITS_ISSUE_COMMENT = "its_issue_comment"
+    ITS_ISSUE_LINKED_ISSUE = "its_issue_linked_issue"
 
 
 class ExtractedCommitId(CoreModel):
