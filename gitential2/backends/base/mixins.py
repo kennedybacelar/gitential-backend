@@ -32,6 +32,7 @@ from .repositories import (
     WorkspaceAPIKeyRepository,
     DashboardRepository,
     ChartRepository,
+    ThumbnailRepository,
 )
 
 
@@ -63,6 +64,7 @@ class WithRepositoriesMixin:
     _project_its_projects: ProjectITSProjectRepository
     _dashboards: DashboardRepository
     _charts: ChartRepository
+    _thumbnails: ThumbnailRepository
     _authors: AuthorRepository
     _teams: TeamRepository
     _team_members: TeamMemberRepository
@@ -161,6 +163,10 @@ class WithRepositoriesMixin:
     @property
     def charts(self) -> ChartRepository:
         return self._charts
+
+    @property
+    def thumbnails(self) -> ThumbnailRepository:
+        return self._thumbnails
 
     @property
     def authors(self) -> AuthorRepository:

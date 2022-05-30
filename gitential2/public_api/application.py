@@ -37,6 +37,7 @@ from .routers import (
     admin,
     dashboards,
     charts,
+    thumbnails,
 )
 
 logger = get_logger(__name__)
@@ -95,6 +96,7 @@ def _configure_routes(app: FastAPI):
         admin.router,
         dashboards.router,
         charts.router,
+        thumbnails.router,
     ]:
         app.include_router(router, prefix="/v2")
 
