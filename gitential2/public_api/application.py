@@ -35,13 +35,10 @@ from .routers import (
     its,
     data_queries,
     admin,
-<<<<<<< gitential2/public_api/application.py
     deploys,
-=======
     dashboards,
     charts,
     thumbnails,
->>>>>>> gitential2/public_api/application.py
 )
 
 logger = get_logger(__name__)
