@@ -779,6 +779,18 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("link_type", sa.String(128), nullable=False),  # todo link_type
     )
 
+    deploys = sa.Table(
+        "deploys",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("environments", sa.ARRAY(sa.String(length=256)), nullable=True),
+        sa.Column("pull_requests", sa.JSON, nullable=True),
+        sa.Column("commits", sa.JSON, nullable=True),
+        sa.Column("issues", sa.JSON, nullable=True),
+        sa.Column("deployed_at", sa.DateTime, nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
     return metadata, {
         "projects": projects,
         "repositories": repositories,
@@ -807,4 +819,5 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "its_issue_times_in_statuses": its_issue_times_in_statuses,
         "its_issue_comments": its_issue_comments,
         "its_issue_linked_issue": its_issue_linked_issue,
+        "deploys": deploys,
     }

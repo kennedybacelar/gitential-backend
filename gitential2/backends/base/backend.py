@@ -39,6 +39,7 @@ from .repositories import (
     EmailLogRepository,
     ExtractedCommitBranchRepository,
     WorkspaceAPIKeyRepository,
+    DeployRepository,
     DashboardRepository,
     ChartRepository,
     ThumbnailRepository,
@@ -250,6 +251,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def email_log(self) -> EmailLogRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def deploys(self) -> DeployRepository:
         pass
 
     @abstractmethod

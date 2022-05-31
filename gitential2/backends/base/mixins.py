@@ -30,6 +30,7 @@ from .repositories import (
     ProjectRepository,
     ExtractedCommitBranchRepository,
     WorkspaceAPIKeyRepository,
+    DeployRepository,
     DashboardRepository,
     ChartRepository,
     ThumbnailRepository,
@@ -87,6 +88,8 @@ class WithRepositoriesMixin:
     _its_issue_times_in_statuses: ITSIssueTimeInStatusRepository
     _its_issue_comments: ITSIssueCommentRepository
     _its_issue_linked_issue: ITSIssueLinkedIssueRepository
+
+    _deploys: DeployRepository
 
     @property
     def access_logs(self):
@@ -243,3 +246,7 @@ class WithRepositoriesMixin:
     @property
     def email_log(self) -> EmailLogRepository:
         return self._email_log
+
+    @property
+    def deploys(self) -> DeployRepository:
+        return self._deploys
