@@ -46,7 +46,7 @@ def api_access_log(
             user_id=current_user.id,
             path=request.url.path,
             method=request.method,
-            ip_address=request.client.host,
+            ip_address=request.client.host if request.client else None,
         )
 
     else:
@@ -54,7 +54,7 @@ def api_access_log(
             "No access log, unknown user",
             path=request.url.path,
             method=request.method,
-            ip_address=request.client.host,
+            ip_address=request.client.host if request.client else None,
         )
         return None
 

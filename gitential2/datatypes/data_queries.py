@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Dict, Union, List, Optional
+from typing import Dict, Union, List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
@@ -121,10 +121,25 @@ class DataQuery(BaseModel):
 
 
 class DQResultOrientation(str, Enum):
+    DICT = "dict"
     LIST = "list"
+    SERIES = "series"
     SPLIT = "split"
     TIGHT = "tight"
     RECORDS = "records"
+
+    @property
+    def as_literal(self) -> Literal["dict", "list", "series", "split", "index"]:
+        if self.value == "dict":
+            return "dict"
+        if self.value == "list":
+            return "list"
+        if self.value == "series":
+            return "series"
+        if self.value == "split":
+            return "split"
+        else:
+            return "index"
 
 
 class DQResult(BaseModel):

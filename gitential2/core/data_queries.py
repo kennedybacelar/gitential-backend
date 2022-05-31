@@ -53,7 +53,7 @@ def _to_jsonable_result(result: pd.DataFrame, orientation: DQResultOrientation) 
         return {}
     ret = result.replace([np.inf, -np.inf], np.NaN)
     ret = ret.where(pd.notnull(ret), None)
-    return _replace_nans(ret.to_dict(orient=orientation.value))  # type: ignore[arg-type]
+    return _replace_nans(ret.to_dict(orient=orientation.as_literal))
 
 
 def _replace_nans(obj):
