@@ -224,6 +224,10 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
     def search(self, workspace_id: int, q: str) -> List[RepositoryInDB]:
         pass
 
+    @abstractmethod
+    def get_repo_id_by_repo_name(self, workspace_id: int, repo_name: str) -> Optional[int]:
+        pass
+
     def create_or_update_by_clone_url(
         self, workspace_id: int, obj: Union[RepositoryCreate, RepositoryUpdate, RepositoryInDB]
     ) -> RepositoryInDB:

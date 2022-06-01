@@ -26,15 +26,18 @@ def delete_deploy_commits_by_deploy_id(g: GitentialContext, workspace_id: int, d
 def recalculate_deploy_commits(g: GitentialContext, workspace_id: int):
     all_deploys = g.backend.deploys.all(workspace_id)
     for deploy in all_deploys:
-        if not g.backend.deploys.get_deploy_by_id(workspace_id=workspace_id, deploy_id=deploy.id):
-            delete_deploy_commits_by_deploy_id(g=g, workspace_id=workspace_id, deploy_id=deploy.id)
-            continue
-        _create_or_update_deploy_commits(g=g, workspace_id=workspace_id, deploy_id=deploy.id)
+        for environment in deploy.environments:
+            if not g.backend.deploys.get_deploy_by_id(workspace_id=workspace_id, deploy_id=deploy.id):
+                delete_deploy_commits_by_deploy_id(g=g, workspace_id=workspace_id, deploy_id=deploy.id)
+                continue
+            _create_or_update_deploy_commits(g=g, workspace_id=workspace_id, deploy_obj=deploy, environment=environment)
 
 
 def _get_repo_id_by_repo_name(g: GitentialContext, workspace_id: int, repo_name: str):
-    pass
+    repo_id = g.backend.repositories.get_repo_id_by_repo_name(workspace_id=workspace_id, repo_name=repo_name)
+    return repo_id
 
 
-def _create_or_update_deploy_commits(g: GitentialContext, workspace_id: int, deploy_id: str):
+def _create_or_update_deploy_commits(g: GitentialContext, workspace_id: int, deploy_obj: Deploy, environment: str):
+    # repo_id = _get_repo_id_by_repo_name(g=g, workspace_id=workspace_id, repo_name=)
     pass
