@@ -791,6 +791,20 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("extra", sa.JSON, nullable=True),
     )
 
+    deploy_commits = sa.Table(
+        "deploy_commits",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("deploy_id", sa.String(128), nullable=False),
+        sa.Column("environment", sa.String(128), nullable=False),
+        sa.Column("repository_id", sa.Integer(), nullable=False),
+        sa.Column("repository_name", sa.String(128), nullable=False),
+        sa.Column("commit_id", sa.String(128), nullable=False),
+        sa.Column("deployed_at", sa.DateTime, nullable=False),
+        sa.Column("authored_at", sa.DateTime, nullable=False),
+        sa.Column("author_id", sa.Integer(), nullable=False),
+    )
+
     return metadata, {
         "projects": projects,
         "repositories": repositories,
@@ -820,4 +834,5 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "its_issue_comments": its_issue_comments,
         "its_issue_linked_issue": its_issue_linked_issue,
         "deploys": deploys,
+        "deploy_commits": deploy_commits,
     }

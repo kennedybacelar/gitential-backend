@@ -22,7 +22,7 @@ from gitential2.datatypes import (
 )
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.deploys import Deploy
+from gitential2.datatypes.deploys import Deploy, DeployCommit
 
 from gitential2.datatypes.pull_requests import (
     PullRequest,
@@ -128,7 +128,23 @@ class WorkspaceAPIKeyRepository(BaseRepository[str, WorkspaceAPIKey, WorkspaceAP
 
 
 class DeployRepository(BaseWorkspaceScopedRepository[str, Deploy, Deploy, Deploy]):
-    pass
+    @abstractmethod
+    def get_deploy_by_id(self, workspace_id: int, deploy_id: str) -> Optional[Deploy]:
+        pass
+
+    @abstractmethod
+    def delete_deploy_by_id(self, workspace_id: int, deploy_id: str) -> Optional[str]:
+        pass
+
+
+class DeployCommitRepository(BaseWorkspaceScopedRepository[str, DeployCommit, DeployCommit, DeployCommit]):
+    @abstractmethod
+    def get_deploy_commits_by_deploy_id(self, workspace_id: int, deploy_id: str) -> List[DeployCommit]:
+        pass
+
+    @abstractmethod
+    def delete_deploy_commits_by_deploy_id(self, workspace_id: int, deploy_id: str) -> List[str]:
+        pass
 
 
 class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB]):

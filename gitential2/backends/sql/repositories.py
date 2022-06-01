@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.deploys import Deploy
+from gitential2.datatypes.deploys import Deploy, DeployCommit
 from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectCreate,
     ProjectITSProjectInDB,
@@ -79,6 +79,7 @@ from gitential2.backends.base.repositories import (
     AccessApprovalRepository,
     BaseRepository,
     BaseWorkspaceScopedRepository,
+    DeployCommitRepository,
     ITSProjectRepository,
     PersonalAccessTokenRepository,
     ProjectITSProjectRepository,
@@ -417,7 +418,31 @@ class SQLWorkspaceAPIKeyRepository(
 
 
 class SQLDeployRepository(DeployRepository, SQLWorkspaceScopedRepository[str, Deploy, Deploy, Deploy]):
-    pass
+    def get_deploy_by_id(self, workspace_id: int, deploy_id: str):
+        query = self.table.select().where(self.table.c.id == deploy_id)
+        row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
+        if row:
+            return Deploy(**row)
+        return None
+
+    def delete_deploy_by_id(self, workspace_id: int, deploy_id: str):
+        query = self.table.delete().where(self.table.c.id == deploy_id)
+        self._execute_query(query, workspace_id=workspace_id)
+
+
+class SQLDeployCommitRepository(
+    DeployCommitRepository, SQLWorkspaceScopedRepository[str, DeployCommit, DeployCommit, DeployCommit]
+):
+    def get_deploy_commits_by_deploy_id(self, workspace_id: int, deploy_id: str):
+        query = self.table.select().where(self.table.c.id == deploy_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        if rows:
+            return [DeployCommit(**row) for row in rows]
+        return []
+
+    def delete_deploy_commits_by_deploy_id(self, workspace_id: int, deploy_id: str):
+        query = self.table.delete().where(self.table.c.deploy_id == deploy_id)
+        self._execute_query(query, workspace_id=workspace_id)
 
 
 class SQLAccessApprovalRepository(

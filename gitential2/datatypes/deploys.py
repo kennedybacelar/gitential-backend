@@ -22,6 +22,17 @@ class DeployedIssue(CoreModel):
     issue_id: str
 
 
+class DeployCommit(StringIdModelMixin, CoreModel):
+    deploy_id: str
+    environment: str
+    repository_id: int
+    repository_name: str
+    commit_id: str
+    deployed_at: datetime
+    authored_at: datetime
+    author_id: int
+
+
 class Deploy(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
     environments: Optional[List[str]]
     pull_requests: Optional[List[DeployedPullRequest]]

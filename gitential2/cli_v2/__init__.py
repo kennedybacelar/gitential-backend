@@ -41,6 +41,7 @@ from .vsts import app as vsts_app
 from .its import app as its_app
 from .data_queries import app as data_queries_app
 from .reseller_codes import app as reseller_codes
+from .deploys import app as deploys_app
 
 logger = get_logger(__name__)
 
@@ -63,6 +64,7 @@ app.add_typer(vsts_app, name="vsts")
 app.add_typer(its_app, name="its")
 app.add_typer(data_queries_app, name="data-query")
 app.add_typer(reseller_codes, name="reseller-codes")
+app.add_typer(deploys_app, name="deploys")
 
 
 @app.command("public-api")
@@ -203,13 +205,6 @@ def generate_workspace_api_key(workspace_id: int):
 def delete_keys_for_workspace(workspace_id: int):
     g = get_context()
     delete_api_keys_for_workspace(g, workspace_id)
-
-
-@app.command("get-all-deploys")
-def deploys(workspace_id: int):
-    g = get_context()
-    deploys = get_all_deploys(g=g, workspace_id=workspace_id)
-    print_results([deploys], format_=OutputFormat.json)
 
 
 def main(prog_name: Optional[str] = None):

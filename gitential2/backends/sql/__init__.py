@@ -28,7 +28,7 @@ from gitential2.datatypes.its import (
 )
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.deploys import Deploy
+from gitential2.datatypes.deploys import Deploy, DeployCommit
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
 from gitential2.datatypes.reseller_codes import ResellerCode
 from gitential2.datatypes.subscriptions import SubscriptionInDB
@@ -123,6 +123,7 @@ from .repositories import (
     SQLDashboardRepository,
     SQLChartRepository,
     SQLThumbnailRepository,
+    SQLDeployCommitRepository,
 )
 
 from .repositories_its import (
@@ -367,6 +368,13 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=Deploy,
+        )
+
+        self._deploy_commits = SQLDeployCommitRepository(
+            table=self._workspace_tables.tables["deploy_commits"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=DeployCommit,
         )
 
     def _execute_query(self, query):
