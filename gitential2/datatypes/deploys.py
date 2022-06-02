@@ -14,12 +14,20 @@ class DeployedPullRequest(StringIdModelMixin, ExtraFieldMixin, CoreModel):
 
 class DeployedCommit(CoreModel):
     repository_name: str
-    git_ref: str
+    repository_namespace: Optional[str]
+    repository_url: Optional[str]
+    commit_id: Optional[str]
+    git_ref: Optional[str]
 
 
 class DeployedIssue(CoreModel):
     repository_name: str
     issue_id: str
+
+
+class DeployedCommitId(CoreModel):
+    repo_id: int
+    commit_id: str
 
 
 class DeployCommit(StringIdModelMixin, CoreModel):
@@ -34,7 +42,7 @@ class DeployCommit(StringIdModelMixin, CoreModel):
 
 
 class Deploy(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
-    environments: Optional[List[str]]
+    environments: List[str]
     pull_requests: Optional[List[DeployedPullRequest]]
     commits: List[DeployedCommit]
     issues: Optional[List[DeployedIssue]]

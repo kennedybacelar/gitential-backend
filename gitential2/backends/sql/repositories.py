@@ -561,10 +561,12 @@ class SQLRepositoryRepository(
         row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
         return RepositoryInDB(**row) if row else None
 
-    def get_repo_id_by_repo_name(self, workspace_id: int, repo_name: str):
-        query = select([self.table.c.id]).where(self.table.c.name == repo_name)
-        row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
-        return row[0] if row else None
+    def get_repo_id_info_by_repo_name(self, workspace_id: int, repo_name: str):
+        query = select([self.table.c.id, self.table.c.clone_url, self.table.c.namespace]).where(
+            self.table.c.name == repo_name
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return rows
 
 
 class SQLITSProjectRepository(

@@ -225,7 +225,7 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
         pass
 
     @abstractmethod
-    def get_repo_id_by_repo_name(self, workspace_id: int, repo_name: str) -> Optional[int]:
+    def get_repo_id_info_by_repo_name(self, workspace_id: int, repo_name: str) -> List[Tuple[int, str, str]]:
         pass
 
     def create_or_update_by_clone_url(
