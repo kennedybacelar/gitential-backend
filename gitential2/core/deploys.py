@@ -33,9 +33,6 @@ def recalculate_deploy_commits(g: GitentialContext, workspace_id: int):
     for deploy in all_deploys:
         for environment in deploy.environments:
             for deployed_commit in deploy.commits:
-                if not g.backend.deploys.get_deploy_by_id(workspace_id=workspace_id, deploy_id=deploy.id):
-                    delete_deploy_commits_by_deploy_id(g=g, workspace_id=workspace_id, deploy_id=deploy.id)
-                    continue
                 _create_or_update_deploy_commits(
                     g=g,
                     workspace_id=workspace_id,
