@@ -212,11 +212,9 @@ email_log_table = sa.Table(
     sa.Column("sent_at", sa.DateTime, nullable=True),
 )
 
-
+# pylint: disable=unused-variable,too-many-locals
 def get_workspace_metadata(schema: Optional[str] = None):
     metadata = sa.MetaData(schema=schema)
-
-    # pylint: disable=unused-variable
 
     projects = sa.Table(
         "projects",
@@ -779,6 +777,46 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("link_type", sa.String(128), nullable=False),  # todo link_type
     )
 
+    its_sprints = sa.Table(
+        "its_sprints",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
+        sa.Column("api_id", sa.String(128)),
+        sa.Column("name", sa.String(128)),
+        sa.Column("state", sa.String(64)),
+        sa.Column("started_at", sa.DateTime, nullable=True),
+        sa.Column("ended_at", sa.DateTime, nullable=True),
+        sa.Column("completed_at", sa.DateTime, nullable=True),
+        sa.Column("goal", sa.String()),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
+    its_issue_sprints = sa.Table(
+        "its_issue_sprints",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("issue_id", sa.String(128), nullable=False),
+        sa.Column("sprint_id", sa.String(128), nullable=False),
+    )
+
+    its_issue_worklogs = sa.Table(
+        "its_issue_worklogs",
+        metadata,
+        sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("issue_id", sa.String(128), nullable=False),
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
+        # author
+        sa.Column("author_api_id", sa.String(128)),
+        sa.Column("author_email", sa.String(128)),
+        sa.Column("author_name", sa.String(128)),
+        sa.Column("author_dev_id", sa.Integer()),
+        sa.Column("started_at", sa.DateTime, nullable=True),
+        sa.Column("time_spent_seconds", sa.Integer()),
+        sa.Column("time_spent_display_str", sa.String(32)),
+        sa.Column("extra", sa.JSON, nullable=True),
+    )
+
     deploys = sa.Table(
         "deploys",
         metadata,
@@ -819,5 +857,8 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "its_issue_times_in_statuses": its_issue_times_in_statuses,
         "its_issue_comments": its_issue_comments,
         "its_issue_linked_issue": its_issue_linked_issue,
+        "its_sprints": its_sprints,
+        "its_issue_sprints": its_issue_sprints,
+        "its_issue_worklogs": its_issue_worklogs,
         "deploys": deploys,
     }

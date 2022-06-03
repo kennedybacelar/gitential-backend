@@ -307,6 +307,7 @@ def transform_to_its_Sprint_and_IssueSprint(
         ended_at=sprint_dict.get("endDate"),
         completed_at=sprint_dict.get("completeDate"),
         goal=sprint_dict.get("goal"),
+        extra=sprint_dict,
     )
     issue_sprint = ITSIssueSprint(
         id=f"{sprint.id}-{db_issue_id}", itsp_id=its_project.id, sprint_id=sprint.id, issue_id=db_issue_id
@@ -341,4 +342,5 @@ def transform_to_its_worklog(
         # time spent
         time_spent_seconds=worklog_dict["timeSpentSeconds"],
         time_spent_display_str=worklog_dict["timeSpent"],
+        extra=worklog_dict,
     )

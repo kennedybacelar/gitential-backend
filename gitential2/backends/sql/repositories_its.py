@@ -1,12 +1,20 @@
 from typing import Optional
 from sqlalchemy.sql import select
+from gitential2.backends.base.repositories_its import (
+    ITSIssueSprintRepository,
+    ITSIssueWorklogRepository,
+    ITSSprintRepository,
+)
 from gitential2.datatypes.its import (
     ITSIssue,
     ITSIssueChange,
+    ITSIssueSprint,
     ITSIssueTimeInStatus,
     ITSIssueComment,
     ITSIssueHeader,
     ITSIssueLinkedIssue,
+    ITSIssueWorklog,
+    ITSSprint,
 )
 from gitential2.backends.base import (
     ITSIssueRepository,
@@ -70,5 +78,26 @@ class SQLITSIssueCommentRepository(
 class SQLITSIssueLinkedIssueRepository(
     ITSIssueLinkedIssueRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueLinkedIssue, ITSIssueLinkedIssue, ITSIssueLinkedIssue],
+):
+    pass
+
+
+class SQLITSSprintRepository(
+    ITSSprintRepository,
+    SQLWorkspaceScopedRepository[str, ITSSprint, ITSSprint, ITSSprint],
+):
+    pass
+
+
+class SQLITSIssueSprintRepository(
+    ITSIssueSprintRepository,
+    SQLWorkspaceScopedRepository[str, ITSIssueSprint, ITSIssueSprint, ITSIssueSprint],
+):
+    pass
+
+
+class SQLITSIssueWorklogRepository(
+    ITSIssueWorklogRepository,
+    SQLWorkspaceScopedRepository[str, ITSIssueWorklog, ITSIssueWorklog, ITSIssueWorklog],
 ):
     pass

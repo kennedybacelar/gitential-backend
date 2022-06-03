@@ -340,3 +340,9 @@ def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_dat
         output.write(ExtractedKind.ITS_ISSUE_COMMENT, comment)
     for linked_issue in issue_data.linked_issues:
         output.write(ExtractedKind.ITS_ISSUE_LINKED_ISSUE, linked_issue)
+    for sprint in issue_data.sprints:
+        output.write(ExtractedKind.ITS_SPRINT, sprint)
+    for issue_sprint in issue_data.issue_sprints:
+        output.write(ExtractedKind.ITS_ISSUE_SPRINT, issue_sprint)
+    for worklog in issue_data.worklogs:
+        output.write(ExtractedKind.ITS_ISSUE_WORKLOG, worklog)

@@ -23,8 +23,11 @@ from gitential2.datatypes.its import (
     ITSIssue,
     ITSIssueChange,
     ITSIssueComment,
+    ITSIssueSprint,
     ITSIssueTimeInStatus,
     ITSIssueLinkedIssue,
+    ITSIssueWorklog,
+    ITSSprint,
 )
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
@@ -128,9 +131,12 @@ from .repositories import (
 from .repositories_its import (
     SQLITSIssueRepository,
     SQLITSIssueChangeRepository,
+    SQLITSIssueSprintRepository,
     SQLITSIssueTimeInStatusRepository,
     SQLITSIssueCommentRepository,
     SQLITSIssueLinkedIssueRepository,
+    SQLITSIssueWorklogRepository,
+    SQLITSSprintRepository,
 )
 
 from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
@@ -360,6 +366,27 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ITSIssueLinkedIssue,
+        )
+
+        self._its_sprints = SQLITSSprintRepository(
+            table=self._workspace_tables.tables["its_sprints"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSSprint,
+        )
+
+        self._its_issue_sprints = SQLITSIssueSprintRepository(
+            table=self._workspace_tables.tables["its_issue_sprints"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSIssueSprint,
+        )
+
+        self._its_issue_worklogs = SQLITSIssueWorklogRepository(
+            table=self._workspace_tables.tables["its_issue_worklogs"],
+            engine=self._engine,
+            metadata=self._workspace_tables,
+            in_db_cls=ITSIssueWorklog,
         )
 
         self._deploys = SQLDeployRepository(
@@ -624,6 +651,9 @@ class SQLOutputHandler(OutputHandler):
             ExtractedKind.ITS_ISSUE_TIME_IN_STATUS: self.backend.its_issue_times_in_statuses,
             ExtractedKind.ITS_ISSUE_COMMENT: self.backend.its_issue_comments,
             ExtractedKind.ITS_ISSUE_LINKED_ISSUE: self.backend.its_issue_linked_issue,
+            ExtractedKind.ITS_SPRINT: self.backend.its_sprints,
+            ExtractedKind.ITS_ISSUE_SPRINT: self.backend.its_issue_sprints,
+            ExtractedKind.ITS_ISSUE_WORKLOG: self.backend.its_issue_worklogs,
         }
 
         if kind in kind_to_backend_repository:
