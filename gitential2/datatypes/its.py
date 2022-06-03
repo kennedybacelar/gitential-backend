@@ -286,10 +286,13 @@ class ITSIssueComment(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, C
         ]
 
 
-class ITSIssueLinkedIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
-    issue_id: str
+class ITSIssueLinkedIssue(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
     itsp_id: int
-    linked_issue_id: str
+    issue_id: str
+    issue_key: Optional[str] = None
+    issue_api_id: Optional[str] = None
+    linked_issue_api_id: str
+    linked_issue_key: Optional[str] = None
     link_type: str
 
     def export_names(self) -> Tuple[str, str]:

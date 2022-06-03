@@ -57,7 +57,10 @@ def export_full_workspace(
         ("its_issue_changes", g.backend.its_issue_changes),
         ("its_issue_times_in_statuses", g.backend.its_issue_times_in_statuses),
         ("its_issue_comments", g.backend.its_issue_comments),
-        ("its_issue_linked_issue", g.backend.its_issue_linked_issue),
+        ("its_issue_linked_issue", g.backend.its_issue_linked_issues),
+        ("its_sprints", g.backend.its_sprints),
+        ("its_issue_sprints", g.backend.its_issue_sprints),
+        ("its_issue_worklogs", g.backend.its_issue_worklogs),
     ]
 
     def _date_filter(name, obj, date_from):

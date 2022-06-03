@@ -99,21 +99,34 @@ def _transform_to_ITSIssueChange(
     )
 
 
-def _transform_to_its_ITSIssueLinkedIssue(
-    its_project: ITSProjectInDB,
-    issue_id_or_key: str,
-    single_linked_issue: dict,
-) -> ITSIssueLinkedIssue:
+# def _transform_to_its_ITSIssueLinkedIssue(
+#     its_project: ITSProjectInDB,
+#     db_issue_id: str,
+#     issue_api_id: str,
+#     single_linked_issue: dict,
+# ) -> ITSIssueLinkedIssue:
 
-    _linked_issue_id = single_linked_issue.get("url", "").split("/")[-1]
+#     _linked_issue_id = single_linked_issue.get("url", "").split("/")[-1]
 
-    return ITSIssueLinkedIssue(
-        id=f"{its_project.id}-{issue_id_or_key}-{_linked_issue_id}",
-        issue_id=int(issue_id_or_key),
-        itsp_id=its_project.id,
-        linked_issue_id=_linked_issue_id,
-        link_type=single_linked_issue.get("attributes", {}).get("name"),
-    )
+#     # return ITSIssueLinkedIssue(
+#     #     id=f"{its_project.id}-{issue_id_or_key}-{_linked_issue_id}",
+#     #     issue_id=int(issue_id_or_key),
+#     #     itsp_id=its_project.id,
+#     #     linked_issue_id=_linked_issue_id,
+#     #     link_type=single_linked_issue.get("attributes", {}).get("name"),
+#     # )
+
+#     return ITSIssueLinkedIssue(
+#         id=f"{db_issue_id}-{_linked_issue_id}",
+#         itsp_id=its_project.id,
+#         issue_id=db_issue_id,
+#         issue_api_id=issue_dict["id"],
+#         issue_key=issue_dict["key"],
+#         linked_issue_api_id=_linked_issue_id,
+#         linked_issue_key=_linked_issue_key,
+#         link_type=_link_type,
+#         extra=single_linked_issue,
+#     )
 
 
 def _transform_to_its_ITSIssueAllData(

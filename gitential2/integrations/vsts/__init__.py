@@ -40,7 +40,6 @@ from .transformations import (
     _transform_to_its_ITSIssueComment,
     _transform_to_ITSIssueChange,
     _initial_status_transform_to_ITSIssueChange,
-    _transform_to_its_ITSIssueLinkedIssue,
 )
 
 logger = get_logger(__name__)
@@ -585,27 +584,27 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             )
         return ret
 
-    def _get_linked_issues(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> List[ITSIssueLinkedIssue]:
+    # def _get_linked_issues(self, token, its_project: ITSProjectInDB, issue_id_or_key: str) -> List[ITSIssueLinkedIssue]:
 
-        linked_issues_response = self._get_single_work_item_all_data(
-            token=token,
-            its_project=its_project,
-            issue_id_or_key=issue_id_or_key,
-            request_params={"$expand": "relations"},
-        )
+    #     linked_issues_response = self._get_single_work_item_all_data(
+    #         token=token,
+    #         its_project=its_project,
+    #         issue_id_or_key=issue_id_or_key,
+    #         request_params={"$expand": "relations"},
+    #     )
 
-        list_linked_issues_response = linked_issues_response.get("relations")
-        if not list_linked_issues_response:
-            return []
+    #     list_linked_issues_response = linked_issues_response.get("relations")
+    #     if not list_linked_issues_response:
+    #         return []
 
-        ret = []
-        for single_linked_issue in list_linked_issues_response:
-            ret.append(
-                _transform_to_its_ITSIssueLinkedIssue(
-                    its_project=its_project, issue_id_or_key=issue_id_or_key, single_linked_issue=single_linked_issue
-                )
-            )
-        return ret
+    #     ret = []
+    #     for single_linked_issue in list_linked_issues_response:
+    #         ret.append(
+    #             _transform_to_its_ITSIssueLinkedIssue(
+    #                 its_project=its_project, issue_id_or_key=issue_id_or_key, single_linked_issue=single_linked_issue
+    #             )
+    #         )
+    #     return ret
 
     def get_work_item_type_id(self, token, its_project: ITSProjectInDB, wit_ref_name: Optional[str]) -> Optional[str]:
 
@@ -923,9 +922,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, changes=changes, its_project=its_project, issue_id_or_key=issue_id_or_key
         )
 
-        linked_issues: List[ITSIssueLinkedIssue] = self._get_linked_issues(
-            token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
-        )
+        # linked_issues: List[ITSIssueLinkedIssue] = self._get_linked_issues(
+        #     token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
+        # )
 
         issue: ITSIssue = self._transform_to_its_issue(
             token=token,
@@ -940,5 +939,5 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             comments=comments,
             changes=changes,
             times_in_statuses=times_in_statuses,
-            linked_issues=linked_issues,
+            linked_issues=[],
         )

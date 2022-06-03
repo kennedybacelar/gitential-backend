@@ -90,7 +90,7 @@ class WithRepositoriesMixin:
     _its_issue_changes: ITSIssueChangeRepository
     _its_issue_times_in_statuses: ITSIssueTimeInStatusRepository
     _its_issue_comments: ITSIssueCommentRepository
-    _its_issue_linked_issue: ITSIssueLinkedIssueRepository
+    _its_issue_linked_issues: ITSIssueLinkedIssueRepository
     _its_sprints: ITSSprintRepository
     _its_issue_sprints: ITSIssueSprintRepository
     _its_issue_worklogs: ITSIssueWorklogRepository
@@ -246,8 +246,8 @@ class WithRepositoriesMixin:
         return self._its_issue_comments
 
     @property
-    def its_issue_linked_issue(self) -> ITSIssueLinkedIssueRepository:
-        return self._its_issue_linked_issue
+    def its_issue_linked_issues(self) -> ITSIssueLinkedIssueRepository:
+        return self._its_issue_linked_issues
 
     @property
     def its_sprints(self) -> ITSSprintRepository:
