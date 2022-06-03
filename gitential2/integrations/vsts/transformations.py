@@ -130,4 +130,7 @@ def _transform_to_its_ITSIssueAllData(
         changes=changes,
         times_in_statuses=times_in_statuses,
         linked_issues=linked_issues,
+        sprints=[],
+        issue_sprints=[],
+        worklogs=[],
     )

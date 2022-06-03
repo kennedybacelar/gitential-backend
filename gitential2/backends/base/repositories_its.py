@@ -4,9 +4,12 @@ from gitential2.datatypes.its import (
     ITSIssue,
     ITSIssueChange,
     ITSIssueHeader,
+    ITSIssueSprint,
     ITSIssueTimeInStatus,
     ITSIssueComment,
     ITSIssueLinkedIssue,
+    ITSIssueWorklog,
+    ITSSprint,
 )
 from .repositories_base import BaseWorkspaceScopedRepository
 
@@ -39,5 +42,23 @@ class ITSIssueCommentRepository(
 
 class ITSIssueLinkedIssueRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueLinkedIssue, ITSIssueLinkedIssue, ITSIssueLinkedIssue],
+):
+    pass
+
+
+class ITSSprintRepository(
+    BaseWorkspaceScopedRepository[str, ITSSprint, ITSSprint, ITSSprint],
+):
+    pass
+
+
+class ITSIssueSprintRepository(
+    BaseWorkspaceScopedRepository[str, ITSIssueSprint, ITSIssueSprint, ITSIssueSprint],
+):
+    pass
+
+
+class ITSIssueWorklogRepository(
+    BaseWorkspaceScopedRepository[str, ITSIssueWorklog, ITSIssueWorklog, ITSIssueWorklog],
 ):
     pass

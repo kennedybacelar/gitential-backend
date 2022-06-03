@@ -49,8 +49,11 @@ from .repositories_its import (
     ITSIssueRepository,
     ITSIssueChangeRepository,
     ITSIssueCommentRepository,
+    ITSIssueSprintRepository,
     ITSIssueTimeInStatusRepository,
     ITSIssueLinkedIssueRepository,
+    ITSIssueWorklogRepository,
+    ITSSprintRepository,
 )
 
 
@@ -246,6 +249,21 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def its_issue_linked_issue(self) -> ITSIssueLinkedIssueRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def its_sprints(self) -> ITSSprintRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def its_issue_sprints(self) -> ITSIssueSprintRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def its_issue_worklogs(self) -> ITSIssueWorklogRepository:
         pass
 
     @property

@@ -296,9 +296,55 @@ class ITSIssueLinkedIssue(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixi
         return ("its_issue_linked_issue", "its_issue_linked_issues")
 
 
+class ITSSprint(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
+    itsp_id: int
+    api_id: str
+
+    name: str
+    state: str
+
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    goal: Optional[str] = None
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("its_sprint", "its_sprints")
+
+
+class ITSIssueSprint(StringIdModelMixin, CoreModel, ExportableModel):
+    issue_id: str
+    itsp_id: int
+    sprint_id: str
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("its_issue_sprint", "its_issue_sprints")
+
+
+class ITSIssueWorklog(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
+    api_id: str
+    issue_id: str
+    itsp_id: int
+
+    author_api_id: Optional[str] = None
+    author_email: Optional[str] = None
+    author_name: Optional[str] = None
+    author_dev_id: Optional[int] = None
+
+    started_at: datetime
+    time_spent_seconds: int
+    time_spent_display_str: str
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("its_issue_worklog", "its_issue_worklogs")
+
+
 class ITSIssueAllData(BaseModel):
     issue: ITSIssue
     comments: List[ITSIssueComment]
     changes: List[ITSIssueChange]
     times_in_statuses: List[ITSIssueTimeInStatus]
     linked_issues: List[ITSIssueLinkedIssue]
+    sprints: List[ITSSprint]
+    issue_sprints: List[ITSIssueSprint]
+    worklogs: List[ITSIssueWorklog]

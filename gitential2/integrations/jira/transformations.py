@@ -7,7 +7,10 @@ from gitential2.datatypes.its import (
     ITSIssueChangeType,
     ITSIssueComment,
     ITSIssueHeader,
+    ITSIssueSprint,
     ITSIssueTimeInStatus,
+    ITSIssueWorklog,
+    ITSSprint,
     its_issue_status_category_from_str,
     ITSIssueLinkedIssue,
 )
@@ -286,4 +289,58 @@ def transform_to_its_ITSIssueLinkedIssue(
         itsp_id=its_project.id,
         linked_issue_id=_linked_issue_id,
         link_type=_link_type,
+    )
+
+
+def transform_to_its_Sprint_and_IssueSprint(
+    its_project: ITSProjectInDB,
+    db_issue_id: str,
+    sprint_dict: dict,
+) -> Tuple[ITSSprint, ITSIssueSprint]:
+    sprint = ITSSprint(
+        id=f"{its_project.id}-{sprint_dict.get('boardId', 0)}-{sprint_dict['id']}",
+        itsp_id=its_project.id,
+        api_id=sprint_dict["id"],
+        name=sprint_dict["name"],
+        state=sprint_dict["state"],
+        started_at=sprint_dict.get("startDate"),
+        ended_at=sprint_dict.get("endDate"),
+        completed_at=sprint_dict.get("completeDate"),
+        goal=sprint_dict.get("goal"),
+        extra=sprint_dict,
+    )
+    issue_sprint = ITSIssueSprint(
+        id=f"{sprint.id}-{db_issue_id}", itsp_id=its_project.id, sprint_id=sprint.id, issue_id=db_issue_id
+    )
+    return sprint, issue_sprint
+
+
+def transform_to_its_worklog(
+    its_project: ITSProjectInDB,
+    db_issue_id: str,
+    worklog_dict: dict,
+    developer_map_callback: Callable,
+) -> ITSIssueWorklog:
+
+    author_api_id, author_email, author_name, author_dev_id = parse_account(
+        worklog_dict["author"], developer_map_callback
+    )
+
+    return ITSIssueWorklog(
+        id=f"{db_issue_id}-{worklog_dict['id']}",
+        api_id=str(worklog_dict["id"]),
+        issue_id=db_issue_id,
+        itsp_id=its_project.id,
+        author_api_id=author_api_id,
+        author_email=author_email,
+        author_name=author_name,
+        author_dev_id=author_dev_id,
+        # timestaps
+        started_at=worklog_dict["started"],
+        created_at=worklog_dict["created"],
+        updated_at=worklog_dict["updated"],
+        # time spent
+        time_spent_seconds=worklog_dict["timeSpentSeconds"],
+        time_spent_display_str=worklog_dict["timeSpent"],
+        extra=worklog_dict,
     )

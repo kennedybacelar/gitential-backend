@@ -53,10 +53,14 @@ def parse_account(
     account_dict: Optional[dict], developer_map_callback: Callable
 ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[int]]:
     account_dict = account_dict or {}
+
     api_id = account_dict.get("accountId")
     email = account_dict.get("emailAddress")
     name = account_dict.get("displayName")
-    dev_id = developer_map_callback(AuthorAlias(name=name, email=email)) if email or name else None
+    if account_dict.get("accountType", "user") == "app":
+        dev_id = None
+    else:
+        dev_id = developer_map_callback(AuthorAlias(name=name, email=email)) if email or name else None
     return api_id, email, name, dev_id
 
 

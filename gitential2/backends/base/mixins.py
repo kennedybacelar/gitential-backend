@@ -41,8 +41,11 @@ from .repositories_its import (
     ITSIssueRepository,
     ITSIssueChangeRepository,
     ITSIssueCommentRepository,
+    ITSIssueSprintRepository,
     ITSIssueTimeInStatusRepository,
     ITSIssueLinkedIssueRepository,
+    ITSIssueWorklogRepository,
+    ITSSprintRepository,
 )
 
 
@@ -88,6 +91,9 @@ class WithRepositoriesMixin:
     _its_issue_times_in_statuses: ITSIssueTimeInStatusRepository
     _its_issue_comments: ITSIssueCommentRepository
     _its_issue_linked_issue: ITSIssueLinkedIssueRepository
+    _its_sprints: ITSSprintRepository
+    _its_issue_sprints: ITSIssueSprintRepository
+    _its_issue_worklogs: ITSIssueWorklogRepository
 
     _deploys: DeployRepository
 
@@ -242,6 +248,18 @@ class WithRepositoriesMixin:
     @property
     def its_issue_linked_issue(self) -> ITSIssueLinkedIssueRepository:
         return self._its_issue_linked_issue
+
+    @property
+    def its_sprints(self) -> ITSSprintRepository:
+        return self._its_sprints
+
+    @property
+    def its_issue_sprints(self) -> ITSIssueSprintRepository:
+        return self._its_issue_sprints
+
+    @property
+    def its_issue_worklogs(self) -> ITSIssueWorklogRepository:
+        return self._its_issue_worklogs
 
     @property
     def email_log(self) -> EmailLogRepository:
