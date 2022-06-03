@@ -322,6 +322,19 @@ class ITSIssueSprint(StringIdModelMixin, CoreModel, ExportableModel):
 
 
 class ITSIssueWorklog(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
+    api_id: str
+    issue_id: str
+    itsp_id: int
+
+    author_api_id: Optional[str] = None
+    author_email: Optional[str] = None
+    author_name: Optional[str] = None
+    author_dev_id: Optional[int] = None
+
+    started_at: datetime
+    time_spent_seconds: int
+    time_spent_display_str: str
+
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_worklog", "its_issue_worklogs")
 
@@ -334,3 +347,4 @@ class ITSIssueAllData(BaseModel):
     linked_issues: List[ITSIssueLinkedIssue]
     sprints: List[ITSSprint]
     issue_sprints: List[ITSIssueSprint]
+    worklogs: List[ITSIssueWorklog]

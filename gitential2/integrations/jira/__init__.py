@@ -12,6 +12,7 @@ from gitential2.datatypes.its import (
     ITSIssueHeader,
     ITSIssueAllData,
     ITSIssueSprint,
+    ITSIssueWorklog,
     ITSSprint,
     its_issue_status_category_from_str,
     ITSIssueLinkedIssue,
@@ -33,6 +34,7 @@ from .transformations import (
     transform_changes_to_times_in_statuses,
     transform_to_its_ITSIssueLinkedIssue,
     transform_to_its_Sprint_and_IssueSprint,
+    transform_to_its_worklog,
 )
 
 logger = get_logger(__name__)
@@ -268,17 +270,6 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
             token=token, its_project=its_project, issue_id_or_key=issue_id_or_key
         )
 
-        # for worklog in issue_dict["fields"]["worklog"].get("worklogs"):
-        #     client = self.get_oauth2_client(token=token)
-        #     base_url = get_rest_api_base_url_from_project_api_url(its_project.api_url)
-        #     worklog_api_url = base_url + f"/rest/api/3/issue/{issue_id_or_key}/worklog/{worklog['id']}"
-        #     print("!!!!")
-        #     print(worklog)
-        #     resp = client.get(worklog_api_url)
-        #     resp.raise_for_status()
-        #     worklog_dict = resp.json()
-        #     print(worklog_dict)
-
         db_issue_id = get_db_issue_id(its_project, issue_dict)
 
         all_statuses = self._get_site_statuses(token, its_project)
@@ -302,6 +293,8 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
 
         sprints, issue_sprints = _get_sprints(issue_dict, fields, db_issue_id, its_project)
 
+        worklogs = _get_worklogs(issue_dict, db_issue_id, its_project, developer_map_callback)
+
         issue = transform_dict_to_issue(
             issue_dict,
             its_project,
@@ -317,6 +310,7 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
             linked_issues=linked_issues,
             sprints=sprints,
             issue_sprints=issue_sprints,
+            worklogs=worklogs,
         )
 
     def _get_issue_changes_for_issue(
@@ -500,3 +494,13 @@ def _find_sprint_field_name(all_fields: dict) -> Optional[str]:
         if v.get("custom", False) and v.get("schema", {}).get("custom", "") == "com.pyxis.greenhopper.jira:gh-sprint":
             return k
     return None
+
+
+def _get_worklogs(
+    issue_dict: dict, db_issue_id: str, its_project: ITSProjectInDB, developer_map_callback: Callable
+) -> List[ITSIssueWorklog]:
+    worklogs: list = []
+    for worklog_dict in issue_dict["fields"]["worklog"].get("worklogs", []):
+        worklog = transform_to_its_worklog(its_project, db_issue_id, worklog_dict, developer_map_callback)
+        worklogs.append(worklog)
+    return worklogs
