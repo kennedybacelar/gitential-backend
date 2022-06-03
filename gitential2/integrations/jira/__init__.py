@@ -482,10 +482,11 @@ def _get_sprints(
     sprint_field_value: list = issue_dict["fields"].get(sprint_field_name, []) if sprint_field_name else []
 
     sprints, issue_sprints = [], []
-    for sprint_dict in sprint_field_value:
-        sprint, issue_sprint = transform_to_its_Sprint_and_IssueSprint(its_project, db_issue_id, sprint_dict)
-        sprints.append(sprint)
-        issue_sprints.append(issue_sprint)
+    if sprint_field_value:
+        for sprint_dict in sprint_field_value:
+            sprint, issue_sprint = transform_to_its_Sprint_and_IssueSprint(its_project, db_issue_id, sprint_dict)
+            sprints.append(sprint)
+            issue_sprints.append(issue_sprint)
     return sprints, issue_sprints
 
 
