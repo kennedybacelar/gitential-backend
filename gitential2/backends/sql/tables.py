@@ -805,6 +805,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "its_issue_worklogs",
         metadata,
         sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("api_id", sa.String(128), nullable=False),
         sa.Column("issue_id", sa.String(128), nullable=False),
         sa.Column("itsp_id", sa.Integer(), nullable=False),
         # author
@@ -816,6 +817,8 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("time_spent_seconds", sa.Integer()),
         sa.Column("time_spent_display_str", sa.String(32)),
         sa.Column("extra", sa.JSON, nullable=True),
+        sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+        sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     )
 
     deploys = sa.Table(
