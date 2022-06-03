@@ -361,8 +361,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=ITSIssueComment,
         )
 
-        self._its_issue_linked_issue = SQLITSIssueLinkedIssueRepository(
-            table=self._workspace_tables.tables["its_issue_linked_issue"],
+        self._its_issue_linked_issues = SQLITSIssueLinkedIssueRepository(
+            table=self._workspace_tables.tables["its_issue_linked_issues"],
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=ITSIssueLinkedIssue,
@@ -650,7 +650,7 @@ class SQLOutputHandler(OutputHandler):
             ExtractedKind.ITS_ISSUE_CHANGE: self.backend.its_issue_changes,
             ExtractedKind.ITS_ISSUE_TIME_IN_STATUS: self.backend.its_issue_times_in_statuses,
             ExtractedKind.ITS_ISSUE_COMMENT: self.backend.its_issue_comments,
-            ExtractedKind.ITS_ISSUE_LINKED_ISSUE: self.backend.its_issue_linked_issue,
+            ExtractedKind.ITS_ISSUE_LINKED_ISSUE: self.backend.its_issue_linked_issues,
             ExtractedKind.ITS_SPRINT: self.backend.its_sprints,
             ExtractedKind.ITS_ISSUE_SPRINT: self.backend.its_issue_sprints,
             ExtractedKind.ITS_ISSUE_WORKLOG: self.backend.its_issue_worklogs,

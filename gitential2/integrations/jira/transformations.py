@@ -271,24 +271,28 @@ def transform_changes_to_times_in_statuses(
 
 
 def transform_to_its_ITSIssueLinkedIssue(
-    its_project: ITSProjectInDB,
-    issue_id_or_key: str,
-    single_linked_issue: dict,
+    its_project: ITSProjectInDB, db_issue_id: str, single_linked_issue: dict, issue_dict: dict
 ) -> ITSIssueLinkedIssue:
 
     if single_linked_issue.get("inwardIssue"):
         _linked_issue_id = single_linked_issue.get("inwardIssue", {}).get("id")
+        _linked_issue_key = single_linked_issue.get("inwardIssue", {}).get("key")
         _link_type = single_linked_issue.get("type", {}).get("inward")
     elif single_linked_issue.get("outwardIssue"):
         _linked_issue_id = single_linked_issue.get("outwardIssue", {}).get("id")
+        _linked_issue_key = single_linked_issue.get("outwardIssue", {}).get("key")
         _link_type = single_linked_issue.get("type", {}).get("outward")
 
     return ITSIssueLinkedIssue(
-        id=f"{its_project.id}-{issue_id_or_key}-{_linked_issue_id}",
-        issue_id=int(issue_id_or_key),
+        id=f"{db_issue_id}-{_linked_issue_id}",
         itsp_id=its_project.id,
-        linked_issue_id=_linked_issue_id,
+        issue_id=db_issue_id,
+        issue_api_id=issue_dict["id"],
+        issue_key=issue_dict["key"],
+        linked_issue_api_id=_linked_issue_id,
+        linked_issue_key=_linked_issue_key,
         link_type=_link_type,
+        extra=single_linked_issue,
     )
 
 

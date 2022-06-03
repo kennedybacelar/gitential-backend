@@ -126,6 +126,8 @@ def refresh_its_project(
         try:
             token = _get_fresh_token_for_itsp(g, workspace_id, itsp)
             if token:
+                if force and date_from is None:
+                    date_from = datetime(2000, 1, 1)
                 recently_updated_issues: List[ITSIssueHeader] = get_recently_updated_issues(
                     g, workspace_id, itsp_id, date_from=date_from, itsp=itsp
                 )

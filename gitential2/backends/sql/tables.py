@@ -767,14 +767,18 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     )
 
-    its_issue_linked_issue = sa.Table(
-        "its_issue_linked_issue",
+    its_issue_linked_issues = sa.Table(
+        "its_issue_linked_issues",
         metadata,
         sa.Column("id", sa.String(128), primary_key=True),
-        sa.Column("issue_id", sa.String(128), nullable=False),  # todo foreign key
-        sa.Column("itsp_id", sa.String(128), nullable=False),  # todo foreign key
-        sa.Column("linked_issue_id", sa.String(128), nullable=False),  # todo related issue
-        sa.Column("link_type", sa.String(128), nullable=False),  # todo link_type
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
+        sa.Column("issue_id", sa.String(128), nullable=False),
+        sa.Column("issue_api_id", sa.String(128), nullable=False),
+        sa.Column("issue_key", sa.String(128), nullable=True),
+        sa.Column("linked_issue_api_id", sa.String(128), nullable=False),
+        sa.Column("linked_issue_key", sa.String(128), nullable=True),
+        sa.Column("link_type", sa.String(128), nullable=False),
+        sa.Column("extra", sa.JSON, nullable=True),
     )
 
     its_sprints = sa.Table(
@@ -860,7 +864,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "its_issue_changes": its_issue_changes,
         "its_issue_times_in_statuses": its_issue_times_in_statuses,
         "its_issue_comments": its_issue_comments,
-        "its_issue_linked_issue": its_issue_linked_issue,
+        "its_issue_linked_issues": its_issue_linked_issues,
         "its_sprints": its_sprints,
         "its_issue_sprints": its_issue_sprints,
         "its_issue_worklogs": its_issue_worklogs,

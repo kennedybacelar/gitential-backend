@@ -248,7 +248,7 @@ class GitentialBackend(ABC):
 
     @property
     @abstractmethod
-    def its_issue_linked_issue(self) -> ITSIssueLinkedIssueRepository:
+    def its_issue_linked_issues(self) -> ITSIssueLinkedIssueRepository:
         pass
 
     @property
