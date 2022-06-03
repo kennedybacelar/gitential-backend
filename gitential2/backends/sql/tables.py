@@ -796,6 +796,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         "its_issue_sprints",
         metadata,
         sa.Column("id", sa.String(128), primary_key=True),
+        sa.Column("itsp_id", sa.Integer(), nullable=False),
         sa.Column("issue_id", sa.String(128), nullable=False),
         sa.Column("sprint_id", sa.String(128), nullable=False),
     )
