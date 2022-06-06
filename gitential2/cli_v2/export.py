@@ -106,6 +106,34 @@ def export_repositories(
         _upload_to_aws_s3(exporter.get_files(), aws_s3_location)
 
 
+@app.command("deploys")
+def export_deploys(
+    workspace_id: int,
+    destination_directory: Path = Path(""),
+    export_format: ExportFormat = ExportFormat.xlsx,
+):
+    validate_directory_exists(destination_directory)
+    g = get_context()
+    exporter = _get_exporter(export_format, destination_directory, workspace_id)
+    for deploy in g.backend.deploys.all(workspace_id=workspace_id):
+        exporter.export_object(deploy)
+    exporter.close()
+
+
+@app.command("deploy_commits")
+def export_deploy_commits(
+    workspace_id: int,
+    destination_directory: Path = Path(""),
+    export_format: ExportFormat = ExportFormat.xlsx,
+):
+    validate_directory_exists(destination_directory)
+    g = get_context()
+    exporter = _get_exporter(export_format, destination_directory, workspace_id)
+    for deploy_commit in g.backend.deploy_commits.all(workspace_id=workspace_id):
+        exporter.export_object(deploy_commit)
+    exporter.close()
+
+
 def _upload_to_aws_s3(list_of_files_to_be_uploaded_to_s3: List[str], aws_s3_location: Path):
 
     g = get_context()

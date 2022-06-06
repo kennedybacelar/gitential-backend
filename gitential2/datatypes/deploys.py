@@ -30,7 +30,7 @@ class DeployedCommitId(CoreModel):
     commit_id: str
 
 
-class DeployCommit(StringIdModelMixin, CoreModel):
+class DeployCommit(StringIdModelMixin, CoreModel, ExportableModel):
     deploy_id: str
     environment: str
     repository_id: int
@@ -39,6 +39,21 @@ class DeployCommit(StringIdModelMixin, CoreModel):
     deployed_at: datetime
     authored_at: datetime
     author_id: int
+
+    def export_names(self) -> Tuple[str, str]:
+        return ("deploy_commit", "deploy_commits")
+
+    def export_fields(self) -> List[str]:
+        return [
+            "id",
+            "deploy_id",
+            "repository_id",
+            "repository_name",
+            "commit_id",
+            "deployed_at",
+            "authored_at",
+            "author_id",
+        ]
 
 
 class Deploy(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
