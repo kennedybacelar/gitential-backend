@@ -129,7 +129,7 @@ class DQResultOrientation(str, Enum):
     RECORDS = "records"
 
     @property
-    def as_literal(self) -> Literal["dict", "list", "series", "split", "index"]:
+    def as_literal(self) -> Literal["dict", "list", "series", "split", "tight", "records", "index"]:
         if self.value == "dict":
             return "dict"
         if self.value == "list":
@@ -138,6 +138,10 @@ class DQResultOrientation(str, Enum):
             return "series"
         if self.value == "split":
             return "split"
+        if self.value == "tight":
+            return "tight"
+        if self.value == "records":
+            return "records"
         else:
             return "index"
 
