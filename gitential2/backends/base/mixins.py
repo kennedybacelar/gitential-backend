@@ -34,6 +34,7 @@ from .repositories import (
     DashboardRepository,
     ChartRepository,
     ThumbnailRepository,
+    DeployCommitRepository,
 )
 
 
@@ -96,6 +97,7 @@ class WithRepositoriesMixin:
     _its_issue_worklogs: ITSIssueWorklogRepository
 
     _deploys: DeployRepository
+    _deploy_commits: DeployCommitRepository
 
     @property
     def access_logs(self):
@@ -268,3 +270,7 @@ class WithRepositoriesMixin:
     @property
     def deploys(self) -> DeployRepository:
         return self._deploys
+
+    @property
+    def deploy_commits(self) -> DeployCommitRepository:
+        return self._deploy_commits

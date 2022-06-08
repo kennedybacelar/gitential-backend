@@ -43,6 +43,7 @@ from .repositories import (
     DashboardRepository,
     ChartRepository,
     ThumbnailRepository,
+    DeployCommitRepository,
 )
 
 from .repositories_its import (
@@ -274,6 +275,11 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def deploys(self) -> DeployRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def deploy_commits(self) -> DeployCommitRepository:
         pass
 
     @abstractmethod

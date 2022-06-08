@@ -323,6 +323,9 @@ class InMemRepositoryRepository(
             if q.capitalize() in item.clone_url.capitalize()
         ]
 
+    def get_repo_id_info_by_repo_name(self, workspace_id: int, repo_name: str):
+        pass
+
 
 class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
     def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:

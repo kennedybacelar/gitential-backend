@@ -1,12 +1,12 @@
 import os
-import sys
 from pathlib import Path
 from datetime import timezone, timedelta, datetime
 from typing import Tuple, List, Optional, Set
 import pygit2
 from pygit2 import Repository
 
-from gitential2.cli_v2.common import print_results, OutputFormat
+from gitential2.cli_v2.common import validate_directory_exists
+from gitential2.export.exporters import JSONExporter
 from gitential2.datatypes.deploys import Deploy, DeployedCommit
 
 
@@ -52,16 +52,13 @@ def _parse_patch(patch: str, commit) -> Optional[Deploy]:
     return _transform_to_deploy(environments, repositories, commit)
 
 
-def _transform_to_deployed_commits(
-    _commit_id: str, title: str, repositories: Set[Tuple[str, str]]
-) -> List[DeployedCommit]:
+def _transform_to_deployed_commits(_commit_id: str, repositories: Set[Tuple[str, str]]) -> List[DeployedCommit]:
     ret = []
     for repository in repositories:
         deployed_commit = DeployedCommit(
-            id=_commit_id,
-            title=title,
             repository_name=repository[0],
             git_ref=repository[1],
+            commit_id=_commit_id,
         )
         ret.append(deployed_commit)
     return ret
@@ -71,11 +68,10 @@ def _transform_to_deploy(environments, repositories, commit) -> Deploy:
     tzinfo = timezone(timedelta(minutes=commit.author.offset))
     _deployed_at = datetime.fromtimestamp(float(commit.author.time), tzinfo)
     _commit_id = str(commit.id)
-    _commit_title = str(commit.message)
 
     deployed_pull_requests = []
     deployed_issues = []
-    deployed_commits = _transform_to_deployed_commits(_commit_id, _commit_title, list(set(repositories)))
+    deployed_commits = _transform_to_deployed_commits(_commit_id, list(set(repositories)))
 
     list_of_repo_names = []
 
@@ -85,7 +81,7 @@ def _transform_to_deploy(environments, repositories, commit) -> Deploy:
     list_of_repo_names = set(list_of_repo_names)
 
     deploy = Deploy(
-        id=f"{_commit_id}X{'Y'.join(environments).split()[0]}" if environments else f"{_commit_id}-untracked_env",
+        id=f"{_commit_id}&{'&'.join(environments).split()[0]}" if environments else f"{_commit_id}-untracked_env",
         repositories=list_of_repo_names,
         environments=environments,
         pull_requests=deployed_pull_requests,
@@ -124,7 +120,15 @@ def gathering_commits_in_master_branch(path: Path) -> List[Deploy]:
     return ret
 
 
-if __name__ == "__main__":
-    path = Path(sys.argv[1])  # path to the git repo
-    internal_deployment_history = gathering_commits_in_master_branch(path)
-    print_results(internal_deployment_history, format_=OutputFormat.json)
+def exporting_deploys_into_json_file(repo_source_path: Path, destination_path: Path):
+
+    validate_directory_exists(repo_source_path)
+    validate_directory_exists(repo_source_path)
+
+    prefix = "dep_"
+    deployment_data = gathering_commits_in_master_branch(path=repo_source_path)
+
+    exporter = JSONExporter(destination_path, prefix)
+
+    for single in deployment_data:
+        exporter.export_object(single)
