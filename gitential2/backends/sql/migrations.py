@@ -89,6 +89,12 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
                 f"ALTER TABLE {schema_name}.its_issues ALTER COLUMN priority_id TYPE VARCHAR(48);",
             ],
         ),
+        MigrationRevision(
+            revision_id="002",
+            steps=[
+                f"ALTER TABLE {schema_name}.charts ADD COLUMN IF NOT EXISTS filters JSON;",
+            ],
+        ),
     ]
 
 
