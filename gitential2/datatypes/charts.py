@@ -1,11 +1,11 @@
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 
 from pydantic import Field
 
 from gitential2.datatypes import CoreModel
 from gitential2.datatypes.common import ExtraFieldMixin, DateTimeModelMixin, IDModelMixin
-from gitential2.datatypes.stats import MetricName, DimensionName
+from gitential2.datatypes.stats import MetricName, DimensionName, FilterName
 from .export import ExportableModel
 
 
@@ -31,6 +31,7 @@ class ChartBase(ExtraFieldMixin, CoreModel):
     chart_type: ChartVisualizationTypes
     metrics: List[MetricName]
     dimensions: List[DimensionName]
+    filters: Optional[Dict[FilterName, Any]]
 
 
 class ChartPublic(IDModelMixin, DateTimeModelMixin, ChartBase):
@@ -61,4 +62,5 @@ class ChartInDB(IDModelMixin, DateTimeModelMixin, ChartBase, ExportableModel):
             "layout",
             "metrics",
             "dimensions",
+            "filters",
         ]

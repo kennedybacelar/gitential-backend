@@ -304,6 +304,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("layout", sa.JSON, nullable=False),
         sa.Column("metrics", sa.JSON, nullable=False),
         sa.Column("dimensions", sa.JSON, nullable=False),
+        sa.Column("filters", sa.JSON, nullable=True),
     )
 
     thumbnails = sa.Table(
