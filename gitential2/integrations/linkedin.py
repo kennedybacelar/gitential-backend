@@ -13,15 +13,16 @@ def get_localized_value(name):
 
 class LinkedinIntegration(OAuthLoginMixin, BaseIntegration):
     def oauth_register(self):
+        api_base_url = "https://api.linkedin.com/v2/"
         return {
-            "api_base_url": "https://api.linkedin.com/v2/",
+            "api_base_url": api_base_url,
             "access_token_url": "https://www.linkedin.com/oauth/v2/accessToken",
             "authorize_url": "https://www.linkedin.com/oauth/v2/authorization",
             "client_kwargs": {
                 "scope": "r_liteprofile r_emailaddress",
                 "token_endpoint_auth_method": "client_secret_post",
             },
-            "userinfo_endpoint": "me?projection=(id,firstName,lastName,profilePicture)",
+            "userinfo_endpoint": api_base_url + "me?projection=(id,firstName,lastName,profilePicture)",
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
         }
