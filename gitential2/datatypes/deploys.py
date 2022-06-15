@@ -57,7 +57,6 @@ class DeployCommit(StringIdModelMixin, CoreModel, ExportableModel):
 
 
 class Deploy(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
-    ci_repository_name: str
     environments: List[str]
     pull_requests: Optional[List[DeployedPullRequest]]
     commits: List[DeployedCommit]

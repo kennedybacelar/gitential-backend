@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple
 from datetime import datetime
 from structlog import get_logger
 
@@ -17,11 +17,12 @@ def get_all_deploys(g: GitentialContext, workspace_id: int) -> Iterable[Deploy]:
     return g.backend.deploys.all(workspace_id)
 
 
-def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy, token: str) -> Union[Deploy, bool]:
+def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy, token: str) -> bool:
     if token:
         _, is_valid = validate_workspace_api_key(g=g, token=token)
         if is_valid:
-            return g.backend.deploys.create_or_update(workspace_id=workspace_id, obj=deploy)
+            g.backend.deploys.create_or_update(workspace_id=workspace_id, obj=deploy)
+            return True
     logger.warn("Not able to authenticate with provided token", token=token)
     return False
 

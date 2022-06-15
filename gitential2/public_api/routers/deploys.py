@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 from fastapi import APIRouter, Depends, Request
 
 from gitential2.datatypes.deploys import Deploy
@@ -19,7 +19,7 @@ def get_deploys(
     return get_all_deploys(g, workspace_id)
 
 
-@router.post("/workspaces/{workspace_id}/deploys", response_model=Union[Deploy, bool])
+@router.post("/workspaces/{workspace_id}/deploys", response_model=bool)
 def record_deploy(
     request: Request,
     deploy: Deploy,
