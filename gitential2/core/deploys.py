@@ -1,5 +1,6 @@
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple, Union
 from datetime import datetime
+from structlog import get_logger
 
 from gitential2.datatypes.deploys import Deploy, DeployCommit, DeployedCommit
 from gitential2.datatypes.authors import AuthorAlias
@@ -7,15 +8,22 @@ from gitential2.datatypes.extraction import ExtractedCommitId
 
 from .context import GitentialContext
 from .authors import developer_map_callback
+from .api_keys import validate_workspace_api_key
+
+logger = get_logger(__name__)
 
 
 def get_all_deploys(g: GitentialContext, workspace_id: int) -> Iterable[Deploy]:
     return g.backend.deploys.all(workspace_id)
 
 
-def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy) -> Deploy:
-    _deploy = g.backend.deploys.create(workspace_id=workspace_id, obj=deploy)
-    return _deploy
+def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy, token: str) -> Union[Deploy, bool]:
+    if token:
+        _, is_valid = validate_workspace_api_key(g=g, token=token)
+        if is_valid:
+            return g.backend.deploys.create_or_update(workspace_id=workspace_id, obj=deploy)
+    logger.warn("Not able to authenticate with provided token", token=token)
+    return False
 
 
 def delete_deploy_by_id(g: GitentialContext, workspace_id: int, deploy_id: str):
