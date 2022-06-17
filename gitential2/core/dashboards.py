@@ -44,7 +44,7 @@ def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: D
     charts = [get_chart(g, workspace_id, chart.id) for chart in dashboard_create.charts]
     d = DashboardCreate(
         title=dashboard_create.title,
-        config=dashboard_create.config,
+        filters=dashboard_create.filters,
         charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts],
     )
     return g.backend.dashboards.create(workspace_id, d)
@@ -58,7 +58,7 @@ def update_dashboard(
     charts = [get_chart(g, workspace_id, chart.id) for chart in dashboard_update.charts]
     d = DashboardUpdate(
         title=dashboard_update.title,
-        config=dashboard_update.config,
+        filters=dashboard_update.filters,
         charts=[get_chart_public_from_chart_in_db(c_in_db) for c_in_db in charts],
     )
     return g.backend.dashboards.update(workspace_id, dashboard_id, d)
@@ -96,7 +96,7 @@ def update_chart(g: GitentialContext, workspace_id: int, chart_id: int, chart_up
         dashboard_chart_ids = [c.id for c in d.charts]
         is_dashboard_need_to_be_updated = any(cid == chart_id for cid in dashboard_chart_ids)
         if is_dashboard_need_to_be_updated:
-            dashboard_update = DashboardUpdate(title=d.title, config=d.config, charts=d.charts)
+            dashboard_update = DashboardUpdate(title=d.title, filters=d.filters, charts=d.charts)
             update_dashboard(g, workspace_id=workspace_id, dashboard_id=d.id, dashboard_update=dashboard_update)
     return chart_updated
 

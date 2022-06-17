@@ -95,6 +95,12 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
                 f"ALTER TABLE {schema_name}.charts ADD COLUMN IF NOT EXISTS filters JSON;",
             ],
         ),
+        MigrationRevision(
+            revision_id="003",
+            steps=[
+                f"ALTER TABLE {schema_name}.dashboards RENAME COLUMN config TO filters;",
+            ],
+        ),
     ]
 
 

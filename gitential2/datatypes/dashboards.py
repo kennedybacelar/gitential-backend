@@ -2,21 +2,16 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from pydantic import Field
 
-from gitential2.datatypes.stats import FilterName, QueryType
+from gitential2.datatypes.stats import FilterName
 from .charts import ChartPublic
 from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
 from .export import ExportableModel
 
 
-class DashboardConfig(CoreModel):
-    type: QueryType
-    filters: Dict[FilterName, Any]
-
-
 class DashboardBase(ExtraFieldMixin, CoreModel):
     title: Optional[str]
-    config: DashboardConfig
     charts: List[ChartPublic]
+    filters: Optional[Dict[FilterName, Any]]
 
 
 class DashboardPublic(IDModelMixin, DateTimeModelMixin, DashboardBase):
@@ -41,7 +36,7 @@ class DashboardInDB(IDModelMixin, DateTimeModelMixin, DashboardBase, ExportableM
             "title",
             "created_at",
             "updated_at",
-            "config",
+            "filters",
             "charts",
             "extra",
         ]
