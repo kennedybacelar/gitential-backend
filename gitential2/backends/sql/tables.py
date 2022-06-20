@@ -286,7 +286,7 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("title", sa.String(128), nullable=False),
         sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
         sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
-        sa.Column("config", sa.JSON, nullable=False),
+        sa.Column("filters", sa.JSON, nullable=False),
         sa.Column("charts", sa.JSON, nullable=False),
         sa.Column("extra", sa.JSON, nullable=True),
     )
