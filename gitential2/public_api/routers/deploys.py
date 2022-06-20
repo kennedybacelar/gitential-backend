@@ -13,10 +13,11 @@ router = APIRouter(tags=["deploys"])
 
 @router.get("/workspaces/{workspace_id}/deploys", response_model=List[Deploy])
 def get_deploys(
+    request: Request,
     workspace_id: int,
     g: GitentialContext = Depends(gitential_context),
 ):
-    return get_all_deploys(g, workspace_id)
+    return get_all_deploys(g, workspace_id, token=request.headers.get("token"))
 
 
 @router.post("/workspaces/{workspace_id}/deploys", response_model=bool)
@@ -29,11 +30,11 @@ def record_deploy(
     return register_deploy(g, workspace_id=workspace_id, deploy=deploy, token=request.headers.get("token"))
 
 
-@router.delete("/workspaces/{workspace_id}/{deploy_id}/deploy")
+@router.delete("/workspaces/{workspace_id}/{deploy_id}/deploy", response_model=bool)
 def delete_deploy(
+    request: Request,
     workspace_id: int,
     deploy_id: str,
     g: GitentialContext = Depends(gitential_context),
 ):
-    delete_deploy_by_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id)
-    return True
+    return delete_deploy_by_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id, token=request.headers.get("token"))

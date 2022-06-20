@@ -13,8 +13,13 @@ from .api_keys import validate_workspace_api_key
 logger = get_logger(__name__)
 
 
-def get_all_deploys(g: GitentialContext, workspace_id: int) -> Iterable[Deploy]:
-    return g.backend.deploys.all(workspace_id)
+def get_all_deploys(g: GitentialContext, workspace_id: int, token: str) -> Iterable[Deploy]:
+    if token:
+        _, is_valid = validate_workspace_api_key(g=g, token=token)
+        if is_valid:
+            return g.backend.deploys.all(workspace_id)
+    logger.warn("Not able to authenticate with provided token", token=token)
+    return []
 
 
 def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy, token: str) -> bool:
@@ -27,9 +32,14 @@ def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy, toke
     return False
 
 
-def delete_deploy_by_id(g: GitentialContext, workspace_id: int, deploy_id: str):
-    g.backend.deploys.delete_deploy_by_id(workspace_id=workspace_id, deploy_id=deploy_id)
-    return delete_deploy_commits_by_deploy_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id)
+def delete_deploy_by_id(g: GitentialContext, workspace_id: int, deploy_id: str, token: str):
+    if token:
+        _, is_valid = validate_workspace_api_key(g=g, token=token)
+        if is_valid:
+            g.backend.deploys.delete_deploy_by_id(workspace_id=workspace_id, deploy_id=deploy_id)
+            return delete_deploy_commits_by_deploy_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id)
+    logger.warn("Not able to authenticate with provided token", token=token)
+    return False
 
 
 def delete_deploy_commits_by_deploy_id(g: GitentialContext, workspace_id: int, deploy_id: str):
