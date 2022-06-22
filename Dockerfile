@@ -1,9 +1,9 @@
-FROM docker-internal.gitential.io/python-poetry:v5-py3.10.2-build as build
+FROM docker-internal.gitential.io/python-poetry:v6-py3.10.5-build as build
 
 COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-root
 
-FROM docker-internal.gitential.io/python-poetry:v5-py3.10.2 as prod
+FROM docker-internal.gitential.io/python-poetry:v6-py3.10.5 as prod
 
 COPY --from=build --chown=app:app /project/.cache /project/.cache
 COPY --from=build --chown=app:app /project/.local /project/.local
