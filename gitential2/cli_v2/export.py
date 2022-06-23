@@ -57,17 +57,28 @@ def export_full_workspace(
         ("its_issue_changes", g.backend.its_issue_changes),
         ("its_issue_times_in_statuses", g.backend.its_issue_times_in_statuses),
         ("its_issue_comments", g.backend.its_issue_comments),
-        ("its_issue_linked_issue", g.backend.its_issue_linked_issues),
+        ("its_issue_linked_issues", g.backend.its_issue_linked_issues),
         ("its_sprints", g.backend.its_sprints),
         ("its_issue_sprints", g.backend.its_issue_sprints),
         ("its_issue_worklogs", g.backend.its_issue_worklogs),
     ]
 
     def _date_filter(name, obj, date_from):
-        skip_date_filter = ["projects", "repositories", "project_repositories", "authors", "teams", "team_members"]
+        skip_date_filter = [
+            "projects",
+            "repositories",
+            "project_repositories",
+            "authors",
+            "teams",
+            "team_members",
+            "its_issue_sprints",
+            "its_issue_linked_issues",
+        ]
         if name in skip_date_filter or date_from == datetime.min:
             return True
         elif hasattr(obj, "created_at") and getattr(obj, "created_at", datetime.min) >= date_from:
+            return True
+        elif hasattr(obj, "started_at") and (getattr(obj, "started_at", datetime.min) or datetime.min) >= date_from:
             return True
         elif hasattr(obj, "date") and getattr(obj, "date", datetime.min) >= date_from:
             return True
