@@ -222,6 +222,9 @@ class InMemWorkspaceScopedRepository(
     def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
         return self._state[workspace_id].values()
 
+    def iterate_desc(self, workspace_id: int) -> Iterable[InDBType]:
+        return self._state[workspace_id].values()
+
     def _new_id(self, workspace_id):
         with self._counter_lock:
             ret = self._counters[workspace_id]

@@ -6,13 +6,14 @@ import logging
 
 from structlog import get_logger
 import typer
-
+import requests
+from gitential2.datatypes.authors import AuthorAlias, AuthorInDB
 
 from gitential2.datatypes.credentials import CredentialInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
 from gitential2.core.context import GitentialContext
 from gitential2.core.credentials import get_update_token_callback, get_fresh_credential
-from gitential2.core.authors import developer_map_callback
+from gitential2.core.authors import developer_map_callback, get_or_create_optional_author_for_alias
 from gitential2.integrations.jira import JiraIntegration
 from gitential2.settings import IntegrationType
 from .common import get_context, print_results, OutputFormat
@@ -228,3 +229,70 @@ def get_all_data_for_issue(
             developer_map_callback=dev_map_callback,
         )
         print_results([all_data_for_issue], format_=format_, fields=fields)
+
+
+@app.command("lookup-tempo")
+def lookup_tempo(
+    workspace_id: int,
+    tempo_access_token: str = typer.Argument("", envvar="TEMPO_ACCESS_TOKEN"),
+    force: bool = False,
+):
+
+    g = get_context()
+    lookup_tempo_worklogs(g, workspace_id, tempo_access_token, force)
+
+
+def lookup_tempo_worklogs(g: GitentialContext, workspace_id: int, tempo_access_token: str, force):
+    worklogs_for_issue = {}
+    _author_callback_partial = partial(_author_callback, g=g, workspace_id=workspace_id)
+
+    for worklog in g.backend.its_issue_worklogs.iterate_desc(workspace_id):
+
+        if not worklog.author_dev_id or force:
+            author = None
+            tempo_worklog = None
+
+            jira_issue_id = worklog.extra.get("issueId") if worklog.extra else None
+            if not jira_issue_id:
+                continue
+
+            if jira_issue_id not in worklogs_for_issue:
+                worklogs_for_issue[jira_issue_id] = _get_tempo_worklogs_for_issue(tempo_access_token, jira_issue_id)
+
+            for wl in worklogs_for_issue[jira_issue_id].get("results", []):
+                if str(wl["jiraWorklogId"]) == worklog.api_id:
+                    tempo_worklog = wl
+                    break
+
+            if tempo_worklog:
+                author = _author_callback_partial(AuthorAlias(name=tempo_worklog["author"]["displayName"]))
+
+            if author:
+                print(worklog.created_at, worklog.api_id, jira_issue_id, author.id, author.name)
+                worklog.author_dev_id = author.id
+                worklog.author_name = author.name
+                g.backend.its_issue_worklogs.update(workspace_id, worklog.id, worklog)
+            else:
+                print(worklog.created_at, worklog.api_id, jira_issue_id, tempo_worklog)
+            print("-------------------------------------------------------")
+
+
+def _get_tempo_worklogs_for_issue(tempo_access_token: str, jira_issue_id) -> dict:
+    response = requests.get(
+        f"https://api.tempo.io/core/3/worklogs?issue={jira_issue_id}",
+        headers={"Authorization": f"Bearer {tempo_access_token}"},
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _author_callback(
+    alias: AuthorAlias,
+    g: GitentialContext,
+    workspace_id: int,
+) -> Optional[AuthorInDB]:
+    author = get_or_create_optional_author_for_alias(g, workspace_id, alias)
+    if author:
+        return author
+    else:
+        return None

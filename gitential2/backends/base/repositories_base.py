@@ -98,6 +98,10 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
         pass
 
     @abstractmethod
+    def iterate_desc(self, workspace_id: int) -> Iterable[InDBType]:
+        pass
+
+    @abstractmethod
     def truncate(self, workspace_id: int):
         pass
 

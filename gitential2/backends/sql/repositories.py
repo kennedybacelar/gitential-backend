@@ -351,6 +351,18 @@ class SQLWorkspaceScopedRepository(
                     yield self.in_db_cls(**row)
             proxy.close()
 
+    def iterate_desc(self, workspace_id: int) -> Iterable[InDBType]:
+        query = self.table.select().order_by(desc(self.table.c.created_at))
+        with self._connection_with_schema(workspace_id) as connection:
+            proxy = connection.execution_options(stream_results=True).execute(query)
+            while True:
+                batch = proxy.fetchmany(10000)
+                if not batch:
+                    break
+                for row in batch:
+                    yield self.in_db_cls(**row)
+            proxy.close()
+
     def truncate(self, workspace_id: int):
         schema_name = self._schema_name(workspace_id)
         query = f"TRUNCATE TABLE `{schema_name}`.`{self.table.name}`;"

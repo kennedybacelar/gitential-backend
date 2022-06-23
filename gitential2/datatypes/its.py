@@ -298,6 +298,19 @@ class ITSIssueLinkedIssue(StringIdModelMixin, ExtraFieldMixin, CoreModel, Export
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_linked_issue", "its_issue_linked_issues")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "itsp_id",
+            "issue_api_id",
+            "issue_id",
+            "extra",
+            "linked_issue_key",
+            "linked_issue_api_id",
+            "issue_key",
+            "link_type",
+            "id",
+        ]
+
 
 class ITSSprint(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel):
     itsp_id: int
@@ -314,6 +327,19 @@ class ITSSprint(StringIdModelMixin, ExtraFieldMixin, CoreModel, ExportableModel)
     def export_names(self) -> Tuple[str, str]:
         return ("its_sprint", "its_sprints")
 
+    def export_fields(self) -> List[str]:
+        return [
+            "itsp_id",
+            "extra",
+            "api_id",
+            "ended_at",
+            "started_at",
+            "id",
+            "completed_at",
+            "goal",
+            "name",
+        ]
+
 
 class ITSIssueSprint(StringIdModelMixin, CoreModel, ExportableModel):
     issue_id: str
@@ -322,6 +348,14 @@ class ITSIssueSprint(StringIdModelMixin, CoreModel, ExportableModel):
 
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_sprint", "its_issue_sprints")
+
+    def export_fields(self) -> List[str]:
+        return [
+            "itsp_id",
+            "sprint_id",
+            "issue_id",
+            "id",
+        ]
 
 
 class ITSIssueWorklog(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, CoreModel, ExportableModel):
@@ -340,6 +374,23 @@ class ITSIssueWorklog(StringIdModelMixin, ExtraFieldMixin, DateTimeModelMixin, C
 
     def export_names(self) -> Tuple[str, str]:
         return ("its_issue_worklog", "its_issue_worklogs")
+
+    def export_fields(self) -> List[str]:
+        return [
+            "itsp_id",
+            "author_api_id",
+            "issue_id",
+            "extra",
+            "author_email",
+            "api_id",
+            "author_name",
+            "author_dev_id",
+            "created_at",
+            "time_spent_display_str",
+            "time_spent_seconds",
+            "updated_at",
+            "id",
+        ]
 
 
 class ITSIssueAllData(BaseModel):
