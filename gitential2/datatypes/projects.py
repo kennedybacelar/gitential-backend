@@ -9,6 +9,7 @@ from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
 from .repositories import RepositoryCreate, RepositoryPublic, RepositoryStatus
 from .its_projects import ITSProjectCreate
 from .export import ExportableModel
+from .teams import Sprint
 
 
 class ProjectExportDatatype(str, Enum):
@@ -21,6 +22,8 @@ class ProjectBase(ExtraFieldMixin, CoreModel):
     name: Optional[str]
     shareable: bool = False
     pattern: Optional[str] = None
+    sprints_enabled: bool = False
+    sprint: Optional[Sprint] = None
 
 
 class ProjectCreate(ProjectBase):
@@ -46,7 +49,7 @@ class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase, ExportableModel
         return ("project", "projects")
 
     def export_fields(self) -> List[str]:
-        return ["id", "created_at", "updated_at", "name", "shareable", "pattern"]
+        return ["id", "created_at", "updated_at", "name", "shareable", "pattern", "sprints_enabled", "sprint"]
 
 
 class ProjectPublic(IDModelMixin, DateTimeModelMixin, ProjectBase):

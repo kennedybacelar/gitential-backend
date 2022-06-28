@@ -223,6 +223,8 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("name", sa.String(128), nullable=True),
         sa.Column("pattern", sa.String(256), nullable=True),
         sa.Column("shareable", sa.Boolean, default=False, nullable=False),
+        sa.Column("sprints_enabled", sa.Boolean, default=False),
+        sa.Column("sprint", sa.JSON, nullable=True),
         sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
         sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
         sa.Column("extra", sa.JSON, nullable=True),
