@@ -3,7 +3,7 @@ from typing import List
 from structlog import get_logger
 
 from gitential2.core import GitentialContext
-from gitential2.datatypes.charts import ChartInDB, ChartCreate, ChartUpdate, ChartPublic
+from gitential2.datatypes.charts import ChartInDB, ChartCreate, ChartUpdate, ChartPublic, ChartLayout
 from gitential2.datatypes.dashboards import (
     DashboardInDB,
     DashboardUpdate,
@@ -41,7 +41,7 @@ def create_dashboard(g: GitentialContext, workspace_id: int, dashboard_create: D
     if not dashboard_create.charts:
         raise SettingsException("Can not create dashboard with no charts!")
     logger.info("creating dashboard", workspace_id=workspace_id, title=dashboard_create.title)
-    charts = [get_chart(g, workspace_id, chart.id) for chart in dashboard_create.charts]
+    charts = [get_chart(g, workspace_id, chart.id, chart.layout) for chart in dashboard_create.charts]
     d = DashboardCreate(
         title=dashboard_create.title,
         filters=dashboard_create.filters,
@@ -55,7 +55,7 @@ def update_dashboard(
 ) -> DashboardInDB:
     if not dashboard_update.charts:
         raise SettingsException("Can not update dashboard with no charts!")
-    charts = [get_chart(g, workspace_id, chart.id) for chart in dashboard_update.charts]
+    charts = [get_chart(g, workspace_id, chart.id, chart.layout) for chart in dashboard_update.charts]
     d = DashboardUpdate(
         title=dashboard_update.title,
         filters=dashboard_update.filters,
@@ -76,8 +76,15 @@ def list_charts(g: GitentialContext, workspace_id: int) -> List[ChartInDB]:
     return list(g.backend.charts.all(workspace_id=workspace_id))
 
 
-def get_chart(g: GitentialContext, workspace_id: int, chart_id: int) -> ChartInDB:
-    return g.backend.charts.get_or_error(workspace_id=workspace_id, id_=chart_id)
+def get_chart(
+    g: GitentialContext,
+    workspace_id: int,
+    chart_id: int,
+    chart_layout: ChartLayout = ChartLayout(x=-1, y=-1, h=-1, w=-1),
+) -> ChartInDB:
+    chart = g.backend.charts.get_or_error(workspace_id=workspace_id, id_=chart_id)
+    chart.layout = chart_layout
+    return chart
 
 
 def create_chart(g: GitentialContext, workspace_id: int, chart_create: ChartCreate) -> ChartInDB:
@@ -96,7 +103,25 @@ def update_chart(g: GitentialContext, workspace_id: int, chart_id: int, chart_up
         dashboard_chart_ids = [c.id for c in d.charts]
         is_dashboard_need_to_be_updated = any(cid == chart_id for cid in dashboard_chart_ids)
         if is_dashboard_need_to_be_updated:
-            dashboard_update = DashboardUpdate(title=d.title, filters=d.filters, charts=d.charts)
+            dashboard_charts = [
+                ChartPublic(
+                    id=chart_id,
+                    created_at=chart.created_at,
+                    updated_at=chart.updated_at,
+                    is_custom=chart.is_custom,
+                    extra=chart.extra,
+                    title=chart_update.title,
+                    layout=chart.layout,
+                    chart_type=chart_update.chart_type,
+                    metrics=chart_update.metrics,
+                    dimensions=chart_update.dimensions,
+                    filters=chart_update.filters,
+                )
+                if chart.id == chart_id
+                else chart
+                for chart in d.charts
+            ]
+            dashboard_update = DashboardUpdate(title=d.title, filters=d.filters, charts=dashboard_charts)
             update_dashboard(g, workspace_id=workspace_id, dashboard_id=d.id, dashboard_update=dashboard_update)
     return chart_updated
 
