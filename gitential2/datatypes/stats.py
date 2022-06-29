@@ -180,6 +180,7 @@ class TableName(str, Enum):
     pull_requests = "pull_requests"
     pull_request_comments = "pull_request_comments"
     authors = "authors"
+    deploy_commits = "deploy_commits"
 
 
 TableDef = List[TableName]
@@ -280,6 +281,7 @@ class IbisTables:
     patches: Any
     authors: Any
     pull_request_comments: Any
+    deploy_commits: Any
 
     def get_table(self, table_def: TableDef) -> Any:
         # commits_columns = columns = [col for col in self.commits.columns if col not in ["is_test"]]
@@ -323,6 +325,8 @@ class IbisTables:
             return self.commits
         elif table_def == [TableName.patches]:
             return self.patches
+        elif table_def == [TableName.deploy_commits]:
+            return self.deploy_commits
         elif table_def == [TableName.commits, TableName.patches]:
 
             expr = self.commits.inner_join(

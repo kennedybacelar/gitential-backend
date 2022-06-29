@@ -21,6 +21,8 @@ class DQSourceName(str, Enum):
     # commits and patches
     calculated_commits = "calculated_commits"
     calculated_patches = "calculated_patches"
+    # deploy_commits
+    deploy_commits = "deploy_commits"
 
 
 DQ_ITS_SOURCE_NAMES = [DQSourceName.its_issues, DQSourceName.its_issue_comments, DQSourceName.its_issue_linked_issue]

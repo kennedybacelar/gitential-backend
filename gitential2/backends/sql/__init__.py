@@ -578,6 +578,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             ret.pull_request_comments = ibis_conn.table(
                 "pull_request_comments", schema=self._workspace_schema_name(workspace_id)
             )
+            ret.deploy_commits = ibis_conn.table("deploy_commits", schema=self._workspace_schema_name(workspace_id))
             return ret
 
     def get_ibis_table(self, workspace_id: int, source_name: str) -> TableExpr:
