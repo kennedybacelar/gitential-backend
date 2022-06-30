@@ -11,6 +11,7 @@ from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessAp
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.deploys import Deploy, DeployCommit
+from gitential2.datatypes.sprints import Sprint
 from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectCreate,
     ProjectITSProjectInDB,
@@ -558,6 +559,11 @@ class SQLProjectRepository(
         query = self.table.select().where(self.table.c.name.ilike(f"%{q}%"))
         rows = self._execute_query(query, workspace_id)
         return [ProjectInDB(**row) for row in rows]
+
+    def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint):
+        query = self.table.update(values={"sprint": sprint}).where(self.table.c.id == project_id)
+        self._execute_query(query, workspace_id)
+        return True
 
 
 class SQLRepositoryRepository(

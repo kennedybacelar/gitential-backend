@@ -8,6 +8,7 @@ from gitential2.datatypes.projects import (
     ProjectUpdateWithRepositories,
 )
 from gitential2.datatypes.repositories import RepositoryCreate  # , RepositoryStatus
+from gitential2.datatypes.sprints import Sprint
 
 from .refresh_v2 import refresh_project
 from .context import GitentialContext
@@ -79,4 +80,10 @@ def _update_project_its_projects(
     ]
     return g.backend.project_its_projects.update_its_projects(
         workspace_id=workspace_id, project_id=project.id, itsp_ids=[r.id for r in its_projects]
+    )
+
+
+def update_sprint_by_project_id(g: GitentialContext, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
+    return g.backend.projects.update_sprint_by_project_id(
+        workspace_id=workspace_id, project_id=project_id, sprint=sprint
     )

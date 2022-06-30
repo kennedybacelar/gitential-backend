@@ -9,7 +9,7 @@ from .common import IDModelMixin, CoreModel, DateTimeModelMixin, ExtraFieldMixin
 from .repositories import RepositoryCreate, RepositoryPublic, RepositoryStatus
 from .its_projects import ITSProjectCreate
 from .export import ExportableModel
-from .teams import Sprint
+from .sprints import Sprint
 
 
 class ProjectExportDatatype(str, Enum):
@@ -41,7 +41,7 @@ class ProjectUpdate(ProjectBase):
 
 class ProjectUpdateWithRepositories(ProjectUpdate):
     repos: List[RepositoryCreate]
-    its_projects: Optional[List[ITSProjectCreate]] = None
+    its_projects: Optional[List[ITSProjectCreate]] = []
 
 
 class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase, ExportableModel):

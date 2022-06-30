@@ -46,6 +46,7 @@ from gitential2.datatypes.email_log import (
     EmailLogUpdate,
     EmailLogInDB,
 )
+from gitential2.datatypes.sprints import Sprint
 from .base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
@@ -308,6 +309,9 @@ class InMemProjectRepository(
             for item in self._state[workspace_id].values()
             if q.capitalize() in item.name.capitalize()
         ]
+
+    def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
+        pass
 
 
 class InMemRepositoryRepository(

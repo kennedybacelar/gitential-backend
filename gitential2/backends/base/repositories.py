@@ -75,6 +75,8 @@ from gitential2.datatypes.email_log import (
     EmailLogInDB,
 )
 
+from gitential2.datatypes.sprints import Sprint
+
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
 from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
@@ -212,6 +214,10 @@ class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, Works
 class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]):
     @abstractmethod
     def search(self, workspace_id: int, q: str) -> List[ProjectInDB]:
+        pass
+
+    @abstractmethod
+    def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
         pass
 
 
