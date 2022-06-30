@@ -561,7 +561,7 @@ class SQLProjectRepository(
         return [ProjectInDB(**row) for row in rows]
 
     def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint):
-        query = self.table.update(values={"sprint": sprint}).where(self.table.c.id == project_id)
+        query = self.table.update(values={self.table.c.sprint: sprint}).where(self.table.c.id == project_id)
         self._execute_query(query, workspace_id)
         return True
 
