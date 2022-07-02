@@ -105,7 +105,7 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
         MigrationRevision(
             revision_id="004",
             steps=[
-                f"ALTER TABLE {schema_name}.projects ADD COLUMN IF NOT EXISTS sprints_enabled BOOLEAN;",
+                f"ALTER TABLE {schema_name}.projects ADD COLUMN IF NOT EXISTS sprints_enabled BOOLEAN DEFAULT FALSE;",
                 f"ALTER TABLE {schema_name}.projects ADD COLUMN IF NOT EXISTS sprint JSON;",
             ],
         ),
