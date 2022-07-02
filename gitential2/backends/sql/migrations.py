@@ -102,6 +102,13 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
                 f"ALTER TABLE {schema_name}.dashboards ADD COLUMN IF NOT EXISTS filters JSON;",
             ],
         ),
+        MigrationRevision(
+            revision_id="004",
+            steps=[
+                f"ALTER TABLE {schema_name}.projects ADD COLUMN IF NOT EXISTS sprints_enabled BOOLEAN DEFAULT FALSE;",
+                f"ALTER TABLE {schema_name}.projects ADD COLUMN IF NOT EXISTS sprint JSON;",
+            ],
+        ),
     ]
 
 

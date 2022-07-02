@@ -1,19 +1,9 @@
-from datetime import date
 from typing import Optional, List, Tuple
 from gitential2.datatypes.export import ExportableModel
 
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin
 from .authors import AuthorInDB
-
-
-class SprintBase(CoreModel):
-    date: date
-    weeks: int
-    pattern: str
-
-
-class Sprint(SprintBase):
-    pass
+from .sprints import Sprint
 
 
 class TeamBase(CoreModel):

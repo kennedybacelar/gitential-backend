@@ -219,14 +219,18 @@ def refresh_workspace_(
 @router.get("/workspaces/{workspace_id}/api-key")
 def workspace_api_key(
     workspace_id: int,
+    current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return get_api_key_by_workspace_id(g, workspace_id)
 
 
 @router.delete("/workspaces/{workspace_id}/api-key")
 def delete_workspace_api_key_for_workspace(
     workspace_id: int,
+    current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
+    check_permission(g, current_user, Entity.workspace, Action.delete, workspace_id=workspace_id)
     delete_api_keys_for_workspace(g, workspace_id)

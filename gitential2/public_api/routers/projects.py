@@ -11,6 +11,7 @@ from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWit
 from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus
+from gitential2.datatypes.sprints import Sprint
 
 from gitential2.core.refresh_v2 import refresh_project
 
@@ -22,6 +23,7 @@ from gitential2.core.projects import (
     update_project,
     delete_project,
     get_project,
+    update_sprint_by_project_id,
 )
 from gitential2.core.refresh_statuses import get_project_refresh_status
 
@@ -63,6 +65,18 @@ def update_project_(
 ):
     check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
     return update_project(g, workspace_id, project_id=project_id, project_update=project_update)
+
+
+@router.put("/workspaces/{workspace_id}/projects/{project_id}/sprint")
+def update_sprint_by_project_id_(
+    sprint: Sprint,
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
+    return update_sprint_by_project_id(g, workspace_id, project_id=project_id, sprint=sprint)
 
 
 @router.delete("/workspaces/{workspace_id}/projects/{project_id}")
