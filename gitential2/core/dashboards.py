@@ -249,7 +249,7 @@ def get_chart(
     if chart_id in INTERNAL_CHARTS:
         chart = INTERNAL_CHARTS.get(chart_id)
         if not chart:
-            raise SettingsException("Can not update not custom chart!")
+            raise SettingsException(f"Can not get custom chart with id: {chart_id}!")
     else:
         chart = g.backend.charts.get_or_error(workspace_id=workspace_id, id_=chart_id)
     chart.layout = chart_layout
