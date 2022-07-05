@@ -1,17 +1,181 @@
-from typing import List
+from typing import List, Dict
 
 from structlog import get_logger
 
 from gitential2.core import GitentialContext
-from gitential2.datatypes.charts import ChartInDB, ChartCreate, ChartUpdate, ChartPublic, ChartLayout
+from gitential2.datatypes.charts import (
+    ChartInDB,
+    ChartCreate,
+    ChartUpdate,
+    ChartPublic,
+    ChartLayout,
+    ChartVisualizationTypes,
+)
 from gitential2.datatypes.dashboards import (
     DashboardInDB,
     DashboardUpdate,
     DashboardCreate,
 )
+from gitential2.datatypes.stats import MetricName, DimensionName
 from gitential2.exceptions import SettingsException
 
 logger = get_logger(__name__)
+
+INTERNAL_CHARTS: Dict[int, ChartInDB] = {
+    -1: ChartInDB(
+        id=-1,
+        is_custom=False,
+        title="Avg PR Cycle Time",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.avg_pr_cycle_time],
+        dimensions=[DimensionName.week],
+    ),
+    -2: ChartInDB(
+        id=-2,
+        is_custom=False,
+        title="Code complexity",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.comp_sum, MetricName.loc_sum],
+        dimensions=[DimensionName.week],
+    ),
+    -3: ChartInDB(
+        id=-3,
+        is_custom=False,
+        title="Code Volume",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.sum_loc_effort],
+        dimensions=[DimensionName.week],
+    ),
+    -4: ChartInDB(
+        id=-4,
+        is_custom=False,
+        title="Coding Hours",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.sum_hours],
+        dimensions=[DimensionName.week],
+    ),
+    -5: ChartInDB(
+        id=-5,
+        is_custom=False,
+        title="Developer Productivity",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_bubble,
+        metrics=[MetricName.avg_loc_effort, MetricName.avg_hours, MetricName.count_commits],
+        dimensions=[DimensionName.name],
+    ),
+    -6: ChartInDB(
+        id=-6,
+        is_custom=False,
+        title="Efficiency",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.efficiency],
+        dimensions=[DimensionName.week],
+    ),
+    -7: ChartInDB(
+        id=-7,
+        is_custom=False,
+        title="No of Commits",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.count_commits],
+        dimensions=[DimensionName.week],
+    ),
+    -8: ChartInDB(
+        id=-8,
+        is_custom=False,
+        title="No of Developers",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.nunique_contributors],
+        dimensions=[DimensionName.week],
+    ),
+    -9: ChartInDB(
+        id=-9,
+        is_custom=False,
+        title="No of PRs Created",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.sum_pr_count],
+        dimensions=[DimensionName.week],
+    ),
+    -10: ChartInDB(
+        id=-10,
+        is_custom=False,
+        title="PR Cycle Time by Activity",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_pie,
+        metrics=[MetricName.avg_review_time, MetricName.avg_pickup_time, MetricName.avg_development_time],
+        dimensions=[DimensionName.week],
+    ),
+    -11: ChartInDB(
+        id=-11,
+        is_custom=False,
+        title="PR Merge Ratio",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.pr_merge_ratio],
+        dimensions=[DimensionName.week],
+    ),
+    -12: ChartInDB(
+        id=-12,
+        is_custom=False,
+        title="Productive vs. unproductive work",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_stacked_bar,
+        metrics=[MetricName.sum_ploc, MetricName.sum_uploc],
+        dimensions=[DimensionName.week],
+    ),
+    -13: ChartInDB(
+        id=-13,
+        is_custom=False,
+        title="Progress Overview",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_pie,
+        metrics=[MetricName.sum_loc_effort, MetricName.sum_hours, MetricName.nunique_contributors],
+        dimensions=[DimensionName.week],
+    ),
+    -14: ChartInDB(
+        id=-14,
+        is_custom=False,
+        title="Pull Request Cycle Time",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_stacked_bar,
+        metrics=[MetricName.avg_review_time, MetricName.avg_pickup_time, MetricName.avg_development_time],
+        dimensions=[DimensionName.week],
+    ),
+    -15: ChartInDB(
+        id=-15,
+        is_custom=False,
+        title="Pull Request Reviews",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.sum_review_comment_count, MetricName.avg_pr_review_comment_count],
+        dimensions=[DimensionName.week],
+    ),
+    -16: ChartInDB(
+        id=-16,
+        is_custom=False,
+        title="Pull Requests",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_stacked_bar,
+        metrics=[MetricName.sum_pr_closed, MetricName.sum_pr_merged, MetricName.sum_pr_open],
+        dimensions=[DimensionName.week],
+    ),
+    -17: ChartInDB(
+        id=-17,
+        is_custom=False,
+        title="Velocity",
+        layout=ChartLayout(x=-1, y=-1, w=-1, h=-1),
+        chart_type=ChartVisualizationTypes.chart_line_chart_bar,
+        metrics=[MetricName.avg_velocity],
+        dimensions=[DimensionName.week],
+    ),
+}
 
 
 def list_dashboards(g: GitentialContext, workspace_id: int) -> List[DashboardInDB]:
@@ -73,7 +237,7 @@ def delete_dashboard(g: GitentialContext, workspace_id: int, dashboard_id: int) 
 
 
 def list_charts(g: GitentialContext, workspace_id: int) -> List[ChartInDB]:
-    return list(g.backend.charts.all(workspace_id=workspace_id))
+    return list(g.backend.charts.all(workspace_id=workspace_id)) + list(INTERNAL_CHARTS.values())
 
 
 def get_chart(
@@ -82,7 +246,12 @@ def get_chart(
     chart_id: int,
     chart_layout: ChartLayout = ChartLayout(x=-1, y=-1, h=-1, w=-1),
 ) -> ChartInDB:
-    chart = g.backend.charts.get_or_error(workspace_id=workspace_id, id_=chart_id)
+    if chart_id in INTERNAL_CHARTS:
+        chart = INTERNAL_CHARTS.get(chart_id)
+        if not chart:
+            raise SettingsException(f"Can not get custom chart with id: {chart_id}!")
+    else:
+        chart = g.backend.charts.get_or_error(workspace_id=workspace_id, id_=chart_id)
     chart.layout = chart_layout
     return chart
 
@@ -127,6 +296,8 @@ def update_chart(g: GitentialContext, workspace_id: int, chart_id: int, chart_up
 
 
 def delete_chart(g: GitentialContext, workspace_id: int, chart_id: int) -> bool:
+    if chart_id < 0:
+        raise SettingsException("Can not delete not custom chart!")
     dashboards = list(g.backend.dashboards.all(workspace_id=workspace_id))
     is_chart_exists_in_dashboards = all(all(c.id != chart_id for c in d.charts) for d in dashboards)
     if not dashboards or is_chart_exists_in_dashboards:
