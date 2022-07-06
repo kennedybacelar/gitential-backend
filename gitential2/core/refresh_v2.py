@@ -22,6 +22,7 @@ from .credentials import acquire_credential, get_fresh_credential, get_update_to
 from .repositories import list_project_repositories
 from .refresh_statuses import get_repo_refresh_status, update_repo_refresh_status
 from .its import get_itsp_status, list_project_its_projects, refresh_its_project, update_itsp_status
+from .deploys import recalculate_deploy_commits
 
 logger = get_logger(__name__)
 
@@ -62,6 +63,7 @@ def maintain_workspace(
     refresh_all_its_projects(g, workspace_id)
     fix_author_names(g, workspace_id)
     fix_author_aliases(g, workspace_id)
+    recalculate_deploy_commits(g, workspace_id)
 
 
 def refresh_all_repositories(g: GitentialContext, workspace_id: int):
