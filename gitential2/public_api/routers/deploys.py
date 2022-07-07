@@ -1,5 +1,6 @@
 from typing import List
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from gitential2.datatypes.deploys import Deploy
 from gitential2.core.context import GitentialContext
@@ -10,36 +11,37 @@ from gitential2.core.permissions import check_permission
 
 from ..dependencies import gitential_context, current_user
 
+security = HTTPBearer()
 router = APIRouter(tags=["deploys"])
 
 
 @router.get("/workspaces/{workspace_id}/deploys", response_model=List[Deploy])
 def get_deploys(
-    request: Request,
     workspace_id: int,
     g: GitentialContext = Depends(gitential_context),
+    auth: HTTPAuthorizationCredentials = Security(security),
 ):
-    return get_all_deploys(g, workspace_id, token=request.headers.get("token"))
+    return get_all_deploys(g, workspace_id, token=auth.credentials)
 
 
 @router.post("/workspaces/{workspace_id}/deploys", response_model=bool)
 def record_deploy(
-    request: Request,
     deploy: Deploy,
     workspace_id: int,
     g: GitentialContext = Depends(gitential_context),
+    auth: HTTPAuthorizationCredentials = Security(security),
 ):
-    return register_deploy(g, workspace_id=workspace_id, deploy=deploy, token=request.headers.get("token"))
+    return register_deploy(g, workspace_id=workspace_id, deploy=deploy, token=auth.credentials)
 
 
 @router.delete("/workspaces/{workspace_id}/{deploy_id}/deploy", response_model=bool)
 def delete_deploy(
-    request: Request,
     workspace_id: int,
     deploy_id: str,
     g: GitentialContext = Depends(gitential_context),
+    auth: HTTPAuthorizationCredentials = Security(security),
 ):
-    return delete_deploy_by_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id, token=request.headers.get("token"))
+    return delete_deploy_by_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id, token=auth.credentials)
 
 
 @router.post("/workspaces/{workspace_id}/deploys/recalculate-deploy-commits")
@@ -48,3 +50,4 @@ def recalculate_deploy_commits_manual_trigger(
 ):
     check_permission(g, current_user, Entity.workspace, Action.delete, workspace_id=workspace_id)
     recalculate_deploy_commits(g=g, workspace_id=workspace_id)
+    return True
