@@ -12,9 +12,9 @@ app = typer.Typer()
 
 
 @app.command("get-all-deploys")
-def get_deploys(workspace_id: int, token: str):
+def get_deploys(workspace_id: int):
     g = get_context()
-    deploys = get_all_deploys(g=g, workspace_id=workspace_id, token=token)
+    deploys = get_all_deploys(g=g, workspace_id=workspace_id)
     print_results([deploys], format_=OutputFormat.json)
 
 

@@ -8,41 +8,25 @@ from gitential2.datatypes.extraction import ExtractedCommitId
 
 from .context import GitentialContext
 from .authors import developer_map_callback
-from .api_keys import validate_workspace_api_key
 
 logger = get_logger(__name__)
 
 
-def get_all_deploys(g: GitentialContext, workspace_id: int, token: str) -> Iterable[Deploy]:
-    if token:
-        _, is_valid = validate_workspace_api_key(g=g, token=token)
-        if is_valid:
-            return g.backend.deploys.all(workspace_id)
-    logger.warn("Not able to authenticate with provided token", token=token)
-    return []
+def get_all_deploys(g: GitentialContext, workspace_id: int) -> Iterable[Deploy]:
+    return g.backend.deploys.all(workspace_id)
 
 
-def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy, token: str) -> bool:
-    if token:
-        _, is_valid = validate_workspace_api_key(g=g, token=token)
-        if is_valid:
-            g.backend.deploys.create_or_update(workspace_id=workspace_id, obj=deploy)
-            return True
-    logger.warn("Not able to authenticate with provided token", token=token)
-    return False
+def register_deploy(g: GitentialContext, workspace_id: int, deploy: Deploy) -> bool:
+    g.backend.deploys.create_or_update(workspace_id=workspace_id, obj=deploy)
+    return True
 
 
-def delete_deploy_by_id(g: GitentialContext, workspace_id: int, deploy_id: str, token: str):
-    if token:
-        _, is_valid = validate_workspace_api_key(g=g, token=token)
-        if is_valid:
-            g.backend.deploys.delete_deploy_by_id(workspace_id=workspace_id, deploy_id=deploy_id)
-            return delete_deploy_commits_by_deploy_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id)
-    logger.warn("Not able to authenticate with provided token", token=token)
-    return False
+def delete_deploy_by_id(g: GitentialContext, workspace_id: int, deploy_id: str) -> bool:
+    g.backend.deploys.delete_deploy_by_id(workspace_id=workspace_id, deploy_id=deploy_id)
+    return _delete_deploy_commits_by_deploy_id(g=g, workspace_id=workspace_id, deploy_id=deploy_id)
 
 
-def delete_deploy_commits_by_deploy_id(g: GitentialContext, workspace_id: int, deploy_id: str):
+def _delete_deploy_commits_by_deploy_id(g: GitentialContext, workspace_id: int, deploy_id: str) -> bool:
     g.backend.deploy_commits.delete_deploy_commits_by_deploy_id(workspace_id=workspace_id, deploy_id=deploy_id)
     return True
 
