@@ -37,7 +37,7 @@ def validate_personal_access_token(g: GitentialContext, token: str) -> Tuple[int
     try:
         parsed_token = _parse_token(g, token)
     except (BadData, ValueError):
-        logger.warning("Bad or expired token", exc_info=True)
+        logger.warning("Bad or expired workspace-api-key", exc_info=True)
         return 0, False
 
     pat_id, user_id, name, _, _ = parsed_token
