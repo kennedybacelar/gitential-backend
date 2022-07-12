@@ -194,10 +194,11 @@ def get_chart_public_from_chart_in_db(chart_in_db: ChartInDB) -> ChartPublic:
         extra=chart_in_db.extra,
         is_custom=True,
         title=chart_in_db.title,
-        chart_type=chart_in_db.chart_type,
         layout=chart_in_db.layout,
+        chart_type=chart_in_db.chart_type,
         metrics=chart_in_db.metrics,
         dimensions=chart_in_db.dimensions,
+        filters=chart_in_db.filters,
     )
 
 
