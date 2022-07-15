@@ -144,8 +144,8 @@ def get_all_api_keys_by_workspace_id(g: GitentialContext, workspace_id: int) -> 
     return workspace_api_keys
 
 
-def get_api_key_by_workspace_id(g: GitentialContext, workspace_id: int) -> WorkspaceAPIKey:
-    single_workspace_api_key = g.backend.workspace_api_keys.get_single_api_key_by_workspace_id(workspace_id)
-    if not single_workspace_api_key:
-        single_workspace_api_key, _token = create_workspace_api_key(g, workspace_id)
-    return single_workspace_api_key
+def get_api_key_by_workspace_id(g: GitentialContext, workspace_id: int) -> str:
+    delete_api_keys_for_workspace(g, workspace_id)
+    # pylint: disable=unused-variable
+    _single_workspace_api_key, token = create_workspace_api_key(g, workspace_id)
+    return token
