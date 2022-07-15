@@ -1,4 +1,5 @@
 import math
+from datetime import timedelta
 from typing import Dict, List, Tuple, cast, Union
 from ibis.expr.types import TableExpr, ColumnExpr
 import pandas as pd
@@ -103,8 +104,34 @@ def parse_data_query(g: GitentialContext, workspace_id: int, query: DataQuery) -
 def _simplify_query(g: GitentialContext, workspace_id: int, query: DataQuery):
     # replace project_id to itsp_id or repo_id
     # replace team_id to dev_id
+    _adding_sprint_dimension_info_into_filters(g, workspace_id, query)
     query.filters = [_simplify_filter(g, workspace_id, f, query.source_name) for f in query.filters]
     return query
+
+
+def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id: int, query: DataQuery):
+    for i, dimension in enumerate(query.dimensions):
+        if dimension == "sprint":
+            for _filter in query.filters:
+                if (
+                    _filter.fn == DQFunctionName.EQ
+                    and isinstance(_filter.args[0], DQSingleColumnExpr)
+                    and _filter.args[0].col == "project_id"
+                ):
+                    proj_id = int(cast(int, _filter.args[1]))
+            query.dimensions.pop(i)
+            if proj_id:
+                proj = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=proj_id)
+                sprint = proj.sprint
+                if sprint:
+                    start_date = sprint.date
+                    final_date = start_date + timedelta(days=14)
+
+                    new_filter = DQFnColumnExpr(
+                        fn=DQFunctionName.BETWEEN,
+                        args=[DQSingleColumnExpr(col="created_at"), start_date.isoformat(), final_date.isoformat()],
+                    )
+                    query.filters.append(new_filter)
 
 
 def _simplify_filter(
