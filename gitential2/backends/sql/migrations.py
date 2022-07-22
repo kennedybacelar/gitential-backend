@@ -109,6 +109,12 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
                 f"ALTER TABLE {schema_name}.projects ADD COLUMN IF NOT EXISTS sprint JSON;",
             ],
         ),
+        MigrationRevision(
+            revision_id="005",
+            steps=[
+                f"ALTER TABLE {schema_name}.deploy_commits RENAME COLUMN repository_id TO repo_id;",
+            ],
+        ),
     ]
 
 

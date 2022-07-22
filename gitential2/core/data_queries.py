@@ -118,14 +118,14 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
                     and isinstance(_filter.args[0], DQSingleColumnExpr)
                     and _filter.args[0].col == "project_id"
                 ):
-                    proj_id = int(cast(int, _filter.args[1]))
+                    project_id = int(cast(int, _filter.args[1]))
             query.dimensions.pop(i)
-            if proj_id:
-                proj = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=proj_id)
-                sprint = proj.sprint
+            if project_id:
+                project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
+                sprint = project.sprint
                 if sprint:
                     start_date = sprint.date
-                    final_date = start_date + timedelta(days=14)
+                    final_date = start_date + timedelta(weeks=sprint.weeks)
 
                     new_filter = DQFnColumnExpr(
                         fn=DQFunctionName.BETWEEN,
