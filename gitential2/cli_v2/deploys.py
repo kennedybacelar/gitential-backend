@@ -25,7 +25,7 @@ def recalculate_deploys(workspace_id: int):
 
 
 @app.command("gather-internal-deployment")
-def gather_internal_deployment_history(path: str):
+def gather_internal_deployment_history(path: Path):
     """
     In order to display gitential's deployment history run:
 

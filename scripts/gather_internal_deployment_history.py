@@ -96,7 +96,7 @@ def get_environments_and_repo_info_by_commit_patch(patch: str):
         return None
 
     addition = "+"
-    environments: List[tuple] = []
+    environments: List[str] = []
     repo_names_and_short_commit_ids = []
     environment_addition = "+++ b"
     repository_labels = [
@@ -149,7 +149,7 @@ def _filling_commit_info(repo_names_and_short_commit_ids: Set[Tuple[str, str]]) 
     return repos_in_commit
 
 
-def _transform_to_deploy_object(commit, environments, repos_in_commit) -> dict:
+def _transform_to_deploy_object(commit, environments, repos_in_commit) -> Deploy:
 
     tzinfo = timezone(timedelta(minutes=commit.author.offset))
     _deployed_at = datetime.fromtimestamp(float(commit.author.time), tzinfo)
@@ -159,7 +159,6 @@ def _transform_to_deploy_object(commit, environments, repos_in_commit) -> dict:
         id=f"deploy_{commit_id_of_environments_repo}"
         if environments
         else f"{commit_id_of_environments_repo}-untracked_env",
-        repositories=[],
         environments=environments,
         pull_requests=[],
         commits=repos_in_commit,
