@@ -1,6 +1,6 @@
 import math
 from datetime import timedelta
-from typing import Dict, List, Tuple, cast, Union
+from typing import Dict, List, Tuple, cast, Union, Optional
 from ibis.expr.types import TableExpr, ColumnExpr
 import pandas as pd
 import numpy as np
@@ -113,7 +113,7 @@ def _simplify_query(g: GitentialContext, workspace_id: int, query: DataQuery):
     return query
 
 
-def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> str:
+def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> Optional[str]:
     table_column_name_to_sprint_filter = {
         "its_issues": "created_at",
         "its_issue_comments": "created_at",
