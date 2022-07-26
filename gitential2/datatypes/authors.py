@@ -1,4 +1,7 @@
 from typing import Set, List, Optional, Tuple
+
+from pydantic import BaseModel
+
 from gitential2.datatypes.export import ExportableModel
 
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
@@ -37,7 +40,7 @@ class AuthorUpdate(AuthorBase):
 
 class AuthorInDB(IDModelMixin, DateTimeModelMixin, AuthorBase, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
-        return ("author", "authors")
+        return "author", "authors"
 
     def export_fields(self) -> List[str]:
         return ["id", "created_at", "updated_at", "active", "name", "email", "aliases"]
@@ -45,3 +48,13 @@ class AuthorInDB(IDModelMixin, DateTimeModelMixin, AuthorBase, ExportableModel):
 
 class AuthorPublic(AuthorInDB):
     pass
+
+
+class IdAndTitle(BaseModel):
+    id: int
+    title: str
+
+
+class AuthorPublicExt(AuthorInDB):
+    teams: Optional[List[IdAndTitle]]
+    projects: Optional[List[IdAndTitle]]

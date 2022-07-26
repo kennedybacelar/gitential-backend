@@ -702,6 +702,11 @@ class SQLTeamMemberRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [row["author_id"] for row in rows]
 
+    def get_team_members_by_author_ids(self, workspace_id: int, author_ids: List[int]) -> List[TeamMemberInDB]:
+        query = self.table.select().where(self.table.c.author_id.in_(author_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [TeamMemberInDB(**row) for row in rows]
+
 
 class SQLRepoDFMixin:
 

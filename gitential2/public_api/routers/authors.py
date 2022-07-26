@@ -8,10 +8,11 @@ from gitential2.core.authors import (
     create_author,
     list_active_authors,
     get_author,
+    list_authors_ext,
 )
 from gitential2.core.deduplication import deduplicate_authors
 from gitential2.core.permissions import check_permission
-from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate
+from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate, AuthorPublicExt
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.legacy import authors_in_projects
 
@@ -29,8 +30,18 @@ def list_authors_(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-
     return list_authors(g, workspace_id)
+
+
+@router.get("/workspaces/{workspace_id}/authors/ext", response_model=List[AuthorPublicExt])
+def list_authors_ext_(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    ap = authors_in_projects(g, workspace_id)
+    return list_authors_ext(g, workspace_id, authors_in_projects=ap)
 
 
 @router.post("/workspaces/{workspace_id}/authors", response_model=AuthorPublic)
@@ -41,7 +52,6 @@ def create_author_(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-
     return create_author(g, workspace_id, author_create)
 
 
@@ -54,7 +64,6 @@ def update_author_(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.update, workspace_id=workspace_id)
-
     return update_author(g, workspace_id, author_id, author_update)
 
 
