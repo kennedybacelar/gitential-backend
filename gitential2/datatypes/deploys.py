@@ -33,7 +33,7 @@ class DeployedCommitId(CoreModel):
 class DeployCommit(StringIdModelMixin, CoreModel, ExportableModel):
     deploy_id: str
     environment: str
-    repository_id: int
+    repo_id: int
     repository_name: str
     commit_id: str
     deployed_at: datetime
@@ -47,7 +47,7 @@ class DeployCommit(StringIdModelMixin, CoreModel, ExportableModel):
         return [
             "id",
             "deploy_id",
-            "repository_id",
+            "repo_id",
             "repository_name",
             "commit_id",
             "deployed_at",

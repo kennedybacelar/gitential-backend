@@ -1,8 +1,10 @@
 import math
-from typing import Dict, List, Tuple, cast, Union
+from datetime import timedelta
+from typing import Dict, List, Tuple, cast, Union, Optional
 from ibis.expr.types import TableExpr, ColumnExpr
 import pandas as pd
 import numpy as np
+from structlog import get_logger
 from gitential2.datatypes.data_queries import (
     DQColumnAttrName,
     DQColumnExpr,
@@ -22,6 +24,9 @@ from gitential2.datatypes.data_queries import (
     DQ_ITS_SOURCE_NAMES,
 )
 from .context import GitentialContext
+
+
+logger = get_logger(__name__)
 
 
 def process_data_queries(
@@ -103,8 +108,64 @@ def parse_data_query(g: GitentialContext, workspace_id: int, query: DataQuery) -
 def _simplify_query(g: GitentialContext, workspace_id: int, query: DataQuery):
     # replace project_id to itsp_id or repo_id
     # replace team_id to dev_id
+    _adding_sprint_dimension_info_into_filters(g, workspace_id, query)
     query.filters = [_simplify_filter(g, workspace_id, f, query.source_name) for f in query.filters]
     return query
+
+
+def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> Optional[str]:
+    table_column_name_to_sprint_filter = {
+        "its_issues": "created_at",
+        "its_issue_comments": "created_at",
+        "pull_requests": "created_at",
+        "pull_request_comments": "created_at",
+        "pull_request_commits": "created_at",
+        "deploy_commits": "deployed_at",
+    }
+
+    return table_column_name_to_sprint_filter.get(table_name)
+
+
+def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id: int, query: DataQuery):
+    for i, dimension in enumerate(query.dimensions):
+        if dimension == "sprint":
+            for _filter in query.filters:
+                if (
+                    _filter.fn == DQFunctionName.EQ
+                    and isinstance(_filter.args[0], DQSingleColumnExpr)
+                    and _filter.args[0].col == "project_id"
+                ):
+                    project_id = int(cast(int, _filter.args[1]))
+            query.dimensions.pop(i)
+            if project_id:
+                project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
+                sprint = project.sprint
+                if sprint:
+                    start_date = sprint.date
+                    final_date = start_date + timedelta(weeks=sprint.weeks)
+
+                    table_name = query.source_name.value
+                    column_to_be_used_in_sprint_filter = _getting_table_column_name_to_be_used_in_sprint_filter(
+                        table_name
+                    )
+
+                    # Some tables available as data-query sources don't have neither created_at nor any other date wise column
+                    # Then, for these tables, the dimension sprint won't take any effect
+
+                    if column_to_be_used_in_sprint_filter:
+
+                        new_filter = DQFnColumnExpr(
+                            fn=DQFunctionName.BETWEEN,
+                            args=[
+                                DQSingleColumnExpr(col=column_to_be_used_in_sprint_filter),
+                                start_date.isoformat(),
+                                final_date.isoformat(),
+                            ],
+                        )
+                        query.filters.append(new_filter)
+
+                    else:
+                        logger.warning("Sprint dimension not allowed for this data source", source_name=table_name)
 
 
 def _simplify_filter(

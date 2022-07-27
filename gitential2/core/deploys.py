@@ -116,7 +116,7 @@ def _create_or_update_deploy_commits(
         id=f"{deploy_obj.id}&{environment}&{repo_id}",
         deploy_id=deploy_obj.id,
         environment=environment,
-        repository_id=repo_id,
+        repo_id=repo_id,
         repository_name=repo_name,
         commit_id=_commit_id,
         deployed_at=deploy_obj.deployed_at,
