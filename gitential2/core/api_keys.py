@@ -2,7 +2,7 @@ import json
 import random
 import string
 
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 from datetime import datetime
 from itsdangerous import URLSafeSerializer, BadData
 from structlog import get_logger
@@ -85,7 +85,12 @@ def create_workspace_api_key(g: GitentialContext, workspace_id: int) -> Tuple[Wo
     workspace_api_key_id = _generate_random_hash(24)
     token = _generate_api_key(g, workspace_api_key_id, workspace_id)
     workspace_api_key = g.backend.workspace_api_keys.create(
-        WorkspaceAPIKey(id=workspace_api_key_id, workspace_id=workspace_id)
+        WorkspaceAPIKey(
+            id=workspace_api_key_id,
+            workspace_id=workspace_id,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
     )
     return workspace_api_key, token
 
@@ -139,12 +144,12 @@ def _parse_api_key(g: GitentialContext, token: str):
     )
 
 
-def get_all_api_keys_by_workspace_id(g: GitentialContext, workspace_id: int) -> List[WorkspaceAPIKey]:
-    workspace_api_keys = g.backend.workspace_api_keys.get_all_api_keys_by_workspace_id(workspace_id)
-    return workspace_api_keys
+def get_api_key_by_workspace_id(g: GitentialContext, workspace_id: int) -> Optional[WorkspaceAPIKey]:
+    workspace_api_key = g.backend.workspace_api_keys.get_single_api_key_by_workspace_id(workspace_id)
+    return workspace_api_key
 
 
-def get_api_key_by_workspace_id(g: GitentialContext, workspace_id: int) -> str:
+def generate_workspace_token(g: GitentialContext, workspace_id: int) -> str:
     delete_api_keys_for_workspace(g, workspace_id)
     # pylint: disable=unused-variable
     _single_workspace_api_key, token = create_workspace_api_key(g, workspace_id)

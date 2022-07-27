@@ -27,6 +27,7 @@ from gitential2.core.refresh_v2 import refresh_workspace
 from gitential2.core.workspace_common import create_workspace
 from gitential2.core.api_keys import (
     delete_api_keys_for_workspace,
+    generate_workspace_token,
     get_api_key_by_workspace_id,
 )
 
@@ -216,8 +217,18 @@ def refresh_workspace_(
     return True
 
 
+@router.get("/workspaces/{workspace_id}/generate-token")
+def generate_workspace_token_(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return generate_workspace_token(g, workspace_id)
+
+
 @router.get("/workspaces/{workspace_id}/api-key")
-def workspace_api_key(
+def get_existing_workspace_token(
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
