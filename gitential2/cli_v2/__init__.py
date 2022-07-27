@@ -10,9 +10,7 @@ from gitential2.core.emails import send_email_to_user
 from gitential2.core.maintenance import maintenance
 from gitential2.core.tasks import configure_celery
 from gitential2.core.users import get_user
-from gitential2.datatypes.deploys import Deploy
 from gitential2.logging import initialize_logging
-from gitential2.public_api.dependencies import gitential_context
 from gitential2.settings import load_settings
 from gitential2.core.quick_login import generate_quick_login
 from gitential2.core.api_keys import (
@@ -21,7 +19,6 @@ from gitential2.core.api_keys import (
     create_workspace_api_key,
     delete_api_keys_for_workspace,
 )
-from gitential2.core.deploys import get_all_deploys
 from .common import OutputFormat, get_context, print_results
 from .emails import app as emails_app
 from .export import app as export_app
@@ -42,6 +39,7 @@ from .its import app as its_app
 from .data_queries import app as data_queries_app
 from .reseller_codes import app as reseller_codes
 from .deploys import app as deploys_app
+from .duplicate_workspace import app as duplicate_workspace
 
 logger = get_logger(__name__)
 
@@ -65,6 +63,7 @@ app.add_typer(its_app, name="its")
 app.add_typer(data_queries_app, name="data-query")
 app.add_typer(reseller_codes, name="reseller-codes")
 app.add_typer(deploys_app, name="deploys")
+app.add_typer(duplicate_workspace, name="duplicate_workspace")
 
 
 @app.command("public-api")
@@ -138,11 +137,11 @@ def maintenance_():
 
 
 @app.command("deduplicate-authors")
-def deduplicate_authors_(worspace_id: int, dry_run: bool = False):
+def deduplicate_authors_(workspace_id: int, dry_run: bool = False):
     g = get_context()
     configure_celery(g.settings)
 
-    results = deduplicate_authors(g, worspace_id, dry_run)
+    results = deduplicate_authors(g, workspace_id, dry_run)
 
     for result in results:
 
@@ -151,21 +150,17 @@ def deduplicate_authors_(worspace_id: int, dry_run: bool = False):
 
 
 @app.command("fix-author-names")
-def fix_author_names_(
-    worspace_id: int,
-):
+def fix_author_names_(workspace_id: int):
     g = get_context()
     configure_celery(g.settings)
-    fix_author_names(g, worspace_id)
+    fix_author_names(g, workspace_id)
 
 
 @app.command("fix-author-aliases")
-def fix_author_aliases_(
-    worspace_id: int,
-):
+def fix_author_aliases_(workspace_id: int):
     g = get_context()
     configure_celery(g.settings)
-    fix_author_aliases(g, worspace_id)
+    fix_author_aliases(g, workspace_id)
 
 
 @app.command("quick-login")

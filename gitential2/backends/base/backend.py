@@ -291,6 +291,10 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
+    def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):
+        pass
+
+    @abstractmethod
     def migrate(self):
         pass
 

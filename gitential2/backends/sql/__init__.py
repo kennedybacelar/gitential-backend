@@ -76,7 +76,7 @@ from .tables import (
     workspace_members_table,
     metadata,
     subscriptions_table,
-    get_workspace_metadata,
+    get_workspace_metadata, WorkspaceTableNames,
 )
 
 from .materialized_views import (
@@ -421,6 +421,15 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         workspace_metadata, _ = get_workspace_metadata(schema_name)
         workspace_metadata.create_all(self._engine)
         set_ws_migration_revision_after_create(workspace_id, self._engine)
+
+    def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):
+        schema_from = self._workspace_schema_name(workspace_id_from)
+        schema_to = self._workspace_schema_name(workspace_id_to)
+        for table in WorkspaceTableNames:
+            table_name: str = table.value
+            query = f"INSERT INTO {schema_to}.{table_name} SELECT * FROM {schema_from}.{table_name};"
+            self._engine.execute(query)
+        pass
 
     def migrate(self):
         migrate_database(self._engine, [w.id for w in self.workspaces.all()])

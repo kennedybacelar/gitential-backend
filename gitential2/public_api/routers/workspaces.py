@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends
 from structlog import get_logger
-from gitential2.datatypes.workspaces import WorkspacePublic, WorkspaceCreate, WorkspaceUpdate
+from gitential2.datatypes.workspaces import WorkspacePublic, WorkspaceCreate, WorkspaceUpdate, WorkspaceDuplicate
 
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.credentials import CredentialCreate, CredentialInDB, CredentialType
@@ -24,7 +24,7 @@ from gitential2.core.credentials import (
     list_connected_its_sources,
 )
 from gitential2.core.refresh_v2 import refresh_workspace
-from gitential2.core.workspace_common import create_workspace
+from gitential2.core.workspace_common import create_workspace, duplicate_workspace
 from gitential2.core.api_keys import (
     delete_api_keys_for_workspace,
     get_api_key_by_workspace_id,
@@ -103,6 +103,16 @@ def create_workspace_(
 ):
     check_permission(g, current_user, Entity.workspace, Action.create)
     return create_workspace(g, workspace_create, current_user=current_user, primary=False)
+
+
+@router.post("/workspaces/duplicate", response_model=WorkspacePublic)
+def duplicate_workspace_(
+    workspace_duplicate: WorkspaceDuplicate,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.create)
+    return duplicate_workspace(g, workspace_duplicate=workspace_duplicate, current_user=current_user)
 
 
 @router.get("/workspaces/{workspace_id}/repository-sources")

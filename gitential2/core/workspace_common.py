@@ -1,5 +1,5 @@
 from gitential2.exceptions import PermissionException
-from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB
+from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB, WorkspaceDuplicate
 
 from gitential2.datatypes.subscriptions import SubscriptionType
 from gitential2.datatypes.users import UserInDB
@@ -11,7 +11,10 @@ from .context import GitentialContext
 
 
 def create_workspace(
-    g: GitentialContext, workspace: WorkspaceCreate, current_user: UserInDB, primary=False
+    g: GitentialContext,
+    workspace: WorkspaceCreate,
+    current_user: UserInDB,
+    primary=False
 ) -> WorkspaceInDB:
     if not primary and g.license.is_cloud:
         sub = get_current_subscription(g, current_user.id)
@@ -27,3 +30,16 @@ def create_workspace(
     )
     g.backend.initialize_workspace(workspace_id=workspace_in_db.id)
     return workspace_in_db
+
+
+def duplicate_workspace(
+    g: GitentialContext,
+    workspace_duplicate: WorkspaceDuplicate,
+    current_user: UserInDB
+) -> WorkspaceInDB:
+    result: WorkspaceInDB = create_workspace(g=g, workspace=workspace_duplicate, current_user=current_user)
+    g.backend.duplicate_workspace(
+        workspace_id_from=workspace_duplicate.id_of_workspace_to_be_duplicated,
+        workspace_id_to=result.id
+    )
+    return result
