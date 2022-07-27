@@ -76,7 +76,8 @@ from .tables import (
     workspace_members_table,
     metadata,
     subscriptions_table,
-    get_workspace_metadata, WorkspaceTableNames,
+    get_workspace_metadata,
+    WorkspaceTableNames,
 )
 
 from .materialized_views import (
@@ -429,7 +430,6 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             table_name: str = table.value
             query = f"INSERT INTO {schema_to}.{table_name} SELECT * FROM {schema_from}.{table_name};"
             self._engine.execute(query)
-        pass
 
     def migrate(self):
         migrate_database(self._engine, [w.id for w in self.workspaces.all()])
