@@ -124,3 +124,7 @@ def add_url_params(url, params):
     ).geturl()
 
     return new_url
+
+
+def get_schema_name(workspace_id: int):
+    return f"ws_{workspace_id}"

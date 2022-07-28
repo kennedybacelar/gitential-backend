@@ -132,6 +132,7 @@ from ..base import (
 from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
+from ...utils import get_schema_name
 
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
@@ -389,7 +390,7 @@ class SQLWorkspaceScopedRepository(
             return callback_fn(result)
 
     def _schema_name(self, workspace_id):
-        return f"ws_{workspace_id}"
+        return get_schema_name(workspace_id)
 
     def _connection_with_schema(self, workspace_id):
         return self.engine.connect().execution_options(schema_translate_map={None: self._schema_name(workspace_id)})
@@ -428,6 +429,10 @@ class SQLWorkspaceAPIKeyRepository(
         if row:
             return WorkspaceAPIKey(**row)
         return None
+
+    def delete_rows_for_workspace(self, workspace_id: int) -> int:
+        query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLDeployRepository(DeployRepository, SQLWorkspaceScopedRepository[str, Deploy, Deploy, Deploy]):
@@ -529,6 +534,10 @@ class SQLWorkspaceInvitationRepository(
         row = self._execute_query(query, callback_fn=fetchone_)
         return WorkspaceInvitationInDB(**row) if row else None
 
+    def delete_rows_for_workspace(self, workspace_id: int) -> int:
+        query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
 
 class SQLWorkspaceMemberRepository(
     WorkspaceMemberRepository,
@@ -550,6 +559,10 @@ class SQLWorkspaceMemberRepository(
         )
         row = self._execute_query(query, callback_fn=fetchone_)
         return WorkspaceMemberInDB(**row) if row else None
+
+    def delete_rows_for_workspace(self, workspace_id: int) -> int:
+        query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLProjectRepository(

@@ -407,6 +407,12 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def initialize_workspace(self, workspace_id: int):
         pass
 
+    def delete_workspace_schema(self, workspace_id: int):
+        pass
+
+    def delete_workspace(self, workspace_id: int):
+        pass
+
     def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):
         pass
 
@@ -414,6 +420,9 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         pass
 
     def migrate_workspace(self, workspace_id: int):
+        pass
+
+    def delete_schema_revision(self, workspace_id: int):
         pass
 
     def create_missing_materialized_views(self, workspace_id: int):

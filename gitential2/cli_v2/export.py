@@ -9,6 +9,7 @@ from gitential2.export.exporters import Exporter, CSVExporter, JSONExporter, SQL
 from gitential2.backends.base.repositories import BaseWorkspaceScopedRepository
 
 from .common import get_context, validate_directory_exists
+from ..utils import get_schema_name
 
 app = typer.Typer()
 
@@ -165,7 +166,8 @@ def _upload_to_aws_s3(list_of_files_to_be_uploaded_to_s3: List[str], aws_s3_loca
 
 
 def _get_exporter(export_format: ExportFormat, destination_directory: Path, workspace_id: int) -> Exporter:
-    prefix = f"ws_{workspace_id}_"
+    schema_name = get_schema_name(workspace_id)
+    prefix = f"{schema_name}_"
     if export_format == ExportFormat.csv:
         return CSVExporter(destination_directory, prefix)
     elif export_format == ExportFormat.json:

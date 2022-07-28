@@ -141,10 +141,12 @@ from .repositories_its import (
     SQLITSSprintRepository,
 )
 
-from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace
+from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace, \
+    delete_schema_revision
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB
+from ...utils import get_schema_name
 
 
 def json_dumps(obj):
@@ -411,7 +413,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             return result
 
     def _workspace_schema_name(self, workspace_id: int) -> str:
-        return f"ws_{workspace_id}"
+        return get_schema_name(workspace_id)
 
     def initialize(self):
         self._metadata.create_all(self._engine)
@@ -422,6 +424,20 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         workspace_metadata, _ = get_workspace_metadata(schema_name)
         workspace_metadata.create_all(self._engine)
         set_ws_migration_revision_after_create(workspace_id, self._engine)
+
+    def delete_workspace_schema(self, workspace_id: int):
+        schema_name = self._workspace_schema_name(workspace_id)
+        query = f"DROP SCHEMA IF EXISTS {schema_name} CASCADE;"
+        self._engine.execute(query)
+
+    def delete_workspace(self, workspace_id: int):
+        self.workspace_members.delete_rows_for_workspace(workspace_id=workspace_id)
+        self.workspace_api_keys.delete_rows_for_workspace(workspace_id=workspace_id)
+        self.workspace_invitations.delete_rows_for_workspace(workspace_id=workspace_id)
+        self.delete_schema_revision(workspace_id=workspace_id)
+        self.workspaces.delete(workspace_id)
+        self.delete_workspace_schema(workspace_id)
+        return True
 
     def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):
         schema_from = self._workspace_schema_name(workspace_id_from)
@@ -436,6 +452,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def migrate_workspace(self, workspace_id: int):
         migrate_workspace(self._engine, workspace_id)
+
+    def delete_schema_revision(self, workspace_id: int):
+        delete_schema_revision(self._engine, workspace_id)
 
     def create_missing_materialized_views(self, workspace_id: int):
         queries = [

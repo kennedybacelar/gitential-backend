@@ -128,6 +128,10 @@ class WorkspaceAPIKeyRepository(BaseRepository[str, WorkspaceAPIKey, WorkspaceAP
     def get_single_api_key_by_workspace_id(self, workspace_id: int) -> Optional[WorkspaceAPIKey]:
         pass
 
+    @abstractmethod
+    def delete_rows_for_workspace(self, workspace_id: int):
+        pass
+
 
 class DeployRepository(BaseWorkspaceScopedRepository[str, Deploy, Deploy, Deploy]):
     @abstractmethod
@@ -196,6 +200,10 @@ class WorkspaceInvitationRepository(
     def get_invitation_by_code(self, invitation_code: str) -> Optional[WorkspaceInvitationInDB]:
         pass
 
+    @abstractmethod
+    def delete_rows_for_workspace(self, workspace_id: int):
+        pass
+
 
 class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB]):
     @abstractmethod
@@ -208,6 +216,10 @@ class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, Works
 
     @abstractmethod
     def get_for_workspace_and_user(self, workspace_id: int, user_id: int) -> Optional[WorkspaceMemberInDB]:
+        pass
+
+    @abstractmethod
+    def delete_rows_for_workspace(self, workspace_id: int):
         pass
 
 
