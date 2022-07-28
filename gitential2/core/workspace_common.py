@@ -12,7 +12,7 @@ from .context import GitentialContext
 
 
 def check_permission_for_workspace_creation(g: GitentialContext, current_user: UserInDB, primary=False):
-    if not primary and g.license.is_cloud and not check_is_admin(g, current_user):
+    if not primary and g.license.is_cloud and not check_is_admin(g, current_user, False):
         sub = get_current_subscription(g, current_user.id)
         if sub.subscription_type == SubscriptionType.free:
             raise PermissionException("Users with FREE subscription can only have one workspace")
