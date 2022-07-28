@@ -30,7 +30,6 @@ def list_teams_(
     workspace_id: int, current_user=Depends(current_user), g: GitentialContext = Depends(gitential_context)
 ):
     check_permission(g, current_user, Entity.team, Action.read, workspace_id=workspace_id)
-
     return list_teams(g, workspace_id)
 
 
@@ -42,7 +41,6 @@ def get_team_(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.team, Action.read, workspace_id=workspace_id)
-
     return get_team_with_authors(g, workspace_id, team_id)
 
 

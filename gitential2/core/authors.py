@@ -1,12 +1,21 @@
 import re
 import contextlib
-from typing import Iterable, Dict, List, Optional, cast, Tuple
+from typing import Iterable, Dict, List, Optional, cast, Tuple, Union
 from itertools import product
 from unidecode import unidecode
 from structlog import get_logger
-from gitential2.datatypes.authors import AuthorAlias, AuthorInDB, AuthorCreate, AuthorUpdate
+from gitential2.datatypes.authors import (
+    AuthorAlias,
+    AuthorInDB,
+    AuthorCreate,
+    AuthorUpdate,
+    AuthorPublicExt,
+    IdAndTitle,
+)
 from gitential2.utils import levenshtein_ratio
 from .context import GitentialContext
+from ..datatypes.teammembers import TeamMemberInDB
+from ..datatypes.teams import TeamInDB
 
 logger = get_logger(__name__)
 
@@ -35,6 +44,64 @@ def authors_change_lock(
         f"authors-change-lock{workspace_id}", timeout=timeout_seconds, blocking_timeout=blocking_timeout_seconds
     ):
         yield
+
+
+def _get_team_title(team_member: TeamMemberInDB, teams_in_workspace: List[TeamInDB]) -> Union[str, None]:
+    result = None
+    for team in teams_in_workspace:
+        if team.id == team_member.team_id:
+            result = team.name
+            break
+    return result
+
+
+def _get_author_ext(
+    author: AuthorInDB,
+    team_members: List[TeamMemberInDB],
+    authors_in_projects: dict,
+    teams_in_workspace: List[TeamInDB],
+) -> AuthorPublicExt:
+    projects_data = authors_in_projects.get(author.id) or {}
+    project_ids, project_names = projects_data.get("project_ids") or [], projects_data.get("project_names") or []
+    return AuthorPublicExt(
+        id=author.id,
+        created_at=author.created_at,
+        updated_at=author.updated_at,
+        active=author.active,
+        name=author.name,
+        email=author.email,
+        aliases=author.aliases,
+        projects=[
+            IdAndTitle(id=project_data[0], title=project_data[1]) for project_data in zip(project_ids, project_names)
+        ],
+        teams=[
+            IdAndTitle(
+                id=team_member.team_id,
+                title=_get_team_title(team_member, teams_in_workspace),
+            )
+            for team_member in team_members
+            if team_member.author_id == author.id
+        ],
+    )
+
+
+def list_authors_ext(g: GitentialContext, workspace_id: int, authors_in_projects: dict) -> List[AuthorPublicExt]:
+    authors_from_db: List[AuthorInDB] = list_authors(g, workspace_id)
+    author_ids: List[int] = [author.id for author in authors_from_db]
+    teams_in_workspace: List[TeamInDB] = list(g.backend.teams.all(workspace_id))
+    team_members: List[TeamMemberInDB] = g.backend.team_members.get_team_members_by_author_ids(
+        workspace_id=workspace_id, author_ids=author_ids
+    )
+    result: List[AuthorPublicExt] = [
+        _get_author_ext(
+            author=author,
+            team_members=team_members,
+            authors_in_projects=authors_in_projects,
+            teams_in_workspace=teams_in_workspace,
+        )
+        for author in authors_from_db
+    ]
+    return result
 
 
 def list_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
