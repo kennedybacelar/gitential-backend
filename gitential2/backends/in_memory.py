@@ -264,7 +264,7 @@ class InMemWorkspaceAPIKeyRepository(
 class InMemWorkspaceRepository(
     WorkspaceRepository, InMemRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]
 ):
-    def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+    def get_workspaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
         return [item for item in self._state.values() if item.id in workspace_ids]
 
 
@@ -283,6 +283,11 @@ class InMemWorkspaceMemberRepository(
             if item.workspace_id == workspace_id and item.user_id == user_id:
                 return item
         return None
+
+    def delete_rows_for_workspace(self, workspace_id: int):
+        for item in self._state.values():
+            if item.workspace_id == workspace_id:
+                self.delete(id_=item.id)
 
 
 class InMemCredentialRepository(

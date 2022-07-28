@@ -141,8 +141,12 @@ from .repositories_its import (
     SQLITSSprintRepository,
 )
 
-from .migrations import migrate_database, set_ws_migration_revision_after_create, migrate_workspace, \
-    delete_schema_revision
+from .migrations import (
+    migrate_database,
+    set_ws_migration_revision_after_create,
+    migrate_workspace,
+    delete_schema_revision,
+)
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB

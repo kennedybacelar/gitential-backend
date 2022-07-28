@@ -514,7 +514,7 @@ class SQLCredentialRepository(
 
 
 class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
-    def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+    def get_workspaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
         query = self.table.select().where(self.table.c.id.in_(workspace_ids))
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [WorkspaceInDB(**row) for row in rows]

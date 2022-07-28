@@ -185,7 +185,7 @@ class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdat
 
 class WorkspaceRepository(BaseRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
     @abstractmethod
-    def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+    def get_workspaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
         pass
 
 
