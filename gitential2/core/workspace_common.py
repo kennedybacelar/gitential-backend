@@ -32,7 +32,8 @@ def create_workspace(
 def duplicate_workspace(
     g: GitentialContext, workspace_duplicate: WorkspaceDuplicate, current_user: UserInDB
 ) -> WorkspaceInDB:
-    result: WorkspaceInDB = create_workspace(g=g, workspace=workspace_duplicate, current_user=current_user)
+    workspace_create = WorkspaceCreate(name=workspace_duplicate.name)
+    result: WorkspaceInDB = create_workspace(g=g, workspace=workspace_create, current_user=current_user)
     g.backend.duplicate_workspace(
         workspace_id_from=workspace_duplicate.id_of_workspace_to_be_duplicated, workspace_id_to=result.id
     )
