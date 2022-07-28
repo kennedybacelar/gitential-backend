@@ -39,7 +39,10 @@ from .its import app as its_app
 from .data_queries import app as data_queries_app
 from .reseller_codes import app as reseller_codes
 from .deploys import app as deploys_app
-from .duplicate_workspace import app as duplicate_workspace
+from ..core.workspace_common import duplicate_workspace
+from ..datatypes import UserInDB
+from ..datatypes.workspaces import WorkspaceDuplicate
+from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
 
@@ -63,7 +66,6 @@ app.add_typer(its_app, name="its")
 app.add_typer(data_queries_app, name="data-query")
 app.add_typer(reseller_codes, name="reseller-codes")
 app.add_typer(deploys_app, name="deploys")
-app.add_typer(duplicate_workspace, name="duplicate_workspace")
 
 
 @app.command("public-api")
@@ -200,6 +202,33 @@ def generate_workspace_api_key(workspace_id: int):
 def delete_keys_for_workspace(workspace_id: int):
     g = get_context()
     delete_api_keys_for_workspace(g, workspace_id)
+
+
+@app.command("duplicate-workspace")
+def duplicate_workspace_asd(source_workspace_id: int, user_id: int, new_workspace_name: str):
+    """
+    With this command you can duplicate a workspace.
+
+    \b
+    You need to provide three arguments:
+    SOURCE_WORKSPACE_ID: The id of the workspace you want to duplicate.
+    USER_ID: The name of the duplicated workspace. It can not be an already existing workspace name.
+    NEW_WORKSPACE_NAME: The id of the user
+    """
+
+    g = get_context()
+    workspace_duplicate = WorkspaceDuplicate(
+        id_of_workspace_to_be_duplicated=source_workspace_id, name=new_workspace_name
+    )
+    user: Optional[UserInDB] = get_user(g, user_id)
+
+    all_workspace_names = [workspace.name for workspace in list(g.backend.workspaces.all())]
+    if new_workspace_name in all_workspace_names:
+        raise SettingsException("Can not duplicate workspace! Workspace name already exists!")
+    if not user:
+        raise SettingsException("Can not duplicate workspace! Wrong user id! User not exists!")
+
+    duplicate_workspace(g=g, workspace_duplicate=workspace_duplicate, current_user=user, is_permission_check_on=False)
 
 
 def main(prog_name: Optional[str] = None):

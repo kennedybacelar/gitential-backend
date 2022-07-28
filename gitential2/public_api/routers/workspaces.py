@@ -45,7 +45,6 @@ def workspaces(
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
-
     return get_accessible_workspaces(
         g=g, current_user=current_user, include_members=include_members, include_projects=include_projects
     )
