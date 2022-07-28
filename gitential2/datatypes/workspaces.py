@@ -25,3 +25,7 @@ class WorkspaceInDB(IDModelMixin, DateTimeModelMixin, WorkspaceBase):
 class WorkspacePublic(IDModelMixin, DateTimeModelMixin, WorkspaceBase):
     membership: Optional[WorkspaceMemberPublic] = None
     members: Optional[List[WorkspaceMemberPublic]] = None
+
+
+class WorkspaceDuplicate(WorkspaceCreate):
+    id_of_workspace_to_be_duplicated: int

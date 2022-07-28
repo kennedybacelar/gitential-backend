@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Optional
 import datetime as dt
 
@@ -11,6 +12,41 @@ from gitential2.datatypes.repositories import GitProtocol
 from gitential2.datatypes.extraction import Langtype
 
 metadata = sa.MetaData()
+
+
+class WorkspaceTableNames(str, Enum):
+    projects = "projects"
+    repositories = "repositories"
+    its_projects = "its_projects"
+    project_repositories = "project_repositories"
+    project_its_projects = "project_its_projects"
+    extracted_commits = "extracted_commits"
+    dashboards = "dashboards"
+    charts = "charts"
+    thumbnails = "thumbnails"
+    calculated_commits = "calculated_commits"
+    extracted_patches = "extracted_patches"
+    calculated_patches = "calculated_patches"
+    extracted_patch_rewrites = "extracted_patch_rewrites"
+    authors = "authors"
+    teams = "teams"
+    team_members = "team_members"
+    pull_requests = "pull_requests"
+    pull_request_commits = "pull_request_commits"
+    pull_request_comments = "pull_request_comments"
+    pull_request_labels = "pull_request_labels"
+    extracted_commit_branches = "extracted_commit_branches"
+    its_issues = "its_issues"
+    its_issue_changes = "its_issue_changes"
+    its_issue_times_in_statuses = "its_issue_times_in_statuses"
+    its_issue_comments = "its_issue_comments"
+    its_issue_linked_issues = "its_issue_linked_issues"
+    its_sprints = "its_sprints"
+    its_issue_sprints = "its_issue_sprints"
+    its_issue_worklogs = "its_issue_worklogs"
+    deploys = "deploys"
+    deploy_commits = "deploy_commits"
+
 
 schema_revisions_table = sa.Table(
     "schema_revisions",
@@ -211,6 +247,7 @@ email_log_table = sa.Table(
     sa.Column("scheduled_at", sa.DateTime, nullable=False),
     sa.Column("sent_at", sa.DateTime, nullable=True),
 )
+
 
 # pylint: disable=unused-variable,too-many-locals
 def get_workspace_metadata(schema: Optional[str] = None):
@@ -854,37 +891,39 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("author_id", sa.Integer(), nullable=False),
     )
 
-    return metadata, {
-        "projects": projects,
-        "repositories": repositories,
-        "its_projects": its_projects,
-        "project_repositories": project_repositories,
-        "project_its_projects": project_its_projects,
-        "extracted_commits": extracted_commits,
-        "dashboards": dashboards,
-        "charts": charts,
-        "thumbnails": thumbnails,
-        "calculated_commits": calculated_commits,
-        "extracted_patches": extracted_patches,
-        "calculated_patches": calculated_patches,
-        "extracted_patch_rewrites": extracted_patch_rewrites,
-        "authors": authors,
-        "teams": teams,
-        "team_members": team_members,
-        "pull_requests": pull_requests,
-        "pull_request_commits": pull_request_commits,
-        "pull_request_comments": pull_request_comments,
-        "pull_request_labels": pull_request_labels,
-        "extracted_commit_branches": extracted_commit_branches,
+    tables = {
+        WorkspaceTableNames.projects: projects,
+        WorkspaceTableNames.repositories: repositories,
+        WorkspaceTableNames.its_projects: its_projects,
+        WorkspaceTableNames.project_repositories: project_repositories,
+        WorkspaceTableNames.project_its_projects: project_its_projects,
+        WorkspaceTableNames.extracted_commits: extracted_commits,
+        WorkspaceTableNames.dashboards: dashboards,
+        WorkspaceTableNames.charts: charts,
+        WorkspaceTableNames.thumbnails: thumbnails,
+        WorkspaceTableNames.calculated_commits: calculated_commits,
+        WorkspaceTableNames.extracted_patches: extracted_patches,
+        WorkspaceTableNames.calculated_patches: calculated_patches,
+        WorkspaceTableNames.extracted_patch_rewrites: extracted_patch_rewrites,
+        WorkspaceTableNames.authors: authors,
+        WorkspaceTableNames.teams: teams,
+        WorkspaceTableNames.team_members: team_members,
+        WorkspaceTableNames.pull_requests: pull_requests,
+        WorkspaceTableNames.pull_request_commits: pull_request_commits,
+        WorkspaceTableNames.pull_request_comments: pull_request_comments,
+        WorkspaceTableNames.pull_request_labels: pull_request_labels,
+        WorkspaceTableNames.extracted_commit_branches: extracted_commit_branches,
         # its data tables
-        "its_issues": its_issues,
-        "its_issue_changes": its_issue_changes,
-        "its_issue_times_in_statuses": its_issue_times_in_statuses,
-        "its_issue_comments": its_issue_comments,
-        "its_issue_linked_issues": its_issue_linked_issues,
-        "its_sprints": its_sprints,
-        "its_issue_sprints": its_issue_sprints,
-        "its_issue_worklogs": its_issue_worklogs,
-        "deploys": deploys,
-        "deploy_commits": deploy_commits,
+        WorkspaceTableNames.its_issues: its_issues,
+        WorkspaceTableNames.its_issue_changes: its_issue_changes,
+        WorkspaceTableNames.its_issue_times_in_statuses: its_issue_times_in_statuses,
+        WorkspaceTableNames.its_issue_comments: its_issue_comments,
+        WorkspaceTableNames.its_issue_linked_issues: its_issue_linked_issues,
+        WorkspaceTableNames.its_sprints: its_sprints,
+        WorkspaceTableNames.its_issue_sprints: its_issue_sprints,
+        WorkspaceTableNames.its_issue_worklogs: its_issue_worklogs,
+        WorkspaceTableNames.deploys: deploys,
+        WorkspaceTableNames.deploy_commits: deploy_commits,
     }
+
+    return metadata, tables

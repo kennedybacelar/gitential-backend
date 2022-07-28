@@ -185,12 +185,12 @@ def update_workspace(
         raise Exception("Authentication error")
 
 
-def delete_workspace(g: GitentialContext, workspace_id: int, current_user: UserInDB) -> int:
+def delete_workspace(g: GitentialContext, workspace_id: int, current_user: UserInDB) -> bool:
     membership = g.backend.workspace_members.get_for_workspace_and_user(
         workspace_id=workspace_id, user_id=current_user.id
     )
-    if membership:
-        return g.backend.workspaces.delete(workspace_id)
+    if membership and membership.role == WorkspaceRole.owner and not membership.primary:
+        return g.backend.delete_workspace(workspace_id)
     else:
         raise AuthenticationException("Authentication error")
 

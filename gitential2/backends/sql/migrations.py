@@ -7,7 +7,7 @@ from gitential2.datatypes.common import CoreModel
 from ..base.repositories import BaseRepository
 from .repositories import SQLRepository
 from .tables import schema_revisions_table, get_workspace_metadata
-
+from ...utils import get_schema_name
 
 logger = get_logger(__name__)
 
@@ -131,9 +131,26 @@ def migrate_workspace(engine: Engine, workspace_id: int, _schema_revisions: Opti
     schema_revisions = _schema_revisions or SQLSchemaRevisionRepository(
         table=schema_revisions_table, engine=engine, in_db_cls=SchemaRevision
     )
-    schema_name = f"ws_{workspace_id}"
+    schema_name = get_schema_name(workspace_id)
     create_missing_workspace_tables(engine, schema_name)
     _do_migration(schema_name, workspace_schema_migrations(schema_name), schema_revisions, engine)
+
+
+def delete_schema_revision(engine: Engine, workspace_id: int) -> bool:
+    result = False
+    schema_revision_id = get_schema_name(workspace_id)
+
+    schema_rev_repo: SchemaRevisionRepository = SQLSchemaRevisionRepository(
+        table=schema_revisions_table, engine=engine, in_db_cls=SchemaRevision
+    )
+    revision_to_delete = schema_rev_repo.get(schema_revision_id)
+    if revision_to_delete:
+        logger.info(f"Deleting schema revision for workspace with id: {workspace_id}!")
+        schema_rev_repo.delete(schema_revision_id)
+        result = True
+    else:
+        logger.info(f"Can not delete schema revision for workspace with id: {workspace_id}!")
+    return result
 
 
 def create_missing_workspace_tables(engine: Engine, schema_name: str):
@@ -193,4 +210,5 @@ def set_schema_to_revision(schema_name: str, revision_id: str, engine: Engine):
 
 def set_ws_migration_revision_after_create(workspace_id: int, engine: Engine):
     revision_id = get_latest_ws_revision()
-    set_schema_to_revision(f"ws_{workspace_id}", revision_id, engine)
+    schema_name = get_schema_name(workspace_id)
+    set_schema_to_revision(schema_name, revision_id, engine)

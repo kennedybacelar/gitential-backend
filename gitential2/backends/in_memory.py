@@ -264,7 +264,7 @@ class InMemWorkspaceAPIKeyRepository(
 class InMemWorkspaceRepository(
     WorkspaceRepository, InMemRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]
 ):
-    def get_worskpaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
+    def get_workspaces_by_ids(self, workspace_ids: List[int]) -> List[WorkspaceInDB]:
         return [item for item in self._state.values() if item.id in workspace_ids]
 
 
@@ -283,6 +283,11 @@ class InMemWorkspaceMemberRepository(
             if item.workspace_id == workspace_id and item.user_id == user_id:
                 return item
         return None
+
+    def delete_rows_for_workspace(self, workspace_id: int):
+        for item in self._state.values():
+            if item.workspace_id == workspace_id:
+                self.delete(id_=item.id)
 
 
 class InMemCredentialRepository(
@@ -407,10 +412,22 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def initialize_workspace(self, workspace_id: int):
         pass
 
+    def delete_workspace_schema(self, workspace_id: int):
+        pass
+
+    def delete_workspace(self, workspace_id: int):
+        pass
+
+    def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):
+        pass
+
     def migrate(self):
         pass
 
     def migrate_workspace(self, workspace_id: int):
+        pass
+
+    def delete_schema_revision(self, workspace_id: int):
         pass
 
     def create_missing_materialized_views(self, workspace_id: int):
