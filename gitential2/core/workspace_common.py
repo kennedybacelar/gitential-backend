@@ -1,3 +1,5 @@
+from typing import Optional
+
 from gitential2.exceptions import PermissionException
 from gitential2.datatypes.workspaces import WorkspaceCreate, WorkspaceInDB, WorkspaceDuplicate
 
@@ -24,6 +26,7 @@ def create_workspace(
     current_user: UserInDB,
     primary=False,
     is_permission_check_on: bool = True,
+    workspace_duplicate: Optional[WorkspaceDuplicate] = None,
 ) -> WorkspaceInDB:
     if is_permission_check_on:
         check_permission_for_workspace_creation(g, current_user, primary)
@@ -35,7 +38,7 @@ def create_workspace(
             workspace_id=workspace_in_db.id, user_id=current_user.id, role=WorkspaceRole.owner, primary=primary
         )
     )
-    g.backend.initialize_workspace(workspace_id=workspace_in_db.id)
+    g.backend.initialize_workspace(workspace_id=workspace_in_db.id, workspace_duplicate=workspace_duplicate)
     return workspace_in_db
 
 
@@ -47,9 +50,10 @@ def duplicate_workspace(
 ) -> WorkspaceInDB:
     workspace_create = WorkspaceCreate(name=workspace_duplicate.name)
     created_workspace: WorkspaceInDB = create_workspace(
-        g=g, workspace=workspace_create, current_user=current_user, is_permission_check_on=is_permission_check_on
-    )
-    g.backend.duplicate_workspace(
-        workspace_id_from=workspace_duplicate.id_of_workspace_to_be_duplicated, workspace_id_to=created_workspace.id
+        g=g,
+        workspace=workspace_create,
+        workspace_duplicate=workspace_duplicate,
+        current_user=current_user,
+        is_permission_check_on=is_permission_check_on,
     )
     return created_workspace

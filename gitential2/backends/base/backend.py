@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Tuple, Set
+from typing import Tuple, Set, Optional
 from abc import ABC, abstractmethod
 from ibis.expr.types import TableExpr
 import pandas as pd
@@ -56,6 +56,7 @@ from .repositories_its import (
     ITSIssueWorklogRepository,
     ITSSprintRepository,
 )
+from ...datatypes.workspaces import WorkspaceDuplicate
 
 
 class GitentialBackend(ABC):
@@ -287,7 +288,7 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
-    def initialize_workspace(self, workspace_id: int):
+    def initialize_workspace(self, workspace_id: int, workspace_duplicate: Optional[WorkspaceDuplicate] = None):
         pass
 
     @abstractmethod

@@ -66,6 +66,7 @@ from .base import (
     EmailLogRepository,
 )
 from .base.mixins import WithRepositoriesMixin
+from ..datatypes.workspaces import WorkspaceDuplicate
 
 
 class InMemAccessLogRepository(AccessLogRepository):
@@ -409,7 +410,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def initialize(self):
         pass
 
-    def initialize_workspace(self, workspace_id: int):
+    def initialize_workspace(self, workspace_id: int, workspace_duplicate: Optional[WorkspaceDuplicate] = None):
         pass
 
     def delete_workspace_schema(self, workspace_id: int):

@@ -1,6 +1,6 @@
 from datetime import datetime
 import json
-from typing import Any, Tuple, Set
+from typing import Any, Tuple, Set, Optional
 from threading import Lock
 
 import pandas as pd
@@ -150,6 +150,7 @@ from .migrations import (
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB
+from ...datatypes.workspaces import WorkspaceDuplicate
 from ...utils import get_schema_name
 
 
@@ -422,11 +423,18 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def initialize(self):
         self._metadata.create_all(self._engine)
 
-    def initialize_workspace(self, workspace_id: int):
+    def initialize_workspace(self, workspace_id: int, workspace_duplicate: Optional[WorkspaceDuplicate] = None):
         schema_name = self._workspace_schema_name(workspace_id)
         self._engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
-        workspace_metadata, _ = get_workspace_metadata(schema_name)
-        workspace_metadata.create_all(self._engine)
+
+        if workspace_duplicate:
+            self.duplicate_workspace(
+                workspace_id_from=workspace_duplicate.id_of_workspace_to_be_duplicated, workspace_id_to=workspace_id
+            )
+        else:
+            workspace_metadata, _ = get_workspace_metadata(schema_name)
+            workspace_metadata.create_all(self._engine)
+
         set_ws_migration_revision_after_create(workspace_id, self._engine)
 
     def delete_workspace_schema(self, workspace_id: int):
@@ -448,7 +456,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         schema_to = self._workspace_schema_name(workspace_id_to)
         for table in WorkspaceTableNames:
             table_name: str = table.value
-            query = f"INSERT INTO {schema_to}.{table_name} SELECT * FROM {schema_from}.{table_name};"
+            query = f"CREATE TABLE {schema_to}.{table_name} AS TABLE {schema_from}.{table_name};"
             self._engine.execute(query)
 
     def migrate(self):

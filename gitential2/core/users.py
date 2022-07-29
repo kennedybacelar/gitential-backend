@@ -170,7 +170,7 @@ def _create_primary_workspace_if_missing(g: GitentialContext, user: UserInDB):
     has_primary = any(ewm.role == WorkspaceRole.owner for ewm in existing_workspace_memberships)
     if not has_primary:
         workspace = WorkspaceCreate(name=f"{user.login}'s workspace")
-        create_workspace(g, workspace, current_user=user, primary=True)
+        create_workspace(g, workspace=workspace, current_user=user, primary=True)
 
 
 def _create_default_subscription_after_reg(
