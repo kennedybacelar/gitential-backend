@@ -127,6 +127,7 @@ def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> O
 
 
 def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id: int, query: DataQuery):
+    project_id = None
     for i, dimension in enumerate(query.dimensions):
         if dimension == "sprint":
             for _filter in query.filters:
@@ -166,6 +167,7 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
 
                     else:
                         logger.warning("Sprint dimension not allowed for this data source", source_name=table_name)
+            break
 
 
 def _simplify_filter(
