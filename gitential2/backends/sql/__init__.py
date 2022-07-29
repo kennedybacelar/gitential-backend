@@ -456,8 +456,10 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         schema_to = self._workspace_schema_name(workspace_id_to)
         for table in WorkspaceTableNames:
             table_name: str = table.value
-            query = f"CREATE TABLE {schema_to}.{table_name} AS TABLE {schema_from}.{table_name};"
-            self._engine.execute(query)
+            query_1 = f"CREATE TABLE {schema_to}.{table_name} (LIKE {schema_from}.{table_name} INCLUDING ALL);"
+            query_2 = f"INSERT INTO {schema_to}.{table_name} (SELECT * FROM {schema_from}.{table_name});"
+            self._engine.execute(query_1)
+            self._engine.execute(query_2)
 
     def migrate(self):
         migrate_database(self._engine, [w.id for w in self.workspaces.all()])
