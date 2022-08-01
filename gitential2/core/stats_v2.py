@@ -114,6 +114,8 @@ def _prepare_dimension(
             return ibis_table["author_aid"].name("developer_id")
     elif dimension == DimensionName.istest:
         return ibis_table["is_test"].name("istest")
+    elif dimension == DimensionName.environment:
+        return ibis_table["environment"].name("environment")
     return None
 
 
