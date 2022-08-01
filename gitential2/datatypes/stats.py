@@ -40,6 +40,9 @@ class MetricName(str, Enum):
     sum_pr_count = "sum_pr_count"
     avg_pr_cycle_time = "avg_pr_cycle_time"
 
+    # Deploy_commits metrics
+    count_deploys = "count_deploys"
+
 
 PR_METRICS = [
     MetricName.avg_pr_commit_count,
@@ -77,6 +80,10 @@ PATCH_METRICS = [
     MetricName.sum_loc_test,
     MetricName.sum_loc_impl,
     MetricName.loc_effort_p,
+]
+
+DEPLOY_METRICS = [
+    MetricName.count_deploys,
 ]
 
 
@@ -135,6 +142,9 @@ class DimensionName(str, Enum):
     # pr dimensions
     pr_state = "pr_state"
 
+    # deploy_commits dimensions
+    environment = "environment"
+
     # relative date dimensions
     day_of_week = "day_of_week"
     hour_of_day = "hour_of_day"
@@ -157,6 +167,10 @@ DATE_DIMENSIONS = [
 RELATIVE_DATE_DIMENSIONS = [
     DimensionName.day_of_week,
     DimensionName.hour_of_day,
+]
+
+DEPLOY_DIMENSIONS = [
+    DimensionName.environment,
 ]
 
 
@@ -231,6 +245,8 @@ class Query(BaseModel):
             if any(d in AUTHOR_DIMENSIONS for d in self.dimensions or []):
                 ret.append(TableName.authors)
             return ret
+        elif all(m in DEPLOY_METRICS for m in self.metrics):
+            return [TableName.deploy_commits]
         elif self.table is not None:
             return [self.table]
         else:
