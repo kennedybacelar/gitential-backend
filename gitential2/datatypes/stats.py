@@ -148,6 +148,7 @@ class DimensionName(str, Enum):
     # relative date dimensions
     day_of_week = "day_of_week"
     hour_of_day = "hour_of_day"
+    sprint = "sprint"
 
 
 AUTHOR_DIMENSIONS = [DimensionName.name, DimensionName.email, DimensionName.aid]
@@ -167,6 +168,7 @@ DATE_DIMENSIONS = [
 RELATIVE_DATE_DIMENSIONS = [
     DimensionName.day_of_week,
     DimensionName.hour_of_day,
+    DimensionName.sprint,
 ]
 
 DEPLOY_DIMENSIONS = [
