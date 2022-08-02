@@ -313,7 +313,7 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
         try:
             local_repo = _refresh_repository_commits_clone_phase(g, workspace_id, repository, workdir, _update_state)
             if local_repo:
-                _refresh_repository_commits_extract_phase(g, workspace_id, repository, local_repo, _update_state)
+                _refresh_repository_commits_extract_phase(g, workspace_id, repository, local_repo, _update_state, force)
                 _refresh_repository_commits_persist_phase(g, workspace_id, repository_id, _update_state)
 
             _update_state(
@@ -394,13 +394,16 @@ def _refresh_repository_commits_extract_phase(
     repository: RepositoryInDB,
     local_repo: LocalGitRepository,
     _update_state: Callable,
+    force: bool,
 ):
     _update_state(
         commits_phase=RefreshCommitsPhase.extract,
     )
 
-    commits_we_already_have = g.backend.get_commit_ids_for_repository(workspace_id, repository.id)
-    previous_state = get_previous_extraction_state(g, workspace_id, repository.id)
+    commits_we_already_have = (
+        g.backend.get_commit_ids_for_repository(workspace_id, repository.id) if not force else set()
+    )
+    previous_state = get_previous_extraction_state(g, workspace_id, repository.id) if not force else None
 
     logger.info(
         "Extracting commits from",
