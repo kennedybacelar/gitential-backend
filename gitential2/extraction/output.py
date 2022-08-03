@@ -26,10 +26,12 @@ class DataCollector(OutputHandler):
 
     def pop(self):
         for kind in list(self.values.keys()):
-            try:
-                yield kind, self.values[kind].pop()
-            except IndexError:
-                del self.values[kind]
+            while True:
+                try:
+                    yield kind, self.values[kind].pop()
+                except IndexError:
+                    del self.values[kind]
+                    break
 
     def clear(self):
         for kind in list(self.values.keys()):
