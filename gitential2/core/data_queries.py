@@ -113,7 +113,19 @@ def _simplify_query(g: GitentialContext, workspace_id: int, query: DataQuery):
     return query
 
 
-def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> Optional[str]:
+def _dev_id_column_name(table_name: str) -> Optional[str]:
+    dev_id_column_name = {
+        "its_issues": "assignee_api_id",
+        "its_issue_comments": "author_dev_id",
+        "pull_requests": "user_aid",
+        "pull_request_comments": "author_aid",
+        "deploy_commits": "author_id",
+    }
+
+    return dev_id_column_name.get(table_name)
+
+
+def _getting_date_field_name_by_table(table_name: str) -> Optional[str]:
     table_column_name_to_sprint_filter = {
         "its_issues": "created_at",
         "its_issue_comments": "created_at",
@@ -146,9 +158,7 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
                     final_date = start_date + timedelta(weeks=sprint.weeks)
 
                     table_name = query.source_name.value
-                    column_to_be_used_in_sprint_filter = _getting_table_column_name_to_be_used_in_sprint_filter(
-                        table_name
-                    )
+                    column_to_be_used_in_sprint_filter = _getting_date_field_name_by_table(table_name)
 
                     # Some tables available as data-query sources don't have neither created_at nor any other date wise column
                     # Then, for these tables, the dimension sprint won't take any effect
@@ -182,6 +192,11 @@ def _simplify_filter(
             else:
                 repo_ids = g.backend.project_repositories.get_repo_ids_for_project(workspace_id, project_id)
                 return DQFnColumnExpr(fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col="repo_id"), repo_ids])
+        elif f.fn == DQFunctionName.EQ and isinstance(f.args[0], DQSingleColumnExpr) and f.args[0].col == "team_id":
+            team_id = int(cast(int, f.args[1]))
+            dev_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
+            dev_id_column_name = _dev_id_column_name(source_name)
+            return DQFnColumnExpr(fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col=dev_id_column_name), dev_ids])
     return f
 
 
