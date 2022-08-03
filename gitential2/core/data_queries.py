@@ -23,6 +23,7 @@ from gitential2.datatypes.data_queries import (
     DQDimensionExpr,
     DQ_ITS_SOURCE_NAMES,
 )
+from gitential2.datatypes.sprints import Sprint
 from .context import GitentialContext
 
 
@@ -138,8 +139,19 @@ def _getting_date_field_name_by_table(table_name: str) -> Optional[str]:
     return table_column_name_to_sprint_filter.get(table_name)
 
 
+def _get_project_or_team_sprint(
+    g: GitentialContext, workspace_id: int, project_or_team: Tuple[str, int]
+) -> Optional[Sprint]:
+
+    if project_or_team[0] == "project":
+        return g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_or_team[1]).sprint
+    elif project_or_team[0] == "team":
+        return g.backend.teams.get_or_error(workspace_id=workspace_id, id_=project_or_team[1]).sprint
+    return None
+
+
 def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id: int, query: DataQuery):
-    project_id = None
+    project_id, team_id = None, None
     for i, dimension in enumerate(query.dimensions):
         if dimension == "sprint":
             for _filter in query.filters:
@@ -148,11 +160,19 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
                     and isinstance(_filter.args[0], DQSingleColumnExpr)
                     and _filter.args[0].col == "project_id"
                 ):
-                    project_id = int(cast(int, _filter.args[1]))
+                    project_id = "project", int(cast(int, _filter.args[1]))
+                    break
+                if (
+                    _filter.fn == DQFunctionName.EQ
+                    and isinstance(_filter.args[0], DQSingleColumnExpr)
+                    and _filter.args[0].col == "team_id"
+                ):
+                    team_id = "team", int(cast(int, _filter.args[1]))
+                    break
             query.dimensions.pop(i)
-            if project_id:
-                project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
-                sprint = project.sprint
+            project_or_team = project_id or team_id
+            if project_or_team:
+                sprint = _get_project_or_team_sprint(g, workspace_id, project_or_team)
                 if sprint:
                     start_date = sprint.date
                     final_date = start_date + timedelta(weeks=sprint.weeks)
