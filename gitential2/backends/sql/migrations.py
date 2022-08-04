@@ -112,7 +112,16 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
         MigrationRevision(
             revision_id="005",
             steps=[
-                f"ALTER TABLE {schema_name}.deploy_commits RENAME COLUMN repository_id TO repo_id;",
+                # This might look like an overkill but noting else worked for me so far.
+                # PostgreSQL won't accept the IF EXISTS in the ALTER TABLE statement.
+                # Besides this DO block below, I had to set the isolation_level="AUTOCOMMIT" flag in the
+                # create_engine function call in the SQLGitentialBackend class in the /backends/sql/__init__.py
+                # otherwise the column name change is not working.
+                "DO LANGUAGE PLPGSQL $$ "
+                f'BEGIN ALTER TABLE {schema_name}."deploy_commits" RENAME COLUMN "repository_id" TO "repo_id"; '
+                "EXCEPTION WHEN UNDEFINED_COLUMN THEN "
+                "RAISE NOTICE 'caught UNDEFINED_COLUMN exception for revision_id=005'; "
+                "END $$;",
             ],
         ),
     ]
@@ -174,7 +183,7 @@ def _do_migration(
         for ms in remaining_steps:
             logger.info("Migration: applying step", schema_name=schema_name, revision_id=ms.revision_id)
             for query_ in ms.steps:
-                logger.debug(
+                logger.info(
                     "Migrations: executing query", query=query_, schema_name=schema_name, revision_id=ms.revision_id
                 )
                 engine.execute(query_)
