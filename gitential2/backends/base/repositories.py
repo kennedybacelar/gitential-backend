@@ -290,6 +290,10 @@ class ProjectRepositoryRepository(
     def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
         pass
 
+    @abstractmethod
+    def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
+        pass
+
     def update_project_repositories(
         self, workspace_id: int, project_id: int, repo_ids: List[int]
     ) -> Tuple[List[int], List[int], List[int]]:
@@ -496,9 +500,15 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
     def search(self, workspace_id: int, q: str) -> List[AuthorInDB]:
         pass
 
+    @abstractmethod
+    def get_authors_by_author_ids(self, workspace_id: int, author_ids: List[int]) -> List[AuthorInDB]:
+        pass
+
 
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
-    pass
+    @abstractmethod
+    def get_teams_by_team_ids(self, workspace_id: int, team_ids: List[int]):
+        pass
 
 
 class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, TeamMemberUpdate, TeamMemberInDB]):
@@ -512,6 +522,10 @@ class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, 
 
     @abstractmethod
     def get_team_member_author_ids(self, workspace_id: int, team_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def get_author_ids_by_team_ids(self, workspace_id: int, team_ids: List[int]) -> List[int]:
         pass
 
     @abstractmethod

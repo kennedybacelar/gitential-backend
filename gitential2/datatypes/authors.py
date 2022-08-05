@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Set, List, Optional, Tuple
 
 from pydantic import BaseModel
@@ -58,3 +59,20 @@ class IdAndTitle(BaseModel):
 class AuthorPublicExt(AuthorInDB):
     teams: Optional[List[IdAndTitle]]
     projects: Optional[List[IdAndTitle]]
+
+
+class DateRange(BaseModel):
+    start: Optional[datetime]
+    end: Optional[Optional[datetime]]
+
+
+class AuthorFilters(BaseModel):
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    date_range: Optional[DateRange] = None
+    developer_names: Optional[List[str]] = []
+    developer_emails: Optional[List[str]] = []
+    developer_ids: Optional[List[int]] = []
+    project_ids: Optional[List[int]] = []
+    team_ids: Optional[List[int]] = []
+    repository_ids: Optional[List[int]] = []

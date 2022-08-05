@@ -623,6 +623,10 @@ class SQLProjectRepositoryRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [r["repo_id"] for r in rows]
 
+    def get_project_ids_for_repo_ids(self, workspace_id: int):
+
+        pass
+
     def add_repo_ids_to_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
         query = self.table.insert()
         self._execute_query(
@@ -634,6 +638,11 @@ class SQLProjectRepositoryRepository(
     def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
         query = self.table.delete().where(self.table.c.repo_id.in_(repo_ids))
         self._execute_query(query, workspace_id=workspace_id)
+
+    def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
+        query = select([self.table.c.repo_id]).where(self.table.c.project_id.in_(project_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["repo_id"] for row in rows]
 
 
 class SQLProjectITSProjectRepository(
@@ -686,9 +695,17 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
         rows = self._execute_query(query, workspace_id)
         return [AuthorInDB(**row) for row in rows]
 
+    def get_authors_by_author_ids(self, workspace_id: int, author_ids: List[int]) -> List[AuthorInDB]:
+        query = self.table.select().where(self.table.c.id.in_(author_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [AuthorInDB(**row) for row in rows]
+
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
-    pass
+    def get_teams_by_team_ids(self, workspace_id: int, team_ids: List[int]) -> List[TeamInDB]:
+        query = self.table.select().where(self.table.c.id.in_(team_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [TeamInDB(**row) for row in rows]
 
 
 class SQLTeamMemberRepository(
@@ -712,6 +729,11 @@ class SQLTeamMemberRepository(
 
     def get_team_member_author_ids(self, workspace_id: int, team_id: int) -> List[int]:
         query = select([self.table.c.author_id]).where(self.table.c.team_id == team_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["author_id"] for row in rows]
+
+    def get_author_ids_by_team_ids(self, workspace_id: int, team_ids: List[int]) -> List[int]:
+        query = select([self.table.c.author_id]).where(self.table.c.team_id.in_(team_ids))
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [row["author_id"] for row in rows]
 
