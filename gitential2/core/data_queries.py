@@ -23,6 +23,7 @@ from gitential2.datatypes.data_queries import (
     DQDimensionExpr,
     DQ_ITS_SOURCE_NAMES,
 )
+from gitential2.datatypes.sprints import Sprint
 from .context import GitentialContext
 
 
@@ -113,7 +114,19 @@ def _simplify_query(g: GitentialContext, workspace_id: int, query: DataQuery):
     return query
 
 
-def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> Optional[str]:
+def _dev_id_column_name(table_name: str) -> Optional[str]:
+    dev_id_column_name = {
+        "its_issues": "assignee_api_id",
+        "its_issue_comments": "author_dev_id",
+        "pull_requests": "user_aid",
+        "pull_request_comments": "author_aid",
+        "deploy_commits": "author_id",
+    }
+
+    return dev_id_column_name.get(table_name)
+
+
+def _getting_date_field_name_by_table(table_name: str) -> Optional[str]:
     table_column_name_to_sprint_filter = {
         "its_issues": "created_at",
         "its_issue_comments": "created_at",
@@ -126,7 +139,19 @@ def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> O
     return table_column_name_to_sprint_filter.get(table_name)
 
 
+def _get_project_or_team_sprint(
+    g: GitentialContext, workspace_id: int, project_or_team: Tuple[str, int]
+) -> Optional[Sprint]:
+
+    if project_or_team[0] == "project":
+        return g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_or_team[1]).sprint
+    elif project_or_team[0] == "team":
+        return g.backend.teams.get_or_error(workspace_id=workspace_id, id_=project_or_team[1]).sprint
+    return None
+
+
 def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id: int, query: DataQuery):
+    project_id, team_id = None, None
     for i, dimension in enumerate(query.dimensions):
         if dimension == "sprint":
             for _filter in query.filters:
@@ -135,19 +160,25 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
                     and isinstance(_filter.args[0], DQSingleColumnExpr)
                     and _filter.args[0].col == "project_id"
                 ):
-                    project_id = int(cast(int, _filter.args[1]))
+                    project_id = "project", int(cast(int, _filter.args[1]))
+                    break
+                if (
+                    _filter.fn == DQFunctionName.EQ
+                    and isinstance(_filter.args[0], DQSingleColumnExpr)
+                    and _filter.args[0].col == "team_id"
+                ):
+                    team_id = "team", int(cast(int, _filter.args[1]))
+                    break
             query.dimensions.pop(i)
-            if project_id:
-                project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
-                sprint = project.sprint
+            project_or_team = project_id or team_id
+            if project_or_team:
+                sprint = _get_project_or_team_sprint(g, workspace_id, project_or_team)
                 if sprint:
                     start_date = sprint.date
                     final_date = start_date + timedelta(weeks=sprint.weeks)
 
                     table_name = query.source_name.value
-                    column_to_be_used_in_sprint_filter = _getting_table_column_name_to_be_used_in_sprint_filter(
-                        table_name
-                    )
+                    column_to_be_used_in_sprint_filter = _getting_date_field_name_by_table(table_name)
 
                     # Some tables available as data-query sources don't have neither created_at nor any other date wise column
                     # Then, for these tables, the dimension sprint won't take any effect
@@ -166,6 +197,7 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
 
                     else:
                         logger.warning("Sprint dimension not allowed for this data source", source_name=table_name)
+            break
 
 
 def _simplify_filter(
@@ -180,6 +212,11 @@ def _simplify_filter(
             else:
                 repo_ids = g.backend.project_repositories.get_repo_ids_for_project(workspace_id, project_id)
                 return DQFnColumnExpr(fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col="repo_id"), repo_ids])
+        elif f.fn == DQFunctionName.EQ and isinstance(f.args[0], DQSingleColumnExpr) and f.args[0].col == "team_id":
+            team_id = int(cast(int, f.args[1]))
+            dev_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
+            dev_id_column_name = _dev_id_column_name(source_name)
+            return DQFnColumnExpr(fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col=dev_id_column_name), dev_ids])
     return f
 
 

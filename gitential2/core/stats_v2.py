@@ -82,6 +82,8 @@ def _prepare_dimension(
             date_field_name = "created_at"
         elif TableName.pull_request_comments in table_def:
             date_field_name = "published_at"
+        elif TableName.deploy_commits in table_def:
+            date_field_name = "deployed_at"
         else:
             date_field_name = "date"
 
@@ -89,6 +91,8 @@ def _prepare_dimension(
             return (ibis_table[date_field_name].date().day_of_week.index()).name("day_of_week")
         elif dimension == DimensionName.hour_of_day:
             return (ibis_table[date_field_name].hour()).name("hour_of_day")
+        elif dimension == DimensionName.sprint:
+            return (ibis_table[date_field_name].hour()).name("sprint")
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
@@ -112,6 +116,8 @@ def _prepare_dimension(
             return ibis_table["author_aid"].name("developer_id")
     elif dimension == DimensionName.istest:
         return ibis_table["is_test"].name("istest")
+    elif dimension == DimensionName.environment:
+        return ibis_table["environment"].name("environment")
     return None
 
 
@@ -126,6 +132,8 @@ def _prepare_metrics(metrics, table_def: TableDef, ibis_tables, ibis_table, q: Q
             res = _prepare_prs_metric(metric, ibis_tables)
         elif TableName.patches in table_def:
             res = _prepare_patch_metric(metric, ibis_table)
+        elif TableName.deploy_commits in table_def:
+            res = _prepare_deploy_commits_metric(metric, ibis_table)
 
         if res is not None:
             ret.append(res)
@@ -149,6 +157,21 @@ def _prepare_generic_metric(metric: MetricDef, ibis_table):
         return field.name(metric.name)
     else:
         return field.name(f"{metric.aggregation}_{metric.field}")
+
+
+def _prepare_deploy_commits_metric(metric: MetricName, ibis_table):
+
+    deploy_commits = ibis_table
+
+    count_deploys = deploy_commits.count().name("id")
+
+    deploy_commit_metrics = {
+        MetricName.count_deploys: count_deploys,
+    }
+
+    if metric not in deploy_commit_metrics:
+        raise ValueError(f"missing metric {metric}")
+    return deploy_commit_metrics.get(metric)
 
 
 def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
@@ -311,6 +334,10 @@ def _prepare_filters(  # pylint: disable=too-complex,unused-argument
             FilterName.repo_ids: lambda t: t.repo_id.isin,
             FilterName.developer_ids: lambda t: t.author_aid.isin,
             FilterName.day: lambda t: t.published_at.between,
+        },
+        TableName.deploy_commits: {
+            FilterName.repo_ids: lambda t: t.repo_id.isin,
+            FilterName.day: lambda t: t.deployed_at.between,
         },
     }
 
