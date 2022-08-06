@@ -38,7 +38,7 @@ def list_authors_extended(
     authors_ext_list: List[AuthorPublicExtended] = __get_extended_authors_list(
         g=g,
         workspace_id=workspace_id,
-        author_ids_from_other_query=data_query_result.results["aid"],
+        author_ids_from_other_query=data_query_result.results["aid"],  # type: ignore
         date_range=author_filters.date_range if author_filters is not None else None,
     )
 
@@ -208,8 +208,8 @@ def __get_extended_authors_list(
             date_range=date_range,
         )
 
-        author_ids_all: List[int] = data_query_result.results["aid"]
-        repo_ids_all: List[int] = data_query_result.results["repo_id"]
+        author_ids_all: List[int] = data_query_result.results["aid"]  # type: ignore
+        repo_ids_all: List[int] = data_query_result.results["repo_id"]  # type: ignore
 
         author_ids_distinct = list(set(author_ids_all))
         authors: List[AuthorInDB] = g.backend.authors.get_authors_by_author_ids(

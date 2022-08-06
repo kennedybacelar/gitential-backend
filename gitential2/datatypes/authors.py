@@ -1,10 +1,8 @@
-from datetime import datetime
 from typing import Set, List, Optional, Tuple
 
 from pydantic import BaseModel
 
 from gitential2.datatypes.export import ExportableModel
-
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
