@@ -21,6 +21,7 @@ from gitential2.datatypes.authors import (
     AuthorInDB,
     AuthorsPublicExtendedSearchResult,
     AuthorPublicExtended,
+    DateRange,
 )
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
@@ -35,7 +36,10 @@ def list_authors_extended(
     )
 
     authors_ext_list: List[AuthorPublicExtended] = __get_extended_authors_list(
-        g=g, workspace_id=workspace_id, data_query_result=data_query_result
+        g=g,
+        workspace_id=workspace_id,
+        author_ids_from_other_query=data_query_result.results["aid"],
+        date_range=author_filters.date_range if author_filters is not None else None,
     )
 
     result = AuthorsPublicExtendedSearchResult(
@@ -55,7 +59,7 @@ def __get_data_query_result_for_authors_filtering(
         "query_type": DQType.aggregate,
         "source_name": DQSourceName.calculated_commits,
         "selections": [DQFnColumnExpr(fn=DQFunctionName.COUNT)],
-        "dimensions": [DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id")],
+        "dimensions": [DQSingleColumnExpr(col="aid")],
     }
 
     if author_filters is not None:
@@ -152,14 +156,59 @@ def __get_filters_for_data_query(
     return filters
 
 
+def __get_data_query_result_for_authors_repos(
+    g: GitentialContext, workspace_id: int, author_ids: List[int], date_range: Optional[DateRange] = None
+) -> DQResult:
+    authors_filter = DQFilterExpr(
+        fn=DQFunctionName.IN,
+        args=[
+            DQSingleColumnExpr(col="aid"),
+            author_ids,
+        ],
+    )
+
+    data_query_arguments: dict = {
+        "query_type": DQType.aggregate,
+        "source_name": DQSourceName.calculated_commits,
+        "selections": [DQFnColumnExpr(fn=DQFunctionName.COUNT)],
+        "dimensions": [DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id")],
+        "filters": [authors_filter],
+    }
+
+    if date_range is not None:
+        data_query_arguments["filters"].append(
+            DQFilterExpr(
+                fn=DQFunctionName.BETWEEN,
+                args=[
+                    DQSingleColumnExpr(col="atime"),
+                    date_range.start,
+                    date_range.end,
+                ],
+            )
+        )
+
+    data_query = DataQuery(**data_query_arguments)
+    data_query_result: DQResult = process_data_query(g=g, workspace_id=workspace_id, query=data_query)
+
+    return data_query_result
+
+
 def __get_extended_authors_list(
-    g: GitentialContext, workspace_id: int, data_query_result: DQResult
+    g: GitentialContext,
+    workspace_id: int,
+    author_ids_from_other_query: List[int],
+    date_range: Optional[DateRange] = None,
 ) -> List[AuthorPublicExtended]:
-    author_ids_all: List[int] = data_query_result.results["aid"]
-
     result: List[AuthorPublicExtended] = []
+    if is_list_not_empty(author_ids_from_other_query):
+        data_query_result: DQResult = __get_data_query_result_for_authors_repos(
+            g=g,
+            workspace_id=workspace_id,
+            author_ids=list(set(author_ids_from_other_query)),
+            date_range=date_range,
+        )
 
-    if is_list_not_empty(author_ids_all):
+        author_ids_all: List[int] = data_query_result.results["aid"]
         repo_ids_all: List[int] = data_query_result.results["repo_id"]
 
         author_ids_distinct = list(set(author_ids_all))
