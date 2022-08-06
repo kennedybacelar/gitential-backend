@@ -319,6 +319,9 @@ class InMemProjectRepository(
     def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
         pass
 
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+        pass
+
 
 class InMemRepositoryRepository(
     RepositoryRepository, InMemWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]

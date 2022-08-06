@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Iterable, Optional, Callable, List, Dict, Union, cast
 import datetime as dt
 import typing
@@ -578,6 +579,11 @@ class SQLProjectRepository(
         self._execute_query(query, workspace_id)
         return True
 
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+        query = self.table.select().where(self.table.c.id.in_(project_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [ProjectInDB(**row) for row in rows]
+
 
 class SQLRepositoryRepository(
     RepositoryRepository, SQLWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
@@ -623,10 +629,6 @@ class SQLProjectRepositoryRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [r["repo_id"] for r in rows]
 
-    def get_project_ids_for_repo_ids(self, workspace_id: int):
-
-        pass
-
     def add_repo_ids_to_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
         query = self.table.insert()
         self._execute_query(
@@ -643,6 +645,14 @@ class SQLProjectRepositoryRepository(
         query = select([self.table.c.repo_id]).where(self.table.c.project_id.in_(project_ids))
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [row["repo_id"] for row in rows]
+
+    def get_project_ids_for_repo_ids(self, workspace_id: int, repo_ids: List[int]) -> Dict[int, List[int]]:
+        query = select().where(self.table.c.repo_id.in_(repo_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        result: dict = defaultdict(lambda: [])
+        for row in rows:
+            result[row["repo_id"]].append(row["project_id"])
+        return result
 
 
 class SQLProjectITSProjectRepository(

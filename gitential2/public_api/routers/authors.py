@@ -1,6 +1,7 @@
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends
-from gitential2.core.context import GitentialContext
+
 from gitential2.core.authors import (
     list_authors,
     update_author,
@@ -9,17 +10,21 @@ from gitential2.core.authors import (
     list_active_authors,
     get_author,
     list_authors_ext,
-    list_authors_extended,
 )
+from gitential2.core.context import GitentialContext
 from gitential2.core.deduplication import deduplicate_authors
-from gitential2.core.permissions import check_permission
-from gitential2.datatypes.authors import AuthorCreate, AuthorPublic, AuthorUpdate, AuthorPublicExt, AuthorFilters
-from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.legacy import authors_in_projects
-
-
+from gitential2.core.permissions import check_permission
+from gitential2.datatypes.authors import (
+    AuthorCreate,
+    AuthorPublic,
+    AuthorUpdate,
+    AuthorFilters,
+    AuthorsPublicExtendedSearchResult,
+)
+from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import current_user, gitential_context
-
+from ...core.authors_list import list_authors_extended
 
 router = APIRouter(tags=["authors"])
 
@@ -34,21 +39,10 @@ def list_authors_(
     return list_authors(g, workspace_id)
 
 
-@router.get("/workspaces/{workspace_id}/authors/ext", response_model=List[AuthorPublicExt])
-def list_authors_ext_(
-    workspace_id: int,
-    current_user=Depends(current_user),
-    g: GitentialContext = Depends(gitential_context),
-):
-    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-    ap = authors_in_projects(g, workspace_id)
-    return list_authors_ext(g, workspace_id, authors_in_projects=ap)
-
-
-@router.post("/workspaces/{workspace_id}/authors-extended", response_model=List[AuthorPublicExt])
+@router.post("/workspaces/{workspace_id}/authors-extended", response_model=AuthorsPublicExtendedSearchResult)
 def list_authors_extended_(
     workspace_id: int,
-    author_filters: Optional[AuthorFilters],
+    author_filters: Optional[AuthorFilters] = None,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):

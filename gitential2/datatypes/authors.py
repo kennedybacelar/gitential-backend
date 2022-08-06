@@ -56,9 +56,16 @@ class IdAndTitle(BaseModel):
     title: str
 
 
-class AuthorPublicExt(AuthorInDB):
+class AuthorPublicExtended(AuthorInDB):
     teams: Optional[List[IdAndTitle]]
     projects: Optional[List[IdAndTitle]]
+
+
+class AuthorsPublicExtendedSearchResult(BaseModel):
+    total: Optional[int] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    authors_list: List[AuthorPublicExtended]
 
 
 class DateRange(BaseModel):

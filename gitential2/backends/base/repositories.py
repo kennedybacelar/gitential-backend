@@ -232,6 +232,10 @@ class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, Projec
     def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
         pass
 
+    @abstractmethod
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+        pass
+
 
 class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]):
     @abstractmethod
@@ -292,6 +296,10 @@ class ProjectRepositoryRepository(
 
     @abstractmethod
     def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
+        pass
+
+    @abstractmethod
+    def get_project_ids_for_repo_ids(self, workspace_id: int, repo_ids: List[int]) -> Dict[int, List[int]]:
         pass
 
     def update_project_repositories(
