@@ -69,8 +69,8 @@ class AuthorsPublicExtendedSearchResult(BaseModel):
 
 
 class DateRange(BaseModel):
-    start: Optional[datetime]
-    end: Optional[Optional[datetime]]
+    start: Optional[str]
+    end: Optional[str]
 
 
 class AuthorFilters(BaseModel):

@@ -647,7 +647,7 @@ class SQLProjectRepositoryRepository(
         return [row["repo_id"] for row in rows]
 
     def get_project_ids_for_repo_ids(self, workspace_id: int, repo_ids: List[int]) -> Dict[int, List[int]]:
-        query = select().where(self.table.c.repo_id.in_(repo_ids))
+        query = self.table.select().where(self.table.c.repo_id.in_(repo_ids))
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         result: dict = defaultdict(lambda: [])
         for row in rows:

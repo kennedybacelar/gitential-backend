@@ -35,7 +35,7 @@ def list_authors_extended(
     )
 
     authors_ext_list: List[AuthorPublicExtended] = __get_extended_authors_list(
-        g=g, workspace_id=workspace_id, data_query_result=data_query_result
+        g=g, workspace_id=workspace_id, data_query_result=data_query_result, author_filters=author_filters
     )
 
     result = AuthorsPublicExtendedSearchResult(
@@ -153,14 +153,14 @@ def __get_filters_for_data_query(
 
 
 def __get_extended_authors_list(
-    g: GitentialContext, workspace_id: int, data_query_result: DQResult
+    g: GitentialContext, workspace_id: int, data_query_result: DQResult, author_filters: Optional[AuthorFilters] = None
 ) -> List[AuthorPublicExtended]:
-    author_ids_all: List[int] = data_query_result.results.aid  # type: ignore
+    author_ids_all: List[int] = data_query_result.results["aid"]
 
     result: List[AuthorPublicExtended] = []
 
     if is_list_not_empty(author_ids_all):
-        repo_ids_all: List[int] = data_query_result.results.repo_id  # type: ignore
+        repo_ids_all: List[int] = data_query_result.results["repo_id"]
 
         author_ids_distinct = list(set(author_ids_all))
         authors: List[AuthorInDB] = g.backend.authors.get_authors_by_author_ids(
@@ -168,10 +168,14 @@ def __get_extended_authors_list(
         )
 
         author_ids_with_team_details_lists = __get_author_ids_with_teams_lists(
-            g=g, workspace_id=workspace_id, author_ids_distinct=author_ids_distinct
+            g=g, workspace_id=workspace_id, author_ids_distinct=author_ids_distinct, author_filters=author_filters
         )
         author_ids_with_project_details_lists = __get_author_ids_with_projects_lists(
-            g=g, workspace_id=workspace_id, author_ids_all=author_ids_all, repo_ids_all=repo_ids_all
+            g=g,
+            workspace_id=workspace_id,
+            author_ids_all=author_ids_all,
+            repo_ids_all=repo_ids_all,
+            author_filters=author_filters,
         )
 
         result = [
@@ -193,15 +197,21 @@ def __get_extended_authors_list(
 
 
 def __get_author_ids_with_teams_lists(
-    g: GitentialContext, workspace_id: int, author_ids_distinct: List[int]
+    g: GitentialContext,
+    workspace_id: int,
+    author_ids_distinct: List[int],
+    author_filters: Optional[AuthorFilters] = None,
 ) -> Dict[int, List[IdAndTitle]]:
     team_members: List[TeamMemberInDB] = g.backend.team_members.get_team_members_by_author_ids(
         workspace_id=workspace_id, author_ids=author_ids_distinct
     )
     teams: List[TeamInDB] = []
     if is_list_not_empty(team_members):
-        team_ids = [t_member.id for t_member in team_members]
-        teams = g.backend.teams.get_teams_by_team_ids(workspace_id=workspace_id, team_ids=team_ids)
+        if author_filters is not None and is_list_not_empty(author_filters.team_ids):
+            teams = g.backend.teams.get_teams_by_team_ids(workspace_id=workspace_id, team_ids=author_filters.team_ids)  # type: ignore
+        else:
+            team_ids = [t_member.id for t_member in team_members]
+            teams = g.backend.teams.get_teams_by_team_ids(workspace_id=workspace_id, team_ids=team_ids)
 
     result: Dict[int, List[IdAndTitle]] = defaultdict(lambda: [])
     for author_id in author_ids_distinct:
@@ -216,7 +226,11 @@ def __get_author_ids_with_teams_lists(
 
 
 def __get_author_ids_with_projects_lists(
-    g: GitentialContext, workspace_id: int, author_ids_all: List[int], repo_ids_all: List[int]
+    g: GitentialContext,
+    workspace_id: int,
+    author_ids_all: List[int],
+    repo_ids_all: List[int],
+    author_filters: Optional[AuthorFilters] = None,
 ) -> Dict[int, List[IdAndTitle]]:
     repo_ids_distinct = list(set(repo_ids_all))
 
@@ -224,14 +238,20 @@ def __get_author_ids_with_projects_lists(
     project_ids_for_repo_id: Dict[int, List[int]] = g.backend.project_repositories.get_project_ids_for_repo_ids(
         workspace_id=workspace_id, repo_ids=repo_ids_distinct
     )
-    # This is the distinct list of the project ids. We need these to get the projects from the database.
-    project_ids_distinct: List[int] = list(
-        set(list(chain.from_iterable([project_ids_for_repo_id[key] for key in project_ids_for_repo_id])))
-    )
-    # Get projects list by the project ids.
-    projects: List[ProjectInDB] = g.backend.projects.get_projects_by_ids(
-        workspace_id=workspace_id, project_ids=project_ids_distinct
-    )
+
+    projects: List[ProjectInDB] = []
+    # If we already have project_ids provided from the author_filters.
+    if author_filters is not None and is_list_not_empty(author_filters.project_ids):
+        projects = g.backend.projects.get_projects_by_ids(
+            workspace_id=workspace_id, project_ids=author_filters.project_ids  # type: ignore
+        )
+    else:
+        # This is the distinct list of the project ids. We need these to get the projects from the database.
+        project_ids_distinct: List[int] = list(
+            set(list(chain.from_iterable([project_ids_for_repo_id[key] for key in project_ids_for_repo_id])))
+        )
+        # Get projects list by the project ids.
+        projects = g.backend.projects.get_projects_by_ids(workspace_id=workspace_id, project_ids=project_ids_distinct)
 
     # The final move is that we need to create a dict where the author ids will be the keys and the
     # values will be the list of IdAndTitle instances created from "projects: List[ProjectInDB]".
