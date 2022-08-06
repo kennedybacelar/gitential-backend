@@ -24,12 +24,15 @@ from gitential2.datatypes.authors import (
 )
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
+from gitential2.utils import is_list_not_empty
 
 
 def list_authors_extended(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> AuthorsPublicExtendedSearchResult:
-    data_query_result: DQResult = __get_data_query_result(g=g, workspace_id=workspace_id, author_filters=author_filters)
+    data_query_result: DQResult = __get_data_query_result_for_authors_filtering(
+        g=g, workspace_id=workspace_id, author_filters=author_filters
+    )
 
     authors_ext_list: List[AuthorPublicExtended] = __get_extended_authors_list(
         g=g, workspace_id=workspace_id, data_query_result=data_query_result
@@ -45,24 +48,25 @@ def list_authors_extended(
     return result
 
 
-def __get_data_query_result(
+def __get_data_query_result_for_authors_filtering(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> DQResult:
-    data_query_arguments = {
+    data_query_arguments: dict = {
         "query_type": DQType.aggregate,
         "source_name": DQSourceName.calculated_commits,
         "selections": [DQFnColumnExpr(fn=DQFunctionName.COUNT)],
         "dimensions": [DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id")],
     }
 
-    if author_filters.limit is not None and author_filters.limit > 0:
-        data_query_arguments["limit"] = author_filters.limit
-    if author_filters.offset is not None and author_filters.offset > -1:
-        data_query_arguments["offset"] = author_filters.offset
+    if author_filters is not None:
+        if author_filters.limit is not None and author_filters.limit > 0:
+            data_query_arguments["limit"] = author_filters.limit
+        if author_filters.offset is not None and author_filters.offset > -1:
+            data_query_arguments["offset"] = author_filters.offset
 
-    filters = __get_filters_for_data_query(g=g, workspace_id=workspace_id, author_filters=author_filters)
-    if len(filters) > 0:
-        data_query_arguments["filters"] = filters
+        filters = __get_filters_for_data_query(g=g, workspace_id=workspace_id, author_filters=author_filters)
+        if is_list_not_empty(filters):
+            data_query_arguments["filters"] = filters
 
     data_query = DataQuery(**data_query_arguments)
     data_query_result: DQResult = process_data_query(g=g, workspace_id=workspace_id, query=data_query)
@@ -80,7 +84,7 @@ def __get_filters_for_data_query(
             g.backend.team_members.get_author_ids_by_team_ids(
                 workspace_id=workspace_id, team_ids=author_filters.team_ids
             )
-            if len(author_filters.team_ids) > 0
+            if author_filters.team_ids is not None and len(author_filters.team_ids) > 0
             else []
         )
 
@@ -88,17 +92,17 @@ def __get_filters_for_data_query(
             g.backend.project_repositories.get_repo_ids_by_project_ids(
                 workspace_id=workspace_id, project_ids=author_filters.project_ids
             )
-            if len(author_filters.project_ids) > 0
+            if author_filters.project_ids is not None and len(author_filters.project_ids) > 0
             else []
         )
 
-        if len(author_filters.developer_ids) > 0 or len(author_ids_in_teams) > 0:
+        if is_list_not_empty(author_filters.developer_ids) or is_list_not_empty(author_ids_in_teams):
             filters.append(
                 DQFilterExpr(
                     fn=DQFunctionName.IN,
                     args=[
                         DQSingleColumnExpr(col="aid"),
-                        list(set(author_filters.developer_ids + author_filters.developer_ids)),
+                        list(set((author_filters.developer_ids or []) + (author_filters.developer_ids or []))),
                     ],
                 )
             )
@@ -113,7 +117,7 @@ def __get_filters_for_data_query(
                     ],
                 )
             )
-        if len(author_filters.developer_names) > 0:
+        if is_list_not_empty(author_filters.developer_names):
             filters.append(
                 DQFilterExpr(
                     fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col="aname"), author_filters.developer_names]
@@ -124,7 +128,7 @@ def __get_filters_for_data_query(
                     fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col="cname"), author_filters.developer_names]
                 )
             )
-        if len(author_filters.developer_emails) > 0:
+        if is_list_not_empty(author_filters.developer_emails):
             filters.append(
                 DQFilterExpr(
                     fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col="aemail"), author_filters.developer_emails]
@@ -135,13 +139,13 @@ def __get_filters_for_data_query(
                     fn=DQFunctionName.IN, args=[DQSingleColumnExpr(col="cemail"), author_filters.developer_emails]
                 )
             )
-        if len(author_filters.repository_ids) > 0 or len(repo_ids_in_projects) > 0:
+        if is_list_not_empty(author_filters.repository_ids) or is_list_not_empty(repo_ids_in_projects):
             filters.append(
                 DQFilterExpr(
                     fn=DQFunctionName.IN,
                     args=[
                         DQSingleColumnExpr(col="repo_id"),
-                        list(set(author_filters.repository_ids + repo_ids_in_projects)),
+                        list(set((author_filters.repository_ids or []) + (repo_ids_in_projects or []))),
                     ],
                 )
             )
@@ -151,12 +155,12 @@ def __get_filters_for_data_query(
 def __get_extended_authors_list(
     g: GitentialContext, workspace_id: int, data_query_result: DQResult
 ) -> List[AuthorPublicExtended]:
-    author_ids_all: List[int] = data_query_result.results.aid
+    author_ids_all: List[int] = data_query_result.results.aid  # type: ignore
 
     result: List[AuthorPublicExtended] = []
 
-    if len(author_ids_all) > 0:
-        repo_ids_all: List[int] = data_query_result.results.repo_id
+    if is_list_not_empty(author_ids_all):
+        repo_ids_all: List[int] = data_query_result.results.repo_id  # type: ignore
 
         author_ids_distinct = list(set(author_ids_all))
         authors: List[AuthorInDB] = g.backend.authors.get_authors_by_author_ids(
@@ -174,7 +178,13 @@ def __get_extended_authors_list(
             AuthorPublicExtended(
                 teams=author_ids_with_team_details_lists[author.id],
                 projects=author_ids_with_project_details_lists[author.id],
-                **author,
+                id=author.id,
+                created_at=author.created_at,
+                updated_at=author.updated_at,
+                active=author.active,
+                name=author.name,
+                email=author.email,
+                aliases=author.aliases,
             )
             for author in authors
         ]
@@ -189,16 +199,16 @@ def __get_author_ids_with_teams_lists(
         workspace_id=workspace_id, author_ids=author_ids_distinct
     )
     teams: List[TeamInDB] = []
-    if len(team_members) > 0:
+    if is_list_not_empty(team_members):
         team_ids = [t_member.id for t_member in team_members]
         teams = g.backend.teams.get_teams_by_team_ids(workspace_id=workspace_id, team_ids=team_ids)
 
     result: Dict[int, List[IdAndTitle]] = defaultdict(lambda: [])
-    for index, author_id in enumerate(author_ids_distinct):
-        team_ids: List[int] = [tm.team_id for tm in team_members if author_id == tm.author_id]
-        if len(team_ids) > 0:
-            teams_for_author: List[TeamInDB] = next(filter(lambda x: x.id in team_ids, teams), [])
-            if len(teams_for_author) > 0:
+    for author_id in author_ids_distinct:
+        team_ids_for_author: List[int] = [tm.team_id for tm in team_members if author_id == tm.author_id]
+        if is_list_not_empty(team_ids_for_author):
+            teams_for_author: List[TeamInDB] = [t for t in teams if t.id in team_ids_for_author]
+            if is_list_not_empty(teams_for_author):
                 team_ids_and_titles: List[IdAndTitle] = [IdAndTitle(id=t.id, title=t.name) for t in teams_for_author]
                 result[author_id] += team_ids_and_titles
 
@@ -209,7 +219,6 @@ def __get_author_ids_with_projects_lists(
     g: GitentialContext, workspace_id: int, author_ids_all: List[int], repo_ids_all: List[int]
 ) -> Dict[int, List[IdAndTitle]]:
     repo_ids_distinct = list(set(repo_ids_all))
-    # author_ids_distinct = list(set(author_ids_all))
 
     # We need to get the project id list for each repository id
     project_ids_for_repo_id: Dict[int, List[int]] = g.backend.project_repositories.get_project_ids_for_repo_ids(

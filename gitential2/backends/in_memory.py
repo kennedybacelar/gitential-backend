@@ -375,6 +375,13 @@ class InMemProjectRepositoryRepository(
     def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
         return [item.repo_id for item in self._state[workspace_id] if item.project_id in project_ids]
 
+    def get_project_ids_for_repo_ids(self, workspace_id: int, repo_ids: List[int]) -> Dict[int, List[int]]:
+        rows = [item for item in self._state[workspace_id] if item.repo_id in repo_ids]
+        result: dict = defaultdict(lambda: [])
+        for row in rows:
+            result[row["repo_id"]].append(row["project_id"])
+        return result
+
 
 class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def __init__(self, settings: GitentialSettings):

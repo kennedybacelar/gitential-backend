@@ -274,7 +274,6 @@ def get_commits(
 def extract_commit(repository: LocalGitRepository, commit_id: str, output: OutputHandler, **kwargs):
     g2_repo = kwargs.get("g2_repo") or _git2_repo(repository)
     commit = g2_repo.get(commit_id)
-    const = commit.committer
     atime = _utc_timestamp_for(commit.author)
     ctime = _utc_timestamp_for(commit.committer)
 

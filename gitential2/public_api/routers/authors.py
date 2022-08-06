@@ -9,7 +9,6 @@ from gitential2.core.authors import (
     create_author,
     list_active_authors,
     get_author,
-    list_authors_ext,
 )
 from gitential2.core.context import GitentialContext
 from gitential2.core.deduplication import deduplicate_authors
