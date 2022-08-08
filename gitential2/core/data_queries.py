@@ -127,7 +127,7 @@ def _getting_table_column_name_to_be_used_in_sprint_filter(table_name: str) -> O
 
 
 def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id: int, query: DataQuery):
-    for i, dimension in enumerate(query.dimensions):
+    for index, dimension in enumerate(query.dimensions):
         if dimension == "sprint":
             for _filter in query.filters:
                 if (
@@ -136,7 +136,7 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
                     and _filter.args[0].col == "project_id"
                 ):
                     project_id = int(cast(int, _filter.args[1]))
-            query.dimensions.pop(i)
+            query.dimensions.pop(index)
             if project_id:
                 project = g.backend.projects.get_or_error(workspace_id=workspace_id, id_=project_id)
                 sprint = project.sprint
@@ -201,7 +201,7 @@ def _prepare_sort_by_s(sort_by_s: List[DQSortByExpr], table: TableExpr):
 
 # pylint: disable=unused-argument
 def _prepare_sort_by(sort_by_expr: DQSortByExpr, table: TableExpr) -> Tuple[str, bool]:
-    return (_parse_single_column_expr(sort_by_expr, table), not sort_by_expr.desc)
+    return _parse_single_column_expr(sort_by_expr, table), not sort_by_expr.desc
 
 
 def _parse_column_expr(column_expr: DQColumnExpr, table: TableExpr) -> ColumnExpr:

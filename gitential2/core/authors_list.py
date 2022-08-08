@@ -1,6 +1,6 @@
 from collections import defaultdict
 from itertools import chain
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from gitential2.core import GitentialContext
 from gitential2.core.data_queries import process_data_query
@@ -55,12 +55,7 @@ def list_authors_extended(
 def __get_data_query_result_for_authors_filtering(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> DQResult:
-    data_query_arguments: dict = {
-        "query_type": DQType.aggregate,
-        "source_name": DQSourceName.calculated_commits,
-        "selections": [DQFnColumnExpr(fn=DQFunctionName.COUNT)],
-        "dimensions": [DQSingleColumnExpr(col="aid")],
-    }
+    data_query_arguments: Dict[str, Any] = {}
 
     if author_filters is not None:
         if author_filters.limit is not None and author_filters.limit > 0:
@@ -68,11 +63,19 @@ def __get_data_query_result_for_authors_filtering(
         if author_filters.offset is not None and author_filters.offset > -1:
             data_query_arguments["offset"] = author_filters.offset
 
-        filters = __get_filters_for_data_query(g=g, workspace_id=workspace_id, author_filters=author_filters)
+        filters: List[DQFilterExpr] = __get_filters_for_data_query(
+            g=g, workspace_id=workspace_id, author_filters=author_filters
+        )
         if is_list_not_empty(filters):
             data_query_arguments["filters"] = filters
 
-    data_query = DataQuery(**data_query_arguments)
+    data_query = DataQuery(
+        query_type=DQType.aggregate,
+        source_name=DQSourceName.calculated_commits,
+        selections=[DQFnColumnExpr(fn=DQFunctionName.COUNT)],
+        dimensions=[DQSingleColumnExpr(col="aid")],
+        **data_query_arguments,
+    )
     data_query_result: DQResult = process_data_query(g=g, workspace_id=workspace_id, query=data_query)
 
     return data_query_result
@@ -159,24 +162,18 @@ def __get_filters_for_data_query(
 def __get_data_query_result_for_authors_repos(
     g: GitentialContext, workspace_id: int, author_ids: List[int], date_range: Optional[DateRange] = None
 ) -> DQResult:
-    authors_filter = DQFilterExpr(
-        fn=DQFunctionName.IN,
-        args=[
-            DQSingleColumnExpr(col="aid"),
-            author_ids,
-        ],
-    )
-
-    data_query_arguments: dict = {
-        "query_type": DQType.aggregate,
-        "source_name": DQSourceName.calculated_commits,
-        "selections": [DQFnColumnExpr(fn=DQFunctionName.COUNT)],
-        "dimensions": [DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id")],
-        "filters": [authors_filter],
-    }
+    authors_filters: List[DQFilterExpr] = [
+        DQFilterExpr(
+            fn=DQFunctionName.IN,
+            args=[
+                DQSingleColumnExpr(col="aid"),
+                author_ids,
+            ],
+        )
+    ]
 
     if date_range is not None:
-        data_query_arguments["filters"].append(
+        authors_filters.append(
             DQFilterExpr(
                 fn=DQFunctionName.BETWEEN,
                 args=[
@@ -187,7 +184,13 @@ def __get_data_query_result_for_authors_repos(
             )
         )
 
-    data_query = DataQuery(**data_query_arguments)
+    data_query = DataQuery(
+        query_type=DQType.aggregate,
+        source_name=DQSourceName.calculated_commits,
+        selections=[DQFnColumnExpr(fn=DQFunctionName.COUNT)],
+        dimensions=[DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id")],
+        filters=authors_filters,
+    )
     data_query_result: DQResult = process_data_query(g=g, workspace_id=workspace_id, query=data_query)
 
     return data_query_result
