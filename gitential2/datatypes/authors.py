@@ -74,6 +74,7 @@ class DateRange(BaseModel):
 class AuthorFilters(BaseModel):
     limit: Optional[int] = None
     offset: Optional[int] = None
+    sort_by_name_is_desc: Optional[bool] = False
     date_range: Optional[DateRange] = None
     developer_names: Optional[List[str]] = []
     developer_emails: Optional[List[str]] = []

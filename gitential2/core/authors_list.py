@@ -1,6 +1,6 @@
 from collections import defaultdict
 from itertools import chain
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, OrderedDict
 
 from gitential2.core import GitentialContext
 from gitential2.core.data_queries import process_data_query
@@ -14,6 +14,7 @@ from gitential2.datatypes import (
     DQFilterExpr,
     DataQuery,
     DQResult,
+    DQSortByExpr,
 )
 from gitential2.datatypes.authors import (
     IdAndTitle,
@@ -39,6 +40,9 @@ def list_authors_extended(
         g=g,
         workspace_id=workspace_id,
         author_ids_from_other_query=data_query_result.results["aid"],  # type: ignore
+        sort_by_name_is_desc=author_filters.sort_by_name_is_desc
+        if author_filters is not None and author_filters.sort_by_name_is_desc is not None
+        else False,
         date_range=author_filters.date_range if author_filters is not None else None,
     )
 
@@ -159,8 +163,67 @@ def __get_filters_for_data_query(
     return filters
 
 
+def __get_extended_authors_list(
+    g: GitentialContext,
+    workspace_id: int,
+    author_ids_from_other_query: List[int],
+    sort_by_name_is_desc: bool,
+    date_range: Optional[DateRange] = None,
+) -> List[AuthorPublicExtended]:
+    result: List[AuthorPublicExtended] = []
+    if is_list_not_empty(author_ids_from_other_query):
+        data_query_result: DQResult = __get_data_query_result_for_authors_repos(
+            g=g,
+            workspace_id=workspace_id,
+            author_ids=list(set(author_ids_from_other_query)),
+            sort_by_name_is_desc=sort_by_name_is_desc,
+            date_range=date_range,
+        )
+
+        author_ids_all: List[int] = data_query_result.results["aid"]  # type: ignore
+        repo_ids_all: List[int] = data_query_result.results["repo_id"]  # type: ignore
+
+        author_ids_distinct = list(OrderedDict.fromkeys(author_ids_all))
+        authors: List[AuthorInDB] = g.backend.authors.get_authors_by_author_ids(
+            workspace_id=workspace_id, author_ids=author_ids_distinct
+        )
+
+        authors_sorted: List[AuthorInDB] = [__find(authors, aid) for aid in author_ids_distinct]
+
+        author_ids_with_team_details_lists = __get_author_ids_with_teams_lists(
+            g=g, workspace_id=workspace_id, author_ids_distinct=author_ids_distinct
+        )
+        author_ids_with_project_details_lists = __get_author_ids_with_projects_lists(
+            g=g,
+            workspace_id=workspace_id,
+            author_ids_all=author_ids_all,
+            repo_ids_all=repo_ids_all,
+        )
+
+        result = [
+            AuthorPublicExtended(
+                teams=author_ids_with_team_details_lists[author.id],
+                projects=author_ids_with_project_details_lists[author.id],
+                id=author.id,
+                created_at=author.created_at,
+                updated_at=author.updated_at,
+                active=author.active,
+                name=author.name,
+                email=author.email,
+                aliases=author.aliases,
+            )
+            for author in authors_sorted
+        ]
+
+    return result
+
+
 def __get_data_query_result_for_authors_repos(
-    g: GitentialContext, workspace_id: int, author_ids: List[int], date_range: Optional[DateRange] = None
+    g: GitentialContext,
+    workspace_id: int,
+    author_ids: List[int],
+    sort_by_name_is_desc: bool,
+    date_range: Optional[DateRange] = None,
 ) -> DQResult:
     authors_filters: List[DQFilterExpr] = [
         DQFilterExpr(
@@ -188,7 +251,8 @@ def __get_data_query_result_for_authors_repos(
         query_type=DQType.aggregate,
         source_name=DQSourceName.calculated_commits,
         selections=[DQFnColumnExpr(fn=DQFunctionName.COUNT)],
-        dimensions=[DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id")],
+        dimensions=[DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id"), DQSingleColumnExpr(col="aname")],
+        sort_by=[DQSortByExpr(col="aname", desc=sort_by_name_is_desc)],
         filters=authors_filters,
     )
     data_query_result: DQResult = process_data_query(g=g, workspace_id=workspace_id, query=data_query)
@@ -196,55 +260,8 @@ def __get_data_query_result_for_authors_repos(
     return data_query_result
 
 
-def __get_extended_authors_list(
-    g: GitentialContext,
-    workspace_id: int,
-    author_ids_from_other_query: List[int],
-    date_range: Optional[DateRange] = None,
-) -> List[AuthorPublicExtended]:
-    result: List[AuthorPublicExtended] = []
-    if is_list_not_empty(author_ids_from_other_query):
-        data_query_result: DQResult = __get_data_query_result_for_authors_repos(
-            g=g,
-            workspace_id=workspace_id,
-            author_ids=list(set(author_ids_from_other_query)),
-            date_range=date_range,
-        )
-
-        author_ids_all: List[int] = data_query_result.results["aid"]  # type: ignore
-        repo_ids_all: List[int] = data_query_result.results["repo_id"]  # type: ignore
-
-        author_ids_distinct = list(set(author_ids_all))
-        authors: List[AuthorInDB] = g.backend.authors.get_authors_by_author_ids(
-            workspace_id=workspace_id, author_ids=author_ids_distinct
-        )
-
-        author_ids_with_team_details_lists = __get_author_ids_with_teams_lists(
-            g=g, workspace_id=workspace_id, author_ids_distinct=author_ids_distinct
-        )
-        author_ids_with_project_details_lists = __get_author_ids_with_projects_lists(
-            g=g,
-            workspace_id=workspace_id,
-            author_ids_all=author_ids_all,
-            repo_ids_all=repo_ids_all,
-        )
-
-        result = [
-            AuthorPublicExtended(
-                teams=author_ids_with_team_details_lists[author.id],
-                projects=author_ids_with_project_details_lists[author.id],
-                id=author.id,
-                created_at=author.created_at,
-                updated_at=author.updated_at,
-                active=author.active,
-                name=author.name,
-                email=author.email,
-                aliases=author.aliases,
-            )
-            for author in authors
-        ]
-
-    return result
+def __find(authors: List[AuthorInDB], aid: int):
+    return next(filter(lambda a: a.id == aid, authors), None)
 
 
 def __get_author_ids_with_teams_lists(
