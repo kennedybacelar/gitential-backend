@@ -352,7 +352,7 @@ def _prepare_filters(  # pylint: disable=too-complex,unused-argument
             else:
                 ret.append(filter_(values))
         else:
-            logger.warning("FILTERKEY_MISSING", filter_key=filter_key, table_def=table_def)
+            logger.warning("FILTER_KEY_MISSING", filter_key=filter_key, table_def=table_def)
 
     return ret
 

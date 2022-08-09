@@ -1,12 +1,14 @@
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
+from sqlalchemy import exc
 from structlog import get_logger
 
 from gitential2.datatypes.common import CoreModel
 from ..base.repositories import BaseRepository
 from .repositories import SQLRepository
 from .tables import schema_revisions_table, get_workspace_metadata
+from ...exceptions import SettingsException
 from ...utils import get_schema_name
 
 logger = get_logger(__name__)
@@ -181,12 +183,24 @@ def _do_migration(
 
     if remaining_steps:
         for ms in remaining_steps:
-            logger.info("Migration: applying step", schema_name=schema_name, revision_id=ms.revision_id)
-            for query_ in ms.steps:
-                logger.info(
-                    "Migrations: executing query", query=query_, schema_name=schema_name, revision_id=ms.revision_id
-                )
-                engine.execute(query_)
+            logger.info("Migration | applying step", schema_name=schema_name, revision_id=ms.revision_id)
+
+            connection = engine.connect()
+            trans = connection.begin()
+            try:
+                for query_ in ms.steps:
+                    logger.info(
+                        "Migrations | executing query",
+                        query=query_,
+                        schema_name=schema_name,
+                        revision_id=ms.revision_id,
+                    )
+                    connection.execute(query_)
+                trans.commit()
+            except exc.SQLAlchemyError as se:
+                trans.rollback()
+                raise SettingsException("Exception in database migration!") from se
+
         new_rev = SchemaRevision(id=schema_name, revision_id=remaining_steps[-1].revision_id)
         if current_rev:
             schema_revisions.update(schema_name, new_rev)
