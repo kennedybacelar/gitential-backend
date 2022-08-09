@@ -167,7 +167,6 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             settings.connections.database_url,
             json_serializer=json_dumps,
             pool_pre_ping=True,
-            isolation_level="AUTOCOMMIT",
         )
         self._metadata = metadata
         self.initialize()
