@@ -1,6 +1,6 @@
 from collections import defaultdict
 from itertools import chain
-from typing import List, Dict, Optional, Any, OrderedDict
+from typing import List, Dict, Optional, Any, OrderedDict, cast
 
 from gitential2.core import GitentialContext
 from gitential2.core.data_queries import process_data_query
@@ -123,8 +123,10 @@ def __get_filters_for_data_query(
                     fn=DQFunctionName.BETWEEN,
                     args=[
                         DQSingleColumnExpr(col="atime"),
-                        author_filters.date_range.start,
-                        author_filters.date_range.end,
+                        # It is necessary to do this cast or the app will crash when it gets here
+                        # because it is expecting a string, not a date as it is stated in the AuthorFilters class.
+                        str(cast(str, author_filters.date_range.start)),
+                        str(cast(str, author_filters.date_range.end)),
                     ],
                 )
             )
@@ -241,8 +243,10 @@ def __get_data_query_result_for_authors_repos(
                 fn=DQFunctionName.BETWEEN,
                 args=[
                     DQSingleColumnExpr(col="atime"),
-                    date_range.start,
-                    date_range.end,
+                    # It is necessary to do this cast or the app will crash when it gets here
+                    # because it is expecting a string, not a date as it is stated in the AuthorFilters class.
+                    str(cast(str, date_range.start)),
+                    str(cast(str, date_range.end)),
                 ],
             )
         )

@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Set, List, Optional, Tuple
 
 from pydantic import BaseModel
@@ -67,8 +68,8 @@ class AuthorsPublicExtendedSearchResult(BaseModel):
 
 
 class DateRange(BaseModel):
-    start: Optional[str]
-    end: Optional[str]
+    start: date
+    end: date
 
 
 class AuthorFilters(BaseModel):
