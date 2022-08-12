@@ -29,6 +29,15 @@ from gitential2.datatypes.teams import TeamInDB
 from gitential2.utils import is_list_not_empty
 
 
+def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorPublicExtended]:
+    return __get_extended_authors_list(
+        g=g,
+        workspace_id=workspace_id,
+        author_ids_from_other_query=[author_id],
+        sort_by_name_is_desc=False,
+    )[0]
+
+
 def list_authors_extended(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> AuthorsPublicExtendedSearchResult:
@@ -39,7 +48,7 @@ def list_authors_extended(
     authors_ext_list: List[AuthorPublicExtended] = __get_extended_authors_list(
         g=g,
         workspace_id=workspace_id,
-        author_ids_from_other_query=data_query_result.results["aid"],  # type: ignore
+        author_ids_from_other_query=data_query_result.results.get("aid", []),
         sort_by_name_is_desc=author_filters.sort_by_name_is_desc
         if author_filters is not None and author_filters.sort_by_name_is_desc is not None
         else False,
@@ -182,8 +191,8 @@ def __get_extended_authors_list(
             date_range=date_range,
         )
 
-        author_ids_all: List[int] = data_query_result.results["aid"]  # type: ignore
-        repo_ids_all: List[int] = data_query_result.results["repo_id"]  # type: ignore
+        author_ids_all: List[int] = data_query_result.results.get("aid", [])
+        repo_ids_all: List[int] = data_query_result.results.get("repo_id", [])
 
         author_ids_distinct = list(OrderedDict.fromkeys(author_ids_all))
         authors: List[AuthorInDB] = g.backend.authors.get_authors_by_author_ids(

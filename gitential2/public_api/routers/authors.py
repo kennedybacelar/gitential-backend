@@ -20,10 +20,11 @@ from gitential2.datatypes.authors import (
     AuthorUpdate,
     AuthorFilters,
     AuthorsPublicExtendedSearchResult,
+    AuthorPublicExtended,
 )
 from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import current_user, gitential_context
-from ...core.authors_list import list_authors_extended
+from ...core.authors_list import list_authors_extended, get_author_extended
 
 router = APIRouter(tags=["authors"])
 
@@ -81,6 +82,17 @@ def get_author_(
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
     return get_author(g, workspace_id, author_id)
+
+
+@router.get("/workspaces/{workspace_id}/authors/{author_id}/extended", response_model=AuthorPublicExtended)
+def get_author_extended_(
+    workspace_id: int,
+    author_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    return get_author_extended(g, workspace_id, author_id)
 
 
 @router.delete("/workspaces/{workspace_id}/authors/{author_id}")
