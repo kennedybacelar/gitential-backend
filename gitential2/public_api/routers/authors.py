@@ -41,8 +41,8 @@ def authors_count_(
     return authors_count(g=g, workspace_id=workspace_id)
 
 
-@router.get("/workspaces/{workspace_id}/authors-names-emails-logins")
-def list_authors_names_emails_logins_(
+@router.get("/workspaces/{workspace_id}/authors-names-emails")
+def list_authors_names_emails_(
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),

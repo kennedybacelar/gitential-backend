@@ -67,10 +67,9 @@ class AuthorsPublicExtendedSearchResult(BaseModel):
     authors_list: List[AuthorPublicExtended]
 
 
-class AuthorNamesAndEmailsAndLogins(BaseModel):
+class AuthorNamesAndEmails(BaseModel):
     names: List[str] = []
     emails: List[str] = []
-    logins: List[str] = []
 
 
 class DateRange(BaseModel):

@@ -50,7 +50,7 @@ from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectUpdate,
     ProjectITSProjectInDB,
 )
-from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB, AuthorNamesAndEmailsAndLogins
+from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB, AuthorNamesAndEmails
 from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
 from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
 from gitential2.datatypes.workspace_invitations import (
@@ -513,7 +513,7 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
         pass
 
     @abstractmethod
-    def get_author_names_and_emails(self, workspace_id: int) -> AuthorNamesAndEmailsAndLogins:
+    def get_author_names_and_emails(self, workspace_id: int) -> AuthorNamesAndEmails:
         pass
 
     @abstractmethod

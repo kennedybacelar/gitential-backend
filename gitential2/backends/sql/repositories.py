@@ -57,7 +57,7 @@ from gitential2.datatypes.pull_requests import (
     PullRequestLabelId,
 )
 from gitential2.datatypes.access_log import AccessLog
-from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmailsAndLogins
+from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmails
 from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
 
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
@@ -710,35 +710,24 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [AuthorInDB(**row) for row in rows]
 
-    def get_author_names_and_emails(self, workspace_id: int) -> AuthorNamesAndEmailsAndLogins:
-        query = select([self.table.c.name, self.table.c.email, self.table.c.aliases])
+    def get_author_names_and_emails(self, workspace_id: int) -> AuthorNamesAndEmails:
+        query = select([self.table.c.name, self.table.c.email])
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
 
         names_set: Set[str] = set()
         emails_set: Set[str] = set()
-        logins_set: Set[str] = set()
         for row in rows:
             if is_string_not_empty(row[0]):
                 names_set.add(row[0])
             if is_string_not_empty(row[1]):
                 emails_set.add(row[1])
-            for alias in row[2]:
-                if alias is not None:
-                    if is_string_not_empty(alias.get("name", None)):
-                        names_set.add(alias.get("name", None))
-                    if is_string_not_empty(alias.get("email", None)):
-                        emails_set.add(alias.get("email", None))
-                    if is_string_not_empty(alias.get("login", None)):
-                        logins_set.add(alias.get("login", None))
 
         names: List[str] = list(names_set)
         names.sort()
         emails: List[str] = list(emails_set)
         emails.sort()
-        logins: List[str] = list(logins_set)
-        logins.sort()
 
-        return AuthorNamesAndEmailsAndLogins(names=names, emails=emails, logins=logins)
+        return AuthorNamesAndEmails(names=names, emails=emails)
 
     def count(self, workspace_id: int) -> int:
         query = select([func.count()]).select_from(self.table)
