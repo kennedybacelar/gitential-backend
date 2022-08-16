@@ -178,9 +178,7 @@ def _adding_sprint_dimension_info_into_filters(g: GitentialContext, workspace_id
                     final_date = start_date + timedelta(weeks=sprint.weeks)
 
                     table_name = query.source_name.value
-                    column_to_be_used_in_sprint_filter = _getting_table_column_name_to_be_used_in_sprint_filter(
-                        table_name
-                    )
+                    column_to_be_used_in_sprint_filter = _getting_date_field_name_by_table(table_name)
 
                     # Some tables available as data-query sources don't have neither created_at nor any other date wise column
                     # Then, for these tables, the dimension sprint won't take any effect

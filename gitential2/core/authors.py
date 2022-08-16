@@ -11,6 +11,7 @@ from gitential2.datatypes.authors import (
     AuthorInDB,
     AuthorCreate,
     AuthorUpdate,
+    AuthorNamesAndEmailsAndLogins,
 )
 from gitential2.utils import levenshtein_ratio
 from .context import GitentialContext
@@ -57,6 +58,14 @@ def _get_team_title(team_member: TeamMemberInDB, teams_in_workspace: List[TeamIn
 
 def list_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
     return list(g.backend.authors.all(workspace_id))
+
+
+def get_author_names_and_emails(g: GitentialContext, workspace_id: int) -> AuthorNamesAndEmailsAndLogins:
+    return g.backend.authors.get_author_names_and_emails(workspace_id=workspace_id)
+
+
+def authors_count(g: GitentialContext, workspace_id: int) -> int:
+    return g.backend.authors.count(workspace_id=workspace_id)
 
 
 def update_author(g: GitentialContext, workspace_id: int, author_id: int, author_update: AuthorUpdate):

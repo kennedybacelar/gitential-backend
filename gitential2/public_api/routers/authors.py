@@ -9,6 +9,8 @@ from gitential2.core.authors import (
     create_author,
     list_active_authors,
     get_author,
+    get_author_names_and_emails,
+    authors_count,
 )
 from gitential2.core.context import GitentialContext
 from gitential2.core.deduplication import deduplicate_authors
@@ -27,6 +29,26 @@ from ..dependencies import current_user, gitential_context
 from ...core.authors_list import list_authors_extended, get_author_extended
 
 router = APIRouter(tags=["authors"])
+
+
+@router.get("/workspaces/{workspace_id}/authors-count")
+def authors_count_(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    return authors_count(g=g, workspace_id=workspace_id)
+
+
+@router.get("/workspaces/{workspace_id}/authors-names-emails-logins")
+def list_authors_names_emails_logins_(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    return get_author_names_and_emails(g=g, workspace_id=workspace_id)
 
 
 @router.get("/workspaces/{workspace_id}/authors", response_model=List[AuthorPublic])

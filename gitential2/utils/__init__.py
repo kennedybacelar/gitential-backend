@@ -132,3 +132,7 @@ def get_schema_name(workspace_id: int):
 
 def is_list_not_empty(arg: Optional[List] = None) -> bool:
     return arg is not None and len(arg) > 0
+
+
+def is_string_not_empty(arg: Optional[str] = None) -> bool:
+    return arg is not None and isinstance(arg, str) and len(arg) > 0
