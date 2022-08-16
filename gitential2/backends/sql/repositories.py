@@ -1,4 +1,5 @@
-from typing import Iterable, Optional, Callable, List, Dict, Union, cast
+from collections import defaultdict
+from typing import Iterable, Optional, Callable, List, Dict, Union, cast, Set
 import datetime as dt
 import typing
 import pandas as pd
@@ -56,7 +57,7 @@ from gitential2.datatypes.pull_requests import (
     PullRequestLabelId,
 )
 from gitential2.datatypes.access_log import AccessLog
-from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate
+from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmailsAndLogins
 from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
 
 from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
@@ -132,7 +133,7 @@ from ..base import (
 from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
-from ...utils import get_schema_name
+from ...utils import get_schema_name, is_string_not_empty
 
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
@@ -578,6 +579,11 @@ class SQLProjectRepository(
         self._execute_query(query, workspace_id)
         return True
 
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+        query = self.table.select().where(self.table.c.id.in_(project_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [ProjectInDB(**row) for row in rows]
+
 
 class SQLRepositoryRepository(
     RepositoryRepository, SQLWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
@@ -635,6 +641,19 @@ class SQLProjectRepositoryRepository(
         query = self.table.delete().where(self.table.c.repo_id.in_(repo_ids))
         self._execute_query(query, workspace_id=workspace_id)
 
+    def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
+        query = select([self.table.c.repo_id]).where(self.table.c.project_id.in_(project_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["repo_id"] for row in rows]
+
+    def get_project_ids_for_repo_ids(self, workspace_id: int, repo_ids: List[int]) -> Dict[int, List[int]]:
+        query = self.table.select().where(self.table.c.repo_id.in_(repo_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        result: dict = defaultdict(lambda: [])
+        for row in rows:
+            result[row["repo_id"]].append(row["project_id"])
+        return result
+
 
 class SQLProjectITSProjectRepository(
     ProjectITSProjectRepository,
@@ -686,9 +705,53 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
         rows = self._execute_query(query, workspace_id)
         return [AuthorInDB(**row) for row in rows]
 
+    def get_authors_by_author_ids(self, workspace_id: int, author_ids: List[int]) -> List[AuthorInDB]:
+        query = self.table.select().where(self.table.c.id.in_(author_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [AuthorInDB(**row) for row in rows]
+
+    def get_author_names_and_emails(self, workspace_id: int) -> AuthorNamesAndEmailsAndLogins:
+        query = select([self.table.c.name, self.table.c.email, self.table.c.aliases])
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+
+        names_set: Set[str] = set()
+        emails_set: Set[str] = set()
+        logins_set: Set[str] = set()
+        for row in rows:
+            if is_string_not_empty(row[0]):
+                names_set.add(row[0])
+            if is_string_not_empty(row[1]):
+                emails_set.add(row[1])
+            for alias in row[2]:
+                if alias is not None:
+                    if is_string_not_empty(alias.get("name", None)):
+                        names_set.add(alias.get("name", None))
+                    if is_string_not_empty(alias.get("email", None)):
+                        emails_set.add(alias.get("email", None))
+                    if is_string_not_empty(alias.get("login", None)):
+                        logins_set.add(alias.get("login", None))
+
+        names: List[str] = list(names_set)
+        names.sort()
+        emails: List[str] = list(emails_set)
+        emails.sort()
+        logins: List[str] = list(logins_set)
+        logins.sort()
+
+        return AuthorNamesAndEmailsAndLogins(names=names, emails=emails, logins=logins)
+
+    def count(self, workspace_id: int) -> int:
+        query = select([func.count()]).select_from(self.table)
+        with self._connection_with_schema(workspace_id) as connection:
+            result = connection.execute(query)
+            return result.fetchone()[0]
+
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
-    pass
+    def get_teams_by_team_ids(self, workspace_id: int, team_ids: List[int]) -> List[TeamInDB]:
+        query = self.table.select().where(self.table.c.id.in_(team_ids))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [TeamInDB(**row) for row in rows]
 
 
 class SQLTeamMemberRepository(
@@ -712,6 +775,11 @@ class SQLTeamMemberRepository(
 
     def get_team_member_author_ids(self, workspace_id: int, team_id: int) -> List[int]:
         query = select([self.table.c.author_id]).where(self.table.c.team_id == team_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["author_id"] for row in rows]
+
+    def get_author_ids_by_team_ids(self, workspace_id: int, team_ids: List[int]) -> List[int]:
+        query = select([self.table.c.author_id]).where(self.table.c.team_id.in_(team_ids))
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [row["author_id"] for row in rows]
 

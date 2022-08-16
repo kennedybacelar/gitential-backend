@@ -50,7 +50,7 @@ from gitential2.datatypes.project_its_projects import (
     ProjectITSProjectUpdate,
     ProjectITSProjectInDB,
 )
-from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB
+from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB, AuthorNamesAndEmailsAndLogins
 from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
 from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
 from gitential2.datatypes.workspace_invitations import (
@@ -232,6 +232,10 @@ class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, Projec
     def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
         pass
 
+    @abstractmethod
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+        pass
+
 
 class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]):
     @abstractmethod
@@ -288,6 +292,14 @@ class ProjectRepositoryRepository(
 
     @abstractmethod
     def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
+        pass
+
+    @abstractmethod
+    def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
+        pass
+
+    @abstractmethod
+    def get_project_ids_for_repo_ids(self, workspace_id: int, repo_ids: List[int]) -> Dict[int, List[int]]:
         pass
 
     def update_project_repositories(
@@ -496,9 +508,23 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
     def search(self, workspace_id: int, q: str) -> List[AuthorInDB]:
         pass
 
+    @abstractmethod
+    def get_authors_by_author_ids(self, workspace_id: int, author_ids: List[int]) -> List[AuthorInDB]:
+        pass
+
+    @abstractmethod
+    def get_author_names_and_emails(self, workspace_id: int) -> AuthorNamesAndEmailsAndLogins:
+        pass
+
+    @abstractmethod
+    def count(self, workspace_id: int) -> int:
+        pass
+
 
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
-    pass
+    @abstractmethod
+    def get_teams_by_team_ids(self, workspace_id: int, team_ids: List[int]):
+        pass
 
 
 class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, TeamMemberUpdate, TeamMemberInDB]):
@@ -512,6 +538,10 @@ class TeamMemberRepository(BaseWorkspaceScopedRepository[int, TeamMemberCreate, 
 
     @abstractmethod
     def get_team_member_author_ids(self, workspace_id: int, team_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def get_author_ids_by_team_ids(self, workspace_id: int, team_ids: List[int]) -> List[int]:
         pass
 
     @abstractmethod

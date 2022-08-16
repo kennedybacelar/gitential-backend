@@ -1,9 +1,9 @@
+from datetime import date
 from typing import Set, List, Optional, Tuple
 
 from pydantic import BaseModel
 
 from gitential2.datatypes.export import ExportableModel
-
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
 
@@ -55,6 +55,37 @@ class IdAndTitle(BaseModel):
     title: str
 
 
-class AuthorPublicExt(AuthorInDB):
+class AuthorPublicExtended(AuthorInDB):
     teams: Optional[List[IdAndTitle]]
     projects: Optional[List[IdAndTitle]]
+
+
+class AuthorsPublicExtendedSearchResult(BaseModel):
+    total: Optional[int] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    authors_list: List[AuthorPublicExtended]
+
+
+class AuthorNamesAndEmailsAndLogins(BaseModel):
+    names: List[str] = []
+    emails: List[str] = []
+    logins: List[str] = []
+
+
+class DateRange(BaseModel):
+    start: date
+    end: date
+
+
+class AuthorFilters(BaseModel):
+    limit: Optional[int] = 5
+    offset: Optional[int] = 0
+    sort_by_name_is_desc: Optional[bool] = False
+    date_range: Optional[DateRange] = None
+    developer_names: Optional[List[str]] = []
+    developer_emails: Optional[List[str]] = []
+    developer_ids: Optional[List[int]] = []
+    project_ids: Optional[List[int]] = []
+    team_ids: Optional[List[int]] = []
+    repository_ids: Optional[List[int]] = []

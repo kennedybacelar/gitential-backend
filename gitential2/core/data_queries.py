@@ -238,7 +238,7 @@ def _prepare_sort_by_s(sort_by_s: List[DQSortByExpr], table: TableExpr):
 
 # pylint: disable=unused-argument
 def _prepare_sort_by(sort_by_expr: DQSortByExpr, table: TableExpr) -> Tuple[str, bool]:
-    return (_parse_single_column_expr(sort_by_expr, table), not sort_by_expr.desc)
+    return _parse_single_column_expr(sort_by_expr, table), not sort_by_expr.desc
 
 
 def _parse_column_expr(column_expr: DQColumnExpr, table: TableExpr) -> ColumnExpr:

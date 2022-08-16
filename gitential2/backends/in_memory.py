@@ -319,6 +319,9 @@ class InMemProjectRepository(
     def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
         pass
 
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+        pass
+
 
 class InMemRepositoryRepository(
     RepositoryRepository, InMemWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
@@ -356,7 +359,7 @@ class InMemProjectRepositoryRepository(
     InMemWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB],
 ):
     def get_repo_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:
-        return [item.repository_id for item in self._state[workspace_id] if item.project_id == project_id]
+        return [item.repo_id for item in self._state[workspace_id] if item.project_id == project_id]
 
     def add_repo_ids_to_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
         for repo_id in repo_ids:
@@ -368,6 +371,16 @@ class InMemProjectRepositoryRepository(
         ]
         for d_id in needs_delete:
             self.delete(workspace_id=workspace_id, id_=d_id)
+
+    def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
+        return [item.repo_id for item in self._state[workspace_id] if item.project_id in project_ids]
+
+    def get_project_ids_for_repo_ids(self, workspace_id: int, repo_ids: List[int]) -> Dict[int, List[int]]:
+        rows = [item for item in self._state[workspace_id] if item.repo_id in repo_ids]
+        result: dict = defaultdict(lambda: [])
+        for row in rows:
+            result[row["repo_id"]].append(row["project_id"])
+        return result
 
 
 class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
