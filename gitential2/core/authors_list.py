@@ -48,7 +48,7 @@ def list_authors_extended(
     authors_ext_list: List[AuthorPublicExtended] = __get_extended_authors_list(
         g=g,
         workspace_id=workspace_id,
-        author_ids_from_other_query=data_query_result.results.get("aid", []),
+        author_ids_from_other_query=data_query_result.results.get("aid", []),  # type: ignore
         sort_by_name_is_desc=author_filters.sort_by_name_is_desc
         if author_filters is not None and author_filters.sort_by_name_is_desc is not None
         else False,
@@ -122,7 +122,7 @@ def __get_filters_for_data_query(
                     fn=DQFunctionName.IN,
                     args=[
                         DQSingleColumnExpr(col="aid"),
-                        list(set((author_filters.developer_ids or []) + (author_filters.developer_ids or []))),
+                        list(set((author_filters.developer_ids or []) + (author_ids_in_teams or []))),
                     ],
                 )
             )
@@ -191,8 +191,8 @@ def __get_extended_authors_list(
             date_range=date_range,
         )
 
-        author_ids_all: List[int] = data_query_result.results.get("aid", [])
-        repo_ids_all: List[int] = data_query_result.results.get("repo_id", [])
+        author_ids_all: List[int] = data_query_result.results.get("aid", [])  # type: ignore
+        repo_ids_all: List[int] = data_query_result.results.get("repo_id", [])  # type: ignore
 
         author_ids_distinct = list(OrderedDict.fromkeys(author_ids_all))
         authors: List[AuthorInDB] = g.backend.authors.get_authors_by_author_ids(
