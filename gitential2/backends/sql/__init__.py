@@ -164,7 +164,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._ibis_conn = None
         self._ibis_lock = Lock()
         self._engine = sa.create_engine(
-            settings.connections.database_url, json_serializer=json_dumps, pool_pre_ping=True
+            settings.connections.database_url,
+            json_serializer=json_dumps,
+            pool_pre_ping=True,
         )
         self._metadata = metadata
         self.initialize()

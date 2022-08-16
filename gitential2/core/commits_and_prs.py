@@ -5,6 +5,7 @@ from gitential2.datatypes.pull_requests import PullRequest
 
 from .context import GitentialContext
 
+
 # pylint: disable=too-many-arguments
 def get_commits(
     g: GitentialContext,
@@ -30,8 +31,18 @@ def get_commits(
         author_ids = g.backend.team_members.get_team_member_author_ids(workspace_id, team_id)
     if developer_id:
         author_ids = [developer_id]
-    return (
-        g.backend.calculated_commits.count(
+
+    total_number_of_commits: int = g.backend.calculated_commits.count(
+        workspace_id=workspace_id,
+        repository_ids=repo_ids,
+        author_ids=author_ids,
+        from_=from_,
+        to_=to_,
+        is_merge=is_merge,
+        keywords=keywords,
+    )
+    commits_list = list(
+        g.backend.calculated_commits.select(
             workspace_id=workspace_id,
             repository_ids=repo_ids,
             author_ids=author_ids,
@@ -39,21 +50,12 @@ def get_commits(
             to_=to_,
             is_merge=is_merge,
             keywords=keywords,
-        ),
-        list(
-            g.backend.calculated_commits.select(
-                workspace_id=workspace_id,
-                repository_ids=repo_ids,
-                author_ids=author_ids,
-                from_=from_,
-                to_=to_,
-                is_merge=is_merge,
-                keywords=keywords,
-                limit=limit,
-                offset=offset,
-            )
-        ),
+            limit=limit,
+            offset=offset,
+        )
     )
+
+    return total_number_of_commits, commits_list
 
 
 def get_patches_for_commit(
