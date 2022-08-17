@@ -18,15 +18,9 @@ router = APIRouter(tags=["deploys"])
 
 @router.get("/workspaces/{workspace_id}/deploys", response_model=List[Deploy])
 def get_deploys(
-    response: Response,
-    workspace_id: int,
-    g: GitentialContext = Depends(gitential_context),
-    auth: HTTPAuthorizationCredentials = Security(security),
+    workspace_id: int, g: GitentialContext = Depends(gitential_context), current_user=Depends(current_user)
 ):
-    _, is_valid = validate_workspace_api_key(g=g, token=auth.credentials)
-    if not is_valid:
-        response.status_code = status.HTTP_401_UNAUTHORIZED
-        return []
+    check_permission(g, current_user, Entity.workspace, Action.delete, workspace_id=workspace_id)
     return get_all_deploys(g, workspace_id)
 
 
