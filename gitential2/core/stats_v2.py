@@ -64,6 +64,8 @@ def _prepare_dimension(
             # ibis_table = ibis_tables.pull_requests
         elif TableName.pull_request_comments in table_def:
             date_field_name = "published_at"
+        elif TableName.deploy_commits in table_def:
+            date_field_name = "deployed_at"
         else:
             date_field_name = "date"
             # ibis_table = ibis_tables.commits
