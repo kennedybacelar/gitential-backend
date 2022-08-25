@@ -224,6 +224,7 @@ def __get_extended_authors_list(
                 aliases=author.aliases,
             )
             for author in authors_sorted
+            if author
         ]
 
     return result
