@@ -72,7 +72,6 @@ async def auth(
         raise HTTPException(404)
 
     try:
-
         token = await _get_token(request, remote, code, id_token, oauth_verifier)
         user_info = await _get_user_info(request, remote, token)
 
@@ -88,7 +87,7 @@ async def auth(
             return result
     except Exception as e:  # pylint: disable=broad-except
         logger.exception("Error during authentication")
-        raise AuthenticationException("error durin authentication") from e
+        raise AuthenticationException("error during authentication") from e
 
 
 @router.get("/login/{backend}")

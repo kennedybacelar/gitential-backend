@@ -72,7 +72,8 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     ) -> List[RepositoryCreate]:
 
         client = self.get_oauth2_client(token=token, update_token=update_token)
-        projects = walk_next_link(client, f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id")
+        url = f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id&per_page=100"
+        projects = walk_next_link(client, url)
         client.close()
         return [self._project_to_repo_create(p) for p in projects]
 

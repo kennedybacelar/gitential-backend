@@ -72,6 +72,10 @@ def list_available_repositories_for_credential(
                     update_token=get_update_token_callback(g, credential),
                     provider_user_id=userinfo.sub if userinfo else None,
                 )
+                logger.info(
+                    f"collected_repositories_for_{credential_.integration_name}",
+                    collected_repositories=collected_repositories,
+                )
                 results = collected_repositories
             else:
                 logger.error(

@@ -134,8 +134,8 @@ integrations:
     type: github
     display_name: GitHub
     oauth:
-      client_id: "7ef5d2a52e581f7bfaf0"
-      client_secret: "2cb2261386aac7d1ab8a587fdccffd24cf59aada"
+      client_id: "eb7dac0008a9e6cad60f"
+      client_secret: "5feef3f4acb8f8b4e37a8d5d511b9c143cab5027"
     login: true
     login_text: "Login with GitHub"
 
