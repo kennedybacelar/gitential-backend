@@ -93,8 +93,6 @@ def _prepare_dimension(
             return (ibis_table[date_field_name].date().day_of_week.index()).name("day_of_week")
         elif dimension == DimensionName.hour_of_day:
             return (ibis_table[date_field_name].hour()).name("hour_of_day")
-        elif dimension == DimensionName.sprint:
-            return (ibis_table[date_field_name].hour()).name("sprint")
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
