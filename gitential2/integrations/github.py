@@ -51,7 +51,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
     def oauth_register(self):
         api_base_url = self.settings.options.get("api_base_url", "https://api.github.com/")
-        return {
+        git_hub_oauth_registration_params = {
             "api_base_url": api_base_url,
             "access_token_url": self.settings.options.get(
                 "access_token_url", "https://github.com/login/oauth/access_token"
@@ -62,6 +62,8 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "client_id": self.settings.oauth.client_id,
             "client_secret": self.settings.oauth.client_secret,
         }
+        logger.info("github_oauth_registration_params", params=git_hub_oauth_registration_params)
+        return git_hub_oauth_registration_params
 
     def refresh_token_if_expired(self, token, update_token: Callable) -> Tuple[bool, dict]:
         return False, token
@@ -205,13 +207,24 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             is_bugfix=calculate_is_bugfix([], raw_data["pr"].get("title", "<missing title>")),
         )
 
+    @staticmethod
+    def log_rate_limit(client):
+        rate_limit_response = client.request("GET", "https://api.github.com/rate_limit")
+        rate_limit_json, rate_limit_headers = rate_limit_response.json(), rate_limit_response.headers
+        logger.info(
+            "github_rate_limit_response", rate_limit_json=rate_limit_json, rate_limit_headers=rate_limit_headers
+        )
+
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
 
-        repository_list = walk_next_link(client, f"{api_base_url}user/repos")
+        GithubIntegration.log_rate_limit(client)
+
+        starting_url = f"{api_base_url}user/repos?per_page=100&type=all"
+        repository_list = walk_next_link(client, starting_url)
 
         client.close()
         return [self._repo_to_create_repo(repo) for repo in repository_list]

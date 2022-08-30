@@ -15,12 +15,13 @@ def walk_next_link(client, starting_url, acc=None, max_pages=50):
                     return link["url"]
         return None
 
-    logger.debug("Walking next link", url=starting_url)
+    logger.info("walking_next_link_of_integration", url=starting_url)
 
     acc = acc or []
     response = client.request("GET", starting_url)
     if response.status_code == 200:
         items, headers = response.json(), response.headers
+        logger.info("git_provider_repo_response_headers", headers=headers)
         acc = acc + items
         next_url = _get_next_link(headers.get("Link"))
         if next_url and max_pages > 0:
