@@ -82,7 +82,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
         api_base_url = self.oauth_register()["api_base_url"]
         pr_list_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls?per_page=100&state=all"
-        prs = walk_next_link(client, pr_list_url)
+        prs = walk_next_link(client, pr_list_url, integration_name="github_prs_")
         return prs
 
     def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
@@ -115,8 +115,12 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         pr_details = resp.json()
         _collect_user_data(pr_details["user"]["url"])
 
-        commits = walk_next_link(client, pr_details["_links"]["commits"]["href"])
-        review_comments = walk_next_link(client, pr_details["_links"]["review_comments"]["href"])
+        commits = walk_next_link(
+            client, pr_details["_links"]["commits"]["href"], integration_name="github_raw_pr_commits"
+        )
+        review_comments = walk_next_link(
+            client, pr_details["_links"]["review_comments"]["href"], integration_name="github_pr_review_comments"
+        )
 
         for c in review_comments:
             if c.get("user"):
@@ -207,24 +211,14 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             is_bugfix=calculate_is_bugfix([], raw_data["pr"].get("title", "<missing title>")),
         )
 
-    @staticmethod
-    def log_rate_limit(client):
-        rate_limit_response = client.request("GET", "https://api.github.com/rate_limit")
-        rate_limit_json, rate_limit_headers = rate_limit_response.json(), rate_limit_response.headers
-        logger.info(
-            "github_rate_limit_response", rate_limit_json=rate_limit_json, rate_limit_headers=rate_limit_headers
-        )
-
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str]
     ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
 
-        GithubIntegration.log_rate_limit(client)
-
         starting_url = f"{api_base_url}user/repos?per_page=100&type=all"
-        repository_list = walk_next_link(client, starting_url)
+        repository_list = walk_next_link(client, starting_url, integration_name="github_private_repos")
 
         client.close()
         return [self._repo_to_create_repo(repo) for repo in repository_list]

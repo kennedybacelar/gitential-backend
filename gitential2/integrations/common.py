@@ -6,7 +6,7 @@ from structlog import get_logger
 logger = get_logger(__name__)
 
 
-def walk_next_link(client, starting_url, acc=None, max_pages=50):
+def walk_next_link(client, starting_url, acc=None, max_pages=100, integration_name=None):
     def _get_next_link(link_header) -> Optional[str]:
         if link_header:
             header_links = parse_header_links(link_header)
@@ -15,17 +15,19 @@ def walk_next_link(client, starting_url, acc=None, max_pages=50):
                     return link["url"]
         return None
 
-    logger.info("walking_next_link_of_integration", url=starting_url)
+    logger.debug(f"walking_next_link_of_{integration_name}_integration", url=starting_url, max_pages=max_pages)
 
     acc = acc or []
     response = client.request("GET", starting_url)
     if response.status_code == 200:
         items, headers = response.json(), response.headers
-        logger.info("git_provider_repo_response_headers", headers=headers)
+        logger.debug(
+            f"{integration_name}_integration_walk_response", headers=headers, response_items_list_length=len(items)
+        )
         acc = acc + items
         next_url = _get_next_link(headers.get("Link"))
         if next_url and max_pages > 0:
-            return walk_next_link(client, next_url, acc, max_pages=max_pages - 1)
+            return walk_next_link(client, next_url, acc, max_pages=max_pages - 1, integration_name=integration_name)
         else:
             return acc
     else:
