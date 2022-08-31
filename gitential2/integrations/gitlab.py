@@ -73,7 +73,7 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
         client = self.get_oauth2_client(token=token, update_token=update_token)
         url = f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id&per_page=100"
-        projects = walk_next_link(client, url)
+        projects = walk_next_link(client, url, integration_name="gitlab_private_repos")
         client.close()
         return [self._project_to_repo_create(p) for p in projects]
 
@@ -107,7 +107,9 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         if repository.extra and "id" in repository.extra:
             project_id = repository.extra["id"]
             merge_requests = walk_next_link(
-                client, f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple"
+                client,
+                f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple",
+                integration_name="gitlab_raw_prs",
             )
             return merge_requests
         else:
@@ -134,10 +136,12 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         merge_request_commits = walk_next_link(
             client,
             f"{self.api_base_url}/projects/{project_id}/merge_requests/{pr_number}/commits",
+            integration_name="gitlab_merge_request_commits",
         )
         merge_request_notes = walk_next_link(
             client,
             f"{self.api_base_url}/projects/{project_id}/merge_requests/{pr_number}/notes",
+            integration_name="gitlab_merge_request_notes",
         )
         return {
             "project_id": project_id,

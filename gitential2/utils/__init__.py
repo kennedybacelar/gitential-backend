@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 from copy import deepcopy
@@ -136,3 +136,28 @@ def is_list_not_empty(arg: Optional[List] = None) -> bool:
 
 def is_string_not_empty(arg: Optional[str] = None) -> bool:
     return arg is not None and isinstance(arg, str) and len(arg) > 0
+
+
+def get_filtered_dict(
+    dict_obj: Dict, callback=None, keys_to_include: List[str] = None, keys_to_exclude: List[str] = None
+):
+    new_dict = dict_obj
+
+    if dict_obj is not None and isinstance(dict_obj, dict) and bool(dict_obj):
+
+        def is_key_filtered(k: str, v) -> bool:
+            result = False
+            if callback:
+                result = callback(k, v)
+            elif keys_to_include is not None and len(keys_to_include) > 0:
+                result = k in keys_to_include
+            elif keys_to_exclude is not None and len(keys_to_exclude) > 0:
+                result = k not in keys_to_exclude
+            return result
+
+        new_dict = {}
+        for (key, value) in dict_obj.items():
+            if is_key_filtered(key, value):
+                new_dict[key] = value
+
+    return new_dict

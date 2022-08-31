@@ -7,7 +7,7 @@ from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.userinfos import UserInfoInDB
 
-from gitential2.utils import levenshtein, find_first
+from gitential2.utils import levenshtein, find_first, get_filtered_dict, is_list_not_empty
 from .context import GitentialContext
 from .credentials import (
     get_fresh_credential,
@@ -43,6 +43,29 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
         results = _merge_repo_lists(collected_repositories, results)
 
     results = _merge_repo_lists(list_ssh_repositories(g, workspace_id), results)
+
+    logger.debug(
+        "list_of_all_user_repositories",
+        number_of_all_user_repositories=len(results),
+        list_of_all_user_repositories_main_data=[
+            get_filtered_dict(
+                dict_obj=repo.dict(),
+                keys_to_include=[
+                    "clone_url",
+                    "name",
+                    "namespace",
+                    "private",
+                    "integration_type",
+                    "integration_name",
+                ],
+            )
+            for repo in results
+            if repo
+        ]
+        if is_list_not_empty(results)
+        else [],
+    )
+
     return results
 
 
@@ -72,10 +95,30 @@ def list_available_repositories_for_credential(
                     update_token=get_update_token_callback(g, credential),
                     provider_user_id=userinfo.sub if userinfo else None,
                 )
-                logger.info(
-                    f"collected_repositories_for_{credential_.integration_name}",
-                    collected_repositories=collected_repositories,
+
+                logger.debug(
+                    "collected_private_repositories",
+                    integration_name=credential_.integration_name,
+                    number_of_collected_private_repositories=len(collected_repositories),
+                    collected_private_repositories_main_data=[
+                        get_filtered_dict(
+                            dict_obj=repo.dict(),
+                            keys_to_include=[
+                                "clone_url",
+                                "name",
+                                "namespace",
+                                "private",
+                                "integration_type",
+                                "integration_name",
+                            ],
+                        )
+                        for repo in collected_repositories
+                        if repo
+                    ]
+                    if is_list_not_empty(collected_repositories)
+                    else [],
                 )
+
                 results = collected_repositories
             else:
                 logger.error(
