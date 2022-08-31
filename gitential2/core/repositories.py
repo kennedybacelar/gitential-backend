@@ -43,6 +43,29 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
         results = _merge_repo_lists(collected_repositories, results)
 
     results = _merge_repo_lists(list_ssh_repositories(g, workspace_id), results)
+
+    logger.debug(
+        "list_of_all_user_repositories",
+        number_of_all_user_repositories=len(results),
+        list_of_all_user_repositories_main_data=[
+            get_filtered_dict(
+                dict_obj=repo.dict(),
+                keys_to_include=[
+                    "clone_url",
+                    "name",
+                    "namespace",
+                    "private",
+                    "integration_type",
+                    "integration_name",
+                ],
+            )
+            for repo in results
+            if repo
+        ]
+        if is_list_not_empty(results)
+        else [],
+    )
+
     return results
 
 
@@ -76,8 +99,8 @@ def list_available_repositories_for_credential(
                 logger.debug(
                     "collected_private_repositories",
                     integration_name=credential_.integration_name,
-                    number_of_collected_repositories=len(collected_repositories),
-                    collected_repositories_main_data=[
+                    number_of_collected_private_repositories=len(collected_repositories),
+                    collected_private_repositories_main_data=[
                         get_filtered_dict(
                             dict_obj=repo.dict(),
                             keys_to_include=[
