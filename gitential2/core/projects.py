@@ -10,6 +10,7 @@ from gitential2.datatypes.projects import (
 from gitential2.datatypes.repositories import RepositoryCreate  # , RepositoryStatus
 from gitential2.datatypes.sprints import Sprint
 
+from gitential2.core.legacy import get_dev_top_repos
 from .refresh_v2 import refresh_project
 from .context import GitentialContext
 
@@ -53,6 +54,7 @@ def update_project(
         g, workspace_id=workspace_id, project=project, its_projects=project_update.its_projects
     )
     refresh_project(g, workspace_id, project_id)
+    deleting_authors_of_removed_projects(g, workspace_id)
     return project
 
 
@@ -87,3 +89,21 @@ def update_sprint_by_project_id(g: GitentialContext, workspace_id: int, project_
     return g.backend.projects.update_sprint_by_project_id(
         workspace_id=workspace_id, project_id=project_id, sprint=sprint
     )
+
+
+def deleting_authors_of_removed_projects(g: GitentialContext, workspace_id: int):
+
+    repos_by_author = get_dev_top_repos(g, workspace_id)
+
+    projects_vs_repos = g.backend.project_repositories.all(workspace_id)
+    assigned_repos = set()
+    for proj_vs_repo in projects_vs_repos:
+        assigned_repos.add(proj_vs_repo.repo_id)
+
+    for author_id, assigned_repos_by_author_id in zip(
+        repos_by_author["categories"], repos_by_author["series"]["repo_ids"]
+    ):
+        # print(f"{author_id} - {assigned_repos_by_author_id}")
+        # print(f"{type(author_id)} {type(assigned_repos_by_author_id)}")
+        if not any(repo for repo in assigned_repos_by_author_id.split(",") if int(repo) in assigned_repos):
+            g.backend.authors.delete(workspace_id=workspace_id, id_=author_id)
