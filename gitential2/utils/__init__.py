@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, TypeGuard
 from datetime import datetime
 from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 from copy import deepcopy
@@ -130,11 +130,11 @@ def get_schema_name(workspace_id: int):
     return f"ws_{workspace_id}"
 
 
-def is_list_not_empty(arg: Optional[List] = None) -> bool:
+def is_list_not_empty(arg: Optional[List] = None) -> TypeGuard[list]:
     return arg is not None and len(arg) > 0
 
 
-def is_string_not_empty(arg: Optional[str] = None) -> bool:
+def is_string_not_empty(arg: Optional[str] = None) -> TypeGuard[str]:
     return arg is not None and isinstance(arg, str) and len(arg) > 0
 
 

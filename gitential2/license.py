@@ -130,3 +130,8 @@ def load_license(license_file_path: Optional[str] = None, bits=2048) -> License:
             )
         except:
             raise LicenseError("007")  # pylint: disable=raise-missing-from
+
+
+def is_on_prem_installation(license_file_path: Optional[str] = None) -> bool:
+    gitential_license: License = check_license(license_file_path)
+    return gitential_license.is_on_premises if gitential_license is not None else False
