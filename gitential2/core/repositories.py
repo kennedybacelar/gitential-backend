@@ -23,7 +23,9 @@ def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -
     return g.backend.repositories.get(workspace_id, repository_id)
 
 
-def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryCreate]:
+def list_available_repositories(
+    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]]
+) -> List[RepositoryCreate]:
     def _merge_repo_lists(first: List[RepositoryCreate], second: List[RepositoryCreate]):
         existing_clone_urls = [r.clone_url for r in first]
         new_repos = [r for r in second if r.clone_url not in existing_clone_urls]
@@ -33,7 +35,9 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
 
     results: List[RepositoryCreate] = all_already_used_repositories
 
-    available_repos_for_credential = partial(list_available_repositories_for_credential, g, workspace_id)
+    available_repos_for_credential = partial(
+        list_available_repositories_for_credential, g, workspace_id, user_organization_name_list
+    )
     with ThreadPoolExecutor() as executor:
         collected_results = executor.map(
             available_repos_for_credential, list_credentials_for_workspace(g, workspace_id)
@@ -70,7 +74,7 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
 
 
 def list_available_repositories_for_credential(
-    g: GitentialContext, workspace_id: int, credential: CredentialInDB
+    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]], credential: CredentialInDB
 ) -> List[RepositoryCreate]:
     results = []
 
@@ -94,6 +98,7 @@ def list_available_repositories_for_credential(
                     token=token,
                     update_token=get_update_token_callback(g, credential),
                     provider_user_id=userinfo.sub if userinfo else None,
+                    user_organization_name_list=user_organization_name_list,
                 )
 
                 logger.debug(

@@ -281,7 +281,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             return None
 
     def list_available_private_repositories(
-        self, token, update_token, provider_user_id: Optional[str]
+        self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:
 
         if not provider_user_id:

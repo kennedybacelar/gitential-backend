@@ -32,7 +32,9 @@ def walk_next_link(client, starting_url, acc=None, max_pages=100, integration_na
             headers=headers,
             response_items_list_length=len(items),
             response_items_list_main_data=[
-                get_filtered_dict(dict_obj=item, keys_to_include=["clone_url", "name"]) for item in items if item
+                get_filtered_dict(dict_obj=item, keys_to_include=["clone_url", "name", "login"])
+                for item in items
+                if item
             ]
             if is_list_not_empty(items)
             else [],
