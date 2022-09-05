@@ -318,9 +318,10 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         if is_list_not_empty(user_orgs_repos):
             clone_urls: List[str] = [r.get("clone_url", None) for r in repo_list]
             user_orgs_repos_reduced = [
-                r.get("clone_url", None)
-                for r in user_orgs_repos
-                if is_string_not_empty(r.get("clone_url", None)) and r.get("clone_url", None) not in clone_urls
+                repo_from_org
+                for repo_from_org in user_orgs_repos
+                if is_string_not_empty(repo_from_org.get("clone_url", None))
+                and repo_from_org.get("clone_url", None) not in clone_urls
             ]
             repo_list += user_orgs_repos_reduced
         return repo_list
