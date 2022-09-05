@@ -18,7 +18,7 @@ from gitential2.datatypes.authors import AuthorAlias
 from .base import OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
 from ..license import is_on_prem_installation
-from ..utils import is_list_not_empty, is_string_not_empty, get_filtered_dict
+from ..utils import is_list_not_empty, is_string_not_empty
 from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
@@ -305,11 +305,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                         client, api_base_url, org_names_response
                     )
             logger.debug(
-                "GitHub repositories from user organizations.",
-                number_of_repositories_from_organizations=len(results),
-                repositories_from_organizations=[
-                    get_filtered_dict(dict_obj=r, keys_to_include=["clone_url", "name"]) for r in results if r
-                ],
+                "GitHub repositories from user organizations.", number_of_repositories_from_organizations=len(results)
             )
         return results
 
@@ -318,9 +314,10 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         if is_list_not_empty(user_orgs_repos):
             clone_urls: List[str] = [r.get("clone_url", None) for r in repo_list]
             user_orgs_repos_reduced = [
-                r.get("clone_url", None)
-                for r in user_orgs_repos
-                if is_string_not_empty(r.get("clone_url", None)) and r.get("clone_url", None) not in clone_urls
+                repo_from_org
+                for repo_from_org in user_orgs_repos
+                if is_string_not_empty(repo_from_org.get("clone_url", None))
+                and repo_from_org.get("clone_url", None) not in clone_urls
             ]
             repo_list += user_orgs_repos_reduced
         return repo_list
@@ -336,15 +333,10 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         )
         starting_url = f"{api_base_url}user/repos?per_page=100&type=all"
         repository_list = walk_next_link(client, starting_url, integration_name="github_private_repos")
-        logger.debug(
-            "GitHub repositories for authenticated user.",
-            number_of_repositories=len(repository_list),
-            repository_list=[
-                get_filtered_dict(dict_obj=r, keys_to_include=["clone_url", "name"]) for r in repository_list if r
-            ],
-        )
+        logger.debug("GitHub repositories for authenticated user.", number_of_repositories=len(repository_list))
 
         merged_repos = GithubIntegration.get_merged_repos(repository_list, user_orgs_repos)
+        logger.debug("All repos (merged) for GitHub user.", number_of_repos_for_github_user=len(merged_repos))
 
         client.close()
         return [self._repo_to_create_repo(repo) for repo in merged_repos]
