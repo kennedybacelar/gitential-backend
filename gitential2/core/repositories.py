@@ -7,7 +7,7 @@ from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.userinfos import UserInfoInDB
 
-from gitential2.utils import levenshtein, find_first, get_filtered_dict, is_list_not_empty
+from gitential2.utils import levenshtein, find_first, is_list_not_empty, is_string_not_empty
 from .context import GitentialContext
 from .credentials import (
     get_fresh_credential,
@@ -51,23 +51,13 @@ def list_available_repositories(
     logger.debug(
         "list_of_all_user_repositories",
         number_of_all_user_repositories=len(results),
-        list_of_all_user_repositories_main_data=[
-            get_filtered_dict(
-                dict_obj=repo.dict(),
-                keys_to_include=[
-                    "clone_url",
-                    "name",
-                    "namespace",
-                    "private",
-                    "integration_type",
-                    "integration_name",
-                ],
-            )
+        repo_clone_urls=[
+            repo.dict().get("clone_url", None)
             for repo in results
-            if repo
+            if repo is not None and is_string_not_empty(repo.clone_url)
         ]
         if is_list_not_empty(results)
-        else [],
+        else "No repos found!",
     )
 
     return results
@@ -105,23 +95,6 @@ def list_available_repositories_for_credential(
                     "collected_private_repositories",
                     integration_name=credential_.integration_name,
                     number_of_collected_private_repositories=len(collected_repositories),
-                    collected_private_repositories_main_data=[
-                        get_filtered_dict(
-                            dict_obj=repo.dict(),
-                            keys_to_include=[
-                                "clone_url",
-                                "name",
-                                "namespace",
-                                "private",
-                                "integration_type",
-                                "integration_name",
-                            ],
-                        )
-                        for repo in collected_repositories
-                        if repo
-                    ]
-                    if is_list_not_empty(collected_repositories)
-                    else [],
                 )
 
                 results = collected_repositories
