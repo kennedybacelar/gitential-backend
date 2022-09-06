@@ -47,6 +47,7 @@ class DeployCommit(StringIdModelMixin, CoreModel, ExportableModel):
         return [
             "id",
             "deploy_id",
+            "environment",
             "repo_id",
             "repository_name",
             "commit_id",
