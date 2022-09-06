@@ -439,6 +439,10 @@ class CalculatedCommitRepository(
     ) -> int:
         pass
 
+    @abstractmethod
+    def count_distinct_author_ids(self, workspace_id: int) -> int:
+        pass
+
 
 class CalculatedPatchRepository(
     RepoDFMixin,

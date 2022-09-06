@@ -64,8 +64,12 @@ def get_author_names_and_emails(g: GitentialContext, workspace_id: int) -> Autho
     return g.backend.authors.get_author_names_and_emails(workspace_id=workspace_id)
 
 
-def authors_count(g: GitentialContext, workspace_id: int) -> int:
-    return g.backend.authors.count(workspace_id=workspace_id)
+def authors_count(g: GitentialContext, workspace_id: int, is_only_git_active_authors: Optional[bool] = True) -> int:
+    return (
+        g.backend.calculated_commits.count_distinct_author_ids(workspace_id=workspace_id)
+        if is_only_git_active_authors
+        else g.backend.authors.count(workspace_id=workspace_id)
+    )
 
 
 def update_author(g: GitentialContext, workspace_id: int, author_id: int, author_update: AuthorUpdate):
