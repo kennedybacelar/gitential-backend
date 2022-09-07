@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Set
 from collections import defaultdict
 from gitential2.datatypes.stats import FilterName, Query, DimensionName, MetricName, QueryType
 from .context import GitentialContext
@@ -148,3 +148,17 @@ def get_developers(
         return ret
     else:
         return list(all_active_developers.values())
+
+
+def get_devs_assigned_to_active_repos(g: GitentialContext, workspace_id: int, repo_ids: Set[int]) -> List[int]:
+    query = Query(
+        dimensions=[
+            DimensionName.developer_id,
+            DimensionName.repo_id,
+        ],
+        filters={FilterName.repo_ids: repo_ids},
+        metrics=[MetricName.count_commits],
+        type=QueryType.aggregate,
+    )
+    result = IbisQuery(g, workspace_id, query).execute()
+    return result.values.developer_id.unique()

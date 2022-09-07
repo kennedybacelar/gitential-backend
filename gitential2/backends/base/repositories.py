@@ -2,7 +2,7 @@
 from datetime import datetime
 from abc import ABC, abstractmethod
 
-from typing import Iterable, Optional, List, Tuple, Dict, Union, cast
+from typing import Iterable, Optional, List, Tuple, Dict, Union, cast, Set
 
 import pandas
 from gitential2.datatypes import (
@@ -315,6 +315,10 @@ class ProjectRepositoryRepository(
             self.remove_repo_ids_from_project(workspace_id, project_id, ids_needs_removal)
         return ids_needs_addition, ids_needs_removal, ids_kept
 
+    @abstractmethod
+    def get_all_repos_assigned_to_projects(self, workspace_id: int):
+        pass
+
 
 class ProjectITSProjectRepository(
     BaseWorkspaceScopedRepository[int, ProjectITSProjectCreate, ProjectITSProjectUpdate, ProjectITSProjectInDB]
@@ -518,6 +522,10 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
 
     @abstractmethod
     def count(self, workspace_id: int) -> int:
+        pass
+
+    @abstractmethod
+    def change_active_status_authors_by_ids(self, workspace_id: int, author_ids: Set[int], active_status: bool):
         pass
 
 

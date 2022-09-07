@@ -39,6 +39,7 @@ from .its import app as its_app
 from .data_queries import app as data_queries_app
 from .reseller_codes import app as reseller_codes
 from .deploys import app as deploys_app
+from .authors import app as authors_app
 from ..core.workspace_common import duplicate_workspace
 from ..datatypes import UserInDB
 from ..datatypes.workspaces import WorkspaceDuplicate
@@ -66,6 +67,7 @@ app.add_typer(its_app, name="its")
 app.add_typer(data_queries_app, name="data-query")
 app.add_typer(reseller_codes, name="reseller-codes")
 app.add_typer(deploys_app, name="deploys")
+app.add_typer(authors_app, name="authors")
 
 
 @app.command("public-api")
