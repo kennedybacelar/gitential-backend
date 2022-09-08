@@ -638,7 +638,9 @@ class SQLProjectRepositoryRepository(
         )
 
     def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
-        query = self.table.delete().where(self.table.c.repo_id.in_(repo_ids))
+        query = self.table.delete().where(
+            and_(self.table.c.project_id == project_id, self.table.c.repo_id.in_(repo_ids))
+        )
         self._execute_query(query, workspace_id=workspace_id)
 
     def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
