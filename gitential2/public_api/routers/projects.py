@@ -67,7 +67,7 @@ def create_project_(
     return create_project(g, workspace_id, project_create)
 
 
-@router.post("/workspaces/{workspace_id}/projects/without-repos/", response_model=ProjectPublic)
+@router.post("/workspaces/{workspace_id}/projects/without-repos", response_model=ProjectPublic)
 def create_project_without_repos_(
     project_create: ProjectCreate,
     workspace_id: int,
@@ -90,7 +90,7 @@ def update_project_(
     return update_project(g, workspace_id, project_id=project_id, project_update=project_update)
 
 
-@router.put("/workspaces/{workspace_id}/projects/{project_id}/without-repos/", response_model=ProjectPublic)
+@router.put("/workspaces/{workspace_id}/projects/{project_id}/without-repos", response_model=ProjectPublic)
 def update_project_without_repos_(
     project_update: ProjectUpdate,
     workspace_id: int,
