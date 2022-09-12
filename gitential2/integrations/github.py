@@ -17,6 +17,8 @@ from gitential2.datatypes.pull_requests import (
 from gitential2.datatypes.authors import AuthorAlias
 from .base import OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
+from ..license import is_on_prem_installation
+from ..utils import is_list_not_empty, is_string_not_empty
 from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
@@ -211,17 +213,130 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             is_bugfix=calculate_is_bugfix([], raw_data["pr"].get("title", "<missing title>")),
         )
 
+    @staticmethod
+    def get_repos_for_github_user_organization(client: OAuth2Session, api_base_url: str, user_organization_name: str):
+        results = []
+        if is_string_not_empty(user_organization_name):
+            logger.debug(
+                "Starting to get repositories for user organization.", user_organization_name=user_organization_name
+            )
+            url = f"{api_base_url}orgs/{user_organization_name}/repos?per_page=100&type=all"
+            results = walk_next_link(client, url, integration_name="github_repos_for_given_user_organization")
+            logger.debug(
+                "Repositories in provided user organization.",
+                user_organization_name=user_organization_name,
+                number_of_repos_in_organization=len(results),
+            )
+        return results
+
+    @staticmethod
+    def get_repos_for_list_of_github_user_organizations(
+        client: OAuth2Session, api_base_url: str, user_organization_name_list: Optional[List[str]]
+    ):
+        user_orgs_repos: List[dict] = []
+        if is_list_not_empty(user_organization_name_list) and all(
+            is_string_not_empty(org) for org in user_organization_name_list
+        ):
+            for user_org_name in user_organization_name_list:
+                org_repos = GithubIntegration.get_repos_for_github_user_organization(
+                    client, api_base_url, user_org_name
+                )
+                if is_list_not_empty(org_repos):
+                    org_repos_reduced = [
+                        repo
+                        for repo in org_repos
+                        if all(r.get("clone_url", None) != repo.clone_url for r in user_orgs_repos)
+                    ]
+                    user_orgs_repos += org_repos_reduced
+            logger.debug(
+                "Repositories results for user organization name list.",
+                user_organization_name_list=user_organization_name_list,
+                number_of_user_orgs_repos=len(user_orgs_repos),
+            )
+        else:
+            logger.warning(
+                "User organization name list is empty!",
+            )
+        return user_orgs_repos
+
+    @staticmethod
+    def get_organization_names_for_github_user(client: OAuth2Session, api_base_url: str) -> List[str]:
+        result = []
+        get_list_of_organizations_url = f"{api_base_url}user/orgs?per_page=100"
+        logger.debug("Starting to get organizations for GitHub user.", url=get_list_of_organizations_url)
+        list_of_user_organizations = walk_next_link(
+            client, get_list_of_organizations_url, integration_name="github_organizations_for_user"
+        )
+        if is_list_not_empty(list_of_user_organizations):
+            result = [
+                org.get("login", None)
+                for org in list_of_user_organizations
+                if is_string_not_empty(org.get("login", None))
+            ]
+        logger.debug(
+            "List of GitHub organizations for user.",
+            number_of_organizations=len(list_of_user_organizations),
+            list_of_organization_names=result,
+        )
+        return result
+
+    @staticmethod
+    def get_organization_repos_for_github_user(
+        client: OAuth2Session, api_base_url: str, user_organization_names: Optional[List[str]]
+    ):
+        results = []
+        if is_on_prem_installation():
+            if is_list_not_empty(user_organization_names):
+                logger.debug(
+                    "Starting to get github repos for provided user provided organization names.",
+                    user_organization_name_list=user_organization_names,
+                )
+                results = GithubIntegration.get_repos_for_list_of_github_user_organizations(
+                    client, api_base_url, user_organization_names
+                )
+            else:
+                org_names_response = GithubIntegration.get_organization_names_for_github_user(client, api_base_url)
+                if is_list_not_empty(org_names_response):
+                    logger.debug("Starting to get all repos of GitHub user organizations.")
+                    results = GithubIntegration.get_repos_for_list_of_github_user_organizations(
+                        client, api_base_url, org_names_response
+                    )
+            logger.debug(
+                "GitHub repositories from user organizations.", number_of_repositories_from_organizations=len(results)
+            )
+        return results
+
+    @staticmethod
+    def get_merged_repos(repo_list, user_orgs_repos):
+        if is_list_not_empty(user_orgs_repos):
+            clone_urls: List[str] = [r.get("clone_url", None) for r in repo_list]
+            user_orgs_repos_reduced = [
+                repo_from_org
+                for repo_from_org in user_orgs_repos
+                if is_string_not_empty(repo_from_org.get("clone_url", None))
+                and repo_from_org.get("clone_url", None) not in clone_urls
+            ]
+            repo_list += user_orgs_repos_reduced
+        return repo_list
+
     def list_available_private_repositories(
-        self, token, update_token, provider_user_id: Optional[str]
+        self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
 
+        user_orgs_repos = GithubIntegration.get_organization_repos_for_github_user(
+            client, api_base_url, user_organization_name_list
+        )
         starting_url = f"{api_base_url}user/repos?per_page=100&type=all"
         repository_list = walk_next_link(client, starting_url, integration_name="github_private_repos")
+        logger.debug("GitHub repositories for authenticated user.", number_of_repositories=len(repository_list))
+
+        merged_repos = GithubIntegration.get_merged_repos(repository_list, user_orgs_repos)
+        logger.debug("All repos (merged) for GitHub user.", number_of_repos_for_github_user=len(merged_repos))
 
         client.close()
-        return [self._repo_to_create_repo(repo) for repo in repository_list]
+        return [self._repo_to_create_repo(repo) for repo in merged_repos]
 
     def _repo_to_create_repo(self, repo_dict) -> RepositoryCreate:
 

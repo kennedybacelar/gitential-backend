@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from gitential2.core.authors import (
     list_authors,
@@ -34,11 +34,12 @@ router = APIRouter(tags=["authors"])
 @router.get("/workspaces/{workspace_id}/authors-count")
 def authors_count_(
     workspace_id: int,
+    is_only_git_active_authors: Optional[bool] = Query(None, alias="is_only_git_active_authors"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-    return authors_count(g=g, workspace_id=workspace_id)
+    return authors_count(g=g, workspace_id=workspace_id, is_only_git_active_authors=is_only_git_active_authors)
 
 
 @router.get("/workspaces/{workspace_id}/authors-names-emails")

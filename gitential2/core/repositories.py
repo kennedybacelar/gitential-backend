@@ -7,7 +7,7 @@ from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.userinfos import UserInfoInDB
 
-from gitential2.utils import levenshtein, find_first, get_filtered_dict, is_list_not_empty
+from gitential2.utils import levenshtein, find_first, is_list_not_empty, is_string_not_empty
 from .context import GitentialContext
 from .credentials import (
     get_fresh_credential,
@@ -23,7 +23,9 @@ def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -
     return g.backend.repositories.get(workspace_id, repository_id)
 
 
-def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryCreate]:
+def list_available_repositories(
+    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]]
+) -> List[RepositoryCreate]:
     def _merge_repo_lists(first: List[RepositoryCreate], second: List[RepositoryCreate]):
         existing_clone_urls = [r.clone_url for r in first]
         new_repos = [r for r in second if r.clone_url not in existing_clone_urls]
@@ -33,7 +35,9 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
 
     results: List[RepositoryCreate] = all_already_used_repositories
 
-    available_repos_for_credential = partial(list_available_repositories_for_credential, g, workspace_id)
+    available_repos_for_credential = partial(
+        list_available_repositories_for_credential, g, workspace_id, user_organization_name_list
+    )
     with ThreadPoolExecutor() as executor:
         collected_results = executor.map(
             available_repos_for_credential, list_credentials_for_workspace(g, workspace_id)
@@ -47,30 +51,20 @@ def list_available_repositories(g: GitentialContext, workspace_id: int) -> List[
     logger.debug(
         "list_of_all_user_repositories",
         number_of_all_user_repositories=len(results),
-        list_of_all_user_repositories_main_data=[
-            get_filtered_dict(
-                dict_obj=repo.dict(),
-                keys_to_include=[
-                    "clone_url",
-                    "name",
-                    "namespace",
-                    "private",
-                    "integration_type",
-                    "integration_name",
-                ],
-            )
+        repo_clone_urls=[
+            repo.dict().get("clone_url", None)
             for repo in results
-            if repo
+            if repo is not None and is_string_not_empty(repo.clone_url)
         ]
         if is_list_not_empty(results)
-        else [],
+        else "No repos found!",
     )
 
     return results
 
 
 def list_available_repositories_for_credential(
-    g: GitentialContext, workspace_id: int, credential: CredentialInDB
+    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]], credential: CredentialInDB
 ) -> List[RepositoryCreate]:
     results = []
 
@@ -94,29 +88,13 @@ def list_available_repositories_for_credential(
                     token=token,
                     update_token=get_update_token_callback(g, credential),
                     provider_user_id=userinfo.sub if userinfo else None,
+                    user_organization_name_list=user_organization_name_list,
                 )
 
                 logger.debug(
                     "collected_private_repositories",
                     integration_name=credential_.integration_name,
                     number_of_collected_private_repositories=len(collected_repositories),
-                    collected_private_repositories_main_data=[
-                        get_filtered_dict(
-                            dict_obj=repo.dict(),
-                            keys_to_include=[
-                                "clone_url",
-                                "name",
-                                "namespace",
-                                "private",
-                                "integration_type",
-                                "integration_name",
-                            ],
-                        )
-                        for repo in collected_repositories
-                        if repo
-                    ]
-                    if is_list_not_empty(collected_repositories)
-                    else [],
                 )
 
                 results = collected_repositories

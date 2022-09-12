@@ -5,7 +5,7 @@ import typing
 import pandas as pd
 
 import sqlalchemy as sa
-from sqlalchemy import func
+from sqlalchemy import func, distinct
 from sqlalchemy.sql import and_, select, desc, or_, update
 from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
@@ -638,7 +638,9 @@ class SQLProjectRepositoryRepository(
         )
 
     def remove_repo_ids_from_project(self, workspace_id: int, project_id: int, repo_ids: List[int]):
-        query = self.table.delete().where(self.table.c.repo_id.in_(repo_ids))
+        query = self.table.delete().where(
+            and_(self.table.c.project_id == project_id, self.table.c.repo_id.in_(repo_ids))
+        )
         self._execute_query(query, workspace_id=workspace_id)
 
     def get_repo_ids_by_project_ids(self, workspace_id: int, project_ids: List[int]) -> List[int]:
@@ -934,6 +936,12 @@ class SQLCalculatedCommitRepository(
     ) -> int:
         query = select([func.count()]).select_from(self.table)
         query = self._build_filters(query, repository_ids, from_, to_, author_ids, is_merge, keywords)
+        with self._connection_with_schema(workspace_id) as connection:
+            result = connection.execute(query)
+            return result.fetchone()[0]
+
+    def count_distinct_author_ids(self, workspace_id: int) -> int:
+        query = select([func.count(distinct(self.table.c.aid))]).select_from(self.table)
         with self._connection_with_schema(workspace_id) as connection:
             result = connection.execute(query)
             return result.fetchone()[0]

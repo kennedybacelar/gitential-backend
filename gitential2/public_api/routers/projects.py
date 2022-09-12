@@ -7,8 +7,13 @@ from fastapi.responses import StreamingResponse
 from fastapi.encoders import jsonable_encoder
 import pandas as pd
 from structlog import get_logger
-from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories
-from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype
+from gitential2.datatypes import (
+    ProjectCreateWithRepositories,
+    ProjectUpdateWithRepositories,
+    RepositoryCreate,
+    RepositoryUpdate,
+)
+from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype, ProjectCreate, ProjectUpdate
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus
 from gitential2.datatypes.sprints import Sprint
@@ -24,10 +29,17 @@ from gitential2.core.projects import (
     delete_project,
     get_project,
     update_sprint_by_project_id,
+    add_repos_to_project,
+    remove_repos_to_project,
+    add_its_projects_to_project,
+    remove_its_projects_from_project,
+    update_project_without_repos,
+    create_project_without_repos,
 )
 from gitential2.core.refresh_statuses import get_project_refresh_status
 
 from ..dependencies import gitential_context, current_user
+from ...datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate
 
 router = APIRouter(tags=["projects"])
 
@@ -55,6 +67,17 @@ def create_project_(
     return create_project(g, workspace_id, project_create)
 
 
+@router.post("/workspaces/{workspace_id}/projects/without-repos", response_model=ProjectPublic)
+def create_project_without_repos_(
+    project_create: ProjectCreate,
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.create, workspace_id=workspace_id)
+    return create_project_without_repos(g, workspace_id, project_create)
+
+
 @router.put("/workspaces/{workspace_id}/projects/{project_id}", response_model=ProjectPublic)
 def update_project_(
     project_update: ProjectUpdateWithRepositories,
@@ -65,6 +88,18 @@ def update_project_(
 ):
     check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
     return update_project(g, workspace_id, project_id=project_id, project_update=project_update)
+
+
+@router.put("/workspaces/{workspace_id}/projects/{project_id}/without-repos", response_model=ProjectPublic)
+def update_project_without_repos_(
+    project_update: ProjectUpdate,
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
+    return update_project_without_repos(g, workspace_id, project_id=project_id, project_update=project_update)
 
 
 @router.put("/workspaces/{workspace_id}/projects/{project_id}/sprint")
@@ -183,3 +218,57 @@ def export_project_data(
     filename = f"gitential-{workspace_id}-{project_id}-{datatype}.csv"
     response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response
+
+
+@router.post("/workspaces/{workspace_id}/projects/{project_id}/repositories", response_model=List[int])
+def add_repos_to_project_(
+    repos_to_add: List[RepositoryCreate],
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.create, workspace_id=workspace_id)
+    return add_repos_to_project(g=g, workspace_id=workspace_id, project_id=project_id, repos_to_add=repos_to_add)
+
+
+@router.delete("/workspaces/{workspace_id}/projects/{project_id}/repositories", response_model=List[int])
+def remove_repos_from_project_(
+    repos_to_remove: List[RepositoryUpdate],
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.delete, workspace_id=workspace_id)
+    return remove_repos_to_project(
+        g=g, workspace_id=workspace_id, project_id=project_id, repos_to_remove=repos_to_remove
+    )
+
+
+@router.post("/workspaces/{workspace_id}/projects/{project_id}/its-projects", response_model=List[int])
+def add_its_projects_to_project_(
+    its_projects_to_add: List[ITSProjectCreate],
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.create, workspace_id=workspace_id)
+    return add_its_projects_to_project(
+        g=g, workspace_id=workspace_id, project_id=project_id, its_projects_to_add=its_projects_to_add
+    )
+
+
+@router.delete("/workspaces/{workspace_id}/projects/{project_id}/its-projects", response_model=List[int])
+def remove_its_projects_from_project_(
+    its_projects_to_remove: List[ITSProjectUpdate],
+    workspace_id: int,
+    project_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.project, Action.delete, workspace_id=workspace_id)
+    return remove_its_projects_from_project(
+        g=g, workspace_id=workspace_id, project_id=project_id, its_projects_to_remove=its_projects_to_remove
+    )

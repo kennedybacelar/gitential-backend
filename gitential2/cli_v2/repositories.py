@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 import typer
@@ -21,11 +21,12 @@ def list_repositories_(
     available: bool = False,
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
     fields: Optional[str] = None,
+    organizations_name_list: Optional[List[str]] = None,
 ):
     g = get_context()
     results: list = []
     if available:
-        results = list_available_repositories(g, workspace_id)
+        results = list_available_repositories(g, workspace_id, organizations_name_list)
     elif project_id:
         results = list_project_repositories(g, workspace_id, project_id)
     else:

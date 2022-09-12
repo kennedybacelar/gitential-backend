@@ -281,7 +281,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             return None
 
     def list_available_private_repositories(
-        self, token, update_token, provider_user_id: Optional[str]
+        self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:
 
         if not provider_user_id:
@@ -306,6 +306,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             response_json = repo_resp.json()
             if "value" in response_json:
                 repos += [self._repo_to_create_repo(repo, account) for repo in response_json["value"]]
+            else:
+                logger.debug("No private repositories found for VSTS integration.")
+
         return repos
 
     def _repo_to_create_repo(self, repo_dict, account_dict):

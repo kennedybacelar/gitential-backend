@@ -319,6 +319,22 @@ class ProjectRepositoryRepository(
     def get_all_repos_assigned_to_projects(self, workspace_id: int):
         pass
 
+    def add_project_repositories(self, workspace_id: int, project_id: int, repo_ids_to_add: List[int]) -> List[int]:
+        current_ids = self.get_repo_ids_for_project(workspace_id=workspace_id, project_id=project_id)
+        ids_needs_addition = [r_id for r_id in repo_ids_to_add if r_id not in current_ids]
+        if ids_needs_addition:
+            self.add_repo_ids_to_project(workspace_id, project_id, ids_needs_addition)
+        return ids_needs_addition
+
+    def remove_project_repositories(
+        self, workspace_id: int, project_id: int, repo_ids_to_remove: List[int]
+    ) -> List[int]:
+        current_ids = self.get_repo_ids_for_project(workspace_id=workspace_id, project_id=project_id)
+        ids_needs_removal = [r_id for r_id in repo_ids_to_remove if r_id in current_ids]
+        if ids_needs_removal:
+            self.remove_repo_ids_from_project(workspace_id, project_id, ids_needs_removal)
+        return ids_needs_removal
+
 
 class ProjectITSProjectRepository(
     BaseWorkspaceScopedRepository[int, ProjectITSProjectCreate, ProjectITSProjectUpdate, ProjectITSProjectInDB]
@@ -347,6 +363,20 @@ class ProjectITSProjectRepository(
         if ids_needs_removal:
             self.remove_itsp_ids_from_project(workspace_id, project_id, ids_needs_removal)
         return ids_needs_addition, ids_needs_removal, ids_kept
+
+    def add_its_projects(self, workspace_id: int, project_id: int, itsp_ids_to_add: List[int]) -> List[int]:
+        current_ids = self.get_itsp_ids_for_project(workspace_id=workspace_id, project_id=project_id)
+        ids_needs_addition = [itsp_id for itsp_id in itsp_ids_to_add if itsp_id not in current_ids]
+        if ids_needs_addition:
+            self.add_itsp_ids_to_project(workspace_id, project_id, ids_needs_addition)
+        return ids_needs_addition
+
+    def remove_its_projects(self, workspace_id: int, project_id: int, itsp_ids_to_remove: List[int]) -> List[int]:
+        current_ids = self.get_itsp_ids_for_project(workspace_id=workspace_id, project_id=project_id)
+        ids_needs_removal = [itsp_id for itsp_id in itsp_ids_to_remove if itsp_id in current_ids]
+        if ids_needs_removal:
+            self.remove_itsp_ids_from_project(workspace_id, project_id, ids_needs_removal)
+        return ids_needs_removal
 
 
 class DashboardRepository(BaseWorkspaceScopedRepository[int, DashboardCreate, DashboardUpdate, DashboardInDB]):
@@ -441,6 +471,10 @@ class CalculatedCommitRepository(
         is_merge: Optional[bool] = None,
         keywords: Optional[List[str]] = None,
     ) -> int:
+        pass
+
+    @abstractmethod
+    def count_distinct_author_ids(self, workspace_id: int) -> int:
         pass
 
 
