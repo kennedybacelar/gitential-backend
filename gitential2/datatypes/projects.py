@@ -46,7 +46,7 @@ class ProjectUpdateWithRepositories(ProjectUpdate):
 
 class ProjectInDB(IDModelMixin, DateTimeModelMixin, ProjectBase, ExportableModel):
     def export_names(self) -> Tuple[str, str]:
-        return ("project", "projects")
+        return "project", "projects"
 
     def export_fields(self) -> List[str]:
         return ["id", "created_at", "updated_at", "name", "shareable", "pattern", "sprints_enabled", "sprint"]

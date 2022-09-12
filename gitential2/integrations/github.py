@@ -226,7 +226,6 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 "Repositories in provided user organization.",
                 user_organization_name=user_organization_name,
                 number_of_repos_in_organization=len(results),
-                repos_in_organization=results,
             )
         return results
 
@@ -253,7 +252,6 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                 "Repositories results for user organization name list.",
                 user_organization_name_list=user_organization_name_list,
                 number_of_user_orgs_repos=len(user_orgs_repos),
-                user_orgs_repos=user_orgs_repos,
             )
         else:
             logger.warning(
@@ -279,7 +277,6 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             "List of GitHub organizations for user.",
             number_of_organizations=len(list_of_user_organizations),
             list_of_organization_names=result,
-            list_of_organizations=list_of_user_organizations,
         )
         return result
 

@@ -306,6 +306,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             response_json = repo_resp.json()
             if "value" in response_json:
                 repos += [self._repo_to_create_repo(repo, account) for repo in response_json["value"]]
+            else:
+                logger.debug("No private repositories found for VSTS integration.")
+
         return repos
 
     def _repo_to_create_repo(self, repo_dict, account_dict):
