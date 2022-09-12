@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Optional
 from structlog import get_logger
 from gitential2.datatypes.projects import (
     ProjectInDB,
@@ -12,7 +12,7 @@ from gitential2.datatypes.sprints import Sprint
 
 from .refresh_v2 import refresh_project
 from .context import GitentialContext
-from ..datatypes.its_projects import ITSProjectUpdate, ITSProjectCreate
+from ..datatypes.its_projects import ITSProjectUpdate, ITSProjectCreate, ITSProjectInDB
 
 logger = get_logger(__name__)
 
@@ -90,13 +90,15 @@ def _update_project_its_projects(
     g: GitentialContext,
     workspace_id: int,
     project: ProjectInDB,
-    its_projects: List[Union[ITSProjectCreate, ITSProjectUpdate]],
+    its_projects: Optional[List[ITSProjectCreate]],
 ):
-    its_projects = [
-        g.backend.its_projects.create_or_update_by_api_url(workspace_id=workspace_id, obj=r) for r in its_projects
-    ]
+    its_p: List[ITSProjectInDB] = (
+        [g.backend.its_projects.create_or_update_by_api_url(workspace_id=workspace_id, obj=r) for r in its_projects]
+        if its_projects is not None
+        else []
+    )
     return g.backend.project_its_projects.update_its_projects(
-        workspace_id=workspace_id, project_id=project.id, itsp_ids=[r.id for r in its_projects]
+        workspace_id=workspace_id, project_id=project.id, itsp_ids=[r.id for r in its_p]
     )
 
 

@@ -1,14 +1,18 @@
 import io
 import asyncio
-from typing import List, Union
+from typing import List
 
 from fastapi import APIRouter, WebSocket, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.encoders import jsonable_encoder
 import pandas as pd
 from structlog import get_logger
-from gitential2.datatypes import ProjectCreateWithRepositories, ProjectUpdateWithRepositories, RepositoryCreate, \
-    RepositoryUpdate
+from gitential2.datatypes import (
+    ProjectCreateWithRepositories,
+    ProjectUpdateWithRepositories,
+    RepositoryCreate,
+    RepositoryUpdate,
+)
 from gitential2.datatypes.projects import ProjectPublic, ProjectExportDatatype, ProjectCreate, ProjectUpdate
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus
@@ -28,7 +32,9 @@ from gitential2.core.projects import (
     add_repos_to_project,
     remove_repos_to_project,
     add_its_projects_to_project,
-    remove_its_projects_from_project, update_project_without_repos, create_project_without_repos,
+    remove_its_projects_from_project,
+    update_project_without_repos,
+    create_project_without_repos,
 )
 from gitential2.core.refresh_statuses import get_project_refresh_status
 
