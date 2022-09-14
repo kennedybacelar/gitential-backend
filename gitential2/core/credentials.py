@@ -221,9 +221,10 @@ def create_credential(g: GitentialContext, credential_create: CredentialCreate, 
         raise NotImplementedException("Only ssh keypair credential creation supported.")
 
 
+# pylint: disable=too-complex
 def delete_credential_from_workspace(g: GitentialContext, workspace_id: int, credential_id: int):
     credential = g.backend.credentials.get(credential_id)
-    if credential:
+    if credential is not None:
         if credential.type == CredentialType.keypair:
 
             repo_ids_to_remove = [
@@ -239,12 +240,44 @@ def delete_credential_from_workspace(g: GitentialContext, workspace_id: int, cre
                 g.backend.repositories.delete(workspace_id, repo_id)
 
             return g.backend.credentials.delete(credential_id)
+
+        elif credential.type == CredentialType.token:
+
+            repo_ids_to_remove = [
+                repository.id
+                for repository in g.backend.repositories.all(workspace_id)
+                if repository.integration_type == credential.integration_type
+            ]
+
+            for project in g.backend.projects.all(workspace_id):
+                g.backend.project_repositories.remove_repo_ids_from_project(
+                    workspace_id, project.id, repo_ids_to_remove
+                )
+
+            for repo_id in repo_ids_to_remove:
+                g.backend.repositories.delete(workspace_id, repo_id)
+
+            if credential.integration_type in ISSUE_SOURCES:
+                its_projects_to_remove = [
+                    its_project.id
+                    for its_project in g.backend.its_projects.all(workspace_id)
+                    if its_project.integration_type == credential.integration_type
+                ]
+
+                for proj_its_proj in g.backend.its_projects.all(workspace_id):
+                    g.backend.project_its_projects.remove_itsp_ids_from_project(
+                        workspace_id, proj_its_proj.id, its_projects_to_remove
+                    )
+
+                for its_project in its_projects_to_remove:
+                    g.backend.its_projects.delete(workspace_id, its_project)
+
+            return g.backend.credentials.delete(credential_id)
+
         else:
             raise NotImplementedException("Only ssh keypair credential delete supported.")
     else:
         raise NotFoundException("Credential not found.")
-
-    # remove repositories
 
 
 def create_credential_for_workspace(
