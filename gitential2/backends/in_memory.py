@@ -382,6 +382,9 @@ class InMemProjectRepositoryRepository(
             result[row["repo_id"]].append(row["project_id"])
         return result
 
+    def get_all_repos_assigned_to_projects(self, workspace_id: int):
+        pass
+
 
 class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def __init__(self, settings: GitentialSettings):

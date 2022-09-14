@@ -6,7 +6,7 @@ import pandas as pd
 
 import sqlalchemy as sa
 from sqlalchemy import func, distinct
-from sqlalchemy.sql import and_, select, desc, or_
+from sqlalchemy.sql import and_, select, desc, or_, update
 from sqlalchemy.dialects.postgresql import insert
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
@@ -656,6 +656,11 @@ class SQLProjectRepositoryRepository(
             result[row["repo_id"]].append(row["project_id"])
         return result
 
+    def get_all_repos_assigned_to_projects(self, workspace_id: int):
+        query = self.table.select().distinct(self.table.c.repo_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["repo_id"] for row in rows]
+
 
 class SQLProjectITSProjectRepository(
     ProjectITSProjectRepository,
@@ -736,6 +741,10 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
         with self._connection_with_schema(workspace_id) as connection:
             result = connection.execute(query)
             return result.fetchone()[0]
+
+    def change_active_status_authors_by_ids(self, workspace_id: int, author_ids: Set[int], active_status: bool):
+        query = update(self.table).where(self.table.c.id.in_(author_ids)).values(active=active_status)
+        self._execute_query(query, workspace_id=workspace_id)
 
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
