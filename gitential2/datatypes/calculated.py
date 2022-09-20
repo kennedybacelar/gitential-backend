@@ -1,5 +1,8 @@
+import math
+
 from typing import Optional, Tuple, List
 from datetime import datetime
+from pydantic import validator
 
 from .export import ExportableModel
 from .common import CoreModel
@@ -70,6 +73,13 @@ class CalculatedCommit(CoreModel, ExportableModel):
     @property
     def id_(self):
         return CalculatedCommitId(repo_id=self.repo_id, commit_id=self.commit_id)
+
+    @validator("velocity_measured", "velocity", pre=True)
+    def default_calc(cls, value: Optional[float]) -> Optional[float]:
+        if value:
+            if math.isinf(value):
+                return 0
+        return value
 
     def export_names(self) -> Tuple[str, str]:
         return ("calculated_commit", "calculated_commits")
