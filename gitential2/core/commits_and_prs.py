@@ -23,7 +23,8 @@ def get_commits(
     offset: int = 0,
 ) -> Tuple[int, List[CalculatedCommit]]:
 
-    if project_id:
+    # If no repo is sent as param, all repos of the projects will be considered
+    if project_id and not repo_ids:
         repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
             workspace_id=workspace_id, project_id=project_id
         )
