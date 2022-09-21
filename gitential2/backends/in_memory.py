@@ -444,6 +444,9 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def migrate_workspace(self, workspace_id: int):
         pass
 
+    def reset_workspace(self, workspace_id: int):
+        pass
+
     def delete_schema_revision(self, workspace_id: int):
         pass
 

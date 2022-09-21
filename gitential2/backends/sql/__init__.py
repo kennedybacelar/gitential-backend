@@ -57,6 +57,7 @@ from gitential2.datatypes.email_log import EmailLogInDB
 
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
 from gitential2.settings import GitentialSettings
+from .reset_worksapce import reset_workspace
 
 from ..base import GitentialBackend, DashboardRepository
 from ..base.mixins import WithRepositoriesMixin
@@ -468,6 +469,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
     def migrate_workspace(self, workspace_id: int):
         migrate_workspace(self._engine, workspace_id)
+
+    def reset_workspace(self, workspace_id: int):
+        reset_workspace(engine=self._engine, workspace_id=workspace_id)
 
     def delete_schema_revision(self, workspace_id: int):
         delete_schema_revision(self._engine, workspace_id)

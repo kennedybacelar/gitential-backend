@@ -247,6 +247,25 @@ def duplicate_workspace_(source_workspace_id: int, user_id: int, new_workspace_n
     duplicate_workspace(g=g, workspace_duplicate=workspace_duplicate, current_user=user, is_permission_check_on=False)
 
 
+@app.command("reset-workspace")
+def reset_workspace(workspace_id: int):
+    """
+    By running this command, you can reset a workspace to its original state when it was created.
+    It will truncate all the tables in the databases' workspace schema by running the following command
+    template for all tables:
+    \b
+    'TRUNCATE TABLE <schema_name>.<table_name> RESTART IDENTITY CASCADE;'
+    """
+
+    g = get_context()
+    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+    if workspace:
+        logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
+        g.backend.reset_workspace(workspace_id=workspace_id)
+    else:
+        logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
+
+
 def main(prog_name: Optional[str] = None):
     initialize_logging(load_settings())
     app(prog_name=prog_name)

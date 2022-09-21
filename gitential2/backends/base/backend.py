@@ -312,6 +312,10 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
+    def reset_workspace(self, workspace_id: int):
+        pass
+
+    @abstractmethod
     def delete_schema_revision(self, workspace_id: int):
         pass
 

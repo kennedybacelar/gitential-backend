@@ -127,7 +127,7 @@ def add_url_params(url, params):
 
 
 def get_schema_name(workspace_id: int):
-    return f"ws_{workspace_id}"
+    return f"ws_{workspace_id}" if workspace_id else None
 
 
 def is_list_not_empty(arg: Optional[List] = None) -> TypeGuard[list]:
