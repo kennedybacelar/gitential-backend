@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import typer
 import uvicorn
@@ -112,14 +112,28 @@ def initialize_database():
 
 
 @app.command("refresh-materialized-views")
-def refresh_materialized_views():
+def refresh_materialized_views(workspace_id: Optional[int] = typer.Argument(None)):
+    """
+    With this command you can refresh materialized views to every workspace in the application OR just for one
+    workspace if you provide a specific workspace id.
+    """
+
     g = get_context()
-    workspaces = g.backend.workspaces.all()
-    for w in workspaces:
+    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+    if workspace:
         try:
-            g.backend.refresh_materialized_views(workspace_id=w.id)
+            logger.info("Trying to refresh materialized views for workspace.", workspace_id=workspace.id)
+            g.backend.refresh_materialized_views(workspace_id=workspace.id)
         except:  # pylint: disable=bare-except
-            logger.exception("Failed to refresh materialized views", workspace_id=w.id)
+            logger.exception("Failed to refresh materialized views", workspace_id=workspace.id)
+    else:
+        workspaces = g.backend.workspaces.all()
+        for w in workspaces:
+            try:
+                logger.info("Trying to refresh materialized views for workspace.", workspace_id=w.id)
+                g.backend.refresh_materialized_views(workspace_id=w.id)
+            except:  # pylint: disable=bare-except
+                logger.exception("Failed to refresh materialized views", workspace_id=w.id)
 
 
 @app.command("send-email-to-user")
@@ -207,7 +221,7 @@ def delete_keys_for_workspace(workspace_id: int):
 
 
 @app.command("duplicate-workspace")
-def duplicate_workspace_asd(source_workspace_id: int, user_id: int, new_workspace_name: str):
+def duplicate_workspace_(source_workspace_id: int, user_id: int, new_workspace_name: str):
     """
     With this command you can duplicate a workspace.
 
