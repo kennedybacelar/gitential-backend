@@ -4,7 +4,6 @@ from importlib import import_module
 
 from celery import Celery
 from celery.app.task import Task
-from celery.schedules import crontab
 from structlog import get_logger
 from gitential2.settings import GitentialSettings, load_settings
 from gitential2.logging import initialize_logging
