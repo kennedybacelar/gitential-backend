@@ -63,7 +63,7 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
         imports=("gitential2.core.tasks",),
     )
 
-    beat_scheduled_conf = {}
+    # beat_scheduled_conf = {}
 
     # TEMPORARY DISABLED
     # beat_scheduled_conf["send_scheduled_emails"] = {
@@ -72,20 +72,21 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
     #     "args": (settings),
     # }
 
-    if settings.refresh.hourly_maintenance_enabled:
-        beat_scheduled_conf["hourly_maintenance"] = {
-            "task": "gitential2.core.tasks.hourly_maintenance",
-            "schedule": crontab(hour=23),
-            "args": (),
-        }
-    if settings.features.enable_additional_materialized_views:
-        beat_scheduled_conf["refresh_materialized_views"] = {
-            "task": "gitential2.core.tasks.refresh_materialized_views",
-            "schedule": crontab(hour=23),
-            "args": (),
-        }
+    # TEMPORARY DISABLED
+    # if settings.refresh.hourly_maintenance_enabled:
+    #     beat_scheduled_conf["hourly_maintenance"] = {
+    #         "task": "gitential2.core.tasks.hourly_maintenance",
+    #         "schedule": crontab(hour=23),
+    #         "args": (),
+    #     }
+    # if settings.features.enable_additional_materialized_views:
+    #     beat_scheduled_conf["refresh_materialized_views"] = {
+    #         "task": "gitential2.core.tasks.refresh_materialized_views",
+    #         "schedule": crontab(hour=23),
+    #         "args": (),
+    #     }
 
-    celery_app.conf.beat_schedule = beat_scheduled_conf
+    # celery_app.conf.beat_schedule = beat_scheduled_conf
     return celery_app
 
 
