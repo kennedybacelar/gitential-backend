@@ -562,6 +562,16 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
     def change_active_status_authors_by_ids(self, workspace_id: int, author_ids: Set[int], active_status: bool):
         pass
 
+    @abstractmethod
+    def get_authors_by_email_and_login(self, workspace_id: int, emails_and_logins: List[str]) -> List[AuthorInDB]:
+        pass
+
+    @abstractmethod
+    def move_emails_and_logins_to_author(
+        self, workspace_id: int, emails_and_logins: List[str], destination_author_id: int
+    ) -> List[AuthorInDB]:
+        pass
+
 
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
     @abstractmethod

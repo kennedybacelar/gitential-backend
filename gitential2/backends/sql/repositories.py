@@ -133,7 +133,7 @@ from ..base import (
 from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
-from ...utils import get_schema_name, is_string_not_empty
+from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
@@ -745,6 +745,40 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
     def change_active_status_authors_by_ids(self, workspace_id: int, author_ids: Set[int], active_status: bool):
         query = update(self.table).where(self.table.c.id.in_(author_ids)).values(active=active_status)
         self._execute_query(query, workspace_id=workspace_id)
+
+    def get_authors_by_email_and_login(self, workspace_id: int, emails_and_logins: List[str]) -> List[AuthorInDB]:
+        result = []
+        if is_list_not_empty(emails_and_logins):
+            schema_name = self._schema_name(workspace_id)
+            list_str = ",".join(f"'{e}'" for e in emails_and_logins)
+            query = (
+                "SELECT DISTINCT ON (results.id) id, "
+                "results.active, results.name, results.email, results.aliases, results.extra "
+                "FROM ("
+                f"SELECT * FROM {schema_name}.authors a, JSON_ARRAY_ELEMENTS(a.aliases) al "
+                f"WHERE ((al ->> 'email') IN ({list_str})) "
+                f"OR ((al ->> 'login') IN ({list_str}))"
+                ") AS results"
+            )
+            rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+            result = [AuthorInDB(**row) for row in rows]
+        return result
+
+    def move_emails_and_logins_to_author(
+        self, workspace_id: int, emails_and_logins: List[str], destination_author_id: int
+    ) -> List[AuthorInDB]:
+        authors = self.get_authors_by_email_and_login(workspace_id=workspace_id, emails_and_logins=emails_and_logins)
+        if is_list_not_empty(emails_and_logins):
+            for author in authors:
+                for email_or_login in emails_and_logins:
+                    for author_alias in author.aliases:
+                        if author_alias.email == email_or_login:
+                            # author_alias.email = Null
+                            pass
+                        elif author_alias.login == email_or_login:
+                            # author_alias.login = Null
+                            pass
+        return []
 
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):

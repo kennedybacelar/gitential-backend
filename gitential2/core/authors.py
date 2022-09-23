@@ -56,8 +56,22 @@ def _get_team_title(team_member: TeamMemberInDB, teams_in_workspace: List[TeamIn
     return result
 
 
-def list_authors(g: GitentialContext, workspace_id: int) -> List[AuthorInDB]:
-    return list(g.backend.authors.all(workspace_id))
+def list_authors(
+    g: GitentialContext, workspace_id: int, emails_and_logins: Optional[List[str]] = None
+) -> List[AuthorInDB]:
+    return (
+        get_authors_by_email_and_login(g=g, workspace_id=workspace_id, emails_and_logins=emails_and_logins)
+        if emails_and_logins is not None and len(emails_and_logins) > 0
+        else list(g.backend.authors.all(workspace_id))
+    )
+
+
+def get_authors_by_email_and_login(
+    g: GitentialContext, workspace_id: int, emails_and_logins: List[str]
+) -> List[AuthorInDB]:
+    return g.backend.authors.get_authors_by_email_and_login(
+        workspace_id=workspace_id, emails_and_logins=emails_and_logins
+    )
 
 
 def get_author_names_and_emails(g: GitentialContext, workspace_id: int) -> AuthorNamesAndEmails:

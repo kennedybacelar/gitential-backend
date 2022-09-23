@@ -186,7 +186,7 @@ def _do_migration(
             logger.info("Migration | applying step", schema_name=schema_name, revision_id=ms.revision_id)
 
             connection = engine.connect()
-            trans = connection.begin()
+            transaction_handle = connection.begin()
             try:
                 for query_ in ms.steps:
                     logger.info(
@@ -196,9 +196,9 @@ def _do_migration(
                         revision_id=ms.revision_id,
                     )
                     connection.execute(query_)
-                trans.commit()
+                transaction_handle.commit()
             except exc.SQLAlchemyError as se:
-                trans.rollback()
+                transaction_handle.rollback()
                 raise SettingsException("Exception in database migration!") from se
 
         new_rev = SchemaRevision(id=schema_name, revision_id=remaining_steps[-1].revision_id)

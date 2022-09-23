@@ -55,11 +55,12 @@ def list_authors_names_emails_(
 @router.get("/workspaces/{workspace_id}/authors", response_model=List[AuthorPublic])
 def list_authors_(
     workspace_id: int,
+    emails_and_logins: Optional[List[str]] = Query(None, alias="emails_and_logins"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-    return list_authors(g, workspace_id)
+    return list_authors(g=g, workspace_id=workspace_id, emails_and_logins=emails_and_logins)
 
 
 @router.post("/workspaces/{workspace_id}/authors-extended", response_model=AuthorsPublicExtendedSearchResult)
