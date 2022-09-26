@@ -1,82 +1,14 @@
-from collections import defaultdict
-from typing import Iterable, Optional, Callable, List, Dict, Union, cast, Set
 import datetime as dt
 import typing
-import pandas as pd
+from collections import defaultdict
+from typing import Iterable, Optional, Callable, List, Dict, Union, cast, Set
 
+import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy import func, distinct
-from sqlalchemy.sql import and_, select, desc, or_, update
 from sqlalchemy.dialects.postgresql import insert
-from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
-from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
-from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.deploys import Deploy, DeployCommit
-from gitential2.datatypes.sprints import Sprint
-from gitential2.datatypes.project_its_projects import (
-    ProjectITSProjectCreate,
-    ProjectITSProjectInDB,
-    ProjectITSProjectUpdate,
-)
-from gitential2.datatypes.reseller_codes import ResellerCode
-from gitential2.exceptions import NotFoundException
+from sqlalchemy.sql import and_, select, desc, or_, update
 
-
-from gitential2.datatypes import (
-    UserCreate,
-    UserUpdate,
-    UserInDB,
-    UserInfoCreate,
-    UserInfoUpdate,
-    UserInfoInDB,
-    CredentialCreate,
-    CredentialUpdate,
-    CredentialInDB,
-    WorkspaceCreate,
-    WorkspaceUpdate,
-    WorkspaceInDB,
-)
-from gitential2.datatypes.extraction import (
-    ExtractedCommit,
-    ExtractedCommitId,
-    ExtractedPatch,
-    ExtractedPatchId,
-    ExtractedPatchRewriteId,
-    ExtractedPatchRewrite,
-    ExtractedCommitBranchId,
-    ExtractedCommitBranch,
-)
-from gitential2.datatypes.pull_requests import (
-    PullRequest,
-    PullRequestComment,
-    PullRequestCommentId,
-    PullRequestCommit,
-    PullRequestId,
-    PullRequestCommitId,
-    PullRequestLabel,
-    PullRequestLabelId,
-)
-from gitential2.datatypes.access_log import AccessLog
-from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmails
-from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
-
-from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
-from gitential2.datatypes.workspace_invitations import (
-    WorkspaceInvitationCreate,
-    WorkspaceInvitationUpdate,
-    WorkspaceInvitationInDB,
-)
-from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
-from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
-from gitential2.datatypes.project_repositories import (
-    ProjectRepositoryCreate,
-    ProjectRepositoryUpdate,
-    ProjectRepositoryInDB,
-)
-from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
-
-from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
-from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.backends.base.repositories import (
     AccessApprovalRepository,
     BaseRepository,
@@ -117,13 +49,76 @@ from gitential2.backends.base.repositories import (
     ChartRepository,
     ThumbnailRepository,
 )
-
+from gitential2.datatypes import (
+    UserCreate,
+    UserUpdate,
+    UserInDB,
+    UserInfoCreate,
+    UserInfoUpdate,
+    UserInfoInDB,
+    CredentialCreate,
+    CredentialUpdate,
+    CredentialInDB,
+    WorkspaceCreate,
+    WorkspaceUpdate,
+    WorkspaceInDB,
+)
+from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
+from gitential2.datatypes.access_log import AccessLog
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
+from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmails
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
+from gitential2.datatypes.deploys import Deploy, DeployCommit
 from gitential2.datatypes.email_log import (
     EmailLogCreate,
     EmailLogUpdate,
     EmailLogInDB,
 )
-
+from gitential2.datatypes.extraction import (
+    ExtractedCommit,
+    ExtractedCommitId,
+    ExtractedPatch,
+    ExtractedPatchId,
+    ExtractedPatchRewriteId,
+    ExtractedPatchRewrite,
+    ExtractedCommitBranchId,
+    ExtractedCommitBranch,
+)
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB, ITSProjectUpdate
+from gitential2.datatypes.project_its_projects import (
+    ProjectITSProjectCreate,
+    ProjectITSProjectInDB,
+    ProjectITSProjectUpdate,
+)
+from gitential2.datatypes.project_repositories import (
+    ProjectRepositoryCreate,
+    ProjectRepositoryUpdate,
+    ProjectRepositoryInDB,
+)
+from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.pull_requests import (
+    PullRequest,
+    PullRequestComment,
+    PullRequestCommentId,
+    PullRequestCommit,
+    PullRequestId,
+    PullRequestCommitId,
+    PullRequestLabel,
+    PullRequestLabelId,
+)
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
+from gitential2.datatypes.reseller_codes import ResellerCode
+from gitential2.datatypes.sprints import Sprint
+from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
+from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
+from gitential2.datatypes.teams import TeamCreate, TeamInDB, TeamUpdate
+from gitential2.datatypes.workspace_invitations import (
+    WorkspaceInvitationCreate,
+    WorkspaceInvitationUpdate,
+    WorkspaceInvitationInDB,
+)
+from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
+from gitential2.exceptions import NotFoundException
 from ..base import (
     IdType,
     CreateType,
@@ -763,22 +758,6 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
             rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
             result = [AuthorInDB(**row) for row in rows]
         return result
-
-    def move_emails_and_logins_to_author(
-        self, workspace_id: int, emails_and_logins: List[str], destination_author_id: int
-    ) -> List[AuthorInDB]:
-        authors = self.get_authors_by_email_and_login(workspace_id=workspace_id, emails_and_logins=emails_and_logins)
-        if is_list_not_empty(emails_and_logins):
-            for author in authors:
-                for email_or_login in emails_and_logins:
-                    for author_alias in author.aliases:
-                        if author_alias.email == email_or_login:
-                            # author_alias.email = Null
-                            pass
-                        elif author_alias.login == email_or_login:
-                            # author_alias.login = Null
-                            pass
-        return []
 
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):

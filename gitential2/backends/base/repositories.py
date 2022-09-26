@@ -566,12 +566,6 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
     def get_authors_by_email_and_login(self, workspace_id: int, emails_and_logins: List[str]) -> List[AuthorInDB]:
         pass
 
-    @abstractmethod
-    def move_emails_and_logins_to_author(
-        self, workspace_id: int, emails_and_logins: List[str], destination_author_id: int
-    ) -> List[AuthorInDB]:
-        pass
-
 
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
     @abstractmethod

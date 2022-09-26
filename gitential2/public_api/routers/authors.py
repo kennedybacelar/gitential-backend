@@ -11,6 +11,7 @@ from gitential2.core.authors import (
     get_author,
     get_author_names_and_emails,
     authors_count,
+    move_emails_and_logins_to_author,
 )
 from gitential2.core.context import GitentialContext
 from gitential2.core.deduplication import deduplicate_authors
@@ -155,3 +156,15 @@ def developers_with_projects(
         author_dict["projects"] = authors_and_projects.get(author.id, {}).get("project_ids", [])
         ret.append(author_dict)
     return ret
+
+
+@router.post("/workspaces/{workspace_id}/authors/{destination_author_id}/move-aliases")
+def move_emails_and_logins_to_author_(
+    workspace_id: int,
+    destination_author_id: int,
+    emails_and_logins: List[str],
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.update, workspace_id=workspace_id)
+    return move_emails_and_logins_to_author(g, workspace_id, emails_and_logins, destination_author_id)
