@@ -88,6 +88,7 @@ def authors_count(g: GitentialContext, workspace_id: int, is_only_git_active_aut
 
 def update_author(g: GitentialContext, workspace_id: int, author_id: int, author_update: AuthorUpdate):
     # existing_author = g.backend.authors.get_or_error(workspace_id, author_id)
+    logger.debug("Updating author.", workspace_id=workspace_id, author_id=author_id, author_update=author_update)
     with authors_change_lock(g, workspace_id):
         _reset_all_authors_from_cache(g, workspace_id)
         return g.backend.authors.update(workspace_id, author_id, author_update)
@@ -302,15 +303,34 @@ def tokenize_alias(alias: AuthorAlias) -> List[str]:
 def move_emails_and_logins_to_author(
     g: GitentialContext, workspace_id: int, emails_and_logins: List[str], destination_author_id: int
 ) -> List[AuthorInDB]:
+    logger.debug(
+        "Move emails and logins to author.",
+        workspace_id=workspace_id,
+        emails_and_logins=emails_and_logins,
+        destination_author_id=destination_author_id,
+    )
     authors: List[AuthorInDB] = g.backend.authors.get_authors_by_email_and_login(
         workspace_id=workspace_id, emails_and_logins=emails_and_logins
     )
+    logger.debug(
+        "Authors found for search with emails and logins.", emails_and_logins=emails_and_logins, authors=authors
+    )
+
+    if all(a.id != destination_author_id for a in authors):
+        logger.debug(
+            "Destination author is not in the search results. Trying to get author by destination author id.",
+            destination_author_id=destination_author_id,
+        )
+        destination_author = g.backend.authors.get_or_error(workspace_id=workspace_id, id_=destination_author_id)
+        logger.debug(
+            "Got destination author from database. Appending authors with the author.",
+            destination_author=destination_author,
+        )
+        authors.append(destination_author)
+
     authors_to_update: List[AuthorInDB] = []
-    if (
-        is_list_not_empty(emails_and_logins)
-        and any(a.id is destination_author_id for a in authors)
-        and len(authors) > 1
-    ):
+    if is_list_not_empty(emails_and_logins) and len(authors) > 1:
+        logger.debug("Start to move emails and logins to destination author.")
         for author in authors:
             is_author_changed: bool = (
                 __move_email_or_login_to_destination_author(author, emails_and_logins)
@@ -334,29 +354,46 @@ def move_emails_and_logins_to_author(
 
 def __move_email_or_login_to_destination_author(author: AuthorInDB, emails_and_logins: List[str]) -> bool:
     result: bool = False
+    logger.debug("Move email or login to destination author", author=author, emails_and_logins=emails_and_logins)
     for eol in emails_and_logins:
-        key: str = "email" if is_email_valid(eol) else "login"
-        if not any(getattr(alias, key, None) is eol for alias in author.aliases):
-            alias_dict: dict = {[key]: eol}
-            author.aliases.append(AuthorAlias(**alias_dict))
+        is_email: bool = is_email_valid(eol)
+        key: str = "email" if is_email else "login"
+        is_email_or_login_not_in_author_aliases: bool = all(
+            getattr(alias, key, None) != eol for alias in author.aliases
+        )
+        if is_email_or_login_not_in_author_aliases:
+            author_alias = AuthorAlias(email=eol) if is_email else AuthorAlias(login=eol)
+            logger.debug(
+                f"{key} '{eol}' not found in author aliases! Appending author with new Alias!",
+                new_author_alias=author_alias,
+            )
+            author.aliases.append(author_alias)
             result = True
+        else:
+            logger.debug(f"{key} '{eol}' found in aliases, no need for creating new alias for author.")
     return result
 
 
 def __move_email_or_login_from_author(author: AuthorInDB, emails_and_logins: List[str]) -> bool:
+    logger.debug("Moving email or login from author.", author=author, emails_and_logins=emails_and_logins)
     result: bool = False
     for eol in emails_and_logins:
         alias_indexes_to_remove: List[int] = []
         for index, author_alias in enumerate(author.aliases):
-            if author_alias.email == eol:
+            if getattr(author_alias, "email", None) == eol:
+                logger.debug("Removing email from author alias.", author=author, email=eol)
                 author_alias.email = None
                 result = True
-            elif author_alias.login == eol:
+            elif getattr(author_alias, "login", None) == eol:
+                logger.debug("Removing login from author alias.", author=author, login=eol)
                 author_alias.login = None
                 result = True
             if all(not is_string_not_empty(v) for v in author_alias.dict().values()):
                 alias_indexes_to_remove.append(index)
         if len(alias_indexes_to_remove) > 0:
+            logger.debug(
+                "Removing empty author aliases.", author=author, alias_indexes_to_remove=alias_indexes_to_remove
+            )
             author.aliases = [a for i, a in enumerate(author.aliases) if i not in alias_indexes_to_remove]
     return result
 
