@@ -21,7 +21,6 @@ from gitential2.datatypes.authors import (
     AuthorInDB,
     AuthorsPublicExtendedSearchResult,
     AuthorPublicExtended,
-    DateRange,
     AuthorsSorting,
     AuthorsSortingType,
 )
@@ -49,7 +48,6 @@ def list_authors_extended(
         g=g,
         workspace_id=workspace_id,
         author_ids_from_other_query=data_query_result,
-        date_range=author_filters.date_range if author_filters is not None else None,
     )
 
     __sort_authors(
@@ -179,7 +177,6 @@ def __get_extended_authors_list(
     g: GitentialContext,
     workspace_id: int,
     author_ids_from_other_query: List[int],
-    date_range: Optional[DateRange] = None,
 ) -> List[AuthorPublicExtended]:
     result: List[AuthorPublicExtended] = []
     if is_list_not_empty(author_ids_from_other_query):
@@ -187,7 +184,6 @@ def __get_extended_authors_list(
             g=g,
             workspace_id=workspace_id,
             author_ids=list(set(author_ids_from_other_query)),
-            date_range=date_range,
         )
 
         author_ids_all: List[int] = data_query_result.results.get("aid", [])  # type: ignore
@@ -233,7 +229,6 @@ def __get_data_query_result_for_authors_repos(
     g: GitentialContext,
     workspace_id: int,
     author_ids: List[int],
-    date_range: Optional[DateRange] = None,
 ) -> DQResult:
     authors_filters: List[DQFilterExpr] = [
         DQFilterExpr(
@@ -244,20 +239,6 @@ def __get_data_query_result_for_authors_repos(
             ],
         )
     ]
-
-    if date_range is not None:
-        authors_filters.append(
-            DQFilterExpr(
-                fn=DQFunctionName.BETWEEN,
-                args=[
-                    DQSingleColumnExpr(col="atime"),
-                    # It is necessary to do this cast or the app will crash when it gets here
-                    # because it is expecting a string, not a date as it is stated in the AuthorFilters class.
-                    str(cast(str, date_range.start)),
-                    str(cast(str, date_range.end)),
-                ],
-            )
-        )
 
     data_query = DataQuery(
         query_type=DQType.aggregate,
