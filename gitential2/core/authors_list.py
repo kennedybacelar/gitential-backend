@@ -14,7 +14,6 @@ from gitential2.datatypes import (
     DQFilterExpr,
     DataQuery,
     DQResult,
-    DQSortByExpr,
 )
 from gitential2.datatypes.authors import (
     IdAndTitle,
@@ -22,7 +21,8 @@ from gitential2.datatypes.authors import (
     AuthorInDB,
     AuthorsPublicExtendedSearchResult,
     AuthorPublicExtended,
-    DateRange,
+    AuthorsSorting,
+    AuthorsSortingType,
 )
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
@@ -34,48 +34,47 @@ def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) 
         g=g,
         workspace_id=workspace_id,
         author_ids_from_other_query=[author_id],
-        sort_by_name_is_desc=False,
     )[0]
 
 
 def list_authors_extended(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> AuthorsPublicExtendedSearchResult:
-    data_query_result: DQResult = __get_data_query_result_for_authors_filtering(
+    data_query_result: List[int] = __get_author_ids_list_with_filters_applied(
         g=g, workspace_id=workspace_id, author_filters=author_filters
     )
 
-    authors_ext_list: List[AuthorPublicExtended] = __get_extended_authors_list(
+    authors: List[AuthorPublicExtended] = __get_extended_authors_list(
         g=g,
         workspace_id=workspace_id,
-        author_ids_from_other_query=data_query_result.results.get("aid", []),  # type: ignore
-        sort_by_name_is_desc=author_filters.sort_by_name_is_desc
-        if author_filters is not None and author_filters.sort_by_name_is_desc is not None
-        else False,
-        date_range=author_filters.date_range if author_filters is not None else None,
+        author_ids_from_other_query=data_query_result,
     )
 
-    result = AuthorsPublicExtendedSearchResult(
-        total=data_query_result.total,
-        limit=data_query_result.limit,
-        offset=data_query_result.offset,
-        authors_list=authors_ext_list,
+    __sort_authors(
+        authors=authors,
+        sorting_details=getattr(
+            author_filters, "sorting_details", AuthorsSorting(type=AuthorsSortingType.name, is_desc=False)
+        ),
     )
 
-    return result
+    limit: int = getattr(author_filters, "limit", 5)
+    offset: int = getattr(author_filters, "offset", 0)
+    authors = authors[offset:][:limit]
+
+    return AuthorsPublicExtendedSearchResult(
+        total=len(data_query_result),
+        limit=limit,
+        offset=offset,
+        authors_list=authors,
+    )
 
 
-def __get_data_query_result_for_authors_filtering(
+def __get_author_ids_list_with_filters_applied(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
-) -> DQResult:
+) -> List[int]:
     data_query_arguments: Dict[str, Any] = {}
 
     if author_filters is not None:
-        if author_filters.limit is not None and author_filters.limit > 0:
-            data_query_arguments["limit"] = author_filters.limit
-        if author_filters.offset is not None and author_filters.offset > -1:
-            data_query_arguments["offset"] = author_filters.offset
-
         filters: List[DQFilterExpr] = __get_filters_for_data_query(
             g=g, workspace_id=workspace_id, author_filters=author_filters
         )
@@ -91,7 +90,7 @@ def __get_data_query_result_for_authors_filtering(
     )
     data_query_result: DQResult = process_data_query(g=g, workspace_id=workspace_id, query=data_query)
 
-    return data_query_result
+    return (getattr(data_query_result, "results", {}) or {}).get("aid", [])
 
 
 def __get_filters_for_data_query(
@@ -178,8 +177,6 @@ def __get_extended_authors_list(
     g: GitentialContext,
     workspace_id: int,
     author_ids_from_other_query: List[int],
-    sort_by_name_is_desc: bool,
-    date_range: Optional[DateRange] = None,
 ) -> List[AuthorPublicExtended]:
     result: List[AuthorPublicExtended] = []
     if is_list_not_empty(author_ids_from_other_query):
@@ -187,8 +184,6 @@ def __get_extended_authors_list(
             g=g,
             workspace_id=workspace_id,
             author_ids=list(set(author_ids_from_other_query)),
-            sort_by_name_is_desc=sort_by_name_is_desc,
-            date_range=date_range,
         )
 
         author_ids_all: List[int] = data_query_result.results.get("aid", [])  # type: ignore
@@ -234,8 +229,6 @@ def __get_data_query_result_for_authors_repos(
     g: GitentialContext,
     workspace_id: int,
     author_ids: List[int],
-    sort_by_name_is_desc: bool,
-    date_range: Optional[DateRange] = None,
 ) -> DQResult:
     authors_filters: List[DQFilterExpr] = [
         DQFilterExpr(
@@ -247,26 +240,11 @@ def __get_data_query_result_for_authors_repos(
         )
     ]
 
-    if date_range is not None:
-        authors_filters.append(
-            DQFilterExpr(
-                fn=DQFunctionName.BETWEEN,
-                args=[
-                    DQSingleColumnExpr(col="atime"),
-                    # It is necessary to do this cast or the app will crash when it gets here
-                    # because it is expecting a string, not a date as it is stated in the AuthorFilters class.
-                    str(cast(str, date_range.start)),
-                    str(cast(str, date_range.end)),
-                ],
-            )
-        )
-
     data_query = DataQuery(
         query_type=DQType.aggregate,
         source_name=DQSourceName.calculated_commits,
         selections=[DQFnColumnExpr(fn=DQFunctionName.COUNT)],
-        dimensions=[DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id"), DQSingleColumnExpr(col="aname")],
-        sort_by=[DQSortByExpr(col="aname", desc=sort_by_name_is_desc)],
+        dimensions=[DQSingleColumnExpr(col="aid"), DQSingleColumnExpr(col="repo_id")],
         filters=authors_filters,
     )
     data_query_result: DQResult = process_data_query(g=g, workspace_id=workspace_id, query=data_query)
@@ -336,3 +314,26 @@ def __get_author_ids_with_projects_lists(
                 result[author_id].append(IdAndTitle(id=p.id, title=p.name))
 
     return result
+
+
+def __sort_authors(authors: List[AuthorPublicExtended], sorting_details: AuthorsSorting):
+    if sorting_details.type is AuthorsSortingType.name:
+        authors.sort(key=lambda x: x.name or "z", reverse=sorting_details.is_desc)
+    elif sorting_details.type is AuthorsSortingType.email:
+        authors.sort(key=lambda x: getattr(x, "email", "z") or "z", reverse=sorting_details.is_desc)
+    elif sorting_details.type is AuthorsSortingType.active:
+        authors.sort(key=lambda x: x.active, reverse=sorting_details.is_desc)
+    elif sorting_details.type is AuthorsSortingType.projects:
+        authors.sort(
+            key=lambda x: (
+                getattr(x.projects[0], "title", "z") if x.projects is not None and len(x.projects) > 0 else "z"
+            )
+            or "z",
+            reverse=sorting_details.is_desc,
+        )
+    elif sorting_details.type is AuthorsSortingType.teams:
+        authors.sort(
+            key=lambda x: (getattr(x.teams[0], "title", "z") if x.teams is not None and len(x.teams) > 0 else "z")
+            or "z",
+            reverse=sorting_details.is_desc,
+        )

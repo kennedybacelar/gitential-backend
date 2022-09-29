@@ -1,4 +1,5 @@
 from datetime import date
+from enum import Enum
 from typing import Set, List, Optional, Tuple
 
 from pydantic import BaseModel
@@ -77,10 +78,23 @@ class DateRange(BaseModel):
     end: date
 
 
+class AuthorsSortingType(str, Enum):
+    name = "name"
+    email = "email"
+    active = "active"
+    projects = "projects"
+    teams = "teams"
+
+
+class AuthorsSorting(BaseModel):
+    type: AuthorsSortingType
+    is_desc: bool
+
+
 class AuthorFilters(BaseModel):
     limit: Optional[int] = 5
     offset: Optional[int] = 0
-    sort_by_name_is_desc: Optional[bool] = False
+    sorting_details: Optional[AuthorsSorting] = AuthorsSorting(type=AuthorsSortingType.name, is_desc=False)
     date_range: Optional[DateRange] = None
     developer_names: Optional[List[str]] = []
     developer_emails: Optional[List[str]] = []

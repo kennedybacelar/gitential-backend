@@ -1,8 +1,9 @@
-from typing import Optional, List, Dict, TypeGuard
-from datetime import datetime
-from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
+import re
 from copy import deepcopy
+from datetime import datetime
 from json import dumps
+from typing import Optional, List, Dict, TypeGuard
+from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 
 
 def levenshtein(s1: str, s2: str):
@@ -161,3 +162,12 @@ def get_filtered_dict(
                 new_dict[key] = value
 
     return new_dict
+
+
+regex = re.compile(
+    r"([-!#-'*+/-9=?A-Z^-~]+(\.[-!#-'*+/-9=?A-Z^-~]+)*|\"([]!#-[^-~ \t]|(\\[\t -~]))+\")@([-!#-'*+/-9=?A-Z^-~]+(\.[-!#-'*+/-9=?A-Z^-~]+)*|\[[\t -Z^-~]*])"
+)
+
+
+def is_email_valid(email: str) -> bool:
+    return bool(re.fullmatch(regex, email))
