@@ -318,22 +318,22 @@ def __get_author_ids_with_projects_lists(
 
 def __sort_authors(authors: List[AuthorPublicExtended], sorting_details: AuthorsSorting):
     if sorting_details.type is AuthorsSortingType.name:
-        authors.sort(key=lambda x: x.name or "z", reverse=sorting_details.is_desc)
+        authors.sort(key=lambda x: (x.name or "z").lower(), reverse=sorting_details.is_desc)
     elif sorting_details.type is AuthorsSortingType.email:
-        authors.sort(key=lambda x: getattr(x, "email", "z") or "z", reverse=sorting_details.is_desc)
+        authors.sort(key=lambda x: (getattr(x, "email", "z") or "z").lower(), reverse=sorting_details.is_desc)
     elif sorting_details.type is AuthorsSortingType.active:
         authors.sort(key=lambda x: x.active, reverse=sorting_details.is_desc)
     elif sorting_details.type is AuthorsSortingType.projects:
         authors.sort(
             key=lambda x: (
-                getattr(x.projects[0], "title", "z") if x.projects is not None and len(x.projects) > 0 else "z"
-            )
-            or "z",
+                (getattr(x.projects[0], "title", "z") if x.projects is not None and len(x.projects) > 0 else "z") or "z"
+            ).lower(),
             reverse=sorting_details.is_desc,
         )
     elif sorting_details.type is AuthorsSortingType.teams:
         authors.sort(
-            key=lambda x: (getattr(x.teams[0], "title", "z") if x.teams is not None and len(x.teams) > 0 else "z")
-            or "z",
+            key=lambda x: (
+                (getattr(x.teams[0], "title", "z") if x.teams is not None and len(x.teams) > 0 else "z") or "z"
+            ).lower(),
             reverse=sorting_details.is_desc,
         )
