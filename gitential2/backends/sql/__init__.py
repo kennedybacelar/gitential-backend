@@ -10,6 +10,8 @@ from ibis.expr.types import TableExpr
 from sqlalchemy.sql import and_, select
 
 from fastapi.encoders import jsonable_encoder
+from structlog import get_logger
+
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
 
 from gitential2.datatypes.extraction import (
@@ -153,6 +155,9 @@ from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
 from ...utils import get_schema_name
+
+
+logger = get_logger(__name__)
 
 
 def json_dumps(obj):
@@ -430,13 +435,14 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         schema_name = self._workspace_schema_name(workspace_id)
         self._engine.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
 
+        workspace_metadata, _ = get_workspace_metadata(schema_name)
+        workspace_metadata.create_all(self._engine)
+
         if workspace_duplicate:
             self.duplicate_workspace(
                 workspace_id_from=workspace_duplicate.id_of_workspace_to_be_duplicated, workspace_id_to=workspace_id
             )
-        else:
-            workspace_metadata, _ = get_workspace_metadata(schema_name)
-            workspace_metadata.create_all(self._engine)
+            self.create_missing_materialized_views(workspace_id=workspace_id)
 
         set_ws_migration_revision_after_create(workspace_id, self._engine)
 
@@ -459,10 +465,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         schema_to = self._workspace_schema_name(workspace_id_to)
         for table in WorkspaceTableNames:
             table_name: str = table.value
-            query_1 = f"CREATE TABLE {schema_to}.{table_name} (LIKE {schema_from}.{table_name} INCLUDING ALL);"
-            query_2 = f"INSERT INTO {schema_to}.{table_name} (SELECT * FROM {schema_from}.{table_name});"
-            self._engine.execute(query_1)
-            self._engine.execute(query_2)
+            query = f"INSERT INTO {schema_to}.{table_name} (SELECT * FROM {schema_from}.{table_name});"
+            self._engine.execute(query)
 
     def migrate(self):
         migrate_database(self._engine, [w.id for w in self.workspaces.all()])
@@ -502,6 +506,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             for view_name in ["commits_v", "patches_v", "pull_requests_v", "pull_request_comments_v"]
         ]
         for query_ in queries:
+            logger.info("Executing query for refresh materialized views.", query=query_)
             self._engine.execute(query_)
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
