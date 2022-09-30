@@ -501,13 +501,25 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             self._engine.execute(query_)
 
     def refresh_materialized_views(self, workspace_id: int):
-        queries = [
-            f"REFRESH MATERIALIZED VIEW CONCURRENTLY ws_{workspace_id}.{view_name};"
-            for view_name in ["commits_v", "patches_v", "pull_requests_v", "pull_request_comments_v"]
-        ]
-        for query_ in queries:
-            logger.info("Executing query for refresh materialized views.", query=query_)
-            self._engine.execute(query_)
+        schema_name = self._workspace_schema_name(workspace_id)
+        query = (
+            "DO LANGUAGE PLPGSQL "
+            "$$ "
+            "  DECLARE "
+            "    row RECORD; "
+            "  BEGIN "
+            "    FOR row IN "
+            "      SELECT schemaname, matviewname "
+            "      FROM pg_matviews "
+            f"     WHERE schemaname = '{schema_name}' "
+            "      LOOP "
+            f"       EXECUTE FORMAT('REFRESH MATERIALIZED VIEW {schema_name}.%%I;', row.matviewname); "
+            "      END LOOP; "
+            "  END; "
+            "$$;"
+        )
+        logger.info("Executing query for refresh materialized views.", query=query)
+        self._engine.execute(query)
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)
