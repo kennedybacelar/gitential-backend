@@ -363,13 +363,16 @@ def _calculate_commit_level(
 
     calculated_commits = calculated_commits.join(outlier_df)
 
+    # In order to prevent infinity or null values in the calculated columns velocity_measured & velocity
+    replacement_values = {float("inf"): 0, np.nan: 0}
+
     calculated_commits["velocity_measured"] = (
-        calculated_commits["loc_i_c"] + (0.2 * calculated_commits["loc_d_c"])
-    ) / calculated_commits["hours_measured"]
+        (calculated_commits["loc_i_c"] + (0.2 * calculated_commits["loc_d_c"])) / calculated_commits["hours_measured"]
+    ).replace(replacement_values)
     calculated_commits = _add_estimate_hours(_median_measured_velocity(calculated_commits))
     calculated_commits["velocity"] = (
-        calculated_commits["loc_i_c"] + (0.2 * calculated_commits["loc_d_c"])
-    ) / calculated_commits["hours"]
+        (calculated_commits["loc_i_c"] + (0.2 * calculated_commits["loc_d_c"])) / calculated_commits["hours"]
+    ).replace(replacement_values)
     # calculated_commits["is_bugfix"] = calculated_commits.apply(
     #     lambda x: calculate_is_bugfix(labels=[], title=x["message"]), axis=1
     # )
