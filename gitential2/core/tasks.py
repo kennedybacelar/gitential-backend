@@ -75,13 +75,13 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
     if settings.refresh.hourly_maintenance_enabled:
         beat_scheduled_conf["hourly_maintenance"] = {
             "task": "gitential2.core.tasks.hourly_maintenance",
-            "schedule": crontab(hour=23),
+            "schedule": crontab(day_of_week="1,3,5", hour=23),
             "args": (),
         }
     if settings.features.enable_additional_materialized_views:
         beat_scheduled_conf["refresh_materialized_views"] = {
             "task": "gitential2.core.tasks.refresh_materialized_views",
-            "schedule": crontab(hour=23),
+            "schedule": crontab(day_of_week="2,4,6", hour=23),
             "args": (),
         }
 
