@@ -75,7 +75,7 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
     if settings.refresh.hourly_maintenance_enabled:
         beat_scheduled_conf["hourly_maintenance"] = {
             "task": "gitential2.core.tasks.hourly_maintenance",
-            "schedule": crontab(hour=12),
+            "schedule": crontab(hour=23),
             "args": (),
         }
     if settings.features.enable_additional_materialized_views:
@@ -194,10 +194,10 @@ def refresh_materialized_views(settings: Optional[GitentialSettings] = None):
     workspaces = g.backend.workspaces.all()
     for w in workspaces:
         try:
-            logger.info("Refreshing materialized views in workspace", workspace_id=w.id)
-            g.backend.refresh_materialized_views(workspace_id=w.id)
-            logger.info("Finished refreshing materialized views in workspace", workspace_id=w.id)
+            logger.info("Refreshing materialized views in workspace.", workspace_id=w.id)
+            g.backend.refresh_materialized_views_in_workspace(workspace_id=w.id)
+            logger.info("Finished refreshing materialized views in workspace.", workspace_id=w.id)
 
         except:  # pylint: disable=bare-except
-            logger.exception("Failed to refresh materialized views", workspace_id=w.id)
+            logger.exception("Failed to refresh materialized views for workspace!", workspace_id=w.id)
     logger.info("Finished refreshing materialized views")

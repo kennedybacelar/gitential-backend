@@ -456,7 +456,10 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def drop_existing_materialized_views(self, workspace_id: int):
         pass
 
-    def refresh_materialized_views(self, workspace_id: int):
+    def refresh_materialized_views_in_workspace(self, workspace_id: int):
+        pass
+
+    def refresh_materialized_views_in_all_workspaces(self):
         pass
 
     def output_handler(self, workspace_id: int) -> OutputHandler:

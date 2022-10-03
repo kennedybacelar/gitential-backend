@@ -328,7 +328,11 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
-    def refresh_materialized_views(self, workspace_id: int):
+    def refresh_materialized_views_in_workspace(self, workspace_id: int):
+        pass
+
+    @abstractmethod
+    def refresh_materialized_views_in_all_workspaces(self):
         pass
 
     @abstractmethod

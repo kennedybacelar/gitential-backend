@@ -112,7 +112,7 @@ def initialize_database():
 
 
 @app.command("refresh-materialized-views")
-def refresh_materialized_views(workspace_id: Optional[int] = typer.Argument(None)):
+def refresh_materialized_views(workspace_id: Optional[int] = typer.Argument(None), with_sql: bool = False):
     """
     With this command you can refresh materialized views to every workspace in the application OR just for one
     workspace if you provide a specific workspace id.
@@ -123,15 +123,21 @@ def refresh_materialized_views(workspace_id: Optional[int] = typer.Argument(None
     if workspace:
         try:
             logger.info("Trying to refresh materialized views for workspace.", workspace_id=workspace.id)
-            g.backend.refresh_materialized_views(workspace_id=workspace.id)
+            g.backend.refresh_materialized_views_in_workspace(workspace_id=workspace.id)
         except:  # pylint: disable=bare-except
             logger.exception("Failed to refresh materialized views", workspace_id=workspace.id)
+    elif with_sql:
+        try:
+            logger.info("Trying to refresh materialized views for every workspace.")
+            g.backend.refresh_materialized_views_in_all_workspaces()
+        except:  # pylint: disable=bare-except
+            logger.exception("Failed to refresh materialized views in all workspaces!")
     else:
         workspaces = g.backend.workspaces.all()
         for w in workspaces:
             try:
                 logger.info("Trying to refresh materialized views for workspace.", workspace_id=w.id)
-                g.backend.refresh_materialized_views(workspace_id=w.id)
+                g.backend.refresh_materialized_views_in_workspace(workspace_id=w.id)
             except:  # pylint: disable=bare-except
                 logger.exception("Failed to refresh materialized views", workspace_id=w.id)
 

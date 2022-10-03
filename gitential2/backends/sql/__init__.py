@@ -500,7 +500,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         for query_ in queries:
             self._engine.execute(query_)
 
-    def refresh_materialized_views(self, workspace_id: int):
+    def refresh_materialized_views_in_workspace(self, workspace_id: int):
         schema_name = self._workspace_schema_name(workspace_id)
         query = (
             "DO LANGUAGE PLPGSQL "
@@ -512,8 +512,36 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             "      SELECT schemaname, matviewname "
             "      FROM pg_matviews "
             f"     WHERE schemaname = '{schema_name}' "
+            "       AND (matviewname = 'commits_v' "
+            "        OR matviewname = 'patches_v' "
+            "        OR matviewname = 'pull_requests_v' "
+            "        OR matviewname = 'pull_request_comments_v') "
             "      LOOP "
             f"       EXECUTE FORMAT('REFRESH MATERIALIZED VIEW {schema_name}.%%I;', row.matviewname); "
+            "      END LOOP; "
+            "  END; "
+            "$$;"
+        )
+        logger.info("Executing query for refresh materialized views.", query=query)
+        self._engine.execute(query)
+
+    def refresh_materialized_views_in_all_workspaces(self):
+        query = (
+            "DO LANGUAGE PLPGSQL "
+            "$$ "
+            "  DECLARE "
+            "    row RECORD; "
+            "  BEGIN "
+            "    FOR row IN "
+            "      SELECT schemaname, matviewname "
+            "      FROM pg_matviews "
+            "      WHERE schemaname LIKE 'ws_%%' "
+            "       AND (matviewname = 'commits_v' "
+            "        OR matviewname = 'patches_v' "
+            "        OR matviewname = 'pull_requests_v' "
+            "        OR matviewname = 'pull_request_comments_v') "
+            "      LOOP "
+            "        EXECUTE FORMAT('REFRESH MATERIALIZED VIEW %%I.%%I;', row.schemaname, row.matviewname); "
             "      END LOOP; "
             "  END; "
             "$$;"
