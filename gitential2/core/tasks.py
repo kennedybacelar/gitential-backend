@@ -186,18 +186,19 @@ def hourly_maintenance(settings: Optional[GitentialSettings] = None):
 @celery_app.task
 def refresh_materialized_views(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
+    logger.info("Starting scheduled task to refresh materialized views in every workspace.")
 
     from gitential2.core.context import init_context_from_settings
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
     workspaces = g.backend.workspaces.all()
-    for w in workspaces:
-        try:
-            logger.info("Refreshing materialized views in workspace.", workspace_id=w.id)
-            g.backend.refresh_materialized_views_in_workspace(workspace_id=w.id)
-            logger.info("Finished refreshing materialized views in workspace.", workspace_id=w.id)
 
-        except:  # pylint: disable=bare-except
-            logger.exception("Failed to refresh materialized views for workspace!", workspace_id=w.id)
-    logger.info("Finished refreshing materialized views")
+    for wid in [w.id for w in workspaces]:
+        result = g.backend.refresh_materialized_views_in_workspace(workspace_id=wid)
+        logger.info(
+            f"Refreshing materialized views in workspace was {'successful' if result else 'failed'}.",
+            workspace_id=wid,
+        )
+
+    logger.info("Finished refreshing materialized views in every workspace.")

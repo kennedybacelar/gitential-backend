@@ -14,6 +14,13 @@ from gitential2.datatypes.extraction import Langtype
 metadata = sa.MetaData()
 
 
+class MaterializedViewNames(str, Enum):
+    commits_v = "commits_v"
+    patches_v = "patches_v"
+    pull_requests_v = "pull_requests_v"
+    pull_request_comments_v = "pull_request_comments_v"
+
+
 class WorkspaceTableNames(str, Enum):
     projects = "projects"
     repositories = "repositories"

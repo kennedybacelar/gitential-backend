@@ -332,10 +332,6 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
-    def refresh_materialized_views_in_all_workspaces(self):
-        pass
-
-    @abstractmethod
     def output_handler(self, workspace_id: int) -> OutputHandler:
         pass
 

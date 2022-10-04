@@ -112,34 +112,26 @@ def initialize_database():
 
 
 @app.command("refresh-materialized-views")
-def refresh_materialized_views(workspace_id: Optional[int] = typer.Argument(None), with_sql: bool = False):
+def refresh_materialized_views(workspace_id: Optional[int] = typer.Argument(None)):
     """
     With this command you can refresh materialized views to every workspace in the application OR just for one
     workspace if you provide a specific workspace id.
     """
 
+    def refresh_matview_in_workspaces(wid_list: List[int]):
+        for wid in wid_list:
+            result = g.backend.refresh_materialized_views_in_workspace(workspace_id=wid)
+            logger.info(
+                f"Refreshing materialized views in workspace was {'successful' if result else 'failed'}.",
+                workspace_id=wid,
+            )
+
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
     if workspace:
-        try:
-            logger.info("Trying to refresh materialized views for workspace.", workspace_id=workspace.id)
-            g.backend.refresh_materialized_views_in_workspace(workspace_id=workspace.id)
-        except:  # pylint: disable=bare-except
-            logger.exception("Failed to refresh materialized views", workspace_id=workspace.id)
-    elif with_sql:
-        try:
-            logger.info("Trying to refresh materialized views for every workspace.")
-            g.backend.refresh_materialized_views_in_all_workspaces()
-        except:  # pylint: disable=bare-except
-            logger.exception("Failed to refresh materialized views in all workspaces!")
+        refresh_matview_in_workspaces([workspace.id])
     else:
-        workspaces = g.backend.workspaces.all()
-        for w in workspaces:
-            try:
-                logger.info("Trying to refresh materialized views for workspace.", workspace_id=w.id)
-                g.backend.refresh_materialized_views_in_workspace(workspace_id=w.id)
-            except:  # pylint: disable=bare-except
-                logger.exception("Failed to refresh materialized views", workspace_id=w.id)
+        refresh_matview_in_workspaces([w.id for w in g.backend.workspaces.all()])
 
 
 @app.command("send-email-to-user")

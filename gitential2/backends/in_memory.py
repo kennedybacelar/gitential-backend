@@ -459,9 +459,6 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def refresh_materialized_views_in_workspace(self, workspace_id: int):
         pass
 
-    def refresh_materialized_views_in_all_workspaces(self):
-        pass
-
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return self._output_handlers[workspace_id]
 

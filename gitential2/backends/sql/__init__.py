@@ -1,19 +1,32 @@
-from datetime import datetime
 import json
-from typing import Any, Tuple, Set, Optional
+from datetime import datetime
 from threading import Lock
+from typing import Any, Tuple, Set, Optional
 
+import ibis
 import pandas as pd
 import sqlalchemy as sa
-import ibis
+from fastapi.encoders import jsonable_encoder
 from ibis.expr.types import TableExpr
 from sqlalchemy.sql import and_, select
-
-from fastapi.encoders import jsonable_encoder
 from structlog import get_logger
 
+from gitential2.datatypes import (
+    UserInDB,
+    UserInfoInDB,
+    CredentialInDB,
+    WorkspaceInDB,
+    ProjectInDB,
+    RepositoryInDB,
+    ProjectRepositoryInDB,
+    WorkspaceMemberInDB,
+    AuthorInDB,
+)
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
-
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
+from gitential2.datatypes.deploys import Deploy, DeployCommit
+from gitential2.datatypes.email_log import EmailLogInDB
 from gitential2.datatypes.extraction import (
     ExtractedCommit,
     ExtractedKind,
@@ -32,57 +45,16 @@ from gitential2.datatypes.its import (
     ITSSprint,
 )
 from gitential2.datatypes.its_projects import ITSProjectInDB
-from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.deploys import Deploy, DeployCommit
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
-from gitential2.datatypes.reseller_codes import ResellerCode
-from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestLabel
-from gitential2.extraction.output import OutputHandler
-from gitential2.datatypes.workspace_invitations import WorkspaceInvitationInDB
+from gitential2.datatypes.reseller_codes import ResellerCode
+from gitential2.datatypes.stats import IbisTables
+from gitential2.datatypes.subscriptions import SubscriptionInDB
 from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
-from gitential2.datatypes.stats import IbisTables
-from gitential2.datatypes import (
-    UserInDB,
-    UserInfoInDB,
-    CredentialInDB,
-    WorkspaceInDB,
-    ProjectInDB,
-    RepositoryInDB,
-    ProjectRepositoryInDB,
-    WorkspaceMemberInDB,
-    AuthorInDB,
-)
-
-from gitential2.datatypes.email_log import EmailLogInDB
-
-from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
+from gitential2.datatypes.workspace_invitations import WorkspaceInvitationInDB
+from gitential2.extraction.output import OutputHandler
 from gitential2.settings import GitentialSettings
-from .reset_worksapce import reset_workspace
-
-from ..base import GitentialBackend, DashboardRepository
-from ..base.mixins import WithRepositoriesMixin
-
-from .tables import (
-    access_log_table,
-    email_log_table,
-    users_table,
-    reseller_codes_table,
-    access_approvals_table,
-    personal_access_tokens_table,
-    user_infos_table,
-    credentials_table,
-    workspace_api_keys_table,
-    workspaces_table,
-    workspace_invitations_table,
-    workspace_members_table,
-    metadata,
-    subscriptions_table,
-    get_workspace_metadata,
-    WorkspaceTableNames,
-)
-
 from .materialized_views import (
     _create_commits_v,
     _create_patches_v,
@@ -93,7 +65,12 @@ from .materialized_views import (
     _drop_pull_requests_v,
     _drop_pull_request_comments_v,
 )
-
+from .migrations import (
+    migrate_database,
+    set_ws_migration_revision_after_create,
+    migrate_workspace,
+    delete_schema_revision,
+)
 from .repositories import (
     SQLAccessApprovalRepository,
     SQLAccessLogRepository,
@@ -132,7 +109,6 @@ from .repositories import (
     SQLThumbnailRepository,
     SQLDeployCommitRepository,
 )
-
 from .repositories_its import (
     SQLITSIssueRepository,
     SQLITSIssueChangeRepository,
@@ -143,19 +119,33 @@ from .repositories_its import (
     SQLITSIssueWorklogRepository,
     SQLITSSprintRepository,
 )
-
-from .migrations import (
-    migrate_database,
-    set_ws_migration_revision_after_create,
-    migrate_workspace,
-    delete_schema_revision,
+from .reset_worksapce import reset_workspace
+from .tables import (
+    access_log_table,
+    email_log_table,
+    users_table,
+    reseller_codes_table,
+    access_approvals_table,
+    personal_access_tokens_table,
+    user_infos_table,
+    credentials_table,
+    workspace_api_keys_table,
+    workspaces_table,
+    workspace_invitations_table,
+    workspace_members_table,
+    metadata,
+    subscriptions_table,
+    get_workspace_metadata,
+    WorkspaceTableNames,
+    MaterializedViewNames,
 )
+from ..base import GitentialBackend
+from ..base.mixins import WithRepositoriesMixin
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
 from ...utils import get_schema_name
-
 
 logger = get_logger(__name__)
 
@@ -501,53 +491,28 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             self._engine.execute(query_)
 
     def refresh_materialized_views_in_workspace(self, workspace_id: int):
-        schema_name = self._workspace_schema_name(workspace_id)
-        query = (
-            "DO LANGUAGE PLPGSQL "
-            "$$ "
-            "  DECLARE "
-            "    row RECORD; "
-            "  BEGIN "
-            "    FOR row IN "
-            "      SELECT schemaname, matviewname "
-            "      FROM pg_matviews "
-            f"     WHERE schemaname = '{schema_name}' "
-            "       AND (matviewname = 'commits_v' "
-            "        OR matviewname = 'patches_v' "
-            "        OR matviewname = 'pull_requests_v' "
-            "        OR matviewname = 'pull_request_comments_v') "
-            "      LOOP "
-            f"       EXECUTE FORMAT('REFRESH MATERIALIZED VIEW {schema_name}.%%I;', row.matviewname); "
-            "      END LOOP; "
-            "  END; "
-            "$$;"
+        logger.info(
+            "Trying to refresh materialized views in workspace schema.", workspace_id=workspace_id
         )
-        logger.info("Executing query for refresh materialized views.", query=query)
-        self._engine.execute(query)
 
-    def refresh_materialized_views_in_all_workspaces(self):
-        query = (
-            "DO LANGUAGE PLPGSQL "
-            "$$ "
-            "  DECLARE "
-            "    row RECORD; "
-            "  BEGIN "
-            "    FOR row IN "
-            "      SELECT schemaname, matviewname "
-            "      FROM pg_matviews "
-            "      WHERE schemaname LIKE 'ws_%%' "
-            "       AND (matviewname = 'commits_v' "
-            "        OR matviewname = 'patches_v' "
-            "        OR matviewname = 'pull_requests_v' "
-            "        OR matviewname = 'pull_request_comments_v') "
-            "      LOOP "
-            "        EXECUTE FORMAT('REFRESH MATERIALIZED VIEW %%I.%%I;', row.schemaname, row.matviewname); "
-            "      END LOOP; "
-            "  END; "
-            "$$;"
-        )
-        logger.info("Executing query for refresh materialized views.", query=query)
-        self._engine.execute(query)
+        result = True
+        try:
+            schema_name = self._workspace_schema_name(workspace_id)
+            for matview in MaterializedViewNames:
+                matview_name = matview.value
+                refresh_matview_query = f"REFRESH MATERIALIZED VIEW {schema_name}.{matview_name};"
+                logger.info(
+                    f"Executing query for refreshing '{matview_name}' materialized view in one workspace schema.",
+                    name_of_materialized_view=matview_name,
+                    workspace_id=workspace_id,
+                    query=refresh_matview_query,
+                )
+                self._engine.execute(refresh_matview_query)
+        except:  # pylint: disable=bare-except
+            logger.exception("Failed to refresh materialized views in workspace schema!", workspace_id=workspace_id)
+            result = False
+
+        return result
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)
