@@ -491,9 +491,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             self._engine.execute(query_)
 
     def refresh_materialized_views_in_workspace(self, workspace_id: int):
-        logger.info(
-            "Trying to refresh materialized views in workspace schema.", workspace_id=workspace_id
-        )
+        logger.info("Trying to refresh materialized views in workspace schema.", workspace_id=workspace_id)
 
         result = True
         try:
