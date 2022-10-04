@@ -4,6 +4,7 @@ from importlib import import_module
 
 from celery import Celery
 from celery.app.task import Task
+from celery.schedules import crontab
 from structlog import get_logger
 from gitential2.settings import GitentialSettings, load_settings
 from gitential2.logging import initialize_logging
@@ -62,7 +63,7 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
         imports=("gitential2.core.tasks",),
     )
 
-    # beat_scheduled_conf = {}
+    beat_scheduled_conf = {}
 
     # TEMPORARY DISABLED
     # beat_scheduled_conf["send_scheduled_emails"] = {
@@ -71,21 +72,20 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
     #     "args": (settings),
     # }
 
-    # TEMPORARY DISABLED
-    # if settings.refresh.hourly_maintenance_enabled:
-    #     beat_scheduled_conf["hourly_maintenance"] = {
-    #         "task": "gitential2.core.tasks.hourly_maintenance",
-    #         "schedule": crontab(hour=23),
-    #         "args": (),
-    #     }
-    # if settings.features.enable_additional_materialized_views:
-    #     beat_scheduled_conf["refresh_materialized_views"] = {
-    #         "task": "gitential2.core.tasks.refresh_materialized_views",
-    #         "schedule": crontab(hour=23),
-    #         "args": (),
-    #     }
+    if settings.refresh.hourly_maintenance_enabled:
+        beat_scheduled_conf["hourly_maintenance"] = {
+            "task": "gitential2.core.tasks.hourly_maintenance",
+            "schedule": crontab(day_of_week="1,3,5", hour=23),
+            "args": (),
+        }
+    if settings.features.enable_additional_materialized_views:
+        beat_scheduled_conf["refresh_materialized_views"] = {
+            "task": "gitential2.core.tasks.refresh_materialized_views",
+            "schedule": crontab(day_of_week="2,4,6", hour=23),
+            "args": (),
+        }
 
-    # celery_app.conf.beat_schedule = beat_scheduled_conf
+    celery_app.conf.beat_schedule = beat_scheduled_conf
     return celery_app
 
 
@@ -186,18 +186,19 @@ def hourly_maintenance(settings: Optional[GitentialSettings] = None):
 @celery_app.task
 def refresh_materialized_views(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
+    logger.info("Starting scheduled task to refresh materialized views in every workspace.")
 
     from gitential2.core.context import init_context_from_settings
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
     workspaces = g.backend.workspaces.all()
-    for w in workspaces:
-        try:
-            logger.info("Refreshing materialized views in workspace", workspace_id=w.id)
-            g.backend.refresh_materialized_views(workspace_id=w.id)
-            logger.info("Finished refreshing materialized views in workspace", workspace_id=w.id)
 
-        except:  # pylint: disable=bare-except
-            logger.exception("Failed to refresh materialized views", workspace_id=w.id)
-    logger.info("Finished refreshing materialized views")
+    for wid in [w.id for w in workspaces]:
+        result = g.backend.refresh_materialized_views_in_workspace(workspace_id=wid)
+        logger.info(
+            f"Refreshing materialized views in workspace was {'successful' if result else 'failed'}.",
+            workspace_id=wid,
+        )
+
+    logger.info("Finished refreshing materialized views in every workspace.")

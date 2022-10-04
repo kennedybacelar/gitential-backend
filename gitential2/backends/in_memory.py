@@ -444,6 +444,9 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def migrate_workspace(self, workspace_id: int):
         pass
 
+    def reset_workspace(self, workspace_id: int):
+        pass
+
     def delete_schema_revision(self, workspace_id: int):
         pass
 
@@ -453,7 +456,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def drop_existing_materialized_views(self, workspace_id: int):
         pass
 
-    def refresh_materialized_views(self, workspace_id: int):
+    def refresh_materialized_views_in_workspace(self, workspace_id: int):
         pass
 
     def output_handler(self, workspace_id: int) -> OutputHandler:

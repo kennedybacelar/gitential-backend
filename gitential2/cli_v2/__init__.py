@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import typer
 import uvicorn
@@ -112,14 +112,26 @@ def initialize_database():
 
 
 @app.command("refresh-materialized-views")
-def refresh_materialized_views():
+def refresh_materialized_views(workspace_id: Optional[int] = typer.Argument(None)):
+    """
+    With this command you can refresh materialized views to every workspace in the application OR just for one
+    workspace if you provide a specific workspace id.
+    """
+
+    def refresh_matview_in_workspaces(wid_list: List[int]):
+        for wid in wid_list:
+            result = g.backend.refresh_materialized_views_in_workspace(workspace_id=wid)
+            logger.info(
+                f"Refreshing materialized views in workspace was {'successful' if result else 'failed'}.",
+                workspace_id=wid,
+            )
+
     g = get_context()
-    workspaces = g.backend.workspaces.all()
-    for w in workspaces:
-        try:
-            g.backend.refresh_materialized_views(workspace_id=w.id)
-        except:  # pylint: disable=bare-except
-            logger.exception("Failed to refresh materialized views", workspace_id=w.id)
+    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+    if workspace:
+        refresh_matview_in_workspaces([workspace.id])
+    else:
+        refresh_matview_in_workspaces([w.id for w in g.backend.workspaces.all()])
 
 
 @app.command("send-email-to-user")
@@ -207,7 +219,7 @@ def delete_keys_for_workspace(workspace_id: int):
 
 
 @app.command("duplicate-workspace")
-def duplicate_workspace_asd(source_workspace_id: int, user_id: int, new_workspace_name: str):
+def duplicate_workspace_(source_workspace_id: int, user_id: int, new_workspace_name: str):
     """
     With this command you can duplicate a workspace.
 
@@ -231,6 +243,25 @@ def duplicate_workspace_asd(source_workspace_id: int, user_id: int, new_workspac
         raise SettingsException("Can not duplicate workspace! Wrong user id! User not exists!")
 
     duplicate_workspace(g=g, workspace_duplicate=workspace_duplicate, current_user=user, is_permission_check_on=False)
+
+
+@app.command("reset-workspace")
+def reset_workspace(workspace_id: int):
+    """
+    By running this command, you can reset a workspace to its original state when it was created.
+    It will truncate all the tables in the databases' workspace schema by running the following command
+    template for all tables:
+    \b
+    'TRUNCATE TABLE <schema_name>.<table_name> RESTART IDENTITY CASCADE;'
+    """
+
+    g = get_context()
+    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+    if workspace:
+        logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
+        g.backend.reset_workspace(workspace_id=workspace_id)
+    else:
+        logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
 
 
 def main(prog_name: Optional[str] = None):
