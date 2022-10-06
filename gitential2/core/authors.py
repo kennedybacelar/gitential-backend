@@ -97,13 +97,19 @@ def update_author(g: GitentialContext, workspace_id: int, author_id: int, author
 def merge_authors(g: GitentialContext, workspace_id: int, authors: List[AuthorInDB]) -> AuthorInDB:
     first, *rest = authors
     author_update = AuthorUpdate(**first.dict())
+    author_ids_to_be_deleted: List[int] = []
     with authors_change_lock(g, workspace_id):
         for other in rest:
             author_update.aliases += other.aliases  # pylint: disable=no-member
-            delete_author(g, workspace_id, other.id)
+            # delete_author(g, workspace_id, other.id)
+            author_ids_to_be_deleted.append(other.id)
         author_update.aliases = _remove_duplicate_aliases(author_update.aliases)
         _reset_all_authors_from_cache(g, workspace_id)
-        return g.backend.authors.update(workspace_id, first.id, author_update)
+
+    # delete function has been taken out of the with block due lock error - not able to acquire lock
+    for author_id in author_ids_to_be_deleted:
+        delete_author(g, workspace_id, author_id)
+    return g.backend.authors.update(workspace_id, first.id, author_update)
 
 
 def developer_map_callback(
