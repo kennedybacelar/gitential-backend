@@ -39,7 +39,7 @@ def authors_change_lock(
     g: GitentialContext,
     workspace_id: int,
     blocking_timeout_seconds=None,
-    timeout_seconds=50,
+    timeout_seconds=30,
 ):
     with g.kvstore.lock(
         f"authors-change-lock{workspace_id}", timeout=timeout_seconds, blocking_timeout=blocking_timeout_seconds
