@@ -317,6 +317,7 @@ def _get_or_create_authors_from_commits(g: GitentialContext, workspace_id, extra
     authors = [
         get_or_create_author_for_alias(g, workspace_id, AuthorAlias(name=name, email=email))
         for email, name in developers_df["name"].to_dict().items()
+        if name
     ]
     email_aid_map = {}
     for author in authors:
