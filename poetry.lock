@@ -1248,7 +1248,7 @@ python-versions = ">=3.8"
 
 [[package]]
 name = "oauthlib"
-version = "3.2.0"
+version = "3.2.1"
 description = "A generic, spec-compliant, thorough implementation of the OAuth request-signing logic"
 category = "main"
 optional = false
@@ -2217,7 +2217,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "0741fa7c6d7f6761f9149a06ecd21f7d9151444699d5746430b4f1864ee7934b"
+content-hash = "767e8813c81a82004375ea4dcc319428520e79d3558e7dc8ad72638dd3d70af9"
 
 [metadata.files]
 alembic = []
