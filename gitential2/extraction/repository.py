@@ -168,23 +168,30 @@ def clone_repository_pygit2(
 ) -> LocalGitRepository:
     with TemporaryDirectory() as workdir:
 
-        def _construct_callbacks(credentials):
-            if isinstance(credentials, UserPassCredential):
-                userpass = pygit2.UserPass(username=credentials.username, password=credentials.password)
+        def _construct_callbacks(c):
+            if isinstance(c, UserPassCredential):
+                userpass = pygit2.UserPass(username=c.username, password=c.password)
                 logger.debug(
                     "Userpass credential",
                     url=repository.clone_url,
                     path=str(destination_path),
-                    username=credentials.username,
-                    password=credentials.password,
+                    username=c.username,
+                    password=c.password,
                 )
                 return pygit2.RemoteCallbacks(credentials=userpass)
-            elif isinstance(credentials, KeypairCredential):
+            elif isinstance(c, KeypairCredential):
+                logger.info(
+                    "Soon begin to clone SSH repo.",
+                    public_key=c.pubkey,
+                    private_key=c.privkey,
+                    passphrase=c.passphrase,
+                    username=c.username,
+                )
                 keypair = pygit2.Keypair(
-                    username=credentials.username,
-                    pubkey=workdir.new_file(credentials.pubkey),
-                    privkey=workdir.new_file(credentials.privkey),
-                    passphrase=credentials.passphrase,
+                    username=c.username,
+                    pubkey=workdir.new_file(c.pubkey),
+                    privkey=workdir.new_file(c.privkey),
+                    passphrase=c.passphrase,
                 )
                 return pygit2.RemoteCallbacks(credentials=keypair)
             return None
