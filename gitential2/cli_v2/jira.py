@@ -30,6 +30,11 @@ def _get_jira_credential(g: GitentialContext, workspace_id: int, integration_nam
     return get_fresh_credential(g, workspace_id=workspace_id, integration_name=integration_name)
 
 
+@app.command("get-its_issue_worklogs-authors")
+def get_its_worklogs_author_emails(workspace_id: int):
+    pass
+
+
 @app.command("list-accessible-resources")
 def list_accessible_resources(workspace_id: int):
     log = logging.getLogger("authlib")
