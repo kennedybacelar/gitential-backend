@@ -26,24 +26,24 @@ def force_filling_of_author_names(
     def _upate_author(author: dict, name: str):
         g.backend.authors.update(
             workspace_id=workspace_id,
-            id_=author.id,
+            id_=author["id"],
             obj=AuthorUpdate(
-                active=author.active,
+                active=author["active"],
                 name=name,
-                email=author.email,
-                aliases=author.aliases,
-                extra=author.extra,
+                email=author["email"],
+                aliases=author["aliases"],
+                extra=author["extra"],
             ),
         )
 
     for author in authors_with_null_names:
         for alias in author.aliases:
             if alias.get("name"):
-                _upate_author(author=author, name=alias["name"])
+                _upate_author(author=dict(author), name=alias["name"])
                 break
             if alias.get("login"):
-                _upate_author(author=author, name=alias["login"])
+                _upate_author(author=dict(author), name=alias["login"])
                 break
             if alias.get("email"):
-                _upate_author(author=author, name=alias["email"])
+                _upate_author(author=dict(author), name=alias["email"])
                 break
