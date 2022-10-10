@@ -30,7 +30,11 @@ def force_filling_of_author_names(
                     workspace_id=workspace_id,
                     id_=author.id,
                     obj=AuthorUpdate(
-                        active=author.active, name=alias.get("name"), email=author.email, aliases=author.aliases
+                        active=author.active,
+                        name=alias.get("name"),
+                        email=author.email,
+                        aliases=author.aliases,
+                        extra=author.extra,
                     ),
                 )
                 break
@@ -39,7 +43,11 @@ def force_filling_of_author_names(
                     workspace_id=workspace_id,
                     id_=author.id,
                     obj=AuthorUpdate(
-                        active=author.active, name=alias.get("login"), email=author.email, aliases=author.aliases
+                        active=author.active,
+                        name=alias.get("login"),
+                        email=author.email,
+                        aliases=author.aliases,
+                        extra=author.extra,
                     ),
                 )
                 break
@@ -48,7 +56,11 @@ def force_filling_of_author_names(
                     workspace_id=workspace_id,
                     id_=author.id,
                     obj=AuthorUpdate(
-                        active=author.active, name=alias.get("email"), email=author.email, aliases=author.aliases
+                        active=author.active,
+                        name=alias.get("email"),
+                        email=author.email,
+                        aliases=author.aliases,
+                        extra=author.extra,
                     ),
                 )
                 break
