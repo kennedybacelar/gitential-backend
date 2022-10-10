@@ -18,12 +18,12 @@ def recalculate_active_authors_(workspace_id: int):
 def force_filling_of_author_names(
     workspace_id: int,
 ):
-    """This functionality is a hot fix for the workspaces whose authors tables contains entries with null names"""
+    """This functionality is a hot fix for the workspaces which authors tables contains entries with null names"""
 
     g = get_context()
     authors_with_null_names = g.backend.authors.get_authors_with_null_names(workspace_id)
 
-    def _upate_author(author: dict, name: str):
+    def _update_author(author: dict, name: str):
         g.backend.authors.update(
             workspace_id=workspace_id,
             id_=author["id"],
@@ -39,11 +39,11 @@ def force_filling_of_author_names(
     for author in authors_with_null_names:
         for alias in author.aliases:
             if alias.get("name"):
-                _upate_author(author=dict(author), name=alias["name"])
+                _update_author(author=dict(author), name=alias["name"])
                 break
             if alias.get("login"):
-                _upate_author(author=dict(author), name=alias["login"])
+                _update_author(author=dict(author), name=alias["login"])
                 break
             if alias.get("email"):
-                _upate_author(author=dict(author), name=alias["email"])
+                _update_author(author=dict(author), name=alias["email"])
                 break
