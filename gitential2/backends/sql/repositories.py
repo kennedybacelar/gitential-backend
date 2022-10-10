@@ -731,6 +731,10 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
 
         return AuthorNamesAndEmails(names=names, emails=emails)
 
+    def get_authors_with_null_names(self, workspace_id: int):
+        query = self.table.select().where(self.table.c.name.is_(None))
+        return self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+
     def count(self, workspace_id: int) -> int:
         query = select([func.count()]).select_from(self.table)
         with self._connection_with_schema(workspace_id) as connection:
