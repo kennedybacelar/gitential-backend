@@ -23,44 +23,27 @@ def force_filling_of_author_names(
     g = get_context()
     authors_with_null_names = g.backend.authors.get_authors_with_null_names(workspace_id)
 
+    def _upate_author(author: dict, name: str):
+        g.backend.authors.update(
+            workspace_id=workspace_id,
+            id_=author.id,
+            obj=AuthorUpdate(
+                active=author.active,
+                name=name,
+                email=author.email,
+                aliases=author.aliases,
+                extra=author.extra,
+            ),
+        )
+
     for author in authors_with_null_names:
         for alias in author.aliases:
             if alias.get("name"):
-                g.backend.authors.update(
-                    workspace_id=workspace_id,
-                    id_=author.id,
-                    obj=AuthorUpdate(
-                        active=author.active,
-                        name=alias.get("name"),
-                        email=author.email,
-                        aliases=author.aliases,
-                        extra=author.extra,
-                    ),
-                )
+                _upate_author(author=author, name=alias["name"])
                 break
             if alias.get("login"):
-                g.backend.authors.update(
-                    workspace_id=workspace_id,
-                    id_=author.id,
-                    obj=AuthorUpdate(
-                        active=author.active,
-                        name=alias.get("login"),
-                        email=author.email,
-                        aliases=author.aliases,
-                        extra=author.extra,
-                    ),
-                )
+                _upate_author(author=author, name=alias["login"])
                 break
             if alias.get("email"):
-                g.backend.authors.update(
-                    workspace_id=workspace_id,
-                    id_=author.id,
-                    obj=AuthorUpdate(
-                        active=author.active,
-                        name=alias.get("email"),
-                        email=author.email,
-                        aliases=author.aliases,
-                        extra=author.extra,
-                    ),
-                )
+                _upate_author(author=author, name=alias["email"])
                 break
