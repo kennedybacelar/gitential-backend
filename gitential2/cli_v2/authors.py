@@ -10,6 +10,11 @@ app = typer.Typer()
 
 @app.command("recalculate-active-authors")
 def recalculate_active_authors_(workspace_id: int):
+    """_summary_
+    It sets the field <active> of authors to True/False according their assignment status.
+    If the author is only assigned to repositories which no longer belong to any projects,
+    Those authors are set to inactive.
+    """
     g = get_context()
     _recalculate_active_authors(g, workspace_id)
 
