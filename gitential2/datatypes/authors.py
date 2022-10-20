@@ -40,7 +40,7 @@ class AuthorBase(ExtraFieldMixin, CoreModel):
                     values["email"] = alias.email
                 if values["name"] and values["email"]:
                     return values
-        values["name"] = values["name"] or login or "UNKNOWN"
+        values["name"] = values["name"] or login or "unknown"
         return values
 
     @property
