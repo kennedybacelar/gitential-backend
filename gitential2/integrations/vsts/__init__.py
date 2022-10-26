@@ -102,7 +102,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             extra=data,
         )
 
-    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+    def _collect_raw_pull_requests(
+        self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> list:
         organization, project, repo = _get_project_organization_and_repository(repository)
         pull_requests = _paginate_with_skip_top(
             client,
@@ -118,7 +120,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             else datetime.utcnow().replace(tzinfo=timezone.utc),
         )
 
-    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+    def _collect_raw_pull_request(
+        self, repository: RepositoryInDB, pr_number: int, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> dict:
         def _get_json_response(url):
             resp = client.get(url)
             resp.raise_for_status()

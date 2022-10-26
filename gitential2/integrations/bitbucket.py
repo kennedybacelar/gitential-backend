@@ -76,7 +76,9 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         client.close()
         return new_token
 
-    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+    def _collect_raw_pull_requests(
+        self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> list:
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
         prs = _walk_paginated_results(
@@ -88,7 +90,9 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
         return raw_pr["id"], parse_datetime(raw_pr["updated_on"])
 
-    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+    def _collect_raw_pull_request(
+        self, repository: RepositoryInDB, pr_number: int, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> dict:
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
         pr_url = f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests/{pr_number}"

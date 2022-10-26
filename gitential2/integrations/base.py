@@ -130,6 +130,7 @@ class GitProviderMixin(ABC):
         author_callback: Callable,
         prs_we_already_have: Optional[dict] = None,
         limit: int = 200,
+        repo_analysis_limit_in_days: Optional[int] = None,
     ) -> CollectPRsResult:
         client = self.get_client(token=token, update_token=update_token)
         ret = CollectPRsResult(prs_collected=[], prs_left=[], prs_failed=[])
@@ -143,7 +144,7 @@ class GitProviderMixin(ABC):
         if not self._check_rate_limit(token, update_token):
             return ret
 
-        raw_prs = self._collect_raw_pull_requests(repository, client)
+        raw_prs = self._collect_raw_pull_requests(repository, client, repo_analysis_limit_in_days)
         logger.debug("Raw PRs collected", raw_prs=raw_prs)
 
         def _is_pr_up_to_date(pr: dict) -> bool:
@@ -223,7 +224,9 @@ class GitProviderMixin(ABC):
         return True
 
     @abstractmethod
-    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+    def _collect_raw_pull_requests(
+        self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> list:
         pass
 
     @abstractmethod
@@ -231,7 +234,9 @@ class GitProviderMixin(ABC):
         pass
 
     @abstractmethod
-    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+    def _collect_raw_pull_request(
+        self, repository: RepositoryInDB, pr_number: int, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> dict:
         pass
 
     @abstractmethod

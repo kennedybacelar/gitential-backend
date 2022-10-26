@@ -81,7 +81,9 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             return rate_limit.get("resources", {}).get("core", None)
         return None
 
-    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+    def _collect_raw_pull_requests(
+        self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> list:
         api_base_url = self.oauth_register()["api_base_url"]
         pr_list_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls?per_page=100&state=all"
         prs = walk_next_link(client, pr_list_url, integration_name="github_prs_")
@@ -102,7 +104,9 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             )
             return False
 
-    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+    def _collect_raw_pull_request(
+        self, repository: RepositoryInDB, pr_number: int, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> dict:
         users: dict = {}
 
         def _collect_user_data(user_url):

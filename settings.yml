@@ -4,6 +4,8 @@ log_level: info
 extraction:
   show_progress: false
   executor: process_pool
+  repo_analysis_limit_in_days: 90
+  its_project_analysis_limit_in_days: 90
 web:
   base_url: https://localhost:8443
   frontend_url: https://localhost:8443

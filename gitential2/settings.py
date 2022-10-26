@@ -141,6 +141,8 @@ class ExtractionSettings(BaseModel):
     executor: Executor = Executor.process_pool
     process_pool_size: int = 4
     show_progress: bool = False
+    repo_analysis_limit_in_days: Optional[int] = None
+    its_project_analysis_limit_in_days: Optional[int] = None
 
 
 class RefreshSettings(BaseModel):

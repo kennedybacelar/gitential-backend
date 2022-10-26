@@ -1,12 +1,20 @@
-from typing import Optional
+from typing import Optional, List
 from requests.utils import parse_header_links
 from requests import Response
 from structlog import get_logger
+from dateutil import parser
 
 logger = get_logger(__name__)
 
 
-def walk_next_link(client, starting_url, acc=None, max_pages=100, integration_name=None):
+def walk_next_link(
+    client,
+    starting_url,
+    acc=None,
+    max_pages=100,
+    integration_name=None,
+    repo_analysis_limit_in_days: Optional[int] = None,
+):
     def _get_next_link(link_header) -> Optional[str]:
         if link_header:
             header_links = parse_header_links(link_header)
@@ -29,6 +37,7 @@ def walk_next_link(client, starting_url, acc=None, max_pages=100, integration_na
             integration_name=integration_name,
             headers=headers,
             response_items_list_length=len(items),
+            response_items=items,
         )
 
         acc = acc + items
@@ -40,6 +49,19 @@ def walk_next_link(client, starting_url, acc=None, max_pages=100, integration_na
     else:
         log_api_error(response)
         return acc
+
+
+def __is_able_to_continue_walk(
+    items: List[dict],
+    max_pages: int,
+    next_url: Optional[str] = None,
+    repo_analysis_limit_in_days: Optional[int] = None,
+):
+    result: bool = False
+    if next_url and max_pages > 0:
+        print("first phase pass")
+
+    return result
 
 
 def log_api_error(response: Response):
