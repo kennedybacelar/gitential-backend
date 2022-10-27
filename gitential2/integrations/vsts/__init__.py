@@ -1,12 +1,12 @@
-from typing import Optional, Callable, List, Tuple
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Callable, List, Tuple
 from urllib.parse import parse_qs
-from structlog import get_logger
+
 from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
+from structlog import get_logger
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
-from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.its import (
     ITSIssueHeader,
     ITSIssueAllData,
@@ -15,16 +15,9 @@ from gitential2.datatypes.its import (
     ITSIssueChange,
     ITSIssueTimeInStatus,
     ITSIssueChangeType,
-    ITSIssueLinkedIssue,
 )
-
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
-
-from ...utils.is_bugfix import calculate_is_bugfix
-from ..base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData, ITSProviderMixin
-
-from ..common import log_api_error
-
 from .common import (
     _get_project_organization_and_repository,
     _get_organization_and_project_from_its_project,
@@ -34,13 +27,15 @@ from .common import (
     get_db_issue_id,
     _parse_labels,
 )
-
 from .transformations import (
     _transform_to_its_ITSIssueAllData,
     _transform_to_its_ITSIssueComment,
     _transform_to_ITSIssueChange,
     _initial_status_transform_to_ITSIssueChange,
 )
+from ..base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData, ITSProviderMixin
+from ..common import log_api_error
+from ...utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
 
@@ -109,6 +104,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         pull_requests = _paginate_with_skip_top(
             client,
             f"https://dev.azure.com/{organization}/{project}/_apis/git/pullrequests?api-version=6.0&searchCriteria.repositoryId={repo}&searchCriteria.status=all",
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            time_restriction_check_key="creationDate",
         )
         return pull_requests
 

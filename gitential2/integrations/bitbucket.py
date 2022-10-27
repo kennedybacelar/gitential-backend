@@ -1,16 +1,13 @@
-from typing import Optional, Callable, List, Tuple
 from datetime import datetime
+from typing import Optional, Callable, List, Tuple
 from urllib.parse import urlparse
 
-from structlog import get_logger
-
 from authlib.integrations.requests_client import OAuth2Session
-
 from pydantic.datetime_parse import parse_datetime
+from structlog import get_logger
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
-
 from gitential2.datatypes.pull_requests import (
     PullRequest,
     PullRequestState,
@@ -18,9 +15,9 @@ from gitential2.datatypes.pull_requests import (
     PullRequestCommit,
     PullRequestComment,
 )
-from gitential2.utils import calc_repo_namespace
+from gitential2.utils import calc_repo_namespace, is_timestamp_within_days
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
-from .common import log_api_error
+from .common import log_api_error, get_time_of_last_element
 from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
@@ -84,6 +81,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         prs = _walk_paginated_results(
             client,
             f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED",
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
         )
         return prs
 
@@ -321,7 +319,7 @@ def _get_protocol_and_clone_url(clone_links):
 #         return acc
 
 
-def _walk_paginated_results(client, starting_url, acc=None):
+def _walk_paginated_results(client, starting_url, acc=None, repo_analysis_limit_in_days: Optional[int] = None):
     acc = acc or []
     next_url = starting_url
     while True:
@@ -334,12 +332,29 @@ def _walk_paginated_results(client, starting_url, acc=None):
         if "values" in data:
             acc += data["values"]
 
-        if "next" in data:
+        if __is_able_to_continue_walking(
+            data, repo_analysis_limit_in_days=repo_analysis_limit_in_days, time_restriction_check_key="created_on"
+        ):
             next_url = data["next"]
         else:
             break
 
     return acc
+
+
+def __is_able_to_continue_walking(
+    data, repo_analysis_limit_in_days: Optional[int] = None, time_restriction_check_key: Optional[str] = None
+) -> bool:
+    time_of_last_el = get_time_of_last_element(data["values"], time_restriction_check_key)
+    return bool(
+        "next" in data
+        and (
+            not repo_analysis_limit_in_days
+            or repo_analysis_limit_in_days
+            and time_of_last_el
+            and is_timestamp_within_days(time_of_last_el, repo_analysis_limit_in_days)
+        )
+    )
 
 
 def _get_profile(data):

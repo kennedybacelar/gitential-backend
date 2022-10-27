@@ -1,12 +1,12 @@
-from typing import Callable, Optional, List, Tuple
 from datetime import datetime
+from typing import Callable, Optional, List, Tuple
+
+from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
-from authlib.integrations.requests_client import OAuth2Session
 
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB, RepositoryCreate, GitProtocol
-
-
+from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.pull_requests import (
     PullRequest,
     PullRequestState,
@@ -14,7 +14,6 @@ from gitential2.datatypes.pull_requests import (
     PullRequestCommit,
     PullRequestComment,
 )
-from gitential2.datatypes.authors import AuthorAlias
 from .base import OAuthLoginMixin, BaseIntegration, GitProviderMixin
 from .common import log_api_error, walk_next_link
 from ..license import is_on_prem_installation
@@ -86,7 +85,13 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     ) -> list:
         api_base_url = self.oauth_register()["api_base_url"]
         pr_list_url = f"{api_base_url}repos/{repository.namespace}/{repository.name}/pulls?per_page=100&state=all"
-        prs = walk_next_link(client, pr_list_url, integration_name="github_prs_")
+        prs = walk_next_link(
+            client,
+            pr_list_url,
+            integration_name="github_prs_",
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            time_restriction_check_key="created_at",
+        )
         return prs
 
     def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:

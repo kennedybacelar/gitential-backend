@@ -1,22 +1,20 @@
 from typing import Optional
 from uuid import uuid4
 
-from structlog import get_logger
-from pydantic import ValidationError
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exception_handlers import request_validation_exception_handler
-
-from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
-
-from gitential2.logging import initialize_logging
-from gitential2.settings import GitentialSettings, load_settings
-from gitential2.exceptions import AuthenticationException, NotFoundException, PermissionException
+from fastapi import FastAPI
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import ValidationError
+from starlette.middleware.sessions import SessionMiddleware
+from structlog import get_logger
 
 from gitential2.core.context import init_context_from_settings
 from gitential2.core.tasks import configure_celery
+from gitential2.exceptions import AuthenticationException, NotFoundException, PermissionException
+from gitential2.logging import initialize_logging
+from gitential2.settings import GitentialSettings, load_settings
 from .routers import (
     ping,
     configuration,
@@ -39,7 +37,6 @@ from .routers import (
     dashboards,
     charts,
     thumbnails,
-    testing,
 )
 
 logger = get_logger(__name__)
@@ -100,7 +97,6 @@ def _configure_routes(app: FastAPI):
         dashboards.router,
         charts.router,
         thumbnails.router,
-        testing.router,
     ]:
         app.include_router(router, prefix="/v2")
 

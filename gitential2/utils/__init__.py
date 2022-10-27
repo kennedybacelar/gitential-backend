@@ -2,7 +2,7 @@ import re
 from copy import deepcopy
 from datetime import datetime, timedelta
 from json import dumps
-from typing import Optional, List, Dict, TypeGuard
+from typing import Optional, List, Dict, TypeGuard, Union
 from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 
 from gitential2.exceptions import SettingsException
@@ -175,7 +175,7 @@ def is_email_valid(email: str) -> bool:
     return bool(re.fullmatch(regex, email))
 
 
-def is_timestamp_within_days(timestamp: int, number_of_days_diff: int) -> bool:
+def is_timestamp_within_days(timestamp: Union[int, float], number_of_days_diff: int) -> bool:
     if not number_of_days_diff or number_of_days_diff < 1:
         raise SettingsException("Number of days difference is invalid!")
     return datetime.fromtimestamp(timestamp) >= datetime.utcnow() - timedelta(days=number_of_days_diff)

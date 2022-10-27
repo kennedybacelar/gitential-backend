@@ -1,26 +1,26 @@
-from abc import ABC, abstractmethod
-
-from typing import Callable, List, Optional, Tuple, Union
-from datetime import datetime
 import typing
-from authlib.integrations.requests_client import OAuth2Session
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Callable, List, Optional, Tuple, Union
+
 from authlib.integrations.base_client.errors import InvalidTokenError
+from authlib.integrations.requests_client import OAuth2Session
+from dateutil import parser
 from pydantic import BaseModel
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
-from gitential2.datatypes.its_projects import ITSProjectCreate
-from gitential2.kvstore import KeyValueStore
 
-from gitential2.settings import IntegrationSettings
-from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes import UserInfoCreate, RepositoryInDB
-from gitential2.datatypes.repositories import RepositoryCreate
-from gitential2.datatypes.pull_requests import PullRequestData
-from gitential2.datatypes.its_projects import ITSProjectInDB
+from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.its import ITSIssueHeader, ITSIssueAllData
-
+from gitential2.datatypes.its_projects import ITSProjectCreate
+from gitential2.datatypes.its_projects import ITSProjectInDB
+from gitential2.datatypes.pull_requests import PullRequestData
+from gitential2.datatypes.repositories import RepositoryCreate
 from gitential2.extraction.output import OutputHandler
-
+from gitential2.kvstore import KeyValueStore
+from gitential2.settings import IntegrationSettings
+from gitential2.utils import is_timestamp_within_days
 
 logger = get_logger(__name__)
 
@@ -147,15 +147,13 @@ class GitProviderMixin(ABC):
         raw_prs = self._collect_raw_pull_requests(repository, client, repo_analysis_limit_in_days)
         logger.debug("Raw PRs collected", raw_prs=raw_prs)
 
-        def _is_pr_up_to_date(pr: dict) -> bool:
-            pr_number, updated_at = self._raw_pr_number_and_updated_at(pr)
-            return (
-                prs_we_already_have is not None
-                and pr_number in prs_we_already_have
-                and parse_datetime(prs_we_already_have[pr_number]) == updated_at
+        prs_needs_update = [
+            pr
+            for pr in raw_prs
+            if self._is_pr_need_to_be_updated(
+                pr=pr, prs_we_already_have=prs_we_already_have, repo_analysis_limit_in_days=repo_analysis_limit_in_days
             )
-
-        prs_needs_update = [pr for pr in raw_prs if not _is_pr_up_to_date(pr)]
+        ]
 
         logger.info(
             "PRs needs update/collect",
@@ -218,6 +216,42 @@ class GitProviderMixin(ABC):
             return None
         finally:
             client.close()
+
+    def _is_pr_need_to_be_updated(
+        self,
+        pr,
+        prs_we_already_have: Optional[dict] = None,
+        repo_analysis_limit_in_days: Optional[int] = None,
+    ) -> bool:
+        def get_created_at_timestamp_of_pr() -> Optional[float]:
+            result = None
+            date_time_str = pr["created_at"] or pr["created_on"] or pr["creationDate"]
+            try:
+                result = parser.parse(date_time_str).timestamp()
+            except ValueError as e:
+                logger.error("Not able to parse created_at for pr!", exception=e)
+            return result
+
+        def is_pr_within_date_limit() -> bool:
+            result = True
+            if repo_analysis_limit_in_days:
+                pr_created_at_timestamp = get_created_at_timestamp_of_pr()
+                result = (
+                    is_timestamp_within_days(pr_created_at_timestamp, repo_analysis_limit_in_days)
+                    if pr_created_at_timestamp
+                    else False
+                )
+            return result
+
+        def is_pr_up_to_date() -> bool:
+            pr_number, updated_at = self._raw_pr_number_and_updated_at(pr)
+            return (
+                prs_we_already_have is not None
+                and pr_number in prs_we_already_have
+                and parse_datetime(prs_we_already_have[pr_number]) == updated_at
+            )
+
+        return not is_pr_up_to_date() and is_pr_within_date_limit()
 
     # pylint: disable=unused-argument
     def _check_rate_limit(self, token, update_token):
