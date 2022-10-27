@@ -2,8 +2,8 @@ from typing import List, Optional, Tuple
 from datetime import datetime
 from structlog import get_logger
 
-from fastapi import APIRouter, Depends, Query, Response
-
+from fastapi import APIRouter, Depends, Query, Response, Request
+from gitential2.core.parsers import parse_repo_ids_from_url_param
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.context import GitentialContext
 from gitential2.core.commits_and_prs import get_commits, get_patches_for_commit, get_pull_requests
@@ -224,8 +224,10 @@ def prs_project_level(
     developer_id: Optional[int] = Query(None, alias="developer_id"),
     limit: int = 100,
     offset: int = 0,
+    request: Request = None
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    repo_ids = parse_repo_ids_from_url_param(str(request.query_params))
     return _paginated_response(
         response,
         get_pull_requests(
@@ -237,6 +239,7 @@ def prs_project_level(
             developer_id=developer_id,
             limit=limit,
             offset=offset,
+            repo_ids=repo_ids
         ),
         limit=limit,
         offset=offset,
