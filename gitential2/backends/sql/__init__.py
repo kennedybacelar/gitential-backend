@@ -119,7 +119,7 @@ from .repositories_its import (
     SQLITSIssueWorklogRepository,
     SQLITSSprintRepository,
 )
-from .reset_worksapce import reset_workspace
+from .reset_workspace import reset_workspace
 from .tables import (
     access_log_table,
     email_log_table,

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, TypeVar, Generic, Union
+from typing import Iterable, Optional, TypeVar, Generic, Union, List
+
 from gitential2.datatypes import CoreModel
 
 IdType = TypeVar("IdType")
@@ -91,6 +92,10 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
 
     @abstractmethod
     def all(self, workspace_id: int) -> Iterable[InDBType]:
+        pass
+
+    @abstractmethod
+    def all_ids(self, workspace_id: int) -> List[int]:
         pass
 
     @abstractmethod

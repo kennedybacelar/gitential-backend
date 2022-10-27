@@ -1,45 +1,47 @@
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional, List
+
 import typer
 import uvicorn
 from structlog import get_logger
 
-from gitential2.core.deduplication import deduplicate_authors
-from gitential2.core.authors import fix_author_aliases, fix_author_names
-from gitential2.core.emails import send_email_to_user
-from gitential2.core.maintenance import maintenance
-from gitential2.core.tasks import configure_celery
-from gitential2.core.users import get_user
-from gitential2.logging import initialize_logging
-from gitential2.settings import load_settings
-from gitential2.core.quick_login import generate_quick_login
 from gitential2.core.api_keys import (
     create_personal_access_token,
     delete_personal_access_tokens_for_user,
     create_workspace_api_key,
     delete_api_keys_for_workspace,
 )
+from gitential2.core.authors import fix_author_aliases, fix_author_names
+from gitential2.core.deduplication import deduplicate_authors
+from gitential2.core.emails import send_email_to_user
+from gitential2.core.maintenance import maintenance
+from gitential2.core.quick_login import generate_quick_login
+from gitential2.core.tasks import configure_celery
+from gitential2.core.users import get_user
+from gitential2.logging import initialize_logging
+from gitential2.settings import load_settings
+from .authors import app as authors_app
 from .common import OutputFormat, get_context, print_results
+from .crud import app as crud_app
+from .data_queries import app as data_queries_app
+from .deploys import app as deploys_app
 from .emails import app as emails_app
 from .export import app as export_app
 from .extract import app as extraction_app
+from .invitation import app as invitation_app
+from .its import app as its_app
+from .jira import app as jira_app
 from .projects import app as projects_app
 from .query import app as query_app
 from .refresh import app as refresh_app
 from .repositories import app as repositories_app
+from .reseller_codes import app as reseller_codes
 from .status import app as status_app
 from .tasks import app as tasks_app
 from .usage_stats import app as usage_stats_app
 from .users import app as users_app
-from .crud import app as crud_app
-from .invitation import app as invitation_app
-from .jira import app as jira_app
 from .vsts import app as vsts_app
-from .its import app as its_app
-from .data_queries import app as data_queries_app
-from .reseller_codes import app as reseller_codes
-from .deploys import app as deploys_app
-from .authors import app as authors_app
+from ..backends.sql.reset_workspace import remove_workspace_keys_from_kvstore
 from ..core.workspace_common import duplicate_workspace
 from ..datatypes import UserInDB
 from ..datatypes.workspaces import WorkspaceDuplicate
@@ -260,6 +262,7 @@ def reset_workspace(workspace_id: int):
     if workspace:
         logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
         g.backend.reset_workspace(workspace_id=workspace_id)
+        remove_workspace_keys_from_kvstore(gitential_context=g, workspace_id=workspace_id)
     else:
         logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
 
