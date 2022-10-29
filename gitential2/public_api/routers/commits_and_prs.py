@@ -224,7 +224,7 @@ def prs_project_level(
     developer_id: Optional[int] = Query(None, alias="developer_id"),
     limit: int = 100,
     offset: int = 0,
-    request: Request = None
+    request: Request = None,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     repo_ids = parse_repo_ids_from_url_param(str(request.query_params))
@@ -239,7 +239,7 @@ def prs_project_level(
             developer_id=developer_id,
             limit=limit,
             offset=offset,
-            repo_ids=repo_ids
+            repo_ids=repo_ids,
         ),
         limit=limit,
         offset=offset,
