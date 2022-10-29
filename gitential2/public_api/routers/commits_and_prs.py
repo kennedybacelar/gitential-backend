@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Tuple
+from structlog import get_logger
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from gitential2.core.commits_and_prs import get_commits, get_patches_for_commit, get_pull_requests
@@ -7,7 +8,6 @@ from gitential2.core.context import GitentialContext
 from gitential2.core.parsers import parse_repo_ids_from_url_param
 from gitential2.core.permissions import check_permission
 from gitential2.datatypes.permissions import Action, Entity
-from structlog import get_logger
 
 from ..dependencies import current_user, gitential_context
 
