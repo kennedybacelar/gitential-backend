@@ -214,6 +214,7 @@ def prs_repo_level(
 @router.get("/workspaces/{workspace_id}/projects/{project_id}/pull-requests")
 def prs_project_level(
     response: Response,
+    request: Request,
     workspace_id: int,
     project_id: int,
     current_user=Depends(current_user),
@@ -223,7 +224,6 @@ def prs_project_level(
     developer_id: Optional[int] = Query(None, alias="developer_id"),
     limit: int = 100,
     offset: int = 0,
-    request: Request = None,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     repo_ids = parse_repo_ids_from_url_param(str(request.query_params))
