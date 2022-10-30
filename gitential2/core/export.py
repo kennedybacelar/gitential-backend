@@ -17,10 +17,15 @@ from gitential2.datatypes.refresh_statuses import ProjectRefreshStatus
 from gitential2.exceptions import InvalidStateException
 from gitential2.utils import get_schema_name
 from structlog import get_logger
+from gitential2.datatypes import (AutoExportCreate, AutoExportInDB)
+from typing import Optional, List
+from gitential2.core.refresh_v2 import refresh_workspace
+from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
+from gitential2.datatypes.authors import AuthorAlias, AuthorInDB
+from functools import partial
+import requests
 
 logger = get_logger(__name__)
-
-
 class ExportFormat(str, Enum):
     csv = "csv"
     json = "json"
@@ -36,92 +41,58 @@ g = get_context()
 configure_celery(g.settings)
 
 
-# TODO: Temporarily restrict the workspace id to only RAI -> This prevents from running refresh on all workspaces
-# Change "1" to RAI workspace ID in prod
-
-restricted_id = [1]
-
-def daily_refresh_task(    
-    g: GitentialContext,
-    strategy: RefreshStrategy = RefreshStrategy.parallel,
-    refresh_type: RefreshType = RefreshType.everything,
-    force: bool = False,
-    schedule: bool = False,
+def create_auto_export(
+    g: GitentialContext, workspace_id: int, cron_schedule_time:int, tempo_access_token: Optional[str], emails:List[str]) -> AutoExportInDB:
+    """
+    @desc: create a new scheduled automatic workspace export for a workspace.
+    @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recepients)
+    """
+    # Data input valudation
+    auto_export_data = AutoExportCreate(
+        workspace_id = workspace_id,
+        cron_schedule_time = cron_schedule_time,
+        tempo_access_token = tempo_access_token,
+        emails = emails
+    )
+    return g.backend.auto_export.create(auto_export_data= auto_export_data)
+    
+def auto_export_task(    
+    g: GitentialContext=g,
     ) -> None:
     """
-    @desc: workspace refresh function to be triggered once daily
-    @args: strategy = parallel, refresh_type=everything, force = false, schedule = false
-    @TODO: Check license status
-    """
+    @desc: workspace auto refresh function to be triggered by the celery beat conf
+    - Fetch all workspaces in the auto_export schedule table
+    - Verify the crontab schedule time, and run if within the current run time
+    - Run step by step auto export:
+        1. Run the workspace refresh process (wait until it finishes; we set a one-by-one refresh strategy and force refresh)
+        2. Tempo refresh process (wait until it finishes)
+        3. Run the full-workspace data export process with the uploading to the s3 bucket
 
-    # TODO: Check license status
-
-    # Start a scheduled refresh for all workspaces in gitential
-    # Limit to restricted workspace ID for not  -> RAI
-    for workspace in g.backend.workspaces.all():
-        try:
-            if workspace.id in restricted_id:
-                schedule_task(
-                    g,
-                    task_name="refresh_workspace",
-                    params={
-                        "workspace_id": workspace.id,
-                        "strategy":strategy,
-                        "refresh_type":refresh_type,
-                        "force":force
-                    },
-                )
-        except InvalidStateException:
-            logger.warning("Skipping workspace, no owner?", workspace_id=workspace.id)
-
-def export_workspace_task(
-    g: GitentialContext = g,
-    export_format: ExportFormat = ExportFormat.csv,    
-    ) -> None:
+    @args: g: GitentialContext
     """
-    @desc: workspace export function -> will check if the status of refresh_status.commits_refresh_scheduled, refresh_status.commits_in_progress, refresh_status.prs_refresh_scheduled, refresh_status.prs_in_progress are false, then run workspace export
-    @args: workspace_id
-    @TODO: Currently limiting exports to restricted_id list. This list has workspace.id = 1 in dev, and will be RAI workspace.id in prod. 
-    """
-    # Workspace level iteration
-    for workspace in g.backend.workspaces.all():
+    for workspace in g.backend.auto_export.all():
         print(workspace)
-        try:
-            # Temp -> Limit to restricted workspace ID -> RAI
-            if workspace.id in restricted_id:
+        print(datetime.now().hour)
+        if workspace.cron_schedule_time == datetime.now().hour:
+            # Refresh full workspace
+            logger.info(msg = f"Starting full workspace refresh for workspace {workspace.id}")
+            refresh_workspace(g, workspace.workspace_id, RefreshStrategy.one_by_one, RefreshType.everything, True )
 
-                # Project level iteration
-                for project in g.backend.projects.all(workspace.id):
-                    print(project)
+            # Refresh Tempo Data
+            logger.info(msg = f"Starting tempo data refresh for workspace {workspace.id}")
+            if workspace.tempo_access_token:
+                lookup_tempo_worklogs(g, workspace.workspace_id, workspace.tempo_access_token, True)
 
-                    # Get the repo refresh status  
-                    project_refresh_status:ProjectRefreshStatus = get_project_refresh_status(g, workspace.id, project.id)
-                    
-                    # Internal variable to determine if repo is ready for export
-                    _run_export = False
-
-                    for repo in project_refresh_status.repositories:
-                        print(repo)
-                        if not repo.commits_refresh_scheduled and not repo.commits_in_progress and not repo.prs_refresh_scheduled and not repo.prs_in_progress:
-                            _run_export = True
-                        else:
-                            _run_export= True
-
-                    if _run_export:    
-                        logger.info("export_workspace_task",workspace_id=workspace.id, message = "Running export")
-                        export_full_workspace(workspace.id, date_from = datetime.now().min, export_format = export_format)
-
-                    else:
-                        logger.info("export_workspace_task",workspace_id=workspace.id, message = "Not ready for export")
-
-        except InvalidStateException:
-            logger.warning("Skipping workspace, no owner?", workspace_id=workspace.id)
-
+            # Export full workspace
+            logger.info(msg = f"Starting full workspace export for workspace {workspace.id}")
+            export_full_workspace(g, workspace.id, date_from = datetime.now().min)
+            
 
 def export_full_workspace(
+    g: GitentialContext,
     workspace_id: int,
     date_from: datetime = datetime.min,
-    export_format: ExportFormat = ExportFormat.csv,
+    export_format: ExportFormat = ExportFormat.xlsx,
 
 ):
     """
@@ -131,7 +102,6 @@ def export_full_workspace(
     @TODO: Upload data to s3 bucket - To be provided by Prosper
     """
 
-    g = get_context()
     destination_directory: Path = Path("/tmp")
     data_to_export = [
         ("projects", g.backend.projects),
@@ -199,6 +169,9 @@ def export_full_workspace(
 
     # Upload data to s3 bucket - To be provided by Prosper
     # Pick exported file from "/tmp"
+    # export_to_aws = Export(workspace_id)
+    # export_to_aws.run
+
 
 
 def _get_exporter(export_format: ExportFormat, destination_directory: Path, workspace_id: int) -> Exporter:
@@ -213,3 +186,61 @@ def _get_exporter(export_format: ExportFormat, destination_directory: Path, work
     elif export_format == ExportFormat.xlsx:
         return XlsxExporter(destination_directory, prefix)
     raise ValueError("Invalid export format")
+
+
+
+def lookup_tempo_worklogs(g: GitentialContext, workspace_id: int, tempo_access_token: str, force):
+    worklogs_for_issue = {}
+    _author_callback_partial = partial(_author_callback, g=g, workspace_id=workspace_id)
+
+    for worklog in g.backend.its_issue_worklogs.iterate_desc(workspace_id):
+        try:
+            if not worklog.author_dev_id or force:
+                author = None
+                tempo_worklog = None
+
+                jira_issue_id = worklog.extra.get("issueId") if worklog.extra else None
+                if not jira_issue_id:
+                    continue
+                
+                if jira_issue_id not in worklogs_for_issue:
+                    worklogs_for_issue[jira_issue_id] = _get_tempo_worklogs_for_issue(tempo_access_token, jira_issue_id)
+
+                for wl in worklogs_for_issue[jira_issue_id].get("results", []):
+                    if str(wl["jiraWorklogId"]) == worklog.api_id:
+                        tempo_worklog = wl
+                        break
+
+                if tempo_worklog:
+                    author = _author_callback_partial(AuthorAlias(name=tempo_worklog["author"]["displayName"]))
+
+                if author:
+                    print(worklog.created_at, worklog.api_id, jira_issue_id, author.id, author.name)
+                    worklog.author_dev_id = author.id
+                    worklog.author_name = author.name
+                    g.backend.its_issue_worklogs.update(workspace_id, worklog.id, worklog)
+                else:
+                    print(worklog.created_at, worklog.api_id, jira_issue_id, tempo_worklog)
+                print("-------------------------------------------------------")
+        except:
+            pass
+
+def _get_tempo_worklogs_for_issue(tempo_access_token: str, jira_issue_id) -> dict:
+    response = requests.get(
+        f"https://api.tempo.io/core/3/worklogs?issue={jira_issue_id}",
+        headers={"Authorization": f"Bearer {tempo_access_token}"},
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _author_callback(
+    alias: AuthorAlias,
+    g: GitentialContext,
+    workspace_id: int,
+) -> Optional[AuthorInDB]:
+    author = get_or_create_optional_author_for_alias(g, workspace_id, alias)
+    if author:
+        return author
+    else:
+        return None

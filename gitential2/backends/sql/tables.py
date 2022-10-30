@@ -256,6 +256,18 @@ email_log_table = sa.Table(
 )
 
 
+auto_export_table = sa.Table(
+    "auto_export",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("workspace_id", sa.Integer, sa.ForeignKey("workspaces.id"), nullable=False),
+    sa.Column("cron_schedule_time", sa.Integer, nullable=False),
+    sa.Column("emails", sa.JSON, nullable=True),
+    sa.Column("tempo_access_token", sa.String, nullable=True),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+)
+
 # pylint: disable=unused-variable,too-many-locals
 def get_workspace_metadata(schema: Optional[str] = None):
     metadata = sa.MetaData(schema=schema)

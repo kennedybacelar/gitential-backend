@@ -44,6 +44,7 @@ from ..core.workspace_common import duplicate_workspace
 from ..datatypes import UserInDB
 from ..datatypes.workspaces import WorkspaceDuplicate
 from ..exceptions import SettingsException
+from .auto_export import app as auto_export_app
 
 logger = get_logger(__name__)
 
@@ -68,6 +69,7 @@ app.add_typer(data_queries_app, name="data-query")
 app.add_typer(reseller_codes, name="reseller-codes")
 app.add_typer(deploys_app, name="deploys")
 app.add_typer(authors_app, name="authors")
+app.add_typer(auto_export_app, name="auto-export")
 
 
 @app.command("public-api")

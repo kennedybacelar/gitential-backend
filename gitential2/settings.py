@@ -146,8 +146,6 @@ class ExtractionSettings(BaseModel):
 class RefreshSettings(BaseModel):
     hourly_maintenance_enabled: bool = True
     interval_minutes: int = 60 * 24
-    # Attribute for daily refresh
-    start_daily_refresh: bool = True
 
 class AutoExportSettings(BaseModel):
     start_auto_export: bool = True

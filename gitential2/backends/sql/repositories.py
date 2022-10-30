@@ -48,6 +48,7 @@ from gitential2.backends.base.repositories import (
     DashboardRepository,
     ChartRepository,
     ThumbnailRepository,
+    AutoExportRepository,
 )
 from gitential2.datatypes import (
     UserCreate,
@@ -62,6 +63,9 @@ from gitential2.datatypes import (
     WorkspaceCreate,
     WorkspaceUpdate,
     WorkspaceInDB,
+    AutoExportCreate,
+    AutoExportUpdate,
+    AutoExportInDB
 )
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.access_log import AccessLog
@@ -1174,3 +1178,44 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         self._execute_query(query)
         # return [EmailLogInDB(**row) for row in rows]
         return self.get_or_error(user_id)
+
+
+class SQLAutoExportRepository(AutoExportRepository):
+    """
+    SQL Object for the AutoExport Table
+    """
+    def __init__(self, table: sa.Table, engine: sa.engine.Engine, in_db_cls: Callable[..., AutoExportInDB]):
+        self.table = table
+        self.engine = engine
+        self.in_db_cls = in_db_cls
+
+    def create(self, auto_export_data: AutoExportCreate) -> AutoExportInDB:
+        """
+        @desc: Creates a new auto export schedule
+        """
+        if not self._schedule_exists(auto_export_data.workspace_id, auto_export_data.cron_schedule_time):
+            query = self.table.insert().values(**convert_times_to_utc(auto_export_data.dict()))
+            self._execute_query(query)
+            return auto_export_data
+        else:
+            return None
+
+    def _schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
+        """
+        @desc: Checks if a schedule already exists, to prevent creating multiple schedules for the same workspace
+        """
+        query = self.table.select().where(and_(self.table.c.workspace_id == workspace_id, self.table.c.cron_schedule_time == cron_schedule_time))
+        row = self._execute_query(query,callback_fn=fetchone_)
+        return True if row else False
+
+    def all(self) -> Iterable[AutoExportInDB]:
+        query = self.table.select()
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return (self.in_db_cls(**row) for row in rows)
+
+    def _execute_query(self, query, callback_fn=lambda result: result):
+        with self.engine.connect() as connection:
+            result = connection.execute(query)
+            return callback_fn(result)
+
+

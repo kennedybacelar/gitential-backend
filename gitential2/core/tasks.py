@@ -79,19 +79,11 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
             "args": (),
         }
 
-    # Daily refresh all days of the week @ 23:00hrs -> Refresh at EOD
-    if settings.refresh.start_daily_refresh:
-        beat_scheduled_conf["daily_refresh"] = {
-            "task": "gitential2.core.tasks.daily_refresh",
-            "schedule": crontab(day_of_week="1-6", hour=23),
-            "args": (),
-        }
-
-    # Export runs every 10 minutes -> fail safe to terminate if export already run should exist within the function
+    # Runs every 1 hour and launches scheduled exports based on workspace cron schedules
     if settings.auto_export.start_auto_export:
         beat_scheduled_conf["schedule_auto_export"] = {
             "task": "gitential2.core.tasks.schedule_auto_export",
-            "schedule": crontab(minute="*/10"),
+            "schedule": crontab(hour="*/1"),
             "args": (),
         }
 
@@ -221,22 +213,11 @@ def refresh_materialized_views(settings: Optional[GitentialSettings] = None):
     logger.info("Finished refreshing materialized views in every workspace.")
 
 @celery_app.task
-def daily_refresh(settings: Optional[GitentialSettings] = None):
-    # pylint: disable=import-outside-toplevel,cyclic-import
-    from gitential2.core.context import init_context_from_settings
-    from gitential2.core.export import daily_refresh_task
-
-    settings = settings or load_settings()
-    g = init_context_from_settings(settings)
-    daily_refresh_task(g)
-
-
-@celery_app.task
 def schedule_auto_export(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.core.context import init_context_from_settings
-    from gitential2.export import export_workspace_task
+    from gitential2.core.export import auto_export_task
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
-    export_workspace_task(g)
+    auto_export_task(g)
