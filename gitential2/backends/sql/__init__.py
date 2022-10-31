@@ -460,7 +460,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         logger.info(f"Deleting workspace schema 'ws_{workspace_id}'", workspace_id=workspace_id)
         self.delete_workspace_schema(workspace_id)
 
-        logger.info(f"Workspace delete successfully finished!", workspace_id=workspace_id)
+        logger.info("Workspace delete successfully finished!", workspace_id=workspace_id)
 
         return True
 
