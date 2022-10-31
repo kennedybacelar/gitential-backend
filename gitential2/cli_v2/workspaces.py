@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Optional, List
 
 import typer
@@ -15,8 +16,14 @@ app = typer.Typer()
 logger = get_logger(__name__)
 
 
+class ResetType(Enum):
+    full = "full"
+    sql_only = 'sql_only'
+    redis_only = 'redis_only'
+
+
 @app.command("reset")
-def reset_workspace(workspace_id: int):
+def reset_workspace(workspace_id: int, reset_type: ResetType = ResetType.full):
     """
     DANGER ZONE!!! Workspace reset!
     \n
@@ -31,8 +38,10 @@ def reset_workspace(workspace_id: int):
     workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
     if workspace:
         logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
-        g.backend.reset_workspace(workspace_id=workspace_id)
-        g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+        if reset_type == ResetType.full or reset_type == ResetType.sql_only:
+            g.backend.reset_workspace(workspace_id=workspace_id)
+        if reset_type == ResetType.full or reset_type == ResetType.redis_only:
+            g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
     else:
         logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
 
