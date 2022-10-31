@@ -9,7 +9,6 @@ from gitential2.core.api_keys import (
     create_personal_access_token,
     delete_personal_access_tokens_for_user,
     create_workspace_api_key,
-    delete_api_keys_for_workspace,
 )
 from gitential2.core.authors import fix_author_aliases, fix_author_names
 from gitential2.core.deduplication import deduplicate_authors
@@ -41,11 +40,7 @@ from .tasks import app as tasks_app
 from .usage_stats import app as usage_stats_app
 from .users import app as users_app
 from .vsts import app as vsts_app
-from ..backends.sql.reset_workspace import remove_workspace_keys_from_kvstore
-from ..core.workspace_common import duplicate_workspace
-from ..datatypes import UserInDB
-from ..datatypes.workspaces import WorkspaceDuplicate
-from ..exceptions import SettingsException
+from .workspaces import app as workspaces_app
 
 logger = get_logger(__name__)
 
@@ -70,6 +65,7 @@ app.add_typer(data_queries_app, name="data-query")
 app.add_typer(reseller_codes, name="reseller-codes")
 app.add_typer(deploys_app, name="deploys")
 app.add_typer(authors_app, name="authors")
+app.add_typer(workspaces_app, name="workspaces")
 
 
 @app.command("public-api")
@@ -212,59 +208,6 @@ def generate_workspace_api_key(workspace_id: int):
     print("------")
     print(token)
     print("------")
-
-
-@app.command("delete-api-keys-for-workspace")
-def delete_keys_for_workspace(workspace_id: int):
-    g = get_context()
-    delete_api_keys_for_workspace(g, workspace_id)
-
-
-@app.command("duplicate-workspace")
-def duplicate_workspace_(source_workspace_id: int, user_id: int, new_workspace_name: str):
-    """
-    With this command you can duplicate a workspace.
-
-    \b
-    You need to provide three arguments:
-    SOURCE_WORKSPACE_ID: The id of the workspace you want to duplicate.
-    USER_ID: The name of the duplicated workspace. It can not be an already existing workspace name.
-    NEW_WORKSPACE_NAME: The id of the user
-    """
-
-    g = get_context()
-    workspace_duplicate = WorkspaceDuplicate(
-        id_of_workspace_to_be_duplicated=source_workspace_id, name=new_workspace_name
-    )
-    user: Optional[UserInDB] = get_user(g, user_id)
-
-    all_workspace_names = [workspace.name for workspace in list(g.backend.workspaces.all())]
-    if new_workspace_name in all_workspace_names:
-        raise SettingsException("Can not duplicate workspace! Workspace name already exists!")
-    if not user:
-        raise SettingsException("Can not duplicate workspace! Wrong user id! User not exists!")
-
-    duplicate_workspace(g=g, workspace_duplicate=workspace_duplicate, current_user=user, is_permission_check_on=False)
-
-
-@app.command("reset-workspace")
-def reset_workspace(workspace_id: int):
-    """
-    By running this command, you can reset a workspace to its original state when it was created.
-    It will truncate all the tables in the databases' workspace schema by running the following command
-    template for all tables:
-    \b
-    'TRUNCATE TABLE <schema_name>.<table_name> RESTART IDENTITY CASCADE;'
-    """
-
-    g = get_context()
-    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
-    if workspace:
-        logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
-        g.backend.reset_workspace(workspace_id=workspace_id)
-        remove_workspace_keys_from_kvstore(gitential_context=g, workspace_id=workspace_id)
-    else:
-        logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
 
 
 def main(prog_name: Optional[str] = None):

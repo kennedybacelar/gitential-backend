@@ -444,7 +444,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def delete_workspace_schema(self, workspace_id: int):
         pass
 
-    def delete_workspace(self, workspace_id: int):
+    def delete_workspace_sql(self, workspace_id: int):
         pass
 
     def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):

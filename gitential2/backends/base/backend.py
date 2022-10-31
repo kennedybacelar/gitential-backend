@@ -296,7 +296,7 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
-    def delete_workspace(self, workspace_id: int):
+    def delete_workspace_sql(self, workspace_id: int):
         pass
 
     @abstractmethod

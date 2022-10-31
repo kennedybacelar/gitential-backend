@@ -36,6 +36,10 @@ class KeyValueStore(ABC):
         pass
 
     @abstractmethod
+    def delete_values_for_workspace(self, workspace_id: int):
+        pass
+
+    @abstractmethod
     def list_keys(self, pattern: str) -> List[str]:
         pass
 
@@ -72,6 +76,11 @@ class InMemKeyValueStore(KeyValueStore):
         keys_to_be_deleted = self.list_keys(pattern)
         for key in keys_to_be_deleted:
             self.delete_value(key)
+
+    def delete_values_for_workspace(self, workspace_id: int):
+        self.delete_values(pattern=f"ws-{workspace_id}*")
+        self.delete_value(f"active-authors-{workspace_id}")
+        self.delete_value(f"authors_ws_{workspace_id}")
 
     def list_keys(self, pattern: str) -> List[str]:
         def is_match_pattern(pattern, k):
@@ -112,6 +121,11 @@ class RedisKeyValueStore(KeyValueStore):
     def delete_values(self, pattern: str):
         for key in self.redis.scan_iter(pattern):
             self.redis.delete(key)
+
+    def delete_values_for_workspace(self, workspace_id: int):
+        self.delete_values(pattern=f"ws-{workspace_id}*")
+        self.delete_value(f"active-authors-{workspace_id}")
+        self.delete_value(f"authors_ws_{workspace_id}")
 
     def list_keys(self, pattern: str) -> List[str]:
         return list(str(key) for key in self.redis.scan_iter(pattern))
