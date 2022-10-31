@@ -337,6 +337,11 @@ class SQLWorkspaceScopedRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return (self.in_db_cls(**row) for row in rows)
 
+    def all_ids(self, workspace_id: int) -> List[int]:
+        query = select([self.table.c.id])
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [r["id"] for r in rows]
+
     def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
         query = self.table.select()
         with self._connection_with_schema(workspace_id) as connection:

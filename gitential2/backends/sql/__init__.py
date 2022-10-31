@@ -119,7 +119,7 @@ from .repositories_its import (
     SQLITSIssueWorklogRepository,
     SQLITSSprintRepository,
 )
-from .reset_worksapce import reset_workspace
+from .reset_workspace import reset_workspace
 from .tables import (
     access_log_table,
     email_log_table,
@@ -441,13 +441,27 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         query = f"DROP SCHEMA IF EXISTS {schema_name} CASCADE;"
         self._engine.execute(query)
 
-    def delete_workspace(self, workspace_id: int):
+    def delete_workspace_sql(self, workspace_id: int):
+        logger.info("Deleting rows for workspace in workspace_members table...", workspace_id=workspace_id)
         self.workspace_members.delete_rows_for_workspace(workspace_id=workspace_id)
+
+        logger.info("Deleting rows for workspace in workspace_api_keys table...", workspace_id=workspace_id)
         self.workspace_api_keys.delete_rows_for_workspace(workspace_id=workspace_id)
+
+        logger.info("Deleting rows for workspace in workspace_invitations table...", workspace_id=workspace_id)
         self.workspace_invitations.delete_rows_for_workspace(workspace_id=workspace_id)
+
+        logger.info("Deleting schema revisions for workspace...", workspace_id=workspace_id)
         self.delete_schema_revision(workspace_id=workspace_id)
+
+        logger.info("Deleting rows for workspace in workspaces table", workspace_id=workspace_id)
         self.workspaces.delete(workspace_id)
+
+        logger.info(f"Deleting workspace schema 'ws_{workspace_id}'", workspace_id=workspace_id)
         self.delete_workspace_schema(workspace_id)
+
+        logger.info("Workspace delete successfully finished!", workspace_id=workspace_id)
+
         return True
 
     def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):

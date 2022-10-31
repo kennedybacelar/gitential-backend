@@ -190,7 +190,9 @@ def delete_workspace(g: GitentialContext, workspace_id: int, current_user: UserI
         workspace_id=workspace_id, user_id=current_user.id
     )
     if membership and membership.role == WorkspaceRole.owner and not membership.primary:
-        return g.backend.delete_workspace(workspace_id)
+        g.backend.delete_workspace_sql(workspace_id)
+        g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+        return True
     else:
         raise AuthenticationException("Authentication error")
 
