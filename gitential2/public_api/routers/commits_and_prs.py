@@ -1,14 +1,16 @@
-from datetime import datetime
 from typing import List, Optional, Tuple
+from datetime import datetime
 from structlog import get_logger
 
-from fastapi import APIRouter, Depends, Query, Request, Response
-from gitential2.core.commits_and_prs import get_commits, get_patches_for_commit, get_pull_requests
-from gitential2.core.context import GitentialContext
-from gitential2.core.permissions import check_permission
-from gitential2.datatypes.permissions import Action, Entity
+from fastapi import APIRouter, Depends, Query, Response
 
-from ..dependencies import current_user, gitential_context
+from gitential2.datatypes.permissions import Entity, Action
+from gitential2.core.context import GitentialContext
+from gitential2.core.commits_and_prs import get_commits, get_patches_for_commit, get_pull_requests
+
+from gitential2.core.permissions import check_permission
+
+from ..dependencies import gitential_context, current_user
 
 logger = get_logger(__name__)
 
@@ -213,7 +215,6 @@ def prs_repo_level(
 @router.get("/workspaces/{workspace_id}/projects/{project_id}/pull-requests")
 def prs_project_level(
     response: Response,
-    request: Request,
     workspace_id: int,
     project_id: int,
     current_user=Depends(current_user),
