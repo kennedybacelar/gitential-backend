@@ -5,7 +5,6 @@ from structlog import get_logger
 from fastapi import APIRouter, Depends, Query, Request, Response
 from gitential2.core.commits_and_prs import get_commits, get_patches_for_commit, get_pull_requests
 from gitential2.core.context import GitentialContext
-from gitential2.core.parsers import parse_repo_ids_from_url_param
 from gitential2.core.permissions import check_permission
 from gitential2.datatypes.permissions import Action, Entity
 
@@ -221,12 +220,12 @@ def prs_project_level(
     g: GitentialContext = Depends(gitential_context),
     from_: Optional[str] = Query(None, alias="from"),
     to_: Optional[str] = Query(None, alias="to"),
+    repo_ids: Optional[List[int]] = Query(None, alias="repo_ids"),
     developer_id: Optional[int] = Query(None, alias="developer_id"),
     limit: int = 100,
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    repo_ids = parse_repo_ids_from_url_param(str(request.query_params))
     return _paginated_response(
         response,
         get_pull_requests(
