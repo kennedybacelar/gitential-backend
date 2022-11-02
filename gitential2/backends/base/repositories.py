@@ -533,6 +533,12 @@ class PullRequestRepository(
         pass
 
     @abstractmethod
+    def delete_pull_requests(
+        self, workspace_id: int, date_from: Optional[datetime] = None, repo_ids: Optional[List[int]] = None
+    ):
+        pass
+
+    @abstractmethod
     def count(
         self,
         workspace_id: int,
@@ -548,21 +554,27 @@ class PullRequestCommitRepository(
     RepoDFMixin,
     BaseWorkspaceScopedRepository[PullRequestCommitId, PullRequestCommit, PullRequestCommit, PullRequestCommit],
 ):
-    pass
+    @abstractmethod
+    def delete_pull_request_commits(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+        pass
 
 
 class PullRequestCommentRepository(
     RepoDFMixin,
     BaseWorkspaceScopedRepository[PullRequestCommentId, PullRequestComment, PullRequestComment, PullRequestComment],
 ):
-    pass
+    @abstractmethod
+    def delete_pull_request_comment(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+        pass
 
 
 class PullRequestLabelRepository(
     RepoDFMixin,
     BaseWorkspaceScopedRepository[PullRequestLabelId, PullRequestLabel, PullRequestLabel, PullRequestLabel],
 ):
-    pass
+    @abstractmethod
+    def delete_pull_request_labels(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+        pass
 
 
 class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUpdate, AuthorInDB]):

@@ -1109,6 +1109,19 @@ class SQLPullRequestRepository(
                     yield self.in_db_cls(**row)
             proxy.close()
 
+    def delete_pull_requests(
+        self, workspace_id: int, date_from: Optional[dt.datetime] = None, repo_ids: Optional[List[int]] = None
+    ) -> List[PullRequest]:
+        if is_list_not_empty(repo_ids) or date_from:
+            df: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
+            rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
+            query = self.table.delete().where(
+                or_(self.table.c.repo_id.in_(rids), self.table.c.atime < df, self.table.c.ctime < df)
+            )
+            rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+            return [PullRequest(**row) for row in rows]
+        return []
+
     def count(
         self,
         workspace_id: int,
@@ -1155,6 +1168,12 @@ class SQLPullRequestCommitRepository(
             self.table.c.commit_id == id_.commit_id,
         )
 
+    def delete_pull_request_commits(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+        if is_list_not_empty(pull_request_numbers):
+            query = self.table.delete().where(self.table.c.pr_number.in_(pull_request_numbers))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
 
 class SQLPullRequestCommentRepository(
     SQLRepoDFMixin,
@@ -1168,6 +1187,12 @@ class SQLPullRequestCommentRepository(
             self.table.c.comment_type == id_.comment_type,
             self.table.c.comment_id == id_.comment_id,
         )
+
+    def delete_pull_request_comment(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+        if is_list_not_empty(pull_request_numbers):
+            query = self.table.delete().where(self.table.c.pr_number.in_(pull_request_numbers))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLPullRequestLabelRepository(
@@ -1186,6 +1211,12 @@ class SQLPullRequestLabelRepository(
             self.table.c.pr_number == id_.pr_number,
             self.table.c.name == id_.name,
         )
+
+    def delete_pull_request_labels(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+        if is_list_not_empty(pull_request_numbers):
+            query = self.table.delete().where(self.table.c.pr_number.in_(pull_request_numbers))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
