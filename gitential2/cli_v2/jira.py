@@ -235,27 +235,27 @@ def get_all_data_for_issue(
 def lookup_tempo(
     workspace_id: int,
     tempo_access_token: str = typer.Argument("", envvar="TEMPO_ACCESS_TOKEN"),
-    date_from: datetime = datetime.min,
     force: bool = False,
+    date_from: datetime = datetime.min,
 ):
-
     g = get_context()
-    lookup_tempo_worklogs(g, workspace_id, tempo_access_token, date_from, force)
+    lookup_tempo_worklogs(g, workspace_id, tempo_access_token, force, date_from)
 
 
 def lookup_tempo_worklogs(
     g: GitentialContext,
     workspace_id: int,
     tempo_access_token: str,
-    date_from: datetime,
     force,
+    date_from: datetime,
 ):
     worklogs_for_issue = {}
     _author_callback_partial = partial(_author_callback, g=g, workspace_id=workspace_id)
 
     for worklog in g.backend.its_issue_worklogs.iterate_desc(workspace_id):
 
-        if worklog.created_at < date_from:
+        # date_from (created_at field) is never None, at table creation it has the default value set as dt.datetime.utcnow
+        if worklog.created_at < date_from:  # type: ignore[operator]
             break
 
         if not worklog.author_dev_id or force:
