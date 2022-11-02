@@ -1,5 +1,7 @@
 from abc import abstractmethod
-from typing import Optional
+from datetime import datetime
+from typing import Optional, List
+
 from gitential2.datatypes.its import (
     ITSIssue,
     ITSIssueChange,
@@ -21,44 +23,68 @@ class ITSIssueRepository(
     def get_header(self, workspace_id: int, id_: str) -> Optional[ITSIssueHeader]:
         pass
 
+    @abstractmethod
+    def get_list_of_itsp_ids_distinct(self, workspace_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def delete_its_issues(
+        self, workspace_id: int, date_from: Optional[datetime] = None, its_issue_ids: Optional[List[int]] = None
+    ) -> List[ITSIssue]:
+        pass
+
 
 class ITSIssueChangeRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueChange, ITSIssueChange, ITSIssueChange],
 ):
-    pass
+    @abstractmethod
+    def delete_its_issue_changes(self, workspace_id: int, its_ids: List[str]) -> int:
+        pass
 
 
 class ITSIssueTimeInStatusRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueTimeInStatus, ITSIssueTimeInStatus, ITSIssueTimeInStatus],
 ):
-    pass
+    @abstractmethod
+    def delete_its_issue_time_in_statuses(self, workspace_id: int, its_ids: List[str]) -> int:
+        pass
 
 
 class ITSIssueCommentRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueComment, ITSIssueComment, ITSIssueComment],
 ):
-    pass
+    @abstractmethod
+    def delete_its_issue_comments(self, workspace_id: int, its_ids: List[str]) -> int:
+        pass
 
 
 class ITSIssueLinkedIssueRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueLinkedIssue, ITSIssueLinkedIssue, ITSIssueLinkedIssue],
 ):
-    pass
+    @abstractmethod
+    def delete_its_issue_linked_issues(self, workspace_id: int, its_ids: List[str]) -> int:
+        pass
 
 
 class ITSSprintRepository(
     BaseWorkspaceScopedRepository[str, ITSSprint, ITSSprint, ITSSprint],
 ):
-    pass
+    @abstractmethod
+    def delete_its_sprints(self, workspace_id: int, its_ids: List[str]) -> int:
+        pass
 
 
 class ITSIssueSprintRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueSprint, ITSIssueSprint, ITSIssueSprint],
 ):
-    pass
+    @abstractmethod
+    def delete_its_issue_sprints(self, workspace_id: int, its_ids: List[str]) -> int:
+        pass
 
 
 class ITSIssueWorklogRepository(
     BaseWorkspaceScopedRepository[str, ITSIssueWorklog, ITSIssueWorklog, ITSIssueWorklog],
 ):
-    pass
+    @abstractmethod
+    def delete_its_issue_worklogs(self, workspace_id: int, its_ids: List[str]) -> int:
+        pass

@@ -1,5 +1,16 @@
-from typing import Optional
+from datetime import datetime
+from typing import Optional, List
+
+from sqlalchemy import distinct, or_
 from sqlalchemy.sql import select
+
+from gitential2.backends.base import (
+    ITSIssueRepository,
+    ITSIssueChangeRepository,
+    ITSIssueTimeInStatusRepository,
+    ITSIssueCommentRepository,
+    ITSIssueLinkedIssueRepository,
+)
 from gitential2.backends.base.repositories_its import (
     ITSIssueSprintRepository,
     ITSIssueWorklogRepository,
@@ -16,14 +27,13 @@ from gitential2.datatypes.its import (
     ITSIssueWorklog,
     ITSSprint,
 )
-from gitential2.backends.base import (
-    ITSIssueRepository,
-    ITSIssueChangeRepository,
-    ITSIssueTimeInStatusRepository,
-    ITSIssueCommentRepository,
-    ITSIssueLinkedIssueRepository,
-)
 from .repositories import SQLWorkspaceScopedRepository, fetchone_
+from ...utils import is_list_not_empty
+
+fetchone_ = lambda result: result.fetchone()
+fetchall_ = lambda result: result.fetchall()
+inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
+rowcount_ = lambda result: result.rowcount
 
 
 class SQLITSIssueRepository(
@@ -53,51 +63,97 @@ class SQLITSIssueRepository(
         row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
         return ITSIssueHeader(**row) if row else None
 
+    def get_list_of_itsp_ids_distinct(self, workspace_id: int) -> List[int]:
+        query = select([distinct(self.table.c.itsp_id)]).select_from(self.table)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [r["itsp_id"] for r in rows]
+
+    def delete_its_issues(
+        self, workspace_id: int, date_from: Optional[datetime] = None, its_issue_ids: Optional[List[int]] = None
+    ) -> List[ITSIssue]:
+        if is_list_not_empty(its_issue_ids) or date_from:
+            df: datetime = date_from if date_from else datetime(2000, 1, 1)
+            ids: List[int] = its_issue_ids if is_list_not_empty(its_issue_ids) else []
+            query = self.table.delete().where(
+                or_(self.table.c.repo_id.in_(ids), self.table.c.atime < df, self.table.c.ctime < df)
+            )
+            rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+            return [ITSIssue(**row) for row in rows]
+        return []
+
 
 class SQLITSIssueChangeRepository(
     ITSIssueChangeRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueChange, ITSIssueChange, ITSIssueChange],
 ):
-    pass
+    def delete_its_issue_changes(self, workspace_id: int, its_ids: List[str]) -> int:
+        if is_list_not_empty(its_ids):
+            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLITSIssueTimeInStatusRepository(
     ITSIssueTimeInStatusRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueTimeInStatus, ITSIssueTimeInStatus, ITSIssueTimeInStatus],
 ):
-    pass
+    def delete_its_issue_time_in_statuses(self, workspace_id: int, its_ids: List[str]) -> int:
+        if is_list_not_empty(its_ids):
+            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLITSIssueCommentRepository(
     ITSIssueCommentRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueComment, ITSIssueComment, ITSIssueComment],
 ):
-    pass
+    def delete_its_issue_comments(self, workspace_id: int, its_ids: List[str]) -> int:
+        if is_list_not_empty(its_ids):
+            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLITSIssueLinkedIssueRepository(
     ITSIssueLinkedIssueRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueLinkedIssue, ITSIssueLinkedIssue, ITSIssueLinkedIssue],
 ):
-    pass
+    def delete_its_issue_linked_issues(self, workspace_id: int, its_ids: List[str]) -> int:
+        if is_list_not_empty(its_ids):
+            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLITSSprintRepository(
     ITSSprintRepository,
     SQLWorkspaceScopedRepository[str, ITSSprint, ITSSprint, ITSSprint],
 ):
-    pass
+    def delete_its_sprints(self, workspace_id: int, its_ids: List[str]) -> int:
+        if is_list_not_empty(its_ids):
+            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLITSIssueSprintRepository(
     ITSIssueSprintRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueSprint, ITSIssueSprint, ITSIssueSprint],
 ):
-    pass
+    def delete_its_issue_sprints(self, workspace_id: int, its_ids: List[str]) -> int:
+        if is_list_not_empty(its_ids):
+            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLITSIssueWorklogRepository(
     ITSIssueWorklogRepository,
     SQLWorkspaceScopedRepository[str, ITSIssueWorklog, ITSIssueWorklog, ITSIssueWorklog],
 ):
-    pass
+    def delete_its_issue_worklogs(self, workspace_id: int, its_ids: List[str]) -> int:
+        if is_list_not_empty(its_ids):
+            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0

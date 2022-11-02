@@ -18,20 +18,14 @@ def perform_data_cleanup(g: GitentialContext, workspace_ids: Optional[List[int]]
 
 def __perform_data_cleanup_on_workspace(g: GitentialContext, workspace_id: int):
     logger.info("Starting data cleanup for workspace.", workspace_id=workspace_id)
+    __remove_redundant_data_for_repositories(g=g, workspace_id=workspace_id)
+    __remove_redundant_data_for_its_projects(g=g, workspace_id=workspace_id)
 
-    date_from_for_repo = __get_date_from(g.settings.extraction.repo_analysis_limit_in_days)
-    date_from_for_its = __get_date_from(g.settings.extraction.its_project_analysis_limit_in_days)
+
+def __remove_redundant_data_for_repositories(g: GitentialContext, workspace_id: int):
+    date_from: Optional[datetime] = __get_date_from(g.settings.extraction.repo_analysis_limit_in_days)
     repo_ids_to_deleted = __get_repo_ids_to_deleted(g=g, workspace_id=workspace_id)
 
-    __remove_redundant_data_for_repositories(
-        g=g, workspace_id=workspace_id, date_from=date_from_for_repo, repo_ids_to_deleted=repo_ids_to_deleted
-    )
-    __remove_redundant_data_for_its_projects(workspace_id=workspace_id, date_from=date_from_for_its)
-
-
-def __remove_redundant_data_for_repositories(
-    g: GitentialContext, workspace_id: int, repo_ids_to_deleted: List[int], date_from: Optional[datetime] = None
-):
     logger.info(
         "Remove redundant data for repositories...",
         workspace_id=workspace_id,
@@ -114,8 +108,70 @@ def __remove_redundant_data_for_repositories(
     )
 
 
-def __remove_redundant_data_for_its_projects(workspace_id: int, date_from: Optional[datetime] = None):
-    pass
+def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: int):
+    date_from: Optional[datetime] = __get_date_from(g.settings.extraction.its_project_analysis_limit_in_days)
+    itsp_ids_to_be_deleted: List[int] = __get_itsp_ids_to_be_deleted(g=g, workspace_id=workspace_id)
+
+    logger.info(
+        "Remove redundant data for repositories...",
+        workspace_id=workspace_id,
+        its_issues_to_be_deleted=itsp_ids_to_be_deleted,
+        date_from=date_from,
+    )
+
+    deleted_its_issues = g.backend.its_issues.delete_its_issues(
+        workspace_id=workspace_id, date_from=date_from, its_issue_ids=itsp_ids_to_be_deleted
+    )
+    logger.info("its_issues deleted", number_of_deleted_its_issues=len(deleted_its_issues))
+
+    deleted_its_issue_ids: List[str] = [its.id for its in deleted_its_issues]
+
+    number_of_deleted_its_issue_changes: int = g.backend.its_issue_changes.delete_its_issue_changes(
+        workspace_id=workspace_id, its_ids=deleted_its_issue_ids
+    )
+    logger.info("its_issue_changes deleted.", number_of_deleted_its_issue_changes=number_of_deleted_its_issue_changes)
+
+    number_of_deleted_its_issue_time_in_statuses: int = (
+        g.backend.its_issue_times_in_statuses.delete_its_issue_time_in_statuses(
+            workspace_id=workspace_id, its_ids=deleted_its_issue_ids
+        )
+    )
+    logger.info(
+        "its_issue_times_in_statuses deleted.",
+        number_of_deleted_its_issue_time_in_statuses=number_of_deleted_its_issue_time_in_statuses,
+    )
+
+    number_of_deleted_its_issue_comments: int = g.backend.its_issue_comments.delete_its_issue_comments(
+        workspace_id=workspace_id, its_ids=deleted_its_issue_ids
+    )
+    logger.info(
+        "its_issue_comments deleted.", number_of_deleted_its_issue_comments=number_of_deleted_its_issue_comments
+    )
+
+    number_of_deleted_its_issue_linked_issues: int = g.backend.its_issue_linked_issues.delete_its_issue_linked_issues(
+        workspace_id=workspace_id, its_ids=deleted_its_issue_ids
+    )
+    logger.info(
+        "its_issue_linked_issues deleted.",
+        number_of_deleted_its_issue_linked_issues=number_of_deleted_its_issue_linked_issues,
+    )
+
+    number_of_deleted_its_sprints: int = g.backend.its_sprints.delete_its_sprints(
+        workspace_id=workspace_id, its_ids=deleted_its_issue_ids
+    )
+    logger.info("its_sprints deleted.", number_of_deleted_its_sprints=number_of_deleted_its_sprints)
+
+    number_of_deleted_its_issue_sprints: int = g.backend.its_issue_sprints.delete_its_issue_sprints(
+        workspace_id=workspace_id, its_ids=deleted_its_issue_ids
+    )
+    logger.info("its_issue_sprints deleted.", number_of_deleted_its_issue_sprints=number_of_deleted_its_issue_sprints)
+
+    number_of_deleted_its_issue_worklogs: int = g.backend.its_issue_worklogs.delete_its_issue_worklogs(
+        workspace_id=workspace_id, its_ids=deleted_its_issue_ids
+    )
+    logger.info(
+        "its_issue_worklogs deleted.", number_of_deleted_its_issue_worklogs=number_of_deleted_its_issue_worklogs
+    )
 
 
 def __get_date_from(number_of_days_diff: Optional[int] = None) -> Optional[datetime]:
@@ -132,3 +188,9 @@ def __get_repo_ids_to_deleted(g: GitentialContext, workspace_id: int) -> List[in
         workspace_id=workspace_id
     )
     return [rid for rid in repo_ids_in_extracted_commits if rid not in repo_ids_all]
+
+
+def __get_itsp_ids_to_be_deleted(g: GitentialContext, workspace_id: int) -> List[int]:
+    itsp_ids_all: List[int] = [itsp.id for itsp in g.backend.its_projects.all(workspace_id=workspace_id)]
+    itsp_ids_in_its_issues: List[int] = g.backend.its_issues.get_list_of_itsp_ids_distinct(workspace_id=workspace_id)
+    return [itsp_id for itsp_id in itsp_ids_in_its_issues if itsp_id not in itsp_ids_all]
