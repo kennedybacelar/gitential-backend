@@ -6,6 +6,7 @@ from structlog import get_logger
 
 from gitential2.core.users import get_user
 from .common import get_context
+from ..backends.sql.cleanup import perform_data_cleanup
 from ..core.api_keys import delete_api_keys_for_workspace
 from ..core.workspace_common import duplicate_workspace
 from ..datatypes import UserInDB, WorkspaceMemberInDB
@@ -116,3 +117,20 @@ def purge_workspace(workspace_id: int):
             logger.exception("Failed to purge workspace! Can not purge primary workspace!")
     else:
         logger.exception("Failed to purge workspace! Workspace not found by the provided workspace id!")
+
+
+@app.command("cleanup")
+def perform_workspace_cleanup(workspace_id: Optional[int] = typer.Argument(None)):
+    """
+    \b
+    This command will delete all redundant data from the PostgreSQL database and also from Redis.
+    Data is considered to be redundant if it is not used for anything. Like when a project is deleted and
+    the commits for a repo just lies there without any reason. The same thing happens with the Redis too.
+    """
+
+    g = get_context()
+    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+    if workspace:
+        perform_data_cleanup(g=g, workspace_ids=[workspace.id])
+    else:
+        perform_data_cleanup(g=g, workspace_ids=[w.id for w in g.backend.workspaces.all()])
