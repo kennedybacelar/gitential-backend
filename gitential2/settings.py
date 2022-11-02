@@ -177,6 +177,7 @@ class FeaturesSettings(BaseModel):
     enable_its_analytics: bool = False
     enable_resellers: bool = False
     access_approval: AccessApprovalSettings = AccessApprovalSettings()
+    enable_scheduled_data_cleanup: bool = False
 
 
 class ResellerSettings(BaseModel):
