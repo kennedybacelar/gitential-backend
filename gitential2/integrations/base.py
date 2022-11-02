@@ -317,7 +317,12 @@ class ITSProviderMixin(ABC):
         pass
 
     @abstractmethod
-    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
+    def list_all_issues_for_project(
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        date_from: Optional[datetime] = None,
+    ) -> List[ITSIssueHeader]:
         pass
 
     @abstractmethod

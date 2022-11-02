@@ -882,10 +882,15 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             )
         return ret
 
-    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
+    def list_all_issues_for_project(
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        date_from: Optional[datetime] = None,
+    ) -> List[ITSIssueHeader]:
 
         wit_by_details_batch_response_json = self._raw_fetching_all_issues_per_project(
-            token=token, its_project=its_project
+            token=token, its_project=its_project, date_from=date_from
         )
         ret = []
 

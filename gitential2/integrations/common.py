@@ -46,7 +46,7 @@ def walk_next_link(
 
         acc = acc + items
         next_url = _get_next_link(headers.get("Link"))
-        if __is_able_to_continue_walking(
+        if __is_able_to_continue_walk_next_link(
             items=items,
             max_pages=max_pages,
             next_url=next_url,
@@ -61,7 +61,7 @@ def walk_next_link(
         return acc
 
 
-def __is_able_to_continue_walking(
+def __is_able_to_continue_walk_next_link(
     items: List[dict],
     max_pages: int,
     next_url: Optional[str] = None,

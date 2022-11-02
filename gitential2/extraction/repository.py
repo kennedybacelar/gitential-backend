@@ -281,14 +281,25 @@ def get_commits(
                     walker.hide(commit.id)
                 else:
                     logger.debug(
-                        "Yielding commit.",
+                        "Including commit.",
                         commit={
                             "id": commit.hex,
-                            "time": datetime.fromtimestamp(commit.commit_time).strftime("%Y-%m-%d, %H:%M:%S"),
+                            "time": commit.commit_time,
+                            "time_formatted": datetime.fromtimestamp(commit.commit_time).strftime("%Y-%m-%d, %H:%M:%S"),
                         },
                     )
                     commits_already_yielded.add(str(commit.id))
                     yield str(commit.id)
+            else:
+                logger.debug(
+                    "Skipping commit. Out of time range.",
+                    time_range=repo_analysis_limit_in_days,
+                    commit={
+                        "id": commit.hex,
+                        "time": commit.commit_time,
+                        "time_formatted": datetime.fromtimestamp(commit.commit_time).strftime("%Y-%m-%d, %H:%M:%S"),
+                    },
+                )
 
 
 def extract_commit(repository: LocalGitRepository, commit_id: str, output: OutputHandler, **kwargs):
