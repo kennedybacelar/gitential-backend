@@ -235,18 +235,28 @@ def get_all_data_for_issue(
 def lookup_tempo(
     workspace_id: int,
     tempo_access_token: str = typer.Argument("", envvar="TEMPO_ACCESS_TOKEN"),
+    date_from: datetime = datetime.min,
     force: bool = False,
 ):
 
     g = get_context()
-    lookup_tempo_worklogs(g, workspace_id, tempo_access_token, force)
+    lookup_tempo_worklogs(g, workspace_id, tempo_access_token, date_from, force)
 
 
-def lookup_tempo_worklogs(g: GitentialContext, workspace_id: int, tempo_access_token: str, force):
+def lookup_tempo_worklogs(
+    g: GitentialContext,
+    workspace_id: int,
+    tempo_access_token: str,
+    date_from: datetime,
+    force,
+):
     worklogs_for_issue = {}
     _author_callback_partial = partial(_author_callback, g=g, workspace_id=workspace_id)
 
     for worklog in g.backend.its_issue_worklogs.iterate_desc(workspace_id):
+
+        if worklog.created_at < date_from:
+            break
 
         if not worklog.author_dev_id or force:
             author = None
@@ -264,6 +274,8 @@ def lookup_tempo_worklogs(g: GitentialContext, workspace_id: int, tempo_access_t
                     tempo_worklog = wl
                     break
 
+            # email information is available through an extra api call at - rest/api/2/user?accountId=accountId
+
             if tempo_worklog:
                 author = _author_callback_partial(AuthorAlias(name=tempo_worklog["author"]["displayName"]))
 
@@ -271,6 +283,7 @@ def lookup_tempo_worklogs(g: GitentialContext, workspace_id: int, tempo_access_t
                 print(worklog.created_at, worklog.api_id, jira_issue_id, author.id, author.name)
                 worklog.author_dev_id = author.id
                 worklog.author_name = author.name
+                worklog.author_email = author.email
                 g.backend.its_issue_worklogs.update(workspace_id, worklog.id, worklog)
             else:
                 print(worklog.created_at, worklog.api_id, jira_issue_id, tempo_worklog)
