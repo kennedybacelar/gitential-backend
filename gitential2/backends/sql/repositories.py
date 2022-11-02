@@ -849,6 +849,24 @@ class SQLExtractedCommitRepository(
             result = connection.execute(query)
             return result.fetchone()[0]
 
+    def get_list_of_repo_ids_distinct(self, workspace_id: int) -> List[int]:
+        query = select([distinct(self.table.c.repo_id)]).select_from(self.table)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [r["repo_id"] for r in rows]
+
+    def delete_commits(
+        self, workspace_id: int, date_from: Optional[dt.datetime] = None, repo_ids: Optional[List[int]] = None
+    ) -> List[ExtractedCommit]:
+        if is_list_not_empty(repo_ids) or date_from:
+            df: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
+            rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
+            query = self.table.delete().where(
+                or_(self.table.c.repo_id.in_(rids), self.table.c.atime < df, self.table.c.ctime < df)
+            )
+            rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+            return [ExtractedCommit(**row) for row in rows]
+        return []
+
     def _build_filters(
         self,
         query,
@@ -884,12 +902,24 @@ class SQLExtractedCommitBranchRepository(
             self.table.c.branch == id_.branch,
         )
 
+    def delete_extracted_commit_branches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
 
 class SQLExtractedPatchRepository(
     SQLRepoDFMixin,
     ExtractedPatchRepository,
     SQLWorkspaceScopedRepository[ExtractedPatchId, ExtractedPatch, ExtractedPatch, ExtractedPatch],
 ):
+    def delete_extracted_patches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
     def identity(self, id_: ExtractedPatchId):
         return and_(
             self.table.c.commit_id == id_.commit_id,
@@ -913,6 +943,12 @@ class SQLExtractedPatchRewriteRepository(
             self.table.c.newpath == id_.newpath,
             self.table.c.rewritten_commit_id == id_.rewritten_commit_id,
         )
+
+    def delete_extracted_patch_rewrites(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLCalculatedCommitRepository(
@@ -969,6 +1005,12 @@ class SQLCalculatedCommitRepository(
             result = connection.execute(query)
             return result.fetchone()[0]
 
+    def delete_commits(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
     def _build_filters(
         self,
         query,
@@ -1015,6 +1057,12 @@ class SQLCalculatedPatchRepository(
         )
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [CalculatedPatch(**row) for row in rows]
+
+    def delete_calculated_patches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLPullRequestRepository(

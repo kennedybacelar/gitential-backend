@@ -416,11 +416,23 @@ class ExtractedCommitRepository(
     ) -> int:
         pass
 
+    @abstractmethod
+    def get_list_of_repo_ids_distinct(self, workspace_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def delete_commits(
+        self, workspace_id: int, date_from: Optional[datetime] = None, repo_ids: Optional[List[int]] = None
+    ) -> List[ExtractedCommit]:
+        pass
+
 
 class ExtractedPatchRepository(
     RepoDFMixin, BaseWorkspaceScopedRepository[ExtractedPatchId, ExtractedPatch, ExtractedPatch, ExtractedPatch]
 ):
-    pass
+    @abstractmethod
+    def delete_extracted_patches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        pass
 
 
 class ExtractedCommitBranchRepository(
@@ -429,7 +441,9 @@ class ExtractedCommitBranchRepository(
         ExtractedCommitBranchId, ExtractedCommitBranch, ExtractedCommitBranch, ExtractedCommitBranch
     ],
 ):
-    pass
+    @abstractmethod
+    def delete_extracted_commit_branches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        pass
 
 
 class ExtractedPatchRewriteRepository(
@@ -438,7 +452,9 @@ class ExtractedPatchRewriteRepository(
         ExtractedPatchRewriteId, ExtractedPatchRewrite, ExtractedPatchRewrite, ExtractedPatchRewrite
     ],
 ):
-    pass
+    @abstractmethod
+    def delete_extracted_patch_rewrites(self, workspace_id: int, commit_ids: List[str]) -> int:
+        pass
 
 
 class CalculatedCommitRepository(
@@ -477,6 +493,10 @@ class CalculatedCommitRepository(
     def count_distinct_author_ids(self, workspace_id: int) -> int:
         pass
 
+    @abstractmethod
+    def delete_commits(self, workspace_id: int, commit_ids: List[str]) -> int:
+        pass
+
 
 class CalculatedPatchRepository(
     RepoDFMixin,
@@ -484,6 +504,10 @@ class CalculatedPatchRepository(
 ):
     @abstractmethod
     def get_all_for_commit(self, workspace_id: int, commit_id: CalculatedCommitId) -> List[CalculatedPatch]:
+        pass
+
+    @abstractmethod
+    def delete_calculated_patches(self, workspace_id: int, commit_ids: List[str]) -> int:
         pass
 
 
