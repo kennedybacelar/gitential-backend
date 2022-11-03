@@ -242,6 +242,7 @@ def lookup_tempo(
     lookup_tempo_worklogs(g, workspace_id, tempo_access_token, force, date_from)
 
 
+# pylint: disable=too-complex
 def lookup_tempo_worklogs(
     g: GitentialContext,
     workspace_id: int,
@@ -269,10 +270,17 @@ def lookup_tempo_worklogs(
             if jira_issue_id not in worklogs_for_issue:
                 worklogs_for_issue[jira_issue_id] = _get_tempo_worklogs_for_issue(tempo_access_token, jira_issue_id)
 
-            for wl in worklogs_for_issue[jira_issue_id].get("results", []):
-                if str(wl["jiraWorklogId"]) == worklog.api_id:
-                    tempo_worklog = wl
-                    break
+            results_worklogs_for_issue = worklogs_for_issue[jira_issue_id].get("results", [])
+
+            # We need this if-condition because sometimes all worklogs are removed from an issue and the issue keeps on its_issue_worklogs table.
+            # We have to make to make sure of removing those entries properly.
+            if results_worklogs_for_issue:
+                for wl in worklogs_for_issue[jira_issue_id].get("results", []):
+                    if str(wl["jiraWorklogId"]) == worklog.api_id:
+                        tempo_worklog = wl
+                        break
+            else:
+                g.backend.its_issue_worklogs.delete(workspace_id, worklog.id)
 
             # email information is available through an extra api call at - rest/api/2/user?accountId=accountId
 
