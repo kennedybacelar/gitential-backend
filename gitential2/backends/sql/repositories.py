@@ -854,18 +854,26 @@ class SQLExtractedCommitRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [r["repo_id"] for r in rows]
 
-    def delete_commits(
+    def select_extracted_commits(
         self, workspace_id: int, date_from: Optional[dt.datetime] = None, repo_ids: Optional[List[int]] = None
     ) -> List[ExtractedCommit]:
         if is_list_not_empty(repo_ids) or date_from:
             df: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
             rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
-            query = self.table.delete().where(
+            query = self.table.select().where(
                 or_(self.table.c.repo_id.in_(rids), self.table.c.atime < df, self.table.c.ctime < df)
             )
+            logger.info("query", query=str(query))
             rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
             return [ExtractedCommit(**row) for row in rows]
+        logger.info("select_extracted_commits | IN ELSE", repo_ids=repo_ids, date_from=date_from)
         return []
+
+    def delete_commits(self, workspace_id: int, commit_ids: Optional[List[str]] = None) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return 0
 
     def _build_filters(
         self,
@@ -1109,18 +1117,22 @@ class SQLPullRequestRepository(
                     yield self.in_db_cls(**row)
             proxy.close()
 
-    def delete_pull_requests(
+    def select_pull_requests(
         self, workspace_id: int, date_from: Optional[dt.datetime] = None, repo_ids: Optional[List[int]] = None
     ) -> List[PullRequest]:
         if is_list_not_empty(repo_ids) or date_from:
             df: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
             rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
-            query = self.table.delete().where(
-                or_(self.table.c.repo_id.in_(rids), self.table.c.atime < df, self.table.c.ctime < df)
-            )
+            query = self.table.select().where(or_(self.table.c.repo_id.in_(rids), self.table.c.created_at < df))
             rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
             return [PullRequest(**row) for row in rows]
         return []
+
+    def delete_pull_requests(self, workspace_id: int, pr_numbers: Optional[List[int]] = None) -> int:
+        if is_list_not_empty(pr_numbers):
+            query = self.table.delete().where(self.table.c.number.in_(pr_numbers))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return 0
 
     def count(
         self,

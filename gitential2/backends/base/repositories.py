@@ -421,9 +421,13 @@ class ExtractedCommitRepository(
         pass
 
     @abstractmethod
-    def delete_commits(
+    def select_extracted_commits(
         self, workspace_id: int, date_from: Optional[datetime] = None, repo_ids: Optional[List[int]] = None
     ) -> List[ExtractedCommit]:
+        pass
+
+    @abstractmethod
+    def delete_commits(self, workspace_id: int, commit_ids: Optional[List[str]] = None) -> int:
         pass
 
 
@@ -533,9 +537,13 @@ class PullRequestRepository(
         pass
 
     @abstractmethod
-    def delete_pull_requests(
+    def select_pull_requests(
         self, workspace_id: int, date_from: Optional[datetime] = None, repo_ids: Optional[List[int]] = None
-    ):
+    ) -> List[PullRequest]:
+        pass
+
+    @abstractmethod
+    def delete_pull_requests(self, workspace_id: int, pr_numbers: Optional[List[int]] = None) -> int:
         pass
 
     @abstractmethod

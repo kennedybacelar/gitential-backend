@@ -18,26 +18,39 @@ def perform_data_cleanup(g: GitentialContext, workspace_ids: Optional[List[int]]
 
 def __perform_data_cleanup_on_workspace(g: GitentialContext, workspace_id: int):
     logger.info("Starting data cleanup for workspace.", workspace_id=workspace_id)
-    __remove_redundant_data_for_repositories(g=g, workspace_id=workspace_id)
+
+    date_from: Optional[datetime] = __get_date_from(g.settings.extraction.repo_analysis_limit_in_days)
+    repo_ids_to_delete = __get_repo_ids_to_delete(g=g, workspace_id=workspace_id)
+    
+    __remove_redundant_commit_data(
+        g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_from=date_from
+    )
+    __remove_redundant_pull_request_data(
+        g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_from=date_from
+    )
     __remove_redundant_data_for_its_projects(g=g, workspace_id=workspace_id)
 
 
-def __remove_redundant_data_for_repositories(g: GitentialContext, workspace_id: int):
-    date_from: Optional[datetime] = __get_date_from(g.settings.extraction.repo_analysis_limit_in_days)
-    repo_ids_to_deleted = __get_repo_ids_to_deleted(g=g, workspace_id=workspace_id)
-
+def __remove_redundant_commit_data(
+    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], date_from: Optional[datetime]
+):
     logger.info(
-        "Remove redundant data for repositories...",
+        "Attempting to remove redundant data for commits...",
         workspace_id=workspace_id,
-        repo_ids_to_deleted=repo_ids_to_deleted,
+        repo_ids_to_delete=repo_ids_to_delete,
         date_from=date_from,
     )
-    deleted_extracted_commits = g.backend.extracted_commits.delete_commits(
-        workspace_id=workspace_id, date_from=date_from, repo_ids=repo_ids_to_deleted
-    )
-    logger.info("extracted_commits deleted.", number_of_extracted_commits_deleted=len(deleted_extracted_commits))
 
-    deleted_commit_hashes: List[str] = [c.commit_id for c in deleted_extracted_commits]
+    commits_to_delete = g.backend.extracted_commits.select_extracted_commits(
+        workspace_id=workspace_id, date_from=date_from, repo_ids=repo_ids_to_delete
+    )
+    deleted_commit_hashes = [c.commit_id for c in commits_to_delete]
+    logger.info("commit_ids_to_be_deleted", commit_ids_to_be_deleted=deleted_commit_hashes)
+
+    number_of_deleted_extracted_commits = g.backend.extracted_commits.delete_commits(
+        workspace_id=workspace_id, commit_ids=deleted_commit_hashes
+    )
+    logger.info("extracted_commits deleted.", number_of_deleted_extracted_commits=number_of_deleted_extracted_commits)
 
     number_of_deleted_calculated_commits: int = g.backend.calculated_commits.delete_commits(
         workspace_id=workspace_id, commit_ids=deleted_commit_hashes
@@ -78,12 +91,27 @@ def __remove_redundant_data_for_repositories(g: GitentialContext, workspace_id: 
         number_of_deleted_extracted_commit_branches=number_of_deleted_extracted_commit_branches,
     )
 
-    deleted_prs = g.backend.pull_requests.delete_pull_requests(
-        workspace_id=workspace_id, date_from=date_from, repo_ids=repo_ids_to_deleted
-    )
-    logger.info("pull_requests deleted.", number_of_pull_requests_deleted=len(deleted_prs))
 
-    deleted_pr_numbers: List[int] = [pr.number for pr in deleted_prs]
+def __remove_redundant_pull_request_data(
+    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], date_from: Optional[datetime]
+):
+    logger.info(
+        "Attempting to remove redundant data for pull requests...",
+        workspace_id=workspace_id,
+        repo_ids_to_delete=repo_ids_to_delete,
+        date_from=date_from,
+    )
+
+    prs_to_be_deleted = g.backend.pull_requests.select_pull_requests(
+        workspace_id=workspace_id, date_from=date_from, repo_ids=repo_ids_to_delete
+    )
+    logger.info("pull_requests to be deleted.", number_of_pull_requests_to_be_deleted=len(prs_to_be_deleted))
+
+    deleted_pr_numbers: List[int] = [pr.number for pr in prs_to_be_deleted]
+    number_of_prs_deleted = g.backend.pull_requests.delete_pull_requests(
+        workspace_id=workspace_id, pr_numbers=deleted_pr_numbers
+    )
+    logger.info("pull_requests deleted", number_of_prs_deleted=number_of_prs_deleted)
 
     number_of_deleted_pull_request_commits: int = g.backend.pull_request_commits.delete_pull_request_commits(
         workspace_id=workspace_id, pull_request_numbers=deleted_pr_numbers
@@ -182,7 +210,7 @@ def __get_date_from(number_of_days_diff: Optional[int] = None) -> Optional[datet
     )
 
 
-def __get_repo_ids_to_deleted(g: GitentialContext, workspace_id: int) -> List[int]:
+def __get_repo_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int]:
     repo_ids_all: List[int] = [r.id for r in g.backend.repositories.all(workspace_id=workspace_id)]
     repo_ids_in_extracted_commits: List[int] = g.backend.extracted_commits.get_list_of_repo_ids_distinct(
         workspace_id=workspace_id
