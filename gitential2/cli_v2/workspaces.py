@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Optional, List
 
 import typer
@@ -10,17 +9,12 @@ from ..backends.sql.cleanup import perform_data_cleanup
 from ..core.api_keys import delete_api_keys_for_workspace
 from ..core.workspace_common import duplicate_workspace
 from ..datatypes import UserInDB, WorkspaceMemberInDB
+from ..datatypes.cli_v2 import ResetType, CleanupType
 from ..datatypes.workspaces import WorkspaceDuplicate
 from ..exceptions import SettingsException
 
 app = typer.Typer()
 logger = get_logger(__name__)
-
-
-class ResetType(Enum):
-    full = "full"
-    sql_only = "sql_only"
-    redis_only = "redis_only"
 
 
 @app.command("reset")
@@ -120,7 +114,9 @@ def purge_workspace(workspace_id: int):
 
 
 @app.command("cleanup")
-def perform_workspace_cleanup(workspace_id: Optional[int] = typer.Argument(None)):
+def perform_workspace_cleanup(
+    workspace_id: int = typer.Argument(None), cleanup_type: CleanupType = typer.Option("full", "--type", "-t")
+):
     """
     \b
     This command will delete all redundant data from the PostgreSQL database and also from Redis.
@@ -131,6 +127,6 @@ def perform_workspace_cleanup(workspace_id: Optional[int] = typer.Argument(None)
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
     if workspace:
-        perform_data_cleanup(g=g, workspace_ids=[workspace.id])
+        perform_data_cleanup(g=g, workspace_ids=[workspace.id], cleanup_type=cleanup_type)
     else:
-        perform_data_cleanup(g=g, workspace_ids=[w.id for w in g.backend.workspaces.all()])
+        perform_data_cleanup(g=g, workspace_ids=[w.id for w in g.backend.workspaces.all()], cleanup_type=cleanup_type)

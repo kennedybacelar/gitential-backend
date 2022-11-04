@@ -4,31 +4,44 @@ from typing import Optional, List
 from structlog import get_logger
 
 from gitential2.core import GitentialContext
+from gitential2.datatypes.cli_v2 import CleanupType
 from gitential2.utils import is_list_not_empty
 
 logger = get_logger(__name__)
 
 
-def perform_data_cleanup(g: GitentialContext, workspace_ids: Optional[List[int]] = None):
+def perform_data_cleanup(
+    g: GitentialContext,
+    workspace_ids: Optional[List[int]] = None,
+    cleanup_type: Optional[CleanupType] = CleanupType.full,
+):
     wid_list = workspace_ids if is_list_not_empty(workspace_ids) else [w.id for w in g.backend.workspaces.all()]
     logger.info("Attempting to perform data cleanup process...", workspace_id_list=wid_list)
     for wid in wid_list:
-        __perform_data_cleanup_on_workspace(g=g, workspace_id=wid)
+        __perform_data_cleanup_on_workspace(g=g, workspace_id=wid, cleanup_type=cleanup_type)
 
 
-def __perform_data_cleanup_on_workspace(g: GitentialContext, workspace_id: int):
+def __perform_data_cleanup_on_workspace(
+    g: GitentialContext, workspace_id: int, cleanup_type: Optional[CleanupType] = CleanupType.full
+):
     logger.info("Starting data cleanup for workspace.", workspace_id=workspace_id)
 
     date_from: Optional[datetime] = __get_date_from(g.settings.extraction.repo_analysis_limit_in_days)
     repo_ids_to_delete = __get_repo_ids_to_delete(g=g, workspace_id=workspace_id)
-    
-    __remove_redundant_commit_data(
-        g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_from=date_from
-    )
-    __remove_redundant_pull_request_data(
-        g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_from=date_from
-    )
-    __remove_redundant_data_for_its_projects(g=g, workspace_id=workspace_id)
+
+    if cleanup_type in (CleanupType.full, CleanupType.commits):
+        __remove_redundant_commit_data(
+            g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_from=date_from
+        )
+    if cleanup_type in (CleanupType.full, CleanupType.pull_requests):
+        __remove_redundant_pull_request_data(
+            g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_from=date_from
+        )
+    if cleanup_type in (CleanupType.full, CleanupType.its_projects):
+        __remove_redundant_data_for_its_projects(g=g, workspace_id=workspace_id)
+    if cleanup_type in (CleanupType.full, CleanupType.redis):
+        # TODO
+        pass
 
 
 def __remove_redundant_commit_data(
