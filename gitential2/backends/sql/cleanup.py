@@ -33,6 +33,7 @@ def __perform_data_cleanup_on_workspace(
 
     date_to: Optional[datetime] = __get_date_to(g.settings.extraction.repo_analysis_limit_in_days)
     repo_ids_to_delete = __get_repo_ids_to_delete(g=g, workspace_id=workspace_id)
+    itsp_ids_to_delete = __get_itsp_ids_to_be_deleted(g=g, workspace_id=workspace_id)
 
     if cleanup_type in (CleanupType.full, CleanupType.commits):
         __remove_redundant_commit_data(
@@ -43,10 +44,11 @@ def __perform_data_cleanup_on_workspace(
             g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_to=date_to
         )
     if cleanup_type in (CleanupType.full, CleanupType.its_projects):
-        __remove_redundant_data_for_its_projects(g=g, workspace_id=workspace_id)
+        __remove_redundant_data_for_its_projects(g=g, workspace_id=workspace_id, itsp_ids_to_delete=itsp_ids_to_delete)
     if cleanup_type in (CleanupType.full, CleanupType.redis):
-        # TODO
-        pass
+        __remove_redundant_data_for_redis(
+            g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, itsp_ids_to_delete=itsp_ids_to_delete
+        )
 
 
 def __remove_redundant_commit_data(
@@ -218,19 +220,18 @@ def __remove_redundant_pull_request_data(
     )
 
 
-def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: int):
+def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: int, itsp_ids_to_delete: List[int]):
     date_to: Optional[datetime] = __get_date_to(g.settings.extraction.its_project_analysis_limit_in_days)
-    itsp_ids_to_be_deleted: List[int] = __get_itsp_ids_to_be_deleted(g=g, workspace_id=workspace_id)
 
     logger.info(
         "Attempting to remove redundant data for repositories...",
         workspace_id=workspace_id,
-        its_issues_to_be_deleted=itsp_ids_to_be_deleted,
+        its_issues_to_be_deleted=itsp_ids_to_delete,
         date_to=date_to,
     )
 
     its_issues_to_delete = g.backend.its_issues.select_its_issues(
-        workspace_id=workspace_id, date_to=date_to, itsp_ids=itsp_ids_to_be_deleted
+        workspace_id=workspace_id, date_to=date_to, itsp_ids=itsp_ids_to_delete
     )
     its_issue_ids_to_be_deleted: List[str] = [its.id for its in its_issues_to_delete]
     logger.info("ITS Issues selected for cleanup.", number_of_deleted_its_issues=len(its_issues_to_delete))
@@ -328,6 +329,29 @@ def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: 
         no_its_issue_worklogs_before_clean=no_its_issue_worklogs_before_clean,
         no_its_issue_worklogs_after_clean=no_its_issue_worklogs_after_clean,
     )
+
+
+def __remove_redundant_data_for_redis(
+    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], itsp_ids_to_delete: List[int]
+):
+    logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
+
+    if is_list_not_empty(repo_ids_to_delete):
+        for rid in repo_ids_to_delete:
+            redis_key_1 = f"ws-{workspace_id}:repository-refresh-{rid}"
+            g.kvstore.delete_value(name=redis_key_1)
+            redis_key_2 = f"ws-{workspace_id}:r-{rid}:extraction"
+            g.kvstore.delete_value(name=redis_key_2)
+            redis_key_3 = f"ws-{workspace_id}:repository-status-{rid}"
+            g.kvstore.delete_value(name=redis_key_3)
+
+            logger.info("Keys deleted from redis.", keys=[redis_key_1, redis_key_2, redis_key_3])
+
+    if is_list_not_empty(itsp_ids_to_delete):
+        for itsp_id in itsp_ids_to_delete:
+            redis_key = f"ws-{workspace_id}:itsp-{itsp_id}"
+            g.kvstore.delete_value(name=redis_key)
+            logger.info("Keys deleted from redis.", keys=[redis_key])
 
 
 def __get_date_to(number_of_days_diff: Optional[int] = None) -> Optional[datetime]:
