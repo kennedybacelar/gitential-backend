@@ -126,6 +126,13 @@ def perform_workspace_cleanup(
 
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+
+    if workspace_id and not workspace:
+        logger.exception(
+            "Failed to cleanup workspace! Workspace not exists for given workspace id!", workspace_id=workspace_id
+        )
+        return
+
     if workspace:
         perform_data_cleanup(g=g, workspace_ids=[workspace.id], cleanup_type=cleanup_type)
     else:

@@ -334,24 +334,30 @@ def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: 
 def __remove_redundant_data_for_redis(
     g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], itsp_ids_to_delete: List[int]
 ):
-    logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
+    is_rids = is_list_not_empty(repo_ids_to_delete)
+    is_itsp_ids = is_list_not_empty(itsp_ids_to_delete)
 
-    if is_list_not_empty(repo_ids_to_delete):
-        for rid in repo_ids_to_delete:
-            redis_key_1 = f"ws-{workspace_id}:repository-refresh-{rid}"
-            g.kvstore.delete_value(name=redis_key_1)
-            redis_key_2 = f"ws-{workspace_id}:r-{rid}:extraction"
-            g.kvstore.delete_value(name=redis_key_2)
-            redis_key_3 = f"ws-{workspace_id}:repository-status-{rid}"
-            g.kvstore.delete_value(name=redis_key_3)
+    if is_rids or is_itsp_ids:
+        logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
 
-            logger.info("Keys deleted from redis.", keys=[redis_key_1, redis_key_2, redis_key_3])
+        if is_rids:
+            for rid in repo_ids_to_delete:
+                redis_key_1 = f"ws-{workspace_id}:repository-refresh-{rid}"
+                g.kvstore.delete_value(name=redis_key_1)
+                redis_key_2 = f"ws-{workspace_id}:r-{rid}:extraction"
+                g.kvstore.delete_value(name=redis_key_2)
+                redis_key_3 = f"ws-{workspace_id}:repository-status-{rid}"
+                g.kvstore.delete_value(name=redis_key_3)
 
-    if is_list_not_empty(itsp_ids_to_delete):
-        for itsp_id in itsp_ids_to_delete:
-            redis_key = f"ws-{workspace_id}:itsp-{itsp_id}"
-            g.kvstore.delete_value(name=redis_key)
-            logger.info("Keys deleted from redis.", keys=[redis_key])
+                logger.info("Keys deleted from redis.", keys=[redis_key_1, redis_key_2, redis_key_3])
+
+        if is_itsp_ids:
+            for itsp_id in itsp_ids_to_delete:
+                redis_key = f"ws-{workspace_id}:itsp-{itsp_id}"
+                g.kvstore.delete_value(name=redis_key)
+                logger.info("Keys deleted from redis.", keys=[redis_key])
+    else:
+        logger.info("Can not perform redis cleanup. Both repo_ids_to_delete and itsp_ids_to_delete were empty.")
 
 
 def __get_date_to(number_of_days_diff: Optional[int] = None) -> Optional[datetime]:
