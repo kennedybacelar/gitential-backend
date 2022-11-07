@@ -8,7 +8,6 @@ import sqlalchemy as sa
 from sqlalchemy import func, distinct
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import and_, select, desc, or_, update
-from structlog import get_logger
 
 from gitential2.backends.base.repositories import (
     AccessApprovalRepository,
@@ -130,8 +129,6 @@ from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
-
-logger = get_logger(__name__)
 
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
@@ -875,7 +872,6 @@ class SQLExtractedCommitRepository(
         repo_ids: Optional[List[int]] = None,
     ) -> List[ExtractedCommit]:
         if is_list_not_empty(repo_ids) or date_from or date_to:
-            logger.info("select_extracted_commits | IN IF", repo_ids=repo_ids, date_from=date_from)
             date_from_c: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
             date_to_c: dt.datetime = date_to if date_to else dt.datetime(2100, 1, 1)
             rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
@@ -888,10 +884,8 @@ class SQLExtractedCommitRepository(
                     self.table.c.ctime < date_to_c,
                 )
             )
-            logger.info("select_extracted_commits_query", query=str(query))
             rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
             return [ExtractedCommit(**row) for row in rows]
-        logger.info("select_extracted_commits | IN ELSE", repo_ids=repo_ids, date_from=date_from)
         return []
 
     def delete_commits(self, workspace_id: int, commit_ids: Optional[List[str]] = None) -> int:
