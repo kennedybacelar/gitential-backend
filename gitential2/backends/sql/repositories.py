@@ -871,22 +871,18 @@ class SQLExtractedCommitRepository(
         date_to: Optional[dt.datetime] = None,
         repo_ids: Optional[List[int]] = None,
     ) -> List[ExtractedCommit]:
-        if is_list_not_empty(repo_ids) or date_from or date_to:
-            date_from_c: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
-            date_to_c: dt.datetime = date_to if date_to else dt.datetime(2100, 1, 1)
-            rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
-            query = self.table.select().where(
-                or_(
-                    self.table.c.repo_id.in_(rids),
-                    self.table.c.atime > date_from_c,
-                    self.table.c.ctime > date_from_c,
-                    self.table.c.atime < date_to_c,
-                    self.table.c.ctime < date_to_c,
-                )
-            )
-            rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
-            return [ExtractedCommit(**row) for row in rows]
-        return []
+        or_clause = []
+        if date_from:
+            or_clause.append(self.table.c.atime >= date_from)
+            or_clause.append(self.table.c.ctime >= date_from)
+        if date_to:
+            or_clause.append(self.table.c.atime <= date_to)
+            or_clause.append(self.table.c.ctime <= date_to)
+        if is_list_not_empty(repo_ids):
+            or_clause.append(self.table.c.repo_id.in_(repo_ids))
+        query = self.table.select().where(or_(*or_clause)) if is_list_not_empty(or_clause) else self.table.select()
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [ExtractedCommit(**row) for row in rows]
 
     def delete_commits(self, workspace_id: int, commit_ids: Optional[List[str]] = None) -> int:
         if is_list_not_empty(commit_ids):
@@ -1143,20 +1139,16 @@ class SQLPullRequestRepository(
         date_to: Optional[dt.datetime] = None,
         repo_ids: Optional[List[int]] = None,
     ) -> List[PullRequest]:
-        if is_list_not_empty(repo_ids) or date_from:
-            date_from_c: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
-            date_to_c: dt.datetime = date_to if date_to else dt.datetime(2100, 1, 1)
-            rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
-            query = self.table.select().where(
-                or_(
-                    self.table.c.repo_id.in_(rids),
-                    self.table.c.created_at > date_from_c,
-                    self.table.c.created_at < date_to_c,
-                )
-            )
-            rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
-            return [PullRequest(**row) for row in rows]
-        return []
+        or_clause = []
+        if date_from:
+            or_clause.append(self.table.c.created_at >= date_from)
+        if date_to:
+            or_clause.append(self.table.c.created_at <= date_to)
+        if is_list_not_empty(repo_ids):
+            or_clause.append(self.table.c.repo_id.in_(repo_ids))
+        query = self.table.select().where(or_(*or_clause)) if is_list_not_empty(or_clause) else self.table.select()
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [PullRequest(**row) for row in rows]
 
     def delete_pull_requests(self, workspace_id: int, pr_numbers: Optional[List[int]] = None) -> int:
         if is_list_not_empty(pr_numbers):

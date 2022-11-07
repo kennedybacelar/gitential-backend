@@ -75,20 +75,16 @@ class SQLITSIssueRepository(
         date_to: Optional[datetime] = None,
         itsp_ids: Optional[List[int]] = None,
     ) -> List[ITSIssue]:
-        if is_list_not_empty(itsp_ids) or date_from or date_to:
-            date_from_c: datetime = date_from if date_from else datetime(2000, 1, 1)
-            date_to_c: datetime = date_to if date_to else datetime(2100, 1, 1)
-            itsp_ids_c: List[int] = itsp_ids if is_list_not_empty(itsp_ids) else []
-            query = self.table.select().where(
-                or_(
-                    self.table.c.itsp_id.in_(itsp_ids_c),
-                    self.table.c.updated_at > date_from_c,
-                    self.table.c.updated_at < date_to_c,
-                )
-            )
-            rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
-            return [ITSIssue(**row) for row in rows]
-        return []
+        or_clause = []
+        if date_from:
+            or_clause.append(self.table.c.updated_at >= date_from)
+        if date_to:
+            or_clause.append(self.table.c.updated_at <= date_to)
+        if is_list_not_empty(itsp_ids):
+            or_clause.append(self.table.c.itsp_id.in_(itsp_ids))
+        query = self.table.select().where(or_(*or_clause)) if is_list_not_empty(or_clause) else self.table.select()
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [ITSIssue(**row) for row in rows]
 
     def delete_its_issues(self, workspace_id: int, its_issue_ids: Optional[List[str]] = None) -> int:
         if is_list_not_empty(its_issue_ids):
