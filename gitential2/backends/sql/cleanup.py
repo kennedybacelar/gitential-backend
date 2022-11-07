@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Optional, List, Iterable, Set
 
 from structlog import get_logger
 
 from gitential2.core import GitentialContext
+from gitential2.datatypes import ProjectRepositoryInDB
 from gitential2.datatypes.cli_v2 import CleanupType
+from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
 from gitential2.utils import is_list_not_empty
 
 logger = get_logger(__name__)
@@ -33,7 +35,9 @@ def __perform_data_cleanup_on_workspace(
 
     date_to: Optional[datetime] = __get_date_to(g.settings.extraction.repo_analysis_limit_in_days)
     repo_ids_to_delete = __get_repo_ids_to_delete(g=g, workspace_id=workspace_id)
+    logger.info("repo_ids_to_delete", repo_ids_to_delete=repo_ids_to_delete)
     itsp_ids_to_delete = __get_itsp_ids_to_be_deleted(g=g, workspace_id=workspace_id)
+    logger.info("itsp_ids_to_delete", itsp_ids_to_delete=itsp_ids_to_delete)
 
     if cleanup_type in (CleanupType.full, CleanupType.commits):
         __remove_redundant_commit_data(
@@ -373,10 +377,20 @@ def __get_repo_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int
     repo_ids_in_extracted_commits: List[int] = g.backend.extracted_commits.get_list_of_repo_ids_distinct(
         workspace_id=workspace_id
     )
-    return [rid for rid in repo_ids_in_extracted_commits if rid not in repo_ids_all]
+
+    project_repos: Iterable[ProjectRepositoryInDB] = g.backend.project_repositories.all(workspace_id=workspace_id)
+    rids: Set[int] = {item.repo_id for item in project_repos}
+
+    return [rid for rid in repo_ids_in_extracted_commits if rid not in repo_ids_all or rid not in rids]
 
 
 def __get_itsp_ids_to_be_deleted(g: GitentialContext, workspace_id: int) -> List[int]:
     itsp_ids_all: List[int] = [itsp.id for itsp in g.backend.its_projects.all(workspace_id=workspace_id)]
     itsp_ids_in_its_issues: List[int] = g.backend.its_issues.get_list_of_itsp_ids_distinct(workspace_id=workspace_id)
-    return [itsp_id for itsp_id in itsp_ids_in_its_issues if itsp_id not in itsp_ids_all]
+
+    project_its_projects: Iterable[ProjectITSProjectInDB] = g.backend.project_its_projects.all(
+        workspace_id=workspace_id
+    )
+    itsp_ids: Set[int] = {item.itsp_id for item in project_its_projects}
+
+    return [itsp_id for itsp_id in itsp_ids_in_its_issues if itsp_id not in itsp_ids_all or itsp_id not in itsp_ids]
