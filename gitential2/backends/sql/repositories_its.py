@@ -145,9 +145,9 @@ class SQLITSSprintRepository(
     ITSSprintRepository,
     SQLWorkspaceScopedRepository[str, ITSSprint, ITSSprint, ITSSprint],
 ):
-    def delete_its_sprints(self, workspace_id: int, its_ids: List[str]) -> int:
-        if is_list_not_empty(its_ids):
-            query = self.table.delete().where(self.table.c.issue_id.in_(its_ids))
+    def delete_its_sprints(self, workspace_id: int, itsp_ids: List[int]) -> int:
+        if is_list_not_empty(itsp_ids):
+            query = self.table.delete().where(self.table.c.itsp_id.in_(itsp_ids))
             return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
         return 0
 

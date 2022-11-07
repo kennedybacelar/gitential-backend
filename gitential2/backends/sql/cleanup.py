@@ -296,7 +296,7 @@ def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: 
 
     no_its_sprints_before_clean: int = g.backend.its_sprints.count_rows(workspace_id=workspace_id)
     number_of_deleted_its_sprints: int = g.backend.its_sprints.delete_its_sprints(
-        workspace_id=workspace_id, its_ids=its_issue_ids_to_be_deleted
+        workspace_id=workspace_id, itsp_ids=itsp_ids_to_delete
     )
     no_its_sprints_after_clean: int = g.backend.its_sprints.count_rows(workspace_id=workspace_id)
     logger.info(

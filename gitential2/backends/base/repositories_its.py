@@ -78,7 +78,7 @@ class ITSSprintRepository(
     BaseWorkspaceScopedRepository[str, ITSSprint, ITSSprint, ITSSprint],
 ):
     @abstractmethod
-    def delete_its_sprints(self, workspace_id: int, its_ids: List[str]) -> int:
+    def delete_its_sprints(self, workspace_id: int, itsp_ids: List[int]) -> int:
         pass
 
 
