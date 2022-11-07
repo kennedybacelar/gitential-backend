@@ -28,9 +28,17 @@ class ITSIssueRepository(
         pass
 
     @abstractmethod
-    def delete_its_issues(
-        self, workspace_id: int, date_from: Optional[datetime] = None, its_issue_ids: Optional[List[int]] = None
+    def select_its_issues(
+        self,
+        workspace_id: int,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        itsp_ids: Optional[List[int]] = None,
     ) -> List[ITSIssue]:
+        pass
+
+    @abstractmethod
+    def delete_its_issues(self, workspace_id: int, its_issue_ids: Optional[List[str]] = None) -> int:
         pass
 
 

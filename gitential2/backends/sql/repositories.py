@@ -8,6 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy import func, distinct
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import and_, select, desc, or_, update
+from structlog import get_logger
 
 from gitential2.backends.base.repositories import (
     AccessApprovalRepository,
@@ -130,6 +131,8 @@ from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardI
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
+logger = get_logger(__name__)
+
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
 inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
@@ -244,6 +247,11 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         rows = self._execute_query(query, callback_fn=fetchall_)
         return (self.in_db_cls(**row) for row in rows)
 
+    def count_rows(self) -> int:
+        query = select([func.count()]).select_from(self.table)
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return rows[0][0]
+
     def _execute_query(self, query, callback_fn=lambda result: result):
         with self.engine.connect() as connection:
             result = connection.execute(query)
@@ -341,6 +349,11 @@ class SQLWorkspaceScopedRepository(
         query = select([self.table.c.id])
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [r["id"] for r in rows]
+
+    def count_rows(self, workspace_id: int) -> int:
+        query = select([func.count()]).select_from(self.table)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return rows[0][0]
 
     def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
         query = self.table.select()
@@ -855,15 +868,27 @@ class SQLExtractedCommitRepository(
         return [r["repo_id"] for r in rows]
 
     def select_extracted_commits(
-        self, workspace_id: int, date_from: Optional[dt.datetime] = None, repo_ids: Optional[List[int]] = None
+        self,
+        workspace_id: int,
+        date_from: Optional[dt.datetime] = None,
+        date_to: Optional[dt.datetime] = None,
+        repo_ids: Optional[List[int]] = None,
     ) -> List[ExtractedCommit]:
-        if is_list_not_empty(repo_ids) or date_from:
-            df: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
+        if is_list_not_empty(repo_ids) or date_from or date_to:
+            logger.info("select_extracted_commits | IN IF", repo_ids=repo_ids, date_from=date_from)
+            date_from_c: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
+            date_to_c: dt.datetime = date_to if date_to else dt.datetime(2100, 1, 1)
             rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
             query = self.table.select().where(
-                or_(self.table.c.repo_id.in_(rids), self.table.c.atime < df, self.table.c.ctime < df)
+                or_(
+                    self.table.c.repo_id.in_(rids),
+                    self.table.c.atime > date_from_c,
+                    self.table.c.ctime > date_from_c,
+                    self.table.c.atime < date_to_c,
+                    self.table.c.ctime < date_to_c,
+                )
             )
-            logger.info("query", query=str(query))
+            logger.info("select_extracted_commits_query", query=str(query))
             rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
             return [ExtractedCommit(**row) for row in rows]
         logger.info("select_extracted_commits | IN ELSE", repo_ids=repo_ids, date_from=date_from)
@@ -872,7 +897,7 @@ class SQLExtractedCommitRepository(
     def delete_commits(self, workspace_id: int, commit_ids: Optional[List[str]] = None) -> int:
         if is_list_not_empty(commit_ids):
             query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
-            return self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
         return 0
 
     def _build_filters(
@@ -1118,12 +1143,23 @@ class SQLPullRequestRepository(
             proxy.close()
 
     def select_pull_requests(
-        self, workspace_id: int, date_from: Optional[dt.datetime] = None, repo_ids: Optional[List[int]] = None
+        self,
+        workspace_id: int,
+        date_from: Optional[dt.datetime] = None,
+        date_to: Optional[dt.datetime] = None,
+        repo_ids: Optional[List[int]] = None,
     ) -> List[PullRequest]:
         if is_list_not_empty(repo_ids) or date_from:
-            df: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
+            date_from_c: dt.datetime = date_from if date_from else dt.datetime(2000, 1, 1)
+            date_to_c: dt.datetime = date_to if date_to else dt.datetime(2100, 1, 1)
             rids: List[int] = repo_ids if is_list_not_empty(repo_ids) else []
-            query = self.table.select().where(or_(self.table.c.repo_id.in_(rids), self.table.c.created_at < df))
+            query = self.table.select().where(
+                or_(
+                    self.table.c.repo_id.in_(rids),
+                    self.table.c.created_at > date_from_c,
+                    self.table.c.created_at < date_to_c,
+                )
+            )
             rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
             return [PullRequest(**row) for row in rows]
         return []
@@ -1131,7 +1167,7 @@ class SQLPullRequestRepository(
     def delete_pull_requests(self, workspace_id: int, pr_numbers: Optional[List[int]] = None) -> int:
         if is_list_not_empty(pr_numbers):
             query = self.table.delete().where(self.table.c.number.in_(pr_numbers))
-            return self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
         return 0
 
     def count(

@@ -422,7 +422,11 @@ class ExtractedCommitRepository(
 
     @abstractmethod
     def select_extracted_commits(
-        self, workspace_id: int, date_from: Optional[datetime] = None, repo_ids: Optional[List[int]] = None
+        self,
+        workspace_id: int,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        repo_ids: Optional[List[int]] = None,
     ) -> List[ExtractedCommit]:
         pass
 
@@ -538,7 +542,11 @@ class PullRequestRepository(
 
     @abstractmethod
     def select_pull_requests(
-        self, workspace_id: int, date_from: Optional[datetime] = None, repo_ids: Optional[List[int]] = None
+        self,
+        workspace_id: int,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        repo_ids: Optional[List[int]] = None,
     ) -> List[PullRequest]:
         pass
 

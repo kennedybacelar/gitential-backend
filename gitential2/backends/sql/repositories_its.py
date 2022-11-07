@@ -68,18 +68,33 @@ class SQLITSIssueRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [r["itsp_id"] for r in rows]
 
-    def delete_its_issues(
-        self, workspace_id: int, date_from: Optional[datetime] = None, its_issue_ids: Optional[List[int]] = None
+    def select_its_issues(
+        self,
+        workspace_id: int,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        itsp_ids: Optional[List[int]] = None,
     ) -> List[ITSIssue]:
-        if is_list_not_empty(its_issue_ids) or date_from:
-            df: datetime = date_from if date_from else datetime(2000, 1, 1)
-            ids: List[int] = its_issue_ids if is_list_not_empty(its_issue_ids) else []
-            query = self.table.delete().where(
-                or_(self.table.c.repo_id.in_(ids), self.table.c.atime < df, self.table.c.ctime < df)
+        if is_list_not_empty(itsp_ids) or date_from or date_to:
+            date_from_c: datetime = date_from if date_from else datetime(2000, 1, 1)
+            date_to_c: datetime = date_to if date_to else datetime(2100, 1, 1)
+            itsp_ids_c: List[int] = itsp_ids if is_list_not_empty(itsp_ids) else []
+            query = self.table.select().where(
+                or_(
+                    self.table.c.itsp_id.in_(itsp_ids_c),
+                    self.table.c.updated_at > date_from_c,
+                    self.table.c.updated_at < date_to_c,
+                )
             )
             rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
             return [ITSIssue(**row) for row in rows]
         return []
+
+    def delete_its_issues(self, workspace_id: int, its_issue_ids: Optional[List[str]] = None) -> int:
+        if is_list_not_empty(its_issue_ids):
+            query = self.table.delete().where(self.table.c.id.in_(its_issue_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLITSIssueChangeRepository(

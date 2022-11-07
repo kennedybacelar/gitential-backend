@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 
 @app.command("reset")
-def reset_workspace(workspace_id: int, reset_type: ResetType = ResetType.full):
+def reset_workspace(workspace_id: int, reset_type: ResetType = typer.Option("full", "--type", "-t")):
     """
     DANGER ZONE!!! Workspace reset!
     \n
