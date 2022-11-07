@@ -489,22 +489,6 @@ trio = ["trio (>=0.14,<0.20)"]
 wmi = ["wmi (>=1.5.1,<2.0.0)"]
 
 [[package]]
-name = "dparse"
-version = "0.5.2"
-description = "A parser for Python dependency files"
-category = "dev"
-optional = false
-python-versions = ">=3.5"
-
-[package.dependencies]
-packaging = "*"
-toml = "*"
-
-[package.extras]
-pipenv = ["pipenv"]
-conda = ["pyyaml"]
-
-[[package]]
 name = "email-validator"
 version = "1.2.1"
 description = "A robust email syntax and deliverability validation library."
@@ -670,7 +654,7 @@ regex = ">=2021.7.6,<2022.0.0"
 toolz = ">=0.11,<0.12"
 
 [package.extras]
-all = ["tables (>=3,<4)", "sqlalchemy (>=1.3,<1.4)", "shapely (>=1.6,<2)", "requests (>=2,<3)", "pyspark (>=2.4.3,<4)", "pymysql (>=1,<2)", "pyarrow (>=1,<7)", "psycopg2 (>=2.7,<3)", "impyla[kerberos] (>=0.17,<0.19)", "hdfs[kerberos] (>=2,<3)", "graphviz (>=0.16,<0.20)", "geopandas (>=0.6,<0.11)", "geoalchemy2 (>=0.6,<0.11)", "datafusion (>=0.4,<0.5)", "dask[dataframe,array] (>=2021.10.0,<2022.0.0)", "clickhouse-sqlalchemy (>=0.1.4,<0.2)", "clickhouse-driver (>=0.1,<0.3)"]
+all = ["tables (>=3,<4)", "sqlalchemy (>=1.3,<1.4)", "shapely (>=1.6,<2)", "requests (>=2,<3)", "pyspark (>=2.4.3,<4)", "pymysql (>=1,<2)", "pyarrow (>=1,<7)", "psycopg2 (>=2.7,<3)", "impyla[kerberos] (>=0.17,<0.19)", "hdfs[kerberos] (>=2,<3)", "graphviz (>=0.16,<0.20)", "geopandas (>=0.6,<0.11)", "geoalchemy2 (>=0.6,<0.11)", "datafusion (>=0.4,<0.5)", "dask[array,dataframe] (>=2021.10.0,<2022.0.0)", "clickhouse-sqlalchemy (>=0.1.4,<0.2)", "clickhouse-driver (>=0.1,<0.3)"]
 hdf5 = ["tables (>=3,<4)"]
 clickhouse = ["sqlalchemy (>=1.3,<1.4)", "clickhouse-sqlalchemy (>=0.1.4,<0.2)", "clickhouse-driver (>=0.1,<0.3)"]
 impala = ["sqlalchemy (>=1.3,<1.4)", "requests (>=2,<3)", "impyla[kerberos] (>=0.17,<0.19)", "hdfs[kerberos] (>=2,<3)"]
@@ -679,7 +663,7 @@ postgres = ["sqlalchemy (>=1.3,<1.4)", "psycopg2 (>=2.7,<3)"]
 sqlite = ["sqlalchemy (>=1.3,<1.4)"]
 geospatial = ["shapely (>=1.6,<2)", "geopandas (>=0.6,<0.11)", "geoalchemy2 (>=0.6,<0.11)"]
 pyspark = ["pyspark (>=2.4.3,<4)", "pyarrow (>=1,<7)"]
-dask = ["pyarrow (>=1,<7)", "dask[dataframe,array] (>=2021.10.0,<2022.0.0)"]
+dask = ["pyarrow (>=1,<7)", "dask[array,dataframe] (>=2021.10.0,<2022.0.0)"]
 parquet = ["pyarrow (>=1,<7)"]
 visualization = ["graphviz (>=0.16,<0.20)"]
 datafusion = ["datafusion (>=0.4,<0.5)"]
@@ -1750,20 +1734,6 @@ botocore = ">=1.12.36,<2.0a.0"
 crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
 
 [[package]]
-name = "safety"
-version = "1.10.3"
-description = "Checks installed dependencies for known vulnerabilities."
-category = "dev"
-optional = false
-python-versions = ">=3.5"
-
-[package.dependencies]
-Click = ">=6.0"
-dparse = ">=0.5.1"
-packaging = "*"
-requests = "*"
-
-[[package]]
 name = "send2trash"
 version = "1.8.0"
 description = "Send file to trash natively under Mac OS X, Windows and Linux."
@@ -2217,7 +2187,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "279923b6c7ec6ff6f3c3264042e5fa9056a856e2c905b289b2dd62587bd4b0fe"
+content-hash = "3682e283ac67e94fd075c0533b75c85da25c901a1f3b5d2c3dac7cbcbc2b783f"
 
 [metadata.files]
 alembic = []
@@ -2257,7 +2227,6 @@ decorator = []
 defusedxml = []
 dill = []
 dnspython = []
-dparse = []
 email-validator = []
 entrypoints = []
 executing = []
@@ -2354,7 +2323,6 @@ requests-oauthlib = []
 rfc3986 = []
 rsa = []
 s3transfer = []
-safety = []
 send2trash = []
 six = []
 sniffio = []
