@@ -343,6 +343,7 @@ def __remove_redundant_data_for_redis(
 
     if is_rids or is_itsp_ids:
         logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
+        keys = []
 
         if is_rids:
             for rid in repo_ids_to_delete:
@@ -352,14 +353,18 @@ def __remove_redundant_data_for_redis(
                 g.kvstore.delete_value(name=redis_key_2)
                 redis_key_3 = f"ws-{workspace_id}:repository-status-{rid}"
                 g.kvstore.delete_value(name=redis_key_3)
-
-                logger.info("Keys deleted from redis.", keys=[redis_key_1, redis_key_2, redis_key_3])
+                keys.append(redis_key_1)
+                keys.append(redis_key_2)
+                keys.append(redis_key_3)
 
         if is_itsp_ids:
             for itsp_id in itsp_ids_to_delete:
                 redis_key = f"ws-{workspace_id}:itsp-{itsp_id}"
                 g.kvstore.delete_value(name=redis_key)
-                logger.info("Keys deleted from redis.", keys=[redis_key])
+                keys.append(redis_key)
+
+        logger.info("Keys deleted from redis.", keys=keys)
+
     else:
         logger.info("Can not perform redis cleanup. Both repo_ids_to_delete and itsp_ids_to_delete were empty.")
 
