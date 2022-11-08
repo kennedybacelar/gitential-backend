@@ -239,7 +239,19 @@ def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: 
         workspace_id=workspace_id, date_to=date_to, itsp_ids=itsp_ids_to_delete
     )
     its_issue_ids_to_be_deleted: List[str] = [its.id for its in its_issues_to_delete]
-    logger.info("ITS Issues selected for cleanup.", number_of_deleted_its_issues=len(its_issues_to_delete))
+    logger.info("ITS Issues selected for cleanup.", no_its_issue_ids_to_be_deleted=len(its_issue_ids_to_be_deleted))
+
+    no_its_issues_before_clean: int = g.backend.its_issues.count_rows(workspace_id=workspace_id)
+    number_of_deleted_its_issues: int = g.backend.its_issues.delete_its_issues(
+        workspace_id=workspace_id, its_issue_ids=its_issue_ids_to_be_deleted
+    )
+    no_its_issues_after_clean: int = g.backend.its_issues.count_rows(workspace_id=workspace_id)
+    logger.info(
+        "Cleanup of its_issues finished.",
+        number_of_deleted_its_issues=number_of_deleted_its_issues,
+        no_its_issues_before_clean=no_its_issues_before_clean,
+        no_its_issues_after_clean=no_its_issues_after_clean,
+    )
 
     no_its_issue_changes_before_clean: int = g.backend.its_issue_changes.count_rows(workspace_id=workspace_id)
     number_of_deleted_its_issue_changes: int = g.backend.its_issue_changes.delete_its_issue_changes(
