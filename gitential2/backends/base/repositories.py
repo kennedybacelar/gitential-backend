@@ -551,7 +551,7 @@ class PullRequestRepository(
         pass
 
     @abstractmethod
-    def delete_pull_requests(self, workspace_id: int, pr_numbers: Optional[List[int]] = None) -> int:
+    def delete_pull_requests(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
         pass
 
     @abstractmethod
@@ -571,7 +571,7 @@ class PullRequestCommitRepository(
     BaseWorkspaceScopedRepository[PullRequestCommitId, PullRequestCommit, PullRequestCommit, PullRequestCommit],
 ):
     @abstractmethod
-    def delete_pull_request_commits(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+    def delete_pull_request_commits(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
         pass
 
 
@@ -580,7 +580,7 @@ class PullRequestCommentRepository(
     BaseWorkspaceScopedRepository[PullRequestCommentId, PullRequestComment, PullRequestComment, PullRequestComment],
 ):
     @abstractmethod
-    def delete_pull_request_comment(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+    def delete_pull_request_comment(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
         pass
 
 
@@ -589,7 +589,7 @@ class PullRequestLabelRepository(
     BaseWorkspaceScopedRepository[PullRequestLabelId, PullRequestLabel, PullRequestLabel, PullRequestLabel],
 ):
     @abstractmethod
-    def delete_pull_request_labels(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
+    def delete_pull_request_labels(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
         pass
 
 

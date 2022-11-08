@@ -1150,10 +1150,15 @@ class SQLPullRequestRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [PullRequest(**row) for row in rows]
 
-    def delete_pull_requests(self, workspace_id: int, pr_numbers: Optional[List[int]] = None) -> int:
-        if is_list_not_empty(pr_numbers):
-            query = self.table.delete().where(self.table.c.number.in_(pr_numbers))
-            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+    def delete_pull_requests(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
         return 0
 
     def count(
@@ -1202,10 +1207,15 @@ class SQLPullRequestCommitRepository(
             self.table.c.commit_id == id_.commit_id,
         )
 
-    def delete_pull_request_commits(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
-        if is_list_not_empty(pull_request_numbers):
-            query = self.table.delete().where(self.table.c.pr_number.in_(pull_request_numbers))
-            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+    def delete_pull_request_commits(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.pr_number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
         return 0
 
 
@@ -1222,10 +1232,15 @@ class SQLPullRequestCommentRepository(
             self.table.c.comment_id == id_.comment_id,
         )
 
-    def delete_pull_request_comment(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
-        if is_list_not_empty(pull_request_numbers):
-            query = self.table.delete().where(self.table.c.pr_number.in_(pull_request_numbers))
-            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+    def delete_pull_request_comment(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.pr_number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
         return 0
 
 
@@ -1246,10 +1261,15 @@ class SQLPullRequestLabelRepository(
             self.table.c.name == id_.name,
         )
 
-    def delete_pull_request_labels(self, workspace_id: int, pull_request_numbers: List[int]) -> int:
-        if is_list_not_empty(pull_request_numbers):
-            query = self.table.delete().where(self.table.c.pr_number.in_(pull_request_numbers))
-            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+    def delete_pull_request_labels(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.pr_number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
         return 0
 
 

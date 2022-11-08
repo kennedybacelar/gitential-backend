@@ -7,6 +7,7 @@ from gitential2.core import GitentialContext
 from gitential2.datatypes import ProjectRepositoryInDB
 from gitential2.datatypes.cli_v2 import CleanupType
 from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
+from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
 from gitential2.utils import is_list_not_empty
 
 logger = get_logger(__name__)
@@ -169,15 +170,15 @@ def __remove_redundant_pull_request_data(
         date_to=date_to,
     )
 
-    prs_to_be_deleted = g.backend.pull_requests.select_pull_requests(
+    prs_to_be_deleted: List[PullRequest] = g.backend.pull_requests.select_pull_requests(
         workspace_id=workspace_id, date_to=date_to, repo_ids=repo_ids_to_delete
     )
-    pr_numbers_to_be_deleted: List[int] = [pr.number for pr in prs_to_be_deleted]
-    logger.info("Pull requests selected for cleanup.", number_of_pull_requests_to_be_deleted=len(prs_to_be_deleted))
+    pr_ids_to_be_deleted: List[PullRequestId] = [pr.id_ for pr in prs_to_be_deleted]
+    logger.info("Pull requests selected for cleanup.", number_of_pull_requests_to_be_deleted=len(pr_ids_to_be_deleted))
 
     no_pull_requests_before_clean = g.backend.pull_requests.count_rows(workspace_id=workspace_id)
     number_of_prs_deleted: int = g.backend.pull_requests.delete_pull_requests(
-        workspace_id=workspace_id, pr_numbers=pr_numbers_to_be_deleted
+        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
     )
     no_pull_requests_after_clean = g.backend.pull_requests.count_rows(workspace_id=workspace_id)
     logger.info(
@@ -189,7 +190,7 @@ def __remove_redundant_pull_request_data(
 
     no_pull_request_commits_before_clean = g.backend.pull_request_commits.count_rows(workspace_id=workspace_id)
     number_of_deleted_pull_request_commits: int = g.backend.pull_request_commits.delete_pull_request_commits(
-        workspace_id=workspace_id, pull_request_numbers=pr_numbers_to_be_deleted
+        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
     )
     no_pull_request_commits_after_clean = g.backend.pull_request_commits.count_rows(workspace_id=workspace_id)
     logger.info(
@@ -201,7 +202,7 @@ def __remove_redundant_pull_request_data(
 
     no_pull_request_comments_before_clean = g.backend.pull_request_comments.count_rows(workspace_id=workspace_id)
     number_of_deleted_pull_request_comments: int = g.backend.pull_request_comments.delete_pull_request_comment(
-        workspace_id=workspace_id, pull_request_numbers=pr_numbers_to_be_deleted
+        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
     )
     no_pull_request_comments_after_clean = g.backend.pull_request_comments.count_rows(workspace_id=workspace_id)
     logger.info(
@@ -213,7 +214,7 @@ def __remove_redundant_pull_request_data(
 
     no_pull_request_labels_before_clean = g.backend.pull_request_labels.count_rows(workspace_id=workspace_id)
     number_of_deleted_pull_request_labels: int = g.backend.pull_request_labels.delete_pull_request_labels(
-        workspace_id=workspace_id, pull_request_numbers=pr_numbers_to_be_deleted
+        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
     )
     no_pull_request_labels_after_clean = g.backend.pull_request_labels.count_rows(workspace_id=workspace_id)
     logger.info(
@@ -228,7 +229,7 @@ def __remove_redundant_data_for_its_projects(g: GitentialContext, workspace_id: 
     date_to: Optional[datetime] = __get_date_to(g.settings.extraction.its_project_analysis_limit_in_days)
 
     logger.info(
-        "Attempting to remove redundant data for repositories...",
+        "Attempting to remove redundant data for ITS projects...",
         workspace_id=workspace_id,
         its_issues_to_be_deleted=itsp_ids_to_delete,
         date_to=date_to,
