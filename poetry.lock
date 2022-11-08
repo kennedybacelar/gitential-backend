@@ -205,18 +205,18 @@ python-versions = "*"
 
 [[package]]
 name = "black"
-version = "22.3.0"
+version = "22.10.0"
 description = "The uncompromising code formatter."
 category = "dev"
 optional = false
-python-versions = ">=3.6.2"
+python-versions = ">=3.7"
 
 [package.dependencies]
 click = ">=8.0.0"
 mypy-extensions = ">=0.4.3"
 pathspec = ">=0.9.0"
 platformdirs = ">=2"
-tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
+tomli = {version = ">=1.1.0", markers = "python_full_version < \"3.11.0a7\""}
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
@@ -2187,7 +2187,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "3682e283ac67e94fd075c0533b75c85da25c901a1f3b5d2c3dac7cbcbc2b783f"
+content-hash = "e6a5c371c0c6da34a60af08ece9f2137525487834034f707faa62cfaab6c3b82"
 
 [metadata.files]
 alembic = []
