@@ -2071,6 +2071,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "types-python-dateutil"
+version = "2.8.19.2"
+description = "Typing stubs for python-dateutil"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.7"
 description = "Typing stubs for PyYAML"
@@ -2217,7 +2225,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "279923b6c7ec6ff6f3c3264042e5fa9056a856e2c905b289b2dd62587bd4b0fe"
+content-hash = "7d5a21f56d6f2a8fdac55e8d77cc2bcf9d00820326133eaa5d20b789358f823e"
 
 [metadata.files]
 alembic = []
@@ -2379,6 +2387,7 @@ typer = []
 types-itsdangerous = []
 types-jinja2 = []
 types-markupsafe = []
+types-python-dateutil = []
 types-pyyaml = []
 types-redis = []
 types-requests = []

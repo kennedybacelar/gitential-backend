@@ -89,6 +89,9 @@ class InMemAccessLogRepository(AccessLogRepository):
 class InMemRepository(
     BaseRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
+    def count_rows(self) -> int:
+        return len(self._state)
+
     def __init__(self, in_db_cls: Callable[..., InDBType]):
         self._state: dict = {}
         self._counter = 1
@@ -167,6 +170,9 @@ def constant_factory(value):
 class InMemWorkspaceScopedRepository(
     BaseWorkspaceScopedRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
+    def count_rows(self, workspace_id: int) -> int:
+        return len(self._state)
+
     def all_ids(self, workspace_id: int) -> List[int]:
         pass
 
