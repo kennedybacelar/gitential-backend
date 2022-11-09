@@ -711,23 +711,19 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         if not changes:
             return []
 
-        initial_work_item_type = changes[0].extra["initial_work_item_type"]  # type: ignore[index]
-
-        wit_reference_name = self.get_work_item_type_reference_name(
-            token=token, its_project=its_project, work_item_type=initial_work_item_type
-        )
-
+        work_item_type = None
         previous_change = None
         ret: List[ITSIssueTimeInStatus] = []
 
         for current_change in changes:
 
             if current_change.field_name == "System.WorkItemType":
-
-                new_work_item_type = current_change.v_to_string
+                work_item_type = current_change.field_name
                 wit_reference_name = self.get_work_item_type_reference_name(
-                    token=token, its_project=its_project, work_item_type=new_work_item_type
+                    token=token, its_project=its_project, work_item_type=work_item_type
                 )
+            if not work_item_type:
+                continue
 
             if current_change.change_type == ITSIssueChangeType.status:
 
