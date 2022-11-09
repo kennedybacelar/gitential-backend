@@ -281,6 +281,7 @@ def _get_tempo_worklogs_for_issue(tempo_access_token: str, jira_issue_id) -> dic
     response = requests.get(
         f"https://api.tempo.io/core/3/worklogs?issue={jira_issue_id}",
         headers={"Authorization": f"Bearer {tempo_access_token}"},
+        timeout=300,
     )
     response.raise_for_status()
     return response.json()

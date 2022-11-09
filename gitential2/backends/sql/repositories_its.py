@@ -30,6 +30,7 @@ from gitential2.datatypes.its import (
 from .repositories import SQLWorkspaceScopedRepository, fetchone_
 from ...utils import is_list_not_empty
 
+# pylint: disable=unnecessary-lambda-assignment
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
 inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
