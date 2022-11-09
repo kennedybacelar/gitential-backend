@@ -93,15 +93,15 @@ tests = ["pytest", "pytest-asyncio", "mypy (>=0.800)"]
 
 [[package]]
 name = "astroid"
-version = "2.11.5"
+version = "2.12.12"
 description = "An abstract syntax tree for Python with inference support."
 category = "dev"
 optional = false
-python-versions = ">=3.6.2"
+python-versions = ">=3.7.2"
 
 [package.dependencies]
 lazy-object-proxy = ">=1.4.0"
-wrapt = ">=1.11,<2"
+wrapt = {version = ">=1.11,<2", markers = "python_version < \"3.11\""}
 
 [[package]]
 name = "asttokens"
@@ -412,11 +412,11 @@ six = "*"
 
 [[package]]
 name = "colorama"
-version = "0.4.4"
+version = "0.4.6"
 description = "Cross-platform colored terminal text."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 
 [[package]]
 name = "cryptography"
@@ -654,7 +654,7 @@ regex = ">=2021.7.6,<2022.0.0"
 toolz = ">=0.11,<0.12"
 
 [package.extras]
-all = ["tables (>=3,<4)", "sqlalchemy (>=1.3,<1.4)", "shapely (>=1.6,<2)", "requests (>=2,<3)", "pyspark (>=2.4.3,<4)", "pymysql (>=1,<2)", "pyarrow (>=1,<7)", "psycopg2 (>=2.7,<3)", "impyla[kerberos] (>=0.17,<0.19)", "hdfs[kerberos] (>=2,<3)", "graphviz (>=0.16,<0.20)", "geopandas (>=0.6,<0.11)", "geoalchemy2 (>=0.6,<0.11)", "datafusion (>=0.4,<0.5)", "dask[array,dataframe] (>=2021.10.0,<2022.0.0)", "clickhouse-sqlalchemy (>=0.1.4,<0.2)", "clickhouse-driver (>=0.1,<0.3)"]
+all = ["tables (>=3,<4)", "sqlalchemy (>=1.3,<1.4)", "shapely (>=1.6,<2)", "requests (>=2,<3)", "pyspark (>=2.4.3,<4)", "pymysql (>=1,<2)", "pyarrow (>=1,<7)", "psycopg2 (>=2.7,<3)", "impyla[kerberos] (>=0.17,<0.19)", "hdfs[kerberos] (>=2,<3)", "graphviz (>=0.16,<0.20)", "geopandas (>=0.6,<0.11)", "geoalchemy2 (>=0.6,<0.11)", "datafusion (>=0.4,<0.5)", "dask[dataframe,array] (>=2021.10.0,<2022.0.0)", "clickhouse-sqlalchemy (>=0.1.4,<0.2)", "clickhouse-driver (>=0.1,<0.3)"]
 hdf5 = ["tables (>=3,<4)"]
 clickhouse = ["sqlalchemy (>=1.3,<1.4)", "clickhouse-sqlalchemy (>=0.1.4,<0.2)", "clickhouse-driver (>=0.1,<0.3)"]
 impala = ["sqlalchemy (>=1.3,<1.4)", "requests (>=2,<3)", "impyla[kerberos] (>=0.17,<0.19)", "hdfs[kerberos] (>=2,<3)"]
@@ -663,7 +663,7 @@ postgres = ["sqlalchemy (>=1.3,<1.4)", "psycopg2 (>=2.7,<3)"]
 sqlite = ["sqlalchemy (>=1.3,<1.4)"]
 geospatial = ["shapely (>=1.6,<2)", "geopandas (>=0.6,<0.11)", "geoalchemy2 (>=0.6,<0.11)"]
 pyspark = ["pyspark (>=2.4.3,<4)", "pyarrow (>=1,<7)"]
-dask = ["pyarrow (>=1,<7)", "dask[array,dataframe] (>=2021.10.0,<2022.0.0)"]
+dask = ["pyarrow (>=1,<7)", "dask[dataframe,array] (>=2021.10.0,<2022.0.0)"]
 parquet = ["pyarrow (>=1,<7)"]
 visualization = ["graphviz (>=0.16,<0.20)"]
 datafusion = ["datafusion (>=0.4,<0.5)"]
@@ -1485,23 +1485,25 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "pylint"
-version = "2.13.9"
+version = "2.15.5"
 description = "python code static checker"
 category = "dev"
 optional = false
-python-versions = ">=3.6.2"
+python-versions = ">=3.7.2"
 
 [package.dependencies]
-astroid = ">=2.11.5,<=2.12.0-dev0"
-colorama = {version = "*", markers = "sys_platform == \"win32\""}
+astroid = ">=2.12.12,<=2.14.0-dev0"
+colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
 dill = ">=0.2"
 isort = ">=4.2.5,<6"
 mccabe = ">=0.6,<0.8"
 platformdirs = ">=2.2.0"
 tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
+tomlkit = ">=0.10.1"
 
 [package.extras]
-testutil = ["gitpython (>3)"]
+spelling = ["pyenchant (>=3.2,<4.0)"]
+testutils = ["gitpython (>3)"]
 
 [[package]]
 name = "pympler"
@@ -1953,6 +1955,14 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "tomlkit"
+version = "0.11.6"
+description = "Style preserving TOML library"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "toolz"
 version = "0.11.2"
 description = "List processing tools and functional utilities"
@@ -2187,7 +2197,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "e6a5c371c0c6da34a60af08ece9f2137525487834034f707faa62cfaab6c3b82"
+content-hash = "45cdb23188fd4f89843b2ff42a0d509ea9ece131c7321d1477dc481f7d6111be"
 
 [metadata.files]
 alembic = []
@@ -2339,6 +2349,7 @@ terminado = []
 tinycss2 = []
 toml = []
 tomli = []
+tomlkit = []
 toolz = []
 tornado = []
 tqdm = []

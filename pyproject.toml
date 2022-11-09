@@ -52,7 +52,7 @@ wheel = "^0.38.2"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5" # 'pytest' version 6.2.5 is outdated (latest: 7.2.0)
 black = "^22.10.0"
-pylint = "^2.6.0" # 'pylint' version 2.13.9 is outdated (latest: 2.15.5)
+pylint = "^2.15.5"
 mypy = "^0.931" # 'mypy' version 0.931 is outdated (latest: 0.990)
 sqlalchemy-stubs = "^0.4"
 flower = {git = "https://github.com/avikam/flower.git"}
