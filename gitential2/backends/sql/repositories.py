@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import datetime as dt
 import typing
 from collections import defaultdict
@@ -130,6 +132,7 @@ from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardI
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
+# pylint: disable=unnecessary-lambda-assignment
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
 inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
