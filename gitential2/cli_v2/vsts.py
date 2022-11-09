@@ -149,6 +149,7 @@ def list_all_data_for_issue(
         print_results([all_data_issue], format_=format_, fields=fields)
 
 
+# pylint: disable=missing-param-doc
 @app.command("raw-data-issue")
 def list_raw_data_for_issues_per_project(
     workspace_id: int,

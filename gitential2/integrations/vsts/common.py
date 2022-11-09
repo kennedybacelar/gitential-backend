@@ -1,8 +1,6 @@
 from typing import List, Tuple, Optional
 from urllib.parse import urlparse
 
-from email_validator import validate_email, EmailNotValidError
-
 from gitential2.datatypes import RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.its import ITSIssueStatusCategory, ITSIssueChangeType
