@@ -1,3 +1,5 @@
+from datetime import datetime
+from sqlite3 import Date
 from typing import Callable, List, Tuple
 
 from pydantic.datetime_parse import parse_datetime
@@ -94,8 +96,8 @@ def _transform_to_ITSIssueChange(
         v_from_string=v_from_string,
         v_to=str(field_content.get("newValue")),
         v_to_string=v_to_string,
-        created_at=single_update["fields"]["System.ChangedDate"]["oldValue"],
-        updated_at=single_update["fields"]["System.ChangedDate"]["newValue"],
+        created_at=parse_datetime(single_update["fields"]["System.ChangedDate"]["oldValue"]),
+        updated_at=parse_datetime(single_update["fields"]["System.ChangedDate"]["newValue"]),
     )
 
 

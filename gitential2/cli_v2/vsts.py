@@ -159,6 +159,15 @@ def list_raw_data_for_issues_per_project(
     fields: Optional[str] = None,
 ):
 
+    """This function returns a raw json object as extracted from VSTS api.
+    The parameter namespace is described below.
+
+    Sample of cli command: $ g2 vsts raw-data-issue 1 Org_1/Proj_1 Team1
+
+    Args:
+        namespace (str): Organization/Project
+    """
+
     its_project_mock = ITSProjectInDB(name=team, namespace=namespace, id=10)
 
     g = get_context()
@@ -173,6 +182,36 @@ def list_raw_data_for_issues_per_project(
             token=token, its_project=its_project_mock, date_from=date_from
         )
         print_results(issues_per_project, format_=format_, fields=fields)
+
+
+@app.command("issue-updates")
+def get_its_issue_updates_(
+    workspace_id: int,
+    namespace: str,
+    issue_id_or_key: str,
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+
+    its_project_mock = ITSProjectInDB(name="test", namespace=namespace, id=10)
+
+    g = get_context()
+
+    dev_map_callback = partial(developer_map_callback, g=g, workspace_id=workspace_id)
+
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        issue_updates = vsts_integration.get_its_issue_updates(
+            token=token,
+            its_project=its_project_mock,
+            issue_id_or_key=issue_id_or_key,
+            developer_map_callback=dev_map_callback,
+        )
+        print_results([issue_updates], format_=format_, fields=fields)
 
 
 @app.command("single-issue")
