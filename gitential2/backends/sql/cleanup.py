@@ -1,6 +1,9 @@
+import numpy as np
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Optional, List, Iterable, Set
 
+from pydantic import BaseModel
 from structlog import get_logger
 
 from gitential2.core import GitentialContext
@@ -89,17 +92,30 @@ def __remove_redundant_commit_data(
         number_of_commits_to_be_deleted=len(commit_hashes_to_be_deleted),
     )
 
-    no_extracted_commits_before_clean: int = g.backend.extracted_commits.count_rows(workspace_id=workspace_id)
-    number_of_deleted_extracted_commits: int = g.backend.extracted_commits.delete_commits(
-        workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
+    extracted_commits_del_res = __delete_rows(
+        delete_rows_partial_fn=partial(g.backend.extracted_commits.delete_commits, workspace_id=workspace_id),
+        check_no_rows_partial_fn=partial(g.backend.extracted_commits.count_rows, workspace_id=workspace_id),
+        items_key="commit_ids",
+        item_ids_to_delete=commit_hashes_to_be_deleted
     )
-    no_extracted_commits_after_clean: int = g.backend.extracted_commits.count_rows(workspace_id=workspace_id)
     logger.info(
-        "Cleanup of extracted_commits finished.",
-        number_of_deleted_extracted_commits=number_of_deleted_extracted_commits,
-        no_extracted_commits_before_clean=no_extracted_commits_before_clean,
-        no_extracted_commits_after_clean=no_extracted_commits_after_clean,
+        f"Cleanup of 'extracted_commits' finished.",
+        number_of_deleted_rows=extracted_commits_del_res.no_deleted_rows,
+        number_of_rows_before_clean=extracted_commits_del_res.no_rows_before_clean,
+        number_of_rows_after_clean=extracted_commits_del_res.no_rows_after_clean,
     )
+
+    # no_extracted_commits_before_clean: int = g.backend.extracted_commits.count_rows(workspace_id=workspace_id)
+    # number_of_deleted_extracted_commits: int = g.backend.extracted_commits.delete_commits(
+    #     workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
+    # )
+    # no_extracted_commits_after_clean: int = g.backend.extracted_commits.count_rows(workspace_id=workspace_id)
+    # logger.info(
+    #     "Cleanup of extracted_commits finished.",
+    #     number_of_deleted_extracted_commits=number_of_deleted_extracted_commits,
+    #     no_extracted_commits_before_clean=no_extracted_commits_before_clean,
+    #     no_extracted_commits_after_clean=no_extracted_commits_after_clean,
+    # )
 
     no_calculated_commits_before_clean: int = g.backend.calculated_commits.count_rows(workspace_id=workspace_id)
     number_of_deleted_calculated_commits: int = g.backend.calculated_commits.delete_commits(
@@ -435,3 +451,35 @@ def __get_itsp_ids_to_be_deleted(g: GitentialContext, workspace_id: int) -> List
     itsp_ids: Set[int] = {item.itsp_id for item in project_its_projects}
 
     return [itsp_id for itsp_id in itsp_ids_in_its_issues if itsp_id not in itsp_ids_all or itsp_id not in itsp_ids]
+
+
+class DeleteRowsResult(BaseModel):
+    no_deleted_rows: int
+    no_rows_before_clean: int
+    no_rows_after_clean: int
+
+
+def __delete_rows(
+    delete_rows_partial_fn,
+    check_no_rows_partial_fn,
+    items_key: str,
+    item_ids_to_delete: List[any],
+) -> DeleteRowsResult:
+    number_of_rows_before_clean: int = check_no_rows_partial_fn()
+
+    number_of_deleted_rows: int = 0
+    if is_list_not_empty(item_ids_to_delete):
+        if len(item_ids_to_delete) <= 100:
+            number_of_deleted_rows: int = delete_rows_partial_fn(**{items_key: item_ids_to_delete})
+        else:
+            item_lists = np.array_split(item_ids_to_delete, 100)
+            for items in item_lists:
+                del_res: int = delete_rows_partial_fn(**{items_key: items})
+                number_of_deleted_rows += del_res
+
+    number_of_rows_after_clean: int = check_no_rows_partial_fn()
+    return DeleteRowsResult(
+        no_deleted_rows=number_of_deleted_rows,
+        no_rows_before_clean=number_of_rows_before_clean,
+        no_rows_after_clean=number_of_rows_after_clean,
+    )
