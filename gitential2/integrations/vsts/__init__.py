@@ -557,8 +557,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             log_api_error(single_work_item_details_response)
             return {}
 
-        single_work_item_details_response_json = single_work_item_details_response.json()
-        return single_work_item_details_response_json
+        return single_work_item_details_response.json()
 
     def _get_issue_comments(
         self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
