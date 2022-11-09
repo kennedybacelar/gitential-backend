@@ -509,9 +509,25 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             "System.ChangedDate",
         ]
 
-        for workitem_update in wit_update_values[1:]:
+        for idx, workitem_update in enumerate(wit_update_values):
+
+            # When just links are added into the wit, it does not change the ChangedDate, hence it is not being considered as a change
             if not workitem_update.get("fields", {}).get("System.ChangedDate"):
                 continue
+
+            # It is needed to get the value for those fields at the moment of the wit creation "System.State" & "System.WorkItemType"
+            if not idx:
+                for field in workitem_update["fields"].items():
+                    if field[0] in ["System.State", "System.WorkItemType"]:
+                        ret.append(
+                            _transform_to_ITSIssueChange(
+                                its_project=its_project,
+                                single_update=workitem_update,
+                                single_field=field,
+                                developer_map_callback=developer_map_callback,
+                            )
+                        )
+
             for field in workitem_update["fields"].items():
                 if field[0] not in filter_out_fields:
                     ret.append(

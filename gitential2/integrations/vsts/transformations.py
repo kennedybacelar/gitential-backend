@@ -79,6 +79,8 @@ def _transform_to_ITSIssueChange(
     author_dev_id = developer_map_callback(to_author_alias(single_update.get("revisedBy")))
     its_change_id = f"{str(single_update['workItemId'])[:128]}-{single_update['id']}-{field_name}"
 
+    _updatet_at = single_update["fields"]["System.ChangedDate"]["newValue"]
+
     return ITSIssueChange(
         id=its_change_id,
         issue_id=single_update["workItemId"],
@@ -96,8 +98,8 @@ def _transform_to_ITSIssueChange(
         v_from_string=v_from_string,
         v_to=str(field_content.get("newValue")),
         v_to_string=v_to_string,
-        created_at=parse_datetime(single_update["fields"]["System.ChangedDate"]["oldValue"]),
-        updated_at=parse_datetime(single_update["fields"]["System.ChangedDate"]["newValue"]),
+        created_at=parse_datetime(single_update["fields"]["System.ChangedDate"].get("oldValue") or _updatet_at),
+        updated_at=parse_datetime(_updatet_at),
     )
 
 
