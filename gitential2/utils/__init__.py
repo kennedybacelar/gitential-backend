@@ -140,7 +140,10 @@ def is_string_not_empty(arg: Optional[str] = None) -> TypeGuard[str]:
 
 
 def get_filtered_dict(
-    dict_obj: Dict, callback=None, keys_to_include: List[str] = None, keys_to_exclude: List[str] = None
+    dict_obj: Dict,
+    callback=None,
+    keys_to_include: Optional[List[str]] = None,
+    keys_to_exclude: Optional[List[str]] = None,
 ):
     new_dict = dict_obj
 

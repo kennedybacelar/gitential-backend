@@ -414,7 +414,11 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
 
     def _raw_fetching_all_issues_per_project(
-        self, token, its_project: ITSProjectInDB, fields: List[str] = None, date_from: Optional[datetime] = None
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        fields: Optional[List[str]] = None,
+        date_from: Optional[datetime] = None,
     ) -> List[dict]:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
@@ -658,7 +662,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         return {}
 
     def get_work_item_type_reference_name(
-        self, token, its_project: ITSProjectInDB, work_item_type: str = None
+        self, token, its_project: ITSProjectInDB, work_item_type: Optional[str] = None
     ) -> Optional[str]:
 
         if not work_item_type:
@@ -774,7 +778,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         issue_dict: dict,
         its_project: ITSProjectInDB,
         developer_map_callback: Callable,
-        comment: ITSIssueComment = None,
+        comment: Optional[ITSIssueComment] = None,
     ) -> ITSIssue:
 
         # wit = work item type

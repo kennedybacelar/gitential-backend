@@ -167,7 +167,7 @@ def constant_factory(value):
 class InMemWorkspaceScopedRepository(
     BaseWorkspaceScopedRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
-    def all_ids(self, workspace_id: int) -> List[int]:
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
         pass
 
     def __init__(self, in_db_cls: Callable[..., InDBType]):
@@ -312,7 +312,7 @@ class InMemCredentialRepository(
 class InMemProjectRepository(
     ProjectRepository, InMemWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]
 ):
-    def all_ids(self, workspace_id: int) -> List[int]:
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
         pass
 
     def search(self, workspace_id: int, q: str) -> List[ProjectInDB]:
@@ -322,17 +322,17 @@ class InMemProjectRepository(
             if q.capitalize() in item.name.capitalize()
         ]
 
-    def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
+    def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:  # type: ignore[empty-body]
         pass
 
-    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:  # type: ignore[empty-body]
         pass
 
 
 class InMemRepositoryRepository(
     RepositoryRepository, InMemWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
 ):
-    def all_ids(self, workspace_id: int) -> List[int]:
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
         pass
 
     def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
@@ -367,7 +367,7 @@ class InMemProjectRepositoryRepository(
     ProjectRepositoryRepository,
     InMemWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB],
 ):
-    def all_ids(self, workspace_id: int) -> List[int]:
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
         pass
 
     def get_repo_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:

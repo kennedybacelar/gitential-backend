@@ -58,9 +58,9 @@ async def _get_user_info(request, remote, token):
 async def auth(
     backend: str,
     request: Request,
-    id_token: str = None,
-    code: str = None,
-    oauth_verifier: str = None,
+    id_token: Optional[str] = None,
+    code: Optional[str] = None,
+    oauth_verifier: Optional[str] = None,
     g: GitentialContext = Depends(gitential_context),
     oauth: OAuth = Depends(),
     current_user=Depends(current_user),
