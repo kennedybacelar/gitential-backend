@@ -50,6 +50,10 @@ class BaseRepository(ABC, Generic[IdType, CreateType, UpdateType, InDBType]):
         pass
 
     @abstractmethod
+    def count_rows(self) -> int:
+        pass
+
+    @abstractmethod
     def truncate(self):
         pass
 
@@ -96,6 +100,10 @@ class BaseWorkspaceScopedRepository(ABC, Generic[IdType, CreateType, UpdateType,
 
     @abstractmethod
     def all_ids(self, workspace_id: int) -> List[int]:
+        pass
+
+    @abstractmethod
+    def count_rows(self, workspace_id: int) -> int:
         pass
 
     @abstractmethod

@@ -1,11 +1,14 @@
 from typing import List, Tuple, Optional
 from urllib.parse import urlparse
+
 from email_validator import validate_email, EmailNotValidError
 
 from gitential2.datatypes import RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
-from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.its import ITSIssueStatusCategory, ITSIssueChangeType
+from gitential2.datatypes.its_projects import ITSProjectInDB
+from gitential2.integrations.common import get_time_of_last_element
+from gitential2.utils import is_timestamp_within_days
 
 
 def _get_organization_and_project_from_its_project(its_project_namespace: str) -> Tuple[str, str]:
@@ -81,7 +84,13 @@ def _parse_clone_url(url: str) -> Tuple[str, str, str]:
     return ("", "", "")
 
 
-def _paginate_with_skip_top(client, starting_url, top=100) -> list:
+def _paginate_with_skip_top(
+    client,
+    starting_url,
+    top=100,
+    repo_analysis_limit_in_days: Optional[int] = None,
+    time_restriction_check_key: Optional[str] = None,
+) -> list:
     ret: list = []
     skip = 0
 
@@ -95,10 +104,35 @@ def _paginate_with_skip_top(client, starting_url, top=100) -> list:
             count = json_resp["count"]
             value = json_resp["value"]
             ret += value
-            if count >= top:
+            if __is_able_to_continue_walking(
+                values=value,
+                count=count,
+                top=top,
+                repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+                time_restriction_check_key=time_restriction_check_key,
+            ):
                 skip = skip + top
             else:
                 return ret
+
+
+def __is_able_to_continue_walking(
+    values: List,
+    count: int,
+    top: int,
+    repo_analysis_limit_in_days: Optional[int] = None,
+    time_restriction_check_key: Optional[str] = None,
+) -> bool:
+    time_of_last_el = get_time_of_last_element(values, time_restriction_check_key)
+    return bool(
+        count >= top
+        and (
+            not repo_analysis_limit_in_days
+            or repo_analysis_limit_in_days
+            and time_of_last_el
+            and is_timestamp_within_days(time_of_last_el, repo_analysis_limit_in_days)
+        )
+    )
 
 
 def to_author_alias(raw_user):

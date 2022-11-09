@@ -1,10 +1,12 @@
-from typing import Optional, Callable, List, Tuple
 from datetime import datetime
+from typing import Optional, Callable, List, Tuple
+
+from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
-from authlib.integrations.requests_client import OAuth2Session
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
+from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.pull_requests import (
     PullRequest,
     PullRequestComment,
@@ -12,8 +14,6 @@ from gitential2.datatypes.pull_requests import (
     PullRequestData,
     PullRequestState,
 )
-from gitential2.datatypes.authors import AuthorAlias
-
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
 from .common import log_api_error, walk_next_link
 from ..utils.is_bugfix import calculate_is_bugfix
@@ -103,13 +103,17 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             extra=project,
         )
 
-    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+    def _collect_raw_pull_requests(
+        self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> list:
         if repository.extra and "id" in repository.extra:
             project_id = repository.extra["id"]
             merge_requests = walk_next_link(
                 client,
                 f"{self.api_base_url}/projects/{project_id}/merge_requests?state=all&per_page=100&view=simple",
                 integration_name="gitlab_raw_prs",
+                repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+                time_restriction_check_key="created_at",
             )
             return merge_requests
         else:
@@ -121,7 +125,9 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
         return raw_pr["iid"], parse_datetime(raw_pr["updated_at"])
 
-    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+    def _collect_raw_pull_request(
+        self, repository: RepositoryInDB, pr_number: int, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> dict:
         if repository.extra and "id" in repository.extra:
             project_id = repository.extra["id"]
         else:
