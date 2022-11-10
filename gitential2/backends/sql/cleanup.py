@@ -14,7 +14,7 @@ from gitential2.utils import is_list_not_empty
 
 logger = get_logger(__name__)
 
-DELETE_ID_CHUNK_SIZE: int = 100
+DELETE_ID_CHUNK_SIZE: int = 1000
 
 
 class DeleteRowsResult(BaseModel):
@@ -49,18 +49,19 @@ def perform_data_cleanup(
 def __perform_data_cleanup_on_workspace(
     g: GitentialContext, workspace_id: int, cleanup_type: Optional[CleanupType] = CleanupType.full
 ) -> List[CleanupType]:
+    date_to: Optional[datetime] = __get_date_to(g.settings.extraction.repo_analysis_limit_in_days)
+    repo_ids_to_delete = __get_repo_ids_to_delete(g=g, workspace_id=workspace_id)
+    itsp_ids_to_delete = __get_itsp_ids_to_be_deleted(g=g, workspace_id=workspace_id)
+
     logger.info(
         "Starting data cleanup for workspace.",
         workspace_id=workspace_id,
         repo_analysis_limit_in_days=g.settings.extraction.repo_analysis_limit_in_days,
         its_project_analysis_limit_in_days=g.settings.extraction.its_project_analysis_limit_in_days,
+        date_to=date_to,
+        repo_ids_to_delete=repo_ids_to_delete,
+        itsp_ids_to_delete=itsp_ids_to_delete,
     )
-
-    date_to: Optional[datetime] = __get_date_to(g.settings.extraction.repo_analysis_limit_in_days)
-    repo_ids_to_delete = __get_repo_ids_to_delete(g=g, workspace_id=workspace_id)
-    logger.info("repo_ids_to_delete", repo_ids_to_delete=repo_ids_to_delete)
-    itsp_ids_to_delete = __get_itsp_ids_to_be_deleted(g=g, workspace_id=workspace_id)
-    logger.info("itsp_ids_to_delete", itsp_ids_to_delete=itsp_ids_to_delete)
 
     cleanup_types: List[CleanupType] = []
     if cleanup_type in (CleanupType.full, CleanupType.commits):
@@ -87,7 +88,7 @@ def __perform_data_cleanup_on_workspace(
 
 
 def __remove_redundant_commit_data(
-    g: GitentialContext, wid: int, repo_ids_to_delete: List[int], date_to: Optional[datetime]
+    g: GitentialContext, wid: int, repo_ids_to_delete: List[int], date_to: Optional[datetime] = None
 ) -> CleanupType:
     logger.info(
         "Attempting to remove redundant data for commits...",
@@ -99,11 +100,8 @@ def __remove_redundant_commit_data(
     commits_to_delete = g.backend.extracted_commits.select_extracted_commits(
         workspace_id=wid, date_to=date_to, repo_ids=repo_ids_to_delete
     )
-    commit_hashes_to_be_deleted = [c.commit_id for c in commits_to_delete]
-    logger.info(
-        "Commits selected for cleanup.",
-        number_of_commits_to_be_deleted=len(commit_hashes_to_be_deleted),
-    )
+    commit_hashes_to_be_deleted: List[str] = [c.commit_id for c in commits_to_delete]
+    logger.info(number_of_commit_hashes_selected_for_cleanup=len(commit_hashes_to_be_deleted))
 
     items_key: str = "commit_ids"
 
@@ -368,26 +366,32 @@ def __delete_rows(
 ) -> DeleteRowsResult:
     number_of_rows_before_clean: int = check_no_rows_partial_fn()
 
-    def __log_delete_attempt():
+    def __log_delete_attempt(chuck_size: int):
         logger.info(
             f"Attempting to delete rows from {table_name} table.",
             workspace_id=wid,
-            number_of_rows_to_be_deleted=len(item_ids_to_delete),
+            number_of_rows_to_be_deleted=chuck_size,
         )
 
     number_of_deleted_rows: int = 0
     if is_list_not_empty(item_ids_to_delete):
-        if len(item_ids_to_delete) <= 100:
-            __log_delete_attempt()
+        if len(item_ids_to_delete) <= DELETE_ID_CHUNK_SIZE:
+            __log_delete_attempt(chuck_size=len(item_ids_to_delete))
             number_of_deleted_rows = delete_rows_partial_fn(**{items_key: item_ids_to_delete})
         else:
-            delete_id_chunks = [
+            delete_chunks = [
                 item_ids_to_delete[x : x + DELETE_ID_CHUNK_SIZE]
                 for x in range(0, len(item_ids_to_delete), DELETE_ID_CHUNK_SIZE)
             ]
-            for delete_id_chunk in delete_id_chunks:
-                __log_delete_attempt()
-                delete_result: int = delete_rows_partial_fn(**{items_key: delete_id_chunk})
+            for chunk in delete_chunks:
+                __log_delete_attempt(chuck_size=len(chunk))
+                delete_result: int = delete_rows_partial_fn(**{items_key: chunk})
+                logger.info(
+                    "Rows deleted from table.",
+                    table_name=table_name,
+                    workspace_id=wid,
+                    number_of_deleted_rows=delete_result,
+                )
                 number_of_deleted_rows += delete_result
 
     number_of_rows_after_clean: int = check_no_rows_partial_fn()
