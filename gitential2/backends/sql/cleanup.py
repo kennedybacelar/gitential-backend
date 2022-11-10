@@ -1,7 +1,6 @@
-import numpy as np
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Optional, List, Iterable, Set
+from typing import Optional, List, Iterable, Set, Callable, Any
 
 from pydantic import BaseModel
 from structlog import get_logger
@@ -14,6 +13,22 @@ from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
 from gitential2.utils import is_list_not_empty
 
 logger = get_logger(__name__)
+
+DELETE_ID_CHUNK_SIZE: int = 100
+
+
+class DeleteRowsResult(BaseModel):
+    no_deleted_rows: int
+    no_rows_before_clean: int
+    no_rows_after_clean: int
+
+
+class DeleteSettings(BaseModel):
+    items_title: str
+    delete_fn: Callable
+    count_rows_fn: Callable
+    delete_ids_key: str
+    item_ids_to_delete: List[Any]
 
 
 def perform_data_cleanup(
@@ -50,18 +65,16 @@ def __perform_data_cleanup_on_workspace(
     cleanup_types: List[CleanupType] = []
     if cleanup_type in (CleanupType.full, CleanupType.commits):
         res_c = __remove_redundant_commit_data(
-            g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_to=date_to
+            g=g, wid=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_to=date_to
         )
         cleanup_types.append(res_c)
     if cleanup_type in (CleanupType.full, CleanupType.pull_requests):
         res_pr = __remove_redundant_pull_request_data(
-            g=g, workspace_id=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_to=date_to
+            g=g, wid=workspace_id, repo_ids_to_delete=repo_ids_to_delete, date_to=date_to
         )
         cleanup_types.append(res_pr)
     if cleanup_type in (CleanupType.full, CleanupType.its_projects):
-        res_its = __remove_redundant_data_for_its_projects(
-            g=g, workspace_id=workspace_id, itsp_ids_to_delete=itsp_ids_to_delete
-        )
+        res_its = __remove_redundant_data_for_its_projects(g=g, wid=workspace_id, itsp_ids_to_delete=itsp_ids_to_delete)
         cleanup_types.append(res_its)
     if cleanup_type in (CleanupType.full, CleanupType.redis):
         res_redis = __remove_redundant_data_for_redis(
@@ -74,17 +87,17 @@ def __perform_data_cleanup_on_workspace(
 
 
 def __remove_redundant_commit_data(
-    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], date_to: Optional[datetime]
+    g: GitentialContext, wid: int, repo_ids_to_delete: List[int], date_to: Optional[datetime]
 ) -> CleanupType:
     logger.info(
         "Attempting to remove redundant data for commits...",
-        workspace_id=workspace_id,
+        workspace_id=wid,
         repo_ids_to_delete=repo_ids_to_delete,
         date_to=date_to,
     )
 
     commits_to_delete = g.backend.extracted_commits.select_extracted_commits(
-        workspace_id=workspace_id, date_to=date_to, repo_ids=repo_ids_to_delete
+        workspace_id=wid, date_to=date_to, repo_ids=repo_ids_to_delete
     )
     commit_hashes_to_be_deleted = [c.commit_id for c in commits_to_delete]
     logger.info(
@@ -92,298 +105,186 @@ def __remove_redundant_commit_data(
         number_of_commits_to_be_deleted=len(commit_hashes_to_be_deleted),
     )
 
-    extracted_commits_del_res = __delete_rows(
-        delete_rows_partial_fn=partial(g.backend.extracted_commits.delete_commits, workspace_id=workspace_id),
-        check_no_rows_partial_fn=partial(g.backend.extracted_commits.count_rows, workspace_id=workspace_id),
-        items_key="commit_ids",
-        item_ids_to_delete=commit_hashes_to_be_deleted
-    )
-    logger.info(
-        f"Cleanup of 'extracted_commits' finished.",
-        number_of_deleted_rows=extracted_commits_del_res.no_deleted_rows,
-        number_of_rows_before_clean=extracted_commits_del_res.no_rows_before_clean,
-        number_of_rows_after_clean=extracted_commits_del_res.no_rows_after_clean,
-    )
+    items_key: str = "commit_ids"
 
-    # no_extracted_commits_before_clean: int = g.backend.extracted_commits.count_rows(workspace_id=workspace_id)
-    # number_of_deleted_extracted_commits: int = g.backend.extracted_commits.delete_commits(
-    #     workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
-    # )
-    # no_extracted_commits_after_clean: int = g.backend.extracted_commits.count_rows(workspace_id=workspace_id)
-    # logger.info(
-    #     "Cleanup of extracted_commits finished.",
-    #     number_of_deleted_extracted_commits=number_of_deleted_extracted_commits,
-    #     no_extracted_commits_before_clean=no_extracted_commits_before_clean,
-    #     no_extracted_commits_after_clean=no_extracted_commits_after_clean,
-    # )
+    delete_settings: List[DeleteSettings] = [
+        DeleteSettings(
+            items_title="extracted_commits",
+            delete_fn=g.backend.extracted_commits.delete_commits,
+            count_rows_fn=g.backend.extracted_commits.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=commit_hashes_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="calculated_commits",
+            delete_fn=g.backend.calculated_commits.delete_commits,
+            count_rows_fn=g.backend.calculated_commits.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=commit_hashes_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="extracted_patches",
+            delete_fn=g.backend.extracted_patches.delete_extracted_patches,
+            count_rows_fn=g.backend.extracted_patches.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=commit_hashes_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="calculated_patches",
+            delete_fn=g.backend.calculated_patches.delete_calculated_patches,
+            count_rows_fn=g.backend.calculated_patches.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=commit_hashes_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="extracted_patch_rewrites",
+            delete_fn=g.backend.extracted_patch_rewrites.delete_extracted_patch_rewrites,
+            count_rows_fn=g.backend.extracted_patch_rewrites.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=commit_hashes_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="extracted_commit_branches",
+            delete_fn=g.backend.extracted_commit_branches.delete_extracted_commit_branches,
+            count_rows_fn=g.backend.extracted_commit_branches.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=commit_hashes_to_be_deleted,
+        ),
+    ]
 
-    no_calculated_commits_before_clean: int = g.backend.calculated_commits.count_rows(workspace_id=workspace_id)
-    number_of_deleted_calculated_commits: int = g.backend.calculated_commits.delete_commits(
-        workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
-    )
-    no_calculated_commits_after_clean: int = g.backend.calculated_commits.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of calculated_commits finished.",
-        number_of_deleted_calculated_commits=number_of_deleted_calculated_commits,
-        no_calculated_commits_before_clean=no_calculated_commits_before_clean,
-        no_calculated_commits_after_clean=no_calculated_commits_after_clean,
-    )
-
-    no_extracted_patches_before_clean: int = g.backend.extracted_patches.count_rows(workspace_id=workspace_id)
-    number_of_deleted_extracted_patches: int = g.backend.extracted_patches.delete_extracted_patches(
-        workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
-    )
-    no_extracted_patches_after_clean: int = g.backend.extracted_patches.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of extracted_patches finished.",
-        number_of_deleted_extracted_patches=number_of_deleted_extracted_patches,
-        no_extracted_patches_before_clean=no_extracted_patches_before_clean,
-        no_extracted_patches_after_clean=no_extracted_patches_after_clean,
-    )
-
-    no_calculated_patches_before_clean: int = g.backend.calculated_patches.count_rows(workspace_id=workspace_id)
-    number_of_deleted_calculated_patches: int = g.backend.calculated_patches.delete_calculated_patches(
-        workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
-    )
-    no_calculated_patches_after_clean: int = g.backend.calculated_patches.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of calculated_patches finished.",
-        number_of_deleted_calculated_patches=number_of_deleted_calculated_patches,
-        no_calculated_patches_before_clean=no_calculated_patches_before_clean,
-        no_calculated_patches_after_clean=no_calculated_patches_after_clean,
-    )
-
-    no_extracted_patch_rewrites_before_clean: int = g.backend.extracted_patch_rewrites.count_rows(
-        workspace_id=workspace_id
-    )
-    number_of_deleted_extracted_patch_rewrites: int = (
-        g.backend.extracted_patch_rewrites.delete_extracted_patch_rewrites(
-            workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
-        )
-    )
-    no_extracted_patch_rewrites_after_clean: int = g.backend.extracted_patch_rewrites.count_rows(
-        workspace_id=workspace_id
-    )
-    logger.info(
-        "Cleanup of extracted_patch_rewrites finished.",
-        number_of_deleted_extracted_patch_rewrites=number_of_deleted_extracted_patch_rewrites,
-        no_extracted_patch_rewrites_before_clean=no_extracted_patch_rewrites_before_clean,
-        no_extracted_patch_rewrites_after_clean=no_extracted_patch_rewrites_after_clean,
-    )
-
-    no_extracted_commit_branches_before_clean: int = g.backend.extracted_commit_branches.count_rows(
-        workspace_id=workspace_id
-    )
-    number_of_deleted_extracted_commit_branches: int = (
-        g.backend.extracted_commit_branches.delete_extracted_commit_branches(
-            workspace_id=workspace_id, commit_ids=commit_hashes_to_be_deleted
-        )
-    )
-    no_extracted_commit_branches_after_clean: int = g.backend.extracted_commit_branches.count_rows(
-        workspace_id=workspace_id
-    )
-    logger.info(
-        "extracted_commit_branches deleted.",
-        number_of_deleted_extracted_commit_branches=number_of_deleted_extracted_commit_branches,
-        no_extracted_commit_branches_before_clean=no_extracted_commit_branches_before_clean,
-        no_extracted_commit_branches_after_clean=no_extracted_commit_branches_after_clean,
-    )
-
-    return CleanupType.commits
+    return __apply_delete_settings_list(wid=wid, delete_settings=delete_settings, c_type=CleanupType.commits)
 
 
 def __remove_redundant_pull_request_data(
-    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], date_to: Optional[datetime]
+    g: GitentialContext, wid: int, repo_ids_to_delete: List[int], date_to: Optional[datetime]
 ) -> CleanupType:
     logger.info(
         "Attempting to remove redundant data for pull requests...",
-        workspace_id=workspace_id,
+        workspace_id=wid,
         repo_ids_to_delete=repo_ids_to_delete,
         date_to=date_to,
     )
 
     prs_to_be_deleted: List[PullRequest] = g.backend.pull_requests.select_pull_requests(
-        workspace_id=workspace_id, date_to=date_to, repo_ids=repo_ids_to_delete
+        workspace_id=wid, date_to=date_to, repo_ids=repo_ids_to_delete
     )
     pr_ids_to_be_deleted: List[PullRequestId] = [pr.id_ for pr in prs_to_be_deleted]
     logger.info("Pull requests selected for cleanup.", number_of_pull_requests_to_be_deleted=len(pr_ids_to_be_deleted))
 
-    no_pull_requests_before_clean = g.backend.pull_requests.count_rows(workspace_id=workspace_id)
-    number_of_prs_deleted: int = g.backend.pull_requests.delete_pull_requests(
-        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
-    )
-    no_pull_requests_after_clean = g.backend.pull_requests.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of pull_requests finished.",
-        number_of_prs_deleted=number_of_prs_deleted,
-        no_pull_requests_before_clean=no_pull_requests_before_clean,
-        no_pull_requests_after_clean=no_pull_requests_after_clean,
-    )
+    items_key: str = "pr_ids"
 
-    no_pull_request_commits_before_clean = g.backend.pull_request_commits.count_rows(workspace_id=workspace_id)
-    number_of_deleted_pull_request_commits: int = g.backend.pull_request_commits.delete_pull_request_commits(
-        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
-    )
-    no_pull_request_commits_after_clean = g.backend.pull_request_commits.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of pull_request_commits finished.",
-        number_of_deleted_pull_request_commits=number_of_deleted_pull_request_commits,
-        no_pull_request_commits_before_clean=no_pull_request_commits_before_clean,
-        no_pull_request_commits_after_clean=no_pull_request_commits_after_clean,
-    )
+    delete_settings: List[DeleteSettings] = [
+        DeleteSettings(
+            items_title="pull_requests",
+            delete_fn=g.backend.pull_requests.delete_pull_requests,
+            count_rows_fn=g.backend.pull_requests.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=pr_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="pull_request_commits",
+            delete_fn=g.backend.pull_request_commits.delete_pull_request_commits,
+            count_rows_fn=g.backend.pull_request_commits.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=pr_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="pull_request_comments",
+            delete_fn=g.backend.pull_request_comments.delete_pull_request_comment,
+            count_rows_fn=g.backend.pull_request_comments.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=pr_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="pull_request_labels",
+            delete_fn=g.backend.pull_request_labels.delete_pull_request_labels,
+            count_rows_fn=g.backend.pull_request_labels.count_rows,
+            delete_ids_key=items_key,
+            item_ids_to_delete=pr_ids_to_be_deleted,
+        ),
+    ]
 
-    no_pull_request_comments_before_clean = g.backend.pull_request_comments.count_rows(workspace_id=workspace_id)
-    number_of_deleted_pull_request_comments: int = g.backend.pull_request_comments.delete_pull_request_comment(
-        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
-    )
-    no_pull_request_comments_after_clean = g.backend.pull_request_comments.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of pull_request_comments finished.",
-        number_of_deleted_pull_request_comments=number_of_deleted_pull_request_comments,
-        no_pull_request_comments_before_clean=no_pull_request_comments_before_clean,
-        no_pull_request_comments_after_clean=no_pull_request_comments_after_clean,
-    )
-
-    no_pull_request_labels_before_clean = g.backend.pull_request_labels.count_rows(workspace_id=workspace_id)
-    number_of_deleted_pull_request_labels: int = g.backend.pull_request_labels.delete_pull_request_labels(
-        workspace_id=workspace_id, pr_ids=pr_ids_to_be_deleted
-    )
-    no_pull_request_labels_after_clean = g.backend.pull_request_labels.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of pull_request_labels finished.",
-        number_of_deleted_pull_request_labels=number_of_deleted_pull_request_labels,
-        no_pull_request_labels_before_clean=no_pull_request_labels_before_clean,
-        no_pull_request_labels_after_clean=no_pull_request_labels_after_clean,
-    )
-
-    return CleanupType.pull_requests
+    return __apply_delete_settings_list(wid=wid, delete_settings=delete_settings, c_type=CleanupType.pull_requests)
 
 
 def __remove_redundant_data_for_its_projects(
-    g: GitentialContext, workspace_id: int, itsp_ids_to_delete: List[int]
+    g: GitentialContext, wid: int, itsp_ids_to_delete: List[int]
 ) -> CleanupType:
     date_to: Optional[datetime] = __get_date_to(g.settings.extraction.its_project_analysis_limit_in_days)
 
     logger.info(
         "Attempting to remove redundant data for ITS projects...",
-        workspace_id=workspace_id,
+        workspace_id=wid,
         its_issues_to_be_deleted=itsp_ids_to_delete,
         date_to=date_to,
     )
 
     its_issues_to_delete = g.backend.its_issues.select_its_issues(
-        workspace_id=workspace_id, date_to=date_to, itsp_ids=itsp_ids_to_delete
+        workspace_id=wid, date_to=date_to, itsp_ids=itsp_ids_to_delete
     )
     its_issue_ids_to_be_deleted: List[str] = [its.id for its in its_issues_to_delete]
     logger.info("ITS Issues selected for cleanup.", no_its_issue_ids_to_be_deleted=len(its_issue_ids_to_be_deleted))
 
-    no_its_issues_before_clean: int = g.backend.its_issues.count_rows(workspace_id=workspace_id)
-    number_of_deleted_its_issues: int = g.backend.its_issues.delete_its_issues(
-        workspace_id=workspace_id, its_issue_ids=its_issue_ids_to_be_deleted
-    )
-    no_its_issues_after_clean: int = g.backend.its_issues.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of its_issues finished.",
-        number_of_deleted_its_issues=number_of_deleted_its_issues,
-        no_its_issues_before_clean=no_its_issues_before_clean,
-        no_its_issues_after_clean=no_its_issues_after_clean,
-    )
+    delete_settings: List[DeleteSettings] = [
+        DeleteSettings(
+            items_title="its_issues",
+            delete_fn=g.backend.its_issues.delete_its_issues,
+            count_rows_fn=g.backend.its_issues.count_rows,
+            delete_ids_key="its_issue_ids",
+            item_ids_to_delete=its_issue_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="its_issue_changes",
+            delete_fn=g.backend.its_issue_changes.delete_its_issue_changes,
+            count_rows_fn=g.backend.its_issue_changes.count_rows,
+            delete_ids_key="its_ids",
+            item_ids_to_delete=its_issue_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="its_issue_times_in_statuses",
+            delete_fn=g.backend.its_issue_times_in_statuses.delete_its_issue_time_in_statuses,
+            count_rows_fn=g.backend.its_issue_times_in_statuses.count_rows,
+            delete_ids_key="its_ids",
+            item_ids_to_delete=its_issue_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="its_issue_comments",
+            delete_fn=g.backend.its_issue_comments.delete_its_issue_comments,
+            count_rows_fn=g.backend.its_issue_comments.count_rows,
+            delete_ids_key="its_ids",
+            item_ids_to_delete=its_issue_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="its_issue_linked_issues",
+            delete_fn=g.backend.its_issue_linked_issues.delete_its_issue_linked_issues,
+            count_rows_fn=g.backend.its_issue_linked_issues.count_rows,
+            delete_ids_key="its_ids",
+            item_ids_to_delete=its_issue_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="its_sprints",
+            delete_fn=g.backend.its_sprints.delete_its_sprints,
+            count_rows_fn=g.backend.its_sprints.count_rows,
+            delete_ids_key="itsp_ids",
+            item_ids_to_delete=itsp_ids_to_delete,
+        ),
+        DeleteSettings(
+            items_title="its_issue_sprints",
+            delete_fn=g.backend.its_issue_sprints.delete_its_issue_sprints,
+            count_rows_fn=g.backend.its_issue_sprints.count_rows,
+            delete_ids_key="its_ids",
+            item_ids_to_delete=its_issue_ids_to_be_deleted,
+        ),
+        DeleteSettings(
+            items_title="its_issue_worklogs",
+            delete_fn=g.backend.its_issue_worklogs.delete_its_issue_worklogs,
+            count_rows_fn=g.backend.its_issue_worklogs.count_rows,
+            delete_ids_key="its_ids",
+            item_ids_to_delete=its_issue_ids_to_be_deleted,
+        ),
+    ]
 
-    no_its_issue_changes_before_clean: int = g.backend.its_issue_changes.count_rows(workspace_id=workspace_id)
-    number_of_deleted_its_issue_changes: int = g.backend.its_issue_changes.delete_its_issue_changes(
-        workspace_id=workspace_id, its_ids=its_issue_ids_to_be_deleted
-    )
-    no_its_issue_changes_after_clean: int = g.backend.its_issue_changes.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of its_issue_changes finished.",
-        number_of_deleted_its_issue_changes=number_of_deleted_its_issue_changes,
-        no_its_issue_changes_before_clean=no_its_issue_changes_before_clean,
-        no_its_issue_changes_after_clean=no_its_issue_changes_after_clean,
-    )
-
-    no_its_issue_times_in_statuses_before_clean: int = g.backend.its_issue_times_in_statuses.count_rows(
-        workspace_id=workspace_id
-    )
-    number_of_deleted_its_issue_time_in_statuses: int = (
-        g.backend.its_issue_times_in_statuses.delete_its_issue_time_in_statuses(
-            workspace_id=workspace_id, its_ids=its_issue_ids_to_be_deleted
-        )
-    )
-    no_its_issue_times_in_statuses_after_clean: int = g.backend.its_issue_times_in_statuses.count_rows(
-        workspace_id=workspace_id
-    )
-    logger.info(
-        "Cleanup of its_issue_times_in_statuses finished.",
-        number_of_deleted_its_issue_time_in_statuses=number_of_deleted_its_issue_time_in_statuses,
-        no_its_issue_times_in_statuses_before_clean=no_its_issue_times_in_statuses_before_clean,
-        no_its_issue_times_in_statuses_after_clean=no_its_issue_times_in_statuses_after_clean,
-    )
-
-    no_its_issue_comments_before_clean: int = g.backend.its_issue_comments.count_rows(workspace_id=workspace_id)
-    number_of_deleted_its_issue_comments: int = g.backend.its_issue_comments.delete_its_issue_comments(
-        workspace_id=workspace_id, its_ids=its_issue_ids_to_be_deleted
-    )
-    no_its_issue_comments_after_clean: int = g.backend.its_issue_comments.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of its_issue_comments finished.",
-        number_of_deleted_its_issue_comments=number_of_deleted_its_issue_comments,
-        no_its_issue_comments_before_clean=no_its_issue_comments_before_clean,
-        no_its_issue_comments_after_clean=no_its_issue_comments_after_clean,
-    )
-
-    no_its_issue_linked_issues_before_clean: int = g.backend.its_issue_linked_issues.count_rows(
-        workspace_id=workspace_id
-    )
-    number_of_deleted_its_issue_linked_issues: int = g.backend.its_issue_linked_issues.delete_its_issue_linked_issues(
-        workspace_id=workspace_id, its_ids=its_issue_ids_to_be_deleted
-    )
-    no_its_issue_linked_issues_after_clean: int = g.backend.its_issue_linked_issues.count_rows(
-        workspace_id=workspace_id
-    )
-    logger.info(
-        "Cleanup of its_issue_linked_issues finished.",
-        number_of_deleted_its_issue_linked_issues=number_of_deleted_its_issue_linked_issues,
-        no_its_issue_linked_issues_before_clean=no_its_issue_linked_issues_before_clean,
-        no_its_issue_linked_issues_after_clean=no_its_issue_linked_issues_after_clean,
-    )
-
-    no_its_sprints_before_clean: int = g.backend.its_sprints.count_rows(workspace_id=workspace_id)
-    number_of_deleted_its_sprints: int = g.backend.its_sprints.delete_its_sprints(
-        workspace_id=workspace_id, itsp_ids=itsp_ids_to_delete
-    )
-    no_its_sprints_after_clean: int = g.backend.its_sprints.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of its_sprints finished.",
-        number_of_deleted_its_sprints=number_of_deleted_its_sprints,
-        no_its_sprints_before_clean=no_its_sprints_before_clean,
-        no_its_sprints_after_clean=no_its_sprints_after_clean,
-    )
-
-    no_its_issue_sprints_before_clean: int = g.backend.its_issue_sprints.count_rows(workspace_id=workspace_id)
-    number_of_deleted_its_issue_sprints: int = g.backend.its_issue_sprints.delete_its_issue_sprints(
-        workspace_id=workspace_id, its_ids=its_issue_ids_to_be_deleted
-    )
-    no_its_issue_sprints_after_clean: int = g.backend.its_issue_sprints.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of its_issue_sprints finished.",
-        number_of_deleted_its_issue_sprints=number_of_deleted_its_issue_sprints,
-        no_its_issue_sprints_before_clean=no_its_issue_sprints_before_clean,
-        no_its_issue_sprints_after_clean=no_its_issue_sprints_after_clean,
-    )
-
-    no_its_issue_worklogs_before_clean: int = g.backend.its_issue_worklogs.count_rows(workspace_id=workspace_id)
-    number_of_deleted_its_issue_worklogs: int = g.backend.its_issue_worklogs.delete_its_issue_worklogs(
-        workspace_id=workspace_id, its_ids=its_issue_ids_to_be_deleted
-    )
-    no_its_issue_worklogs_after_clean: int = g.backend.its_issue_worklogs.count_rows(workspace_id=workspace_id)
-    logger.info(
-        "Cleanup of its_issue_worklogs finished.",
-        number_of_deleted_its_issue_worklogs=number_of_deleted_its_issue_worklogs,
-        no_its_issue_worklogs_before_clean=no_its_issue_worklogs_before_clean,
-        no_its_issue_worklogs_after_clean=no_its_issue_worklogs_after_clean,
-    )
-
-    return CleanupType.its_projects
+    return __apply_delete_settings_list(wid=wid, delete_settings=delete_settings, c_type=CleanupType.its_projects)
 
 
 def __remove_redundant_data_for_redis(
@@ -391,6 +292,8 @@ def __remove_redundant_data_for_redis(
 ) -> Optional[CleanupType]:
     is_rids = is_list_not_empty(repo_ids_to_delete)
     is_itsp_ids = is_list_not_empty(itsp_ids_to_delete)
+
+    result = None
 
     if is_rids or is_itsp_ids:
         logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
@@ -416,9 +319,11 @@ def __remove_redundant_data_for_redis(
 
         logger.info("Keys deleted from redis.", keys=keys)
 
-        return CleanupType.redis
+        result = CleanupType.redis
     else:
         logger.info("Can not perform redis cleanup. Both repo_ids_to_delete and itsp_ids_to_delete were empty.")
+
+    return result
 
 
 def __get_date_to(number_of_days_diff: Optional[int] = None) -> Optional[datetime]:
@@ -453,29 +358,37 @@ def __get_itsp_ids_to_be_deleted(g: GitentialContext, workspace_id: int) -> List
     return [itsp_id for itsp_id in itsp_ids_in_its_issues if itsp_id not in itsp_ids_all or itsp_id not in itsp_ids]
 
 
-class DeleteRowsResult(BaseModel):
-    no_deleted_rows: int
-    no_rows_before_clean: int
-    no_rows_after_clean: int
-
-
 def __delete_rows(
     delete_rows_partial_fn,
     check_no_rows_partial_fn,
     items_key: str,
-    item_ids_to_delete: List[any],
+    item_ids_to_delete: List[Any],
+    table_name: str,
+    wid: int,
 ) -> DeleteRowsResult:
     number_of_rows_before_clean: int = check_no_rows_partial_fn()
+
+    def __log_delete_attempt():
+        logger.info(
+            f"Attempting to delete rows from {table_name} table.",
+            workspace_id=wid,
+            number_of_rows_to_be_deleted=len(item_ids_to_delete),
+        )
 
     number_of_deleted_rows: int = 0
     if is_list_not_empty(item_ids_to_delete):
         if len(item_ids_to_delete) <= 100:
-            number_of_deleted_rows: int = delete_rows_partial_fn(**{items_key: item_ids_to_delete})
+            __log_delete_attempt()
+            number_of_deleted_rows = delete_rows_partial_fn(**{items_key: item_ids_to_delete})
         else:
-            item_lists = np.array_split(item_ids_to_delete, 100)
-            for items in item_lists:
-                del_res: int = delete_rows_partial_fn(**{items_key: items})
-                number_of_deleted_rows += del_res
+            delete_id_chunks = [
+                item_ids_to_delete[x : x + DELETE_ID_CHUNK_SIZE]
+                for x in range(0, len(item_ids_to_delete), DELETE_ID_CHUNK_SIZE)
+            ]
+            for delete_id_chunk in delete_id_chunks:
+                __log_delete_attempt()
+                delete_result: int = delete_rows_partial_fn(**{items_key: delete_id_chunk})
+                number_of_deleted_rows += delete_result
 
     number_of_rows_after_clean: int = check_no_rows_partial_fn()
     return DeleteRowsResult(
@@ -483,3 +396,28 @@ def __delete_rows(
         no_rows_before_clean=number_of_rows_before_clean,
         no_rows_after_clean=number_of_rows_after_clean,
     )
+
+
+def __log_delete_results(delete_result: DeleteRowsResult, items_title: str):
+    logger.info(
+        f"Cleanup of '{items_title}' finished.",
+        number_of_deleted_rows=delete_result.no_deleted_rows,
+        number_of_rows_before_clean=delete_result.no_rows_before_clean,
+        number_of_rows_after_clean=delete_result.no_rows_after_clean,
+    )
+
+
+def __apply_delete_settings_list(wid: int, delete_settings: List[DeleteSettings], c_type: CleanupType) -> CleanupType:
+    for ds in delete_settings:
+        logger.info(f"Cleanup of {ds.items_title} started.")
+        delete_result: DeleteRowsResult = __delete_rows(
+            delete_rows_partial_fn=partial(ds.delete_fn, workspace_id=wid),
+            check_no_rows_partial_fn=partial(ds.count_rows_fn, workspace_id=wid),
+            items_key=ds.delete_ids_key,
+            item_ids_to_delete=ds.item_ids_to_delete,
+            table_name=ds.items_title,
+            wid=wid,
+        )
+        __log_delete_results(delete_result=delete_result, items_title=ds.items_title)
+
+    return c_type
