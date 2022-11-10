@@ -31,14 +31,17 @@ def reset_workspace(workspace_id: int, reset_type: ResetType = typer.Option("ful
 
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
-    if workspace:
-        logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
-        if reset_type in (ResetType.full, ResetType.sql_only):
-            g.backend.reset_workspace(workspace_id=workspace_id)
-        if reset_type in (ResetType.full, ResetType.redis_only):
-            g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
-    else:
-        logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
+
+    confirm_res = typer.confirm("Are you really sure you want to reset the workspace?")
+    if confirm_res:
+        if workspace:
+            logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
+            if reset_type in (ResetType.full, ResetType.sql_only):
+                g.backend.reset_workspace(workspace_id=workspace_id)
+            if reset_type in (ResetType.full, ResetType.redis_only):
+                g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+        else:
+            logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
 
 
 @app.command("duplicate")
@@ -102,15 +105,19 @@ def purge_workspace(workspace_id: int):
     workspace_members: List[WorkspaceMemberInDB] = g.backend.workspace_members.get_for_workspace(
         workspace_id=workspace_id
     )
-    if workspace:
-        if all(not member.primary for member in workspace_members):
-            logger.info("Starting to purge workspace!", workspace_id=workspace.id)
-            g.backend.delete_workspace_sql(workspace_id)
-            g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+
+    confirm_res = typer.confirm("Are you really sure you want to purge the workspace?")
+    if confirm_res:
+        if workspace:
+            is_workspace_not_primary: bool = all(not member.primary for member in workspace_members)
+            if is_workspace_not_primary:
+                logger.info("Starting to purge workspace!", workspace_id=workspace.id)
+                g.backend.delete_workspace_sql(workspace_id)
+                g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+            else:
+                logger.exception("Failed to purge workspace! Can not purge primary workspace!")
         else:
-            logger.exception("Failed to purge workspace! Can not purge primary workspace!")
-    else:
-        logger.exception("Failed to purge workspace! Workspace not found by the provided workspace id!")
+            logger.exception("Failed to purge workspace! Workspace not found by the provided workspace id!")
 
 
 @app.command("cleanup")
@@ -131,9 +138,12 @@ def perform_workspace_cleanup(
         logger.exception(
             "Failed to cleanup workspace! Workspace not exists for given workspace id!", workspace_id=workspace_id
         )
-        return
-
-    if workspace:
-        perform_data_cleanup(g=g, workspace_ids=[workspace.id], cleanup_type=cleanup_type)
     else:
-        perform_data_cleanup(g=g, workspace_ids=[w.id for w in g.backend.workspaces.all()], cleanup_type=cleanup_type)
+        confirm_res = typer.confirm("Are you sure you want to perform cleanup process on workspace(s)?")
+        if confirm_res:
+            if workspace:
+                perform_data_cleanup(g=g, workspace_ids=[workspace.id], cleanup_type=cleanup_type)
+            else:
+                perform_data_cleanup(
+                    g=g, workspace_ids=[w.id for w in g.backend.workspaces.all()], cleanup_type=cleanup_type
+                )
