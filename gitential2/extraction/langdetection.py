@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 from pathlib import Path
 from typing import Optional, Tuple
 import os

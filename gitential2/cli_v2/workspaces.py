@@ -5,9 +5,11 @@ from structlog import get_logger
 
 from gitential2.core.users import get_user
 from .common import get_context
+from ..backends.sql.cleanup import perform_data_cleanup
 from ..core.api_keys import delete_api_keys_for_workspace
 from ..core.workspace_common import duplicate_workspace
 from ..datatypes import UserInDB, WorkspaceMemberInDB
+from ..datatypes.cli_v2 import ResetType, CleanupType
 from ..datatypes.workspaces import WorkspaceDuplicate
 from ..exceptions import SettingsException
 
@@ -16,7 +18,7 @@ logger = get_logger(__name__)
 
 
 @app.command("reset")
-def reset_workspace(workspace_id: int):
+def reset_workspace(workspace_id: int, reset_type: ResetType = typer.Option("full", "--type", "-t")):
     """
     DANGER ZONE!!! Workspace reset!
     \n
@@ -29,12 +31,17 @@ def reset_workspace(workspace_id: int):
 
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
-    if workspace:
-        logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
-        g.backend.reset_workspace(workspace_id=workspace_id)
-        g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
-    else:
-        logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
+
+    confirm_res = typer.confirm("Are you really sure you want to reset the workspace?")
+    if confirm_res:
+        if workspace:
+            logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
+            if reset_type in (ResetType.full, ResetType.sql_only):
+                g.backend.reset_workspace(workspace_id=workspace_id)
+            if reset_type in (ResetType.full, ResetType.redis_only):
+                g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+        else:
+            logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
 
 
 @app.command("duplicate")
@@ -98,12 +105,45 @@ def purge_workspace(workspace_id: int):
     workspace_members: List[WorkspaceMemberInDB] = g.backend.workspace_members.get_for_workspace(
         workspace_id=workspace_id
     )
-    if workspace:
-        if all(not member.primary for member in workspace_members):
-            logger.info("Starting to purge workspace!", workspace_id=workspace.id)
-            g.backend.delete_workspace_sql(workspace_id)
-            g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+
+    confirm_res = typer.confirm("Are you really sure you want to purge the workspace?")
+    if confirm_res:
+        if workspace:
+            is_workspace_not_primary: bool = all(not member.primary for member in workspace_members)
+            if is_workspace_not_primary:
+                logger.info("Starting to purge workspace!", workspace_id=workspace.id)
+                g.backend.delete_workspace_sql(workspace_id)
+                g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
+            else:
+                logger.exception("Failed to purge workspace! Can not purge primary workspace!")
         else:
-            logger.exception("Failed to purge workspace! Can not purge primary workspace!")
+            logger.exception("Failed to purge workspace! Workspace not found by the provided workspace id!")
+
+
+@app.command("cleanup")
+def perform_workspace_cleanup(
+    workspace_id: int = typer.Argument(None), cleanup_type: CleanupType = typer.Option("full", "--type", "-t")
+):
+    """
+    \b
+    This command will delete all redundant data from the PostgreSQL database and also from Redis.
+    Data is considered to be redundant if it is not used for anything. Like when a project is deleted and
+    the commits for a repo just lies there without any reason. The same thing happens with the Redis too.
+    """
+
+    g = get_context()
+    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+
+    if workspace_id and not workspace:
+        logger.exception(
+            "Failed to cleanup workspace! Workspace not exists for given workspace id!", workspace_id=workspace_id
+        )
     else:
-        logger.exception("Failed to purge workspace! Workspace not found by the provided workspace id!")
+        confirm_res = typer.confirm("Are you sure you want to perform cleanup process on workspace(s)?")
+        if confirm_res:
+            if workspace:
+                perform_data_cleanup(g=g, workspace_ids=[workspace.id], cleanup_type=cleanup_type)
+            else:
+                perform_data_cleanup(
+                    g=g, workspace_ids=[w.id for w in g.backend.workspaces.all()], cleanup_type=cleanup_type
+                )

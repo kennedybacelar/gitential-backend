@@ -120,7 +120,7 @@ def set_as_free(g: GitentialContext, user_id: int, end_time: Optional[datetime] 
 
 
 def set_as_professional(
-    g: GitentialContext, user_id: int, number_of_developers: int, stripe_event: dict = None
+    g: GitentialContext, user_id: int, number_of_developers: int, stripe_event: Optional[dict] = None
 ) -> SubscriptionInDB:
     user = g.backend.users.get_or_error(user_id)
     current_subs = _get_current_subscription_from_db(g, user_id=user.id)

@@ -374,19 +374,34 @@ class JiraIntegration(ITSProviderMixin, OAuthLoginMixin, BaseIntegration):
         statuses = self.http_get_json_and_cache(url=base_url + "/rest/api/3/status", token=token)
         return {status["id"]: status for status in statuses}
 
-    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
-        issue_header_dicts = self._list_project_issues(token, its_project, order_by="created DESC")
+    def list_all_issues_for_project(
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        date_from: Optional[datetime] = None,
+    ) -> List[ITSIssueHeader]:
+        jql = f'updated >= "{format_datetime_for_jql(date_from)}"' if date_from else None
+        logger.debug("list_all_issues_for_project", jql=jql)
+        issue_header_dicts = self._list_project_issues(
+            token,
+            its_project,
+            jql=jql,
+            order_by="created DESC",
+        )
         return [
             transform_dict_to_issue_header(issue_header_dict, its_project) for issue_header_dict in issue_header_dicts
         ]
 
     def list_recently_updated_issues(
-        self, token, its_project: ITSProjectInDB, date_from: Optional[datetime] = None
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        date_from: Optional[datetime] = None,
     ) -> List[ITSIssueHeader]:
         date_from = date_from or datetime.utcnow() - timedelta(days=7)
-        issue_header_dicts = self._list_project_issues(
-            token, its_project, jql=f'updated >= "{format_datetime_for_jql(date_from)}"', order_by="updated DESC"
-        )
+        jql = f'updated >= "{format_datetime_for_jql(date_from)}"'
+        logger.debug("list_recently_updated_issues", jql=jql)
+        issue_header_dicts = self._list_project_issues(token, its_project, jql, order_by="updated DESC")
         return [
             transform_dict_to_issue_header(issue_header_dict, its_project) for issue_header_dict in issue_header_dicts
         ]
