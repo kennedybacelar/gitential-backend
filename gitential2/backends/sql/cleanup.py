@@ -487,3 +487,34 @@ def __apply_delete_settings_list(wid: int, delete_settings: List[DeleteSettings]
 
 def __get_redis_key_for_cleanup(wid: int, c_type: CleanupType) -> str:
     return f"cleanup_started_for_workspace_{wid}__cleanup_type:{c_type}"
+
+
+def __remove_residual_data_of_cleanup_process(g: GitentialContext, wid: int):
+    """
+    The purpose of this function is the remove the residual data of the first cleanup process run by P&G.
+    The first implementation was not designed to deal with the possibility that the cleanup process could be
+    interrupted or an error could be thrown.
+    """
+
+    commit_ids_from_extracted_commits: Set[str] = set(g.backend.extracted_commits.get_commit_ids_all(workspace_id=wid))
+    other_commit_ids_list: Set[str] = set(
+        g.backend.calculated_commits.get_commit_ids_all(workspace_id=wid)
+        + g.backend.extracted_patches.get_commit_ids_all(workspace_id=wid)
+        + g.backend.calculated_patches.get_commit_ids_all(workspace_id=wid)
+        + g.backend.extracted_patch_rewrites.get_commit_ids_all(workspace_id=wid)
+    )
+    commit_ids_to_delete: Set[str] = {
+        cid for cid in other_commit_ids_list if cid not in commit_ids_from_extracted_commits
+    }
+
+    commits_redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.commits)
+    commits_cleanup_state: Set[str] = set(g.kvstore.get_value(commits_redis_key) or [])  # type: ignore
+
+    new_state: Set[str] = commit_ids_to_delete.union(commits_cleanup_state)
+    g.kvstore.set_value(commits_redis_key, list(new_state))
+
+    # ------------------------------------------------------------------------------------------
+
+
+
+

@@ -431,6 +431,10 @@ class ExtractedCommitRepository(
         pass
 
     @abstractmethod
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        pass
+
+    @abstractmethod
     def delete_commits(self, workspace_id: int, commit_ids: Optional[List[str]] = None) -> int:
         pass
 
@@ -442,6 +446,10 @@ class ExtractedPatchRepository(
     def delete_extracted_patches(self, workspace_id: int, commit_ids: List[str]) -> int:
         pass
 
+    @abstractmethod
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        pass
+
 
 class ExtractedCommitBranchRepository(
     RepoDFMixin,
@@ -449,6 +457,10 @@ class ExtractedCommitBranchRepository(
         ExtractedCommitBranchId, ExtractedCommitBranch, ExtractedCommitBranch, ExtractedCommitBranch
     ],
 ):
+    @abstractmethod
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        pass
+
     @abstractmethod
     def delete_extracted_commit_branches(self, workspace_id: int, commit_ids: List[str]) -> int:
         pass
@@ -460,6 +472,10 @@ class ExtractedPatchRewriteRepository(
         ExtractedPatchRewriteId, ExtractedPatchRewrite, ExtractedPatchRewrite, ExtractedPatchRewrite
     ],
 ):
+    @abstractmethod
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        pass
+
     @abstractmethod
     def delete_extracted_patch_rewrites(self, workspace_id: int, commit_ids: List[str]) -> int:
         pass
@@ -502,6 +518,10 @@ class CalculatedCommitRepository(
         pass
 
     @abstractmethod
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        pass
+
+    @abstractmethod
     def delete_commits(self, workspace_id: int, commit_ids: List[str]) -> int:
         pass
 
@@ -512,6 +532,10 @@ class CalculatedPatchRepository(
 ):
     @abstractmethod
     def get_all_for_commit(self, workspace_id: int, commit_id: CalculatedCommitId) -> List[CalculatedPatch]:
+        pass
+
+    @abstractmethod
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
         pass
 
     @abstractmethod
