@@ -686,7 +686,7 @@ python-versions = "*"
 
 [[package]]
 name = "invoke"
-version = "1.7.1"
+version = "1.7.3"
 description = "Pythonic task execution"
 category = "main"
 optional = false
@@ -2207,7 +2207,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "b8156d31f534f34d588e9e7696ca05fcaad05e73c823cbb4364e5b3e1c4cb6c7"
+content-hash = "a7e21a5a86adc5bee46660b8d775a9940b0d7350f7b836ec535c59f6e70f5c45"
 
 [metadata.files]
 alembic = []
