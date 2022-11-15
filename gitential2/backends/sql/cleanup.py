@@ -498,6 +498,7 @@ def __remove_residual_data_of_cleanup_process(g: GitentialContext, wid: int):
 
     __set_redis_state_for_commits(g=g, wid=wid)
     __set_redis_state_for_pull_requests(g=g, wid=wid)
+    __set_redis_state_for_its_projects(g=g, wid=wid)
 
 
 def __set_redis_state_for_commits(g: GitentialContext, wid: int):
@@ -512,16 +513,16 @@ def __set_redis_state_for_commits(g: GitentialContext, wid: int):
         cid for cid in other_commit_ids_list if cid not in commit_ids_from_extracted_commits
     }
 
-    commits_redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.commits)
-    commits_cleanup_state: List[str] = g.kvstore.get_value(commits_redis_key) or []  # type: ignore
+    redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.commits)
+    cleanup_state: List[str] = g.kvstore.get_value(redis_key) or []  # type: ignore
 
-    new_state: Set[str] = commit_ids_to_delete.union(commits_cleanup_state)
-    g.kvstore.set_value(commits_redis_key, list(new_state))
+    new_state: Set[str] = commit_ids_to_delete.union(cleanup_state)
+    g.kvstore.set_value(redis_key, list(new_state))
 
 
 def __set_redis_state_for_pull_requests(g: GitentialContext, wid: int):
     def __get_pr_id_from_pr_id_str(pr_id: str) -> PullRequestId:
-        splitted: List[str, str] = pr_id.split('__')
+        splitted = pr_id.split("__")
         return PullRequestId(repo_id=int(splitted[0]), number=int(splitted[1]))
 
     pr_id_list: Set[str] = {f"{pr.repo_id}__{pr.number}" for pr in g.backend.pull_requests.all(workspace_id=wid)}
@@ -533,13 +534,36 @@ def __set_redis_state_for_pull_requests(g: GitentialContext, wid: int):
 
     pr_ids_to_delete: Set[str] = {pr_id for pr_id in prs_other if pr_id not in pr_id_list}
 
-    prs_redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.pull_requests)
-    prs_cleanup_state: List[str] = g.kvstore.get_value(prs_redis_key) or []  # type: ignore
+    redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.pull_requests)
+    cleanup_state: List[str] = g.kvstore.get_value(redis_key) or []  # type: ignore
 
-    new_state_raw: Set[str] = pr_ids_to_delete.union(prs_cleanup_state)
+    new_state_raw: Set[str] = pr_ids_to_delete.union(cleanup_state)
     new_state: List[PullRequestId] = [__get_pr_id_from_pr_id_str(pr_id) for pr_id in new_state_raw]
-    g.kvstore.set_value(prs_redis_key, new_state)
+    g.kvstore.set_value(redis_key, new_state)
 
 
 def __set_redis_state_for_its_projects(g: GitentialContext, wid: int):
-    pass
+    its_issue_ids: List[str] = [its_issue.id for its_issue in g.backend.its_issues.all(workspace_id=wid)]
+    its_issue_ids_other: Set[str] = set(
+        [item.issue_id for item in g.backend.its_issue_changes.all(workspace_id=wid)]
+        + [item.issue_id for item in g.backend.its_issue_times_in_statuses.all(workspace_id=wid)]
+        + [item.issue_id for item in g.backend.its_issue_comments.all(workspace_id=wid)]
+        + [item.issue_id for item in g.backend.its_issue_linked_issues.all(workspace_id=wid)]
+        + [item.issue_id for item in g.backend.its_issue_sprints.all(workspace_id=wid)]
+        + [item.issue_id for item in g.backend.its_issue_worklogs.all(workspace_id=wid)]
+    )
+
+    its_issue_ids_to_delete: Set[str] = {
+        its_issue_id for its_issue_id in its_issue_ids_other if its_issue_id not in its_issue_ids
+    }
+
+    redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.its_projects)
+    cleanup_state: ITSCleanupState = g.kvstore.get_value(redis_key) or ITSCleanupState(  # type: ignore
+        itsp_ids_to_delete=[], its_issue_ids_to_be_deleted=[]
+    )
+
+    new_state_its_issue_ids: Set[str] = its_issue_ids_to_delete.union(cleanup_state.its_issue_ids_to_be_deleted)
+    new_state: ITSCleanupState = ITSCleanupState(
+        itsp_ids_to_delete=cleanup_state.itsp_ids_to_delete, its_issue_ids_to_be_deleted=list(new_state_its_issue_ids)
+    )
+    g.kvstore.set_value(redis_key, new_state.dict())
