@@ -242,6 +242,6 @@ def load_settings(settings_file=None, override_file=None):
             print("!!!", override_dict)
         config_dict = deep_merge_dicts(config_dict, override_dict)
 
-    # Apply environment varible overrides
+    # Apply environment variable overrides
     config_dict = _environtment_overrides(config_dict)
     return GitentialSettings.parse_obj(config_dict)

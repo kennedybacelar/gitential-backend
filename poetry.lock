@@ -1592,11 +1592,11 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "pyyaml"
-version = "5.4.1"
+version = "6.0"
 description = "YAML parser and emitter for Python"
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
+python-versions = ">=3.6"
 
 [[package]]
 name = "pyzmq"
@@ -2207,7 +2207,7 @@ python-versions = ">=3.4"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.10"
-content-hash = "5023bb58f8f5e7c3e9c67659985fd7ba2f62e117c715cdf44cc5942faa205fb8"
+content-hash = "a9509c57993d8aa060f888171db767ca346f674c353513c55835fd34f2733709"
 
 [metadata.files]
 alembic = []
