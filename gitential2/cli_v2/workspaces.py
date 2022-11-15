@@ -122,7 +122,9 @@ def purge_workspace(workspace_id: int):
 
 @app.command("cleanup")
 def perform_workspace_cleanup(
-    workspace_id: int = typer.Argument(None), cleanup_type: CleanupType = typer.Option("full", "--type", "-t")
+    workspace_id: int = typer.Argument(None),
+    cleanup_type: CleanupType = typer.Option("full", "--type", "-t"),
+    remove_residual_data: bool = False,
 ):
     """
     \b
@@ -142,8 +144,16 @@ def perform_workspace_cleanup(
         confirm_res = typer.confirm("Are you sure you want to perform cleanup process on workspace(s)?")
         if confirm_res:
             if workspace:
-                perform_data_cleanup(g=g, workspace_ids=[workspace.id], cleanup_type=cleanup_type)
+                perform_data_cleanup(
+                    g=g,
+                    workspace_ids=[workspace.id],
+                    cleanup_type=cleanup_type,
+                    remove_residual_data=remove_residual_data,
+                )
             else:
                 perform_data_cleanup(
-                    g=g, workspace_ids=[w.id for w in g.backend.workspaces.all()], cleanup_type=cleanup_type
+                    g=g,
+                    workspace_ids=[w.id for w in g.backend.workspaces.all()],
+                    cleanup_type=cleanup_type,
+                    remove_residual_data=remove_residual_data,
                 )
