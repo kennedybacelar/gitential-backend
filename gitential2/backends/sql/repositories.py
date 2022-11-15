@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import datetime as dt
 import typing
 from collections import defaultdict
@@ -130,6 +132,7 @@ from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardI
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
+# pylint: disable=unnecessary-lambda-assignment
 fetchone_ = lambda result: result.fetchone()
 fetchall_ = lambda result: result.fetchall()
 inserted_primary_key_ = lambda result: result.inserted_primary_key[0]
@@ -244,6 +247,11 @@ class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  
         rows = self._execute_query(query, callback_fn=fetchall_)
         return (self.in_db_cls(**row) for row in rows)
 
+    def count_rows(self) -> int:
+        query = select([func.count()]).select_from(self.table)
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return rows[0][0]
+
     def _execute_query(self, query, callback_fn=lambda result: result):
         with self.engine.connect() as connection:
             result = connection.execute(query)
@@ -336,6 +344,16 @@ class SQLWorkspaceScopedRepository(
         query = self.table.select()
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return (self.in_db_cls(**row) for row in rows)
+
+    def all_ids(self, workspace_id: int) -> List[int]:
+        query = select([self.table.c.id])
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [r["id"] for r in rows]
+
+    def count_rows(self, workspace_id: int) -> int:
+        query = select([func.count()]).select_from(self.table)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return rows[0][0]
 
     def iterate_all(self, workspace_id: int) -> Iterable[InDBType]:
         query = self.table.select()
@@ -844,6 +862,42 @@ class SQLExtractedCommitRepository(
             result = connection.execute(query)
             return result.fetchone()[0]
 
+    def get_list_of_repo_ids_distinct(self, workspace_id: int) -> List[int]:
+        query = select([distinct(self.table.c.repo_id)]).select_from(self.table)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [r["repo_id"] for r in rows]
+
+    def select_extracted_commits(
+        self,
+        workspace_id: int,
+        date_from: Optional[dt.datetime] = None,
+        date_to: Optional[dt.datetime] = None,
+        repo_ids: Optional[List[int]] = None,
+    ) -> List[ExtractedCommit]:
+        or_clause = []
+        if date_from:
+            or_clause.append(self.table.c.atime >= date_from)
+            or_clause.append(self.table.c.ctime >= date_from)
+        if date_to:
+            or_clause.append(self.table.c.atime <= date_to)
+            or_clause.append(self.table.c.ctime <= date_to)
+        if is_list_not_empty(repo_ids):
+            or_clause.append(self.table.c.repo_id.in_(repo_ids))
+        query = self.table.select().where(or_(*or_clause)) if is_list_not_empty(or_clause) else self.table.select()
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [ExtractedCommit(**row) for row in rows]
+
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        query = self.table.select().distinct(self.table.c.commit_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["commit_id"] for row in rows]
+
+    def delete_commits(self, workspace_id: int, commit_ids: Optional[List[str]] = None) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
     def _build_filters(
         self,
         query,
@@ -879,12 +933,34 @@ class SQLExtractedCommitBranchRepository(
             self.table.c.branch == id_.branch,
         )
 
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        query = self.table.select().distinct(self.table.c.commit_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["commit_id"] for row in rows]
+
+    def delete_extracted_commit_branches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
 
 class SQLExtractedPatchRepository(
     SQLRepoDFMixin,
     ExtractedPatchRepository,
     SQLWorkspaceScopedRepository[ExtractedPatchId, ExtractedPatch, ExtractedPatch, ExtractedPatch],
 ):
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        query = self.table.select().distinct(self.table.c.commit_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["commit_id"] for row in rows]
+
+    def delete_extracted_patches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
     def identity(self, id_: ExtractedPatchId):
         return and_(
             self.table.c.commit_id == id_.commit_id,
@@ -908,6 +984,17 @@ class SQLExtractedPatchRewriteRepository(
             self.table.c.newpath == id_.newpath,
             self.table.c.rewritten_commit_id == id_.rewritten_commit_id,
         )
+
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        query = self.table.select().distinct(self.table.c.commit_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["commit_id"] for row in rows]
+
+    def delete_extracted_patch_rewrites(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
 
 
 class SQLCalculatedCommitRepository(
@@ -964,6 +1051,17 @@ class SQLCalculatedCommitRepository(
             result = connection.execute(query)
             return result.fetchone()[0]
 
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        query = self.table.select().distinct(self.table.c.commit_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["commit_id"] for row in rows]
+
+    def delete_commits(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
     def _build_filters(
         self,
         query,
@@ -1011,6 +1109,17 @@ class SQLCalculatedPatchRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [CalculatedPatch(**row) for row in rows]
 
+    def get_commit_ids_all(self, workspace_id: int) -> List[str]:
+        query = self.table.select().distinct(self.table.c.commit_id)
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [row["commit_id"] for row in rows]
+
+    def delete_calculated_patches(self, workspace_id: int, commit_ids: List[str]) -> int:
+        if is_list_not_empty(commit_ids):
+            query = self.table.delete().where(self.table.c.commit_id.in_(commit_ids))
+            return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+        return 0
+
 
 class SQLPullRequestRepository(
     SQLRepoDFMixin,
@@ -1055,6 +1164,35 @@ class SQLPullRequestRepository(
                 for row in batch:
                     yield self.in_db_cls(**row)
             proxy.close()
+
+    def select_pull_requests(
+        self,
+        workspace_id: int,
+        date_from: Optional[dt.datetime] = None,
+        date_to: Optional[dt.datetime] = None,
+        repo_ids: Optional[List[int]] = None,
+    ) -> List[PullRequest]:
+        or_clause = []
+        if date_from:
+            or_clause.append(self.table.c.created_at >= date_from)
+        if date_to:
+            or_clause.append(self.table.c.created_at <= date_to)
+        if is_list_not_empty(repo_ids):
+            or_clause.append(self.table.c.repo_id.in_(repo_ids))
+        query = self.table.select().where(or_(*or_clause)) if is_list_not_empty(or_clause) else self.table.select()
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [PullRequest(**row) for row in rows]
+
+    def delete_pull_requests(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
+        return 0
 
     def count(
         self,
@@ -1102,6 +1240,17 @@ class SQLPullRequestCommitRepository(
             self.table.c.commit_id == id_.commit_id,
         )
 
+    def delete_pull_request_commits(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.pr_number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
+        return 0
+
 
 class SQLPullRequestCommentRepository(
     SQLRepoDFMixin,
@@ -1115,6 +1264,17 @@ class SQLPullRequestCommentRepository(
             self.table.c.comment_type == id_.comment_type,
             self.table.c.comment_id == id_.comment_id,
         )
+
+    def delete_pull_request_comment(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.pr_number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
+        return 0
 
 
 class SQLPullRequestLabelRepository(
@@ -1133,6 +1293,17 @@ class SQLPullRequestLabelRepository(
             self.table.c.pr_number == id_.pr_number,
             self.table.c.name == id_.name,
         )
+
+    def delete_pull_request_labels(self, workspace_id: int, pr_ids: Optional[List[PullRequestId]] = None) -> int:
+        if is_list_not_empty(pr_ids):
+            final_result = 0
+            for pr_id in pr_ids:
+                query = self.table.delete().where(
+                    and_(self.table.c.pr_number == pr_id.number, self.table.c.repo_id == pr_id.repo_id)
+                )
+                final_result += self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+            return final_result
+        return 0
 
 
 class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):

@@ -1,12 +1,11 @@
 import asyncio
-from structlog import get_logger
+from typing import Optional
 
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse
-from gitential2.datatypes.permissions import Entity, Action
+from structlog import get_logger
+
 from gitential2.core.context import GitentialContext
-from gitential2.core.users import handle_authorize
-from gitential2.core.permissions import check_permission
 from gitential2.core.legacy import (
     get_dev_related_projects,
     get_repos_projects,
@@ -14,11 +13,12 @@ from gitential2.core.legacy import (
     get_dev_top_repos,
     get_developers,
 )
-
+from gitential2.core.permissions import check_permission
+from gitential2.core.users import handle_authorize
+from gitential2.datatypes.permissions import Entity, Action
 from gitential2.exceptions import AuthenticationException
-
-from ..dependencies import gitential_context, OAuth, current_user
 from .auth import _get_token, _get_user_info
+from ..dependencies import gitential_context, OAuth, current_user
 
 logger = get_logger(__name__)
 
@@ -31,9 +31,9 @@ router = APIRouter()
 async def legacy_login(
     request: Request,
     source: str = "vsts",
-    id_token: str = None,
-    code: str = None,
-    oauth_verifier: str = None,
+    id_token: Optional[str] = None,
+    code: Optional[str] = None,
+    oauth_verifier: Optional[str] = None,
     g: GitentialContext = Depends(gitential_context),
     oauth: OAuth = Depends(),
     current_user=Depends(current_user),
