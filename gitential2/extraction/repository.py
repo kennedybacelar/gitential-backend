@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, Dict, Generator, Set, List, Union
 from collections import defaultdict
 from pathlib import Path
@@ -22,6 +23,7 @@ from gitential2.datatypes.credentials import UserPassCredential, KeypairCredenti
 from gitential2.settings import GitentialSettings
 from gitential2.extraction.output import OutputHandler
 from gitential2.extraction.langdetection import detect_lang
+from gitential2.utils import is_timestamp_within_days
 from gitential2.utils.tempdir import TemporaryDirectory
 from gitential2.utils.timer import Timer, time_it_log
 from gitential2.utils.executors import create_executor
@@ -57,9 +59,10 @@ def extract_incremental_local(
     commits_we_already_have: Optional[Set[str]] = None,
 ):
     current_state = get_repository_state(local_repo)
-    logger.info("Gettings commits from", local_repo=local_repo)
+    logger.info("Getting commits from", local_repo=local_repo)
     commits = get_commits(
         local_repo,
+        repo_analysis_limit_in_days=settings.extraction.repo_analysis_limit_in_days,
         previous_state=previous_state,
         current_state=current_state,
         commits_we_already_have=commits_we_already_have,
@@ -244,6 +247,7 @@ def get_commits(
     previous_state: Optional[GitRepositoryState] = None,
     current_state: Optional[GitRepositoryState] = None,
     commits_we_already_have: Optional[Set[str]] = None,
+    repo_analysis_limit_in_days: Optional[int] = None,
 ) -> Generator[str, None, None]:
 
     current_state = current_state or get_repository_state(repository)
@@ -269,13 +273,33 @@ def get_commits(
 
         # Collect all commits
         for commit in walker:
-
-            # If we saw the commit before, we already know it's ancestors
-            if str(commit.id) in commits_already_yielded:
-                walker.hide(commit.id)
+            if not repo_analysis_limit_in_days or is_timestamp_within_days(
+                commit.commit_time, repo_analysis_limit_in_days
+            ):
+                # If we saw the commit before, we already know it's ancestors
+                if str(commit.id) in commits_already_yielded:
+                    walker.hide(commit.id)
+                else:
+                    logger.debug(
+                        "Including commit.",
+                        commit={
+                            "id": commit.hex,
+                            "time": commit.commit_time,
+                            "time_formatted": datetime.fromtimestamp(commit.commit_time).strftime("%Y-%m-%d, %H:%M:%S"),
+                        },
+                    )
+                    commits_already_yielded.add(str(commit.id))
+                    yield str(commit.id)
             else:
-                commits_already_yielded.add(str(commit.id))
-                yield str(commit.id)
+                logger.debug(
+                    "Skipping commit. Out of time range.",
+                    time_range=repo_analysis_limit_in_days,
+                    commit={
+                        "id": commit.hex,
+                        "time": commit.commit_time,
+                        "time_formatted": datetime.fromtimestamp(commit.commit_time).strftime("%Y-%m-%d, %H:%M:%S"),
+                    },
+                )
 
 
 def extract_commit(repository: LocalGitRepository, commit_id: str, output: OutputHandler, **kwargs):
@@ -337,9 +361,8 @@ def extract_commit_patches(
 @time_it_log(logger)
 def extract_branches(settings: GitentialSettings, repository: LocalGitRepository, output: OutputHandler):
     logger.info("Getting commits from", local_repo=repository)
-    commits = get_commits(
-        repository,
-    )
+    commits = get_commits(repository, repo_analysis_limit_in_days=settings.extraction.repo_analysis_limit_in_days)
+
     logger.info("Getting commit branches from", local_repo=repository)
 
     executor = create_executor(settings, local_repo=repository, output=output, description="Extracting commit branches")

@@ -94,8 +94,8 @@ def initialize_database():
     g = get_context()
     g.backend.initialize()
     g.backend.migrate()
-    workspaces = g.backend.workspaces.all()
-    for w in workspaces:
+    workspaces_list = g.backend.workspaces.all()
+    for w in workspaces_list:
         # logger.info("Initializing workspace schema", workspace_id=w.id)
         try:
             # g.backend.initialize_workspace(w.id)
