@@ -1,7 +1,7 @@
 import typer
 from structlog import get_logger
 from gitential2.core.export import create_auto_export
-from .common import get_context, print_results
+from .common import get_context
 from typing import Optional, List
 
 logger = get_logger(__name__)
@@ -9,7 +9,12 @@ app = typer.Typer()
 
 
 @app.command("create")
-def create_auto_export_(workspace_id: int, cron_schedule_time:int, tempo_access_token: Optional[str], emails:List[str]):
+def create_auto_export_(
+    workspace_id: int, 
+    cron_schedule_time:int, 
+    emails:List[str], 
+    tempo_access_token: Optional[str] = None
+    ):
     """
     With this command you can create a new scheduled automatic workspace export for a workspace. This schedule will only be created for a workspace that exists, and for a cron schedule time that hasn't already been created for the workspace.
 
@@ -20,7 +25,7 @@ def create_auto_export_(workspace_id: int, cron_schedule_time:int, tempo_access_
     <emails>: The list of email recipients
 
     @example:
-    $ g2 auto-export create <workspace_id> <cron_schedule_time> <tempo_access_token> <emails>
+    $ g2 auto-export create <workspace_id> <cron_schedule_hour> <tempo_access_token> <emails>
     """
     g = get_context()
 
@@ -41,6 +46,5 @@ def create_auto_export_(workspace_id: int, cron_schedule_time:int, tempo_access_
         logger.error(error = f"Schedule already exists on wokspace {workspace_id}")
         raise typer.Exit(code=1)
 
-    else:
-        print(f"New schedule created for workspace {workspace_id}")
-        print_results(auto_export_data)
+    logger.info(msg = f"New schedule created for workspace {workspace_id}")
+    logger.info(msg = auto_export_data)

@@ -1199,6 +1199,10 @@ class SQLAutoExportRepository(AutoExportRepository):
             return auto_export_data
         else:
             return None
+    
+    def update_export_status(self, row_id: int, status: bool):
+        query = self.table.update(values={self.table.c.is_exported: status}).where(self.table.c.id == row_id)
+        self._execute_query(query)
 
     def _schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
         """

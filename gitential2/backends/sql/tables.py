@@ -266,6 +266,7 @@ auto_export_table = sa.Table(
     sa.Column("tempo_access_token", sa.String, nullable=True),
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("is_exported", sa.Boolean, default=False),
 )
 
 # pylint: disable=unused-variable,too-many-locals

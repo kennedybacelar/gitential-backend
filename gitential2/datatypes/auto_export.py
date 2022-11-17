@@ -1,6 +1,5 @@
 from typing import Optional, List
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin
-from pydantic import validator
 
 
 class AutoExportBase(CoreModel):
@@ -11,6 +10,7 @@ class AutoExportBase(CoreModel):
     cron_schedule_time: int
     tempo_access_token: Optional[str] = None
     emails: List[str] = []
+    is_exported: bool = False
 
 class AutoExportCreate(AutoExportBase):
     pass
