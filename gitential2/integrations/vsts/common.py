@@ -1,8 +1,6 @@
 from typing import List, Tuple, Optional
 from urllib.parse import urlparse
 
-from email_validator import validate_email, EmailNotValidError
-
 from gitential2.datatypes import RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.its import ITSIssueStatusCategory, ITSIssueChangeType
@@ -136,11 +134,7 @@ def __is_able_to_continue_walking(
 
 
 def to_author_alias(raw_user):
-    name = raw_user.get("displayName")
-    uniq_name = raw_user.get("uniqueName")
-    try:
-        valid = validate_email(uniq_name)
-        email = valid.email
-        return AuthorAlias(name=name, email=email)
-    except EmailNotValidError:
-        return AuthorAlias(name=name, login=uniq_name)
+    return AuthorAlias(
+        name=raw_user.get("displayName"),
+        email=raw_user.get("uniqueName"),
+    )
