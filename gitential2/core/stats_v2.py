@@ -189,6 +189,7 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
     sum_ploc = (commits.loc_i_c.sum() - commits.uploc_c.sum()).name("sum_ploc")
     sum_uploc = commits.uploc_c.sum().name("sum_uploc")
     efficiency = (sum_ploc / (commits.loc_i_c.sum()).nullif(0) * 100).name("efficiency")
+    churn_calc = (100 - (sum_ploc / (commits.loc_i_c.sum()).nullif(0) * 100)).name("churn_calc")
     nunique_contributors = commits.aid.nunique().name("nunique_contributors")
     comp_sum = (commits.comp_i_c.sum() - commits.comp_d_c.sum()).name("comp_sum")
     utilization = (sum_hours / q.utilization_working_hours() * 100).name("utilization")
@@ -209,6 +210,7 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
         MetricName.utilization: utilization,
         MetricName.avg_velocity: avg_velocity,
         MetricName.loc_sum: loc_sum,
+        MetricName.churn_calc: churn_calc,
     }
     if metric not in commit_metrics:
         raise ValueError(f"missing metric {metric}")

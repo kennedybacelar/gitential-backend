@@ -1,13 +1,12 @@
 from collections import namedtuple
-from typing import Callable, Optional, Dict, Union
 from importlib import import_module
+from typing import Callable, Optional, Dict, Union
 
 from celery import Celery
 from celery.app.task import Task
 from celery.schedules import crontab
 from structlog import get_logger
-from gitential2.settings import GitentialSettings, load_settings
-from gitential2.logging import initialize_logging
+
 from gitential2.datatypes.refresh import (
     ExtractProjectBranchesParams,
     ExtractRepositoryBranchesParams,
@@ -17,9 +16,9 @@ from gitential2.datatypes.refresh import (
     RefreshWorkspaceParams,
     MaintainWorkspaceParams,
 )
-
 from gitential2.exceptions import LockError
-
+from gitential2.logging import initialize_logging
+from gitential2.settings import GitentialSettings, load_settings
 from .context import GitentialContext
 
 logger = get_logger(__name__)
@@ -91,6 +90,13 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
         beat_scheduled_conf["refresh_materialized_views"] = {
             "task": "gitential2.core.tasks.refresh_materialized_views",
             "schedule": crontab(day_of_week="2,4,6", hour=23),
+            "args": (),
+        }
+
+    if settings.features.enable_scheduled_data_cleanup:
+        beat_scheduled_conf["scheduled_data_cleanup"] = {
+            "task": "gitential2.core.tasks.scheduled_data_cleanup",
+            "schedule": crontab(day_of_week="0", hour=23),
             "args": (),
         }
 
@@ -221,3 +227,18 @@ def schedule_auto_export(settings: Optional[GitentialSettings] = None):
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
     auto_export_task(g)
+
+@celery_app.task
+def scheduled_data_cleanup(settings: Optional[GitentialSettings] = None):
+    logger.info("Starting scheduled task: data-cleanup")
+
+    # pylint: disable=import-outside-toplevel,cyclic-import
+    from gitential2.core.context import init_context_from_settings
+    from ..backends.sql.cleanup import perform_data_cleanup
+
+    settings = settings or load_settings()
+    g = init_context_from_settings(settings)
+    workspaces = g.backend.workspaces.all()
+    perform_data_cleanup(g=g, workspace_ids=[w.id for w in workspaces])
+
+    logger.info("Finished data cleaning in every workspace.")

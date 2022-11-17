@@ -2,7 +2,7 @@ from datetime import date
 from enum import Enum
 from typing import Set, List, Optional, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 
 from gitential2.datatypes.export import ExportableModel
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
@@ -22,6 +22,26 @@ class AuthorBase(ExtraFieldMixin, CoreModel):
     name: Optional[str]
     email: Optional[str]
     aliases: List[AuthorAlias]
+
+    # validate_assignnment set to True in order to force automatic validation upon update
+    class Config:
+        validate_assignment = True
+
+    @root_validator()
+    def _handle_null_name_and_email(cls, values: dict) -> dict:
+        if not (values["name"] and values["email"]):
+            login = None
+            for alias in values["aliases"]:
+                if not values["name"]:
+                    values["name"] = alias.name
+                    if not login and alias.login:
+                        login = alias.login
+                if not values["email"]:
+                    values["email"] = alias.email
+                if values["name"] and values["email"]:
+                    return values
+        values["name"] = values["name"] or login or "unknown"
+        return values
 
     @property
     def all_emails(self) -> Set[str]:

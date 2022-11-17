@@ -16,7 +16,12 @@ from gitential2.exceptions import LockError
 
 from .calculations import recalculate_repository_values
 from .context import GitentialContext
-from .authors import fix_author_aliases, get_or_create_optional_author_for_alias, fix_author_names
+from .authors import (
+    fix_author_aliases,
+    get_or_create_optional_author_for_alias,
+    fix_author_names,
+    force_filling_of_author_names,
+)
 from .tasks import schedule_task
 from .credentials import acquire_credential, get_fresh_credential, get_update_token_callback
 from .repositories import list_project_repositories
@@ -64,6 +69,7 @@ def maintain_workspace(
     fix_author_names(g, workspace_id)
     fix_author_aliases(g, workspace_id)
     recalculate_deploy_commits(g, workspace_id)
+    force_filling_of_author_names(g, workspace_id)
 
 
 def refresh_all_repositories(g: GitentialContext, workspace_id: int):
@@ -516,6 +522,7 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
                     author_callback=_author_callback_partial,
                     prs_we_already_have=prs_we_already_have,
                     limit=200,
+                    repo_analysis_limit_in_days=g.settings.extraction.repo_analysis_limit_in_days,
                 )
                 logger.info(
                     "collect_pull_requests results",

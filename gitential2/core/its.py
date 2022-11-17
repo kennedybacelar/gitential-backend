@@ -1,28 +1,26 @@
-from typing import List, Union, Optional
 import traceback
+from datetime import datetime, timezone, timedelta
 from functools import partial
-from datetime import datetime, timezone
+from typing import List, Union, Optional
+
 from structlog import get_logger
 from structlog.threadlocal import tmp_bind
+
+from gitential2.core.authors import developer_map_callback
+from gitential2.core.context import GitentialContext
 from gitential2.datatypes.extraction import ExtractedKind
 from gitential2.datatypes.its import ITSIssueAllData, ITSIssueHeader
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase, ITSProjectRefreshStatus
-from gitential2.settings import IntegrationType
-from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
-from gitential2.core.context import GitentialContext
-from gitential2.core.credentials import list_credentials_for_workspace, get_fresh_credential
-from gitential2.core.authors import developer_map_callback
-
-
+from gitential2.settings import IntegrationType
 from gitential2.utils import find_first
 from .credentials import (
     get_fresh_credential,
     list_credentials_for_workspace,
     get_update_token_callback,
 )
-
 
 logger = get_logger(__name__)
 
@@ -243,12 +241,20 @@ def get_recently_updated_issues(
 
         token = _get_fresh_token_for_itsp(g, workspace_id, itsp)
         if token:
-            date_from = date_from or _get_last_successful_refresh_run(g, workspace_id, itsp_id)
-            if not date_from:
+            date_from_c = date_from or _get_last_successful_refresh_run(g, workspace_id, itsp_id)
+            if not date_from_c:
                 log.info("Getting all issues in the project")
-                return integration.list_all_issues_for_project(token, itsp)
+                return integration.list_all_issues_for_project(
+                    token,
+                    itsp,
+                    date_from=_get_time_restriction_date(g),
+                )
             log.info("Getting issues changed since", date_from=date_from)
-            return integration.list_recently_updated_issues(token, itsp, date_from=date_from)
+            return integration.list_recently_updated_issues(
+                token,
+                itsp,
+                date_from=(_get_time_restriction_date(g) if not date_from and date_from_c else None) or date_from_c,
+            )
         else:
             log.info(SKIP_REFRESH_MSG, workspace_id=workspace_id, itsp_id=itsp.id, reason="no fresh credential")
             return []
@@ -287,6 +293,11 @@ def _is_refresh_already_running(g: GitentialContext, workspace_id: int, itsp_id:
 def _get_last_successful_refresh_run(g: GitentialContext, workspace_id: int, itsp_id) -> Optional[datetime]:
     status = get_itsp_status(g, workspace_id, itsp_id)
     return status.last_successful_at
+
+
+def _get_time_restriction_date(g: GitentialContext) -> Optional[datetime]:
+    limit_in_days = g.settings.extraction.its_project_analysis_limit_in_days
+    return datetime.utcnow() - timedelta(days=limit_in_days) if limit_in_days else None
 
 
 def collect_and_save_data_for_issue(

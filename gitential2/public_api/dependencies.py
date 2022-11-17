@@ -68,7 +68,7 @@ def verify_recaptcha_token(x_recaptcha_token: str = Header(...), g: GitentialCon
             "secret": recaptcha_settings.secret_key,
             "response": x_recaptcha_token,
         }
-        response = requests.post(recaptcha_url, data=payload)
+        response = requests.post(recaptcha_url, data=payload, timeout=300)
         result = response.json()
 
         if result.get("success") and result.get("score", 0.0) > 0.5:

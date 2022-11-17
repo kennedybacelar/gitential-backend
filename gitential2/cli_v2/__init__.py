@@ -1,50 +1,47 @@
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional, List
+
 import typer
 import uvicorn
 from structlog import get_logger
 
-from gitential2.core.deduplication import deduplicate_authors
-from gitential2.core.authors import fix_author_aliases, fix_author_names
-from gitential2.core.emails import send_email_to_user
-from gitential2.core.maintenance import maintenance
-from gitential2.core.tasks import configure_celery
-from gitential2.core.users import get_user
-from gitential2.logging import initialize_logging
-from gitential2.settings import load_settings
-from gitential2.core.quick_login import generate_quick_login
 from gitential2.core.api_keys import (
     create_personal_access_token,
     delete_personal_access_tokens_for_user,
     create_workspace_api_key,
-    delete_api_keys_for_workspace,
 )
+from gitential2.core.authors import fix_author_aliases, fix_author_names
+from gitential2.core.deduplication import deduplicate_authors
+from gitential2.core.emails import send_email_to_user
+from gitential2.core.maintenance import maintenance
+from gitential2.core.quick_login import generate_quick_login
+from gitential2.core.tasks import configure_celery
+from gitential2.core.users import get_user
+from gitential2.logging import initialize_logging
+from gitential2.settings import load_settings
+from .authors import app as authors_app
 from .common import OutputFormat, get_context, print_results
+from .crud import app as crud_app
+from .data_queries import app as data_queries_app
+from .deploys import app as deploys_app
 from .emails import app as emails_app
 from .export import app as export_app
 from .extract import app as extraction_app
+from .invitation import app as invitation_app
+from .its import app as its_app
+from .jira import app as jira_app
 from .projects import app as projects_app
 from .query import app as query_app
 from .refresh import app as refresh_app
 from .repositories import app as repositories_app
+from .reseller_codes import app as reseller_codes
 from .status import app as status_app
 from .tasks import app as tasks_app
 from .usage_stats import app as usage_stats_app
 from .users import app as users_app
-from .crud import app as crud_app
-from .invitation import app as invitation_app
-from .jira import app as jira_app
 from .vsts import app as vsts_app
-from .its import app as its_app
-from .data_queries import app as data_queries_app
-from .reseller_codes import app as reseller_codes
-from .deploys import app as deploys_app
-from .authors import app as authors_app
-from ..core.workspace_common import duplicate_workspace
-from ..datatypes import UserInDB
-from ..datatypes.workspaces import WorkspaceDuplicate
-from ..exceptions import SettingsException
 from .auto_export import app as auto_export_app
+from .workspaces import app as workspaces_app
 
 logger = get_logger(__name__)
 
@@ -70,6 +67,7 @@ app.add_typer(reseller_codes, name="reseller-codes")
 app.add_typer(deploys_app, name="deploys")
 app.add_typer(authors_app, name="authors")
 app.add_typer(auto_export_app, name="auto-export")
+app.add_typer(workspaces_app, name="workspaces")
 
 
 @app.command("public-api")
@@ -98,8 +96,8 @@ def initialize_database():
     g = get_context()
     g.backend.initialize()
     g.backend.migrate()
-    workspaces = g.backend.workspaces.all()
-    for w in workspaces:
+    workspaces_list = g.backend.workspaces.all()
+    for w in workspaces_list:
         # logger.info("Initializing workspace schema", workspace_id=w.id)
         try:
             # g.backend.initialize_workspace(w.id)
@@ -212,58 +210,6 @@ def generate_workspace_api_key(workspace_id: int):
     print("------")
     print(token)
     print("------")
-
-
-@app.command("delete-api-keys-for-workspace")
-def delete_keys_for_workspace(workspace_id: int):
-    g = get_context()
-    delete_api_keys_for_workspace(g, workspace_id)
-
-
-@app.command("duplicate-workspace")
-def duplicate_workspace_(source_workspace_id: int, user_id: int, new_workspace_name: str):
-    """
-    With this command you can duplicate a workspace.
-
-    \b
-    You need to provide three arguments:
-    SOURCE_WORKSPACE_ID: The id of the workspace you want to duplicate.
-    USER_ID: The name of the duplicated workspace. It can not be an already existing workspace name.
-    NEW_WORKSPACE_NAME: The id of the user
-    """
-
-    g = get_context()
-    workspace_duplicate = WorkspaceDuplicate(
-        id_of_workspace_to_be_duplicated=source_workspace_id, name=new_workspace_name
-    )
-    user: Optional[UserInDB] = get_user(g, user_id)
-
-    all_workspace_names = [workspace.name for workspace in list(g.backend.workspaces.all())]
-    if new_workspace_name in all_workspace_names:
-        raise SettingsException("Can not duplicate workspace! Workspace name already exists!")
-    if not user:
-        raise SettingsException("Can not duplicate workspace! Wrong user id! User not exists!")
-
-    duplicate_workspace(g=g, workspace_duplicate=workspace_duplicate, current_user=user, is_permission_check_on=False)
-
-
-@app.command("reset-workspace")
-def reset_workspace(workspace_id: int):
-    """
-    By running this command, you can reset a workspace to its original state when it was created.
-    It will truncate all the tables in the databases' workspace schema by running the following command
-    template for all tables:
-    \b
-    'TRUNCATE TABLE <schema_name>.<table_name> RESTART IDENTITY CASCADE;'
-    """
-
-    g = get_context()
-    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
-    if workspace:
-        logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
-        g.backend.reset_workspace(workspace_id=workspace_id)
-    else:
-        logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")
 
 
 def main(prog_name: Optional[str] = None):

@@ -1,12 +1,12 @@
-from typing import Optional, Callable, List, Tuple
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Callable, List, Tuple
 from urllib.parse import parse_qs
-from structlog import get_logger
+
 from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
+from structlog import get_logger
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, RepositoryInDB, GitProtocol
-from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.its import (
     ITSIssueHeader,
     ITSIssueAllData,
@@ -15,16 +15,9 @@ from gitential2.datatypes.its import (
     ITSIssueChange,
     ITSIssueTimeInStatus,
     ITSIssueChangeType,
-    ITSIssueLinkedIssue,
 )
-
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
-
-from ...utils.is_bugfix import calculate_is_bugfix
-from ..base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData, ITSProviderMixin
-
-from ..common import log_api_error
-
 from .common import (
     _get_project_organization_and_repository,
     _get_organization_and_project_from_its_project,
@@ -34,13 +27,15 @@ from .common import (
     get_db_issue_id,
     _parse_labels,
 )
-
 from .transformations import (
     _transform_to_its_ITSIssueAllData,
     _transform_to_its_ITSIssueComment,
     _transform_to_ITSIssueChange,
     _initial_status_transform_to_ITSIssueChange,
 )
+from ..base import BaseIntegration, OAuthLoginMixin, GitProviderMixin, PullRequestData, ITSProviderMixin
+from ..common import log_api_error
+from ...utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
 
@@ -102,11 +97,15 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             extra=data,
         )
 
-    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+    def _collect_raw_pull_requests(
+        self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> list:
         organization, project, repo = _get_project_organization_and_repository(repository)
         pull_requests = _paginate_with_skip_top(
             client,
             f"https://dev.azure.com/{organization}/{project}/_apis/git/pullrequests?api-version=6.0&searchCriteria.repositoryId={repo}&searchCriteria.status=all",
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            time_restriction_check_key="creationDate",
         )
         return pull_requests
 
@@ -118,7 +117,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             else datetime.utcnow().replace(tzinfo=timezone.utc),
         )
 
-    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+    def _collect_raw_pull_request(
+        self, repository: RepositoryInDB, pr_number: int, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> dict:
         def _get_json_response(url):
             resp = client.get(url)
             resp.raise_for_status()
@@ -414,7 +415,11 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         )
 
     def _raw_fetching_all_issues_per_project(
-        self, token, its_project: ITSProjectInDB, fields: List[str] = None, date_from: Optional[datetime] = None
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        fields: Optional[List[str]] = None,
+        date_from: Optional[datetime] = None,
     ) -> List[dict]:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
@@ -478,68 +483,61 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
     ) -> List[ITSIssueChange]:
 
+        # wit is used as a short for workitems in this function
+
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
         organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
 
-        its_issue_updates_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/updates?api-version=6.0"
+        workitems_updates_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/updates?api-version=6.0"
 
-        its_issue_updates_response = client.get(its_issue_updates_url)
-
-        if its_issue_updates_response.status_code != 200:
-            log_api_error(its_issue_updates_response)
+        response_workitems_updates_response = client.get(workitems_updates_url)
+        if response_workitems_updates_response.status_code != 200:
+            log_api_error(response_workitems_updates_response)
             return []
 
-        its_issue_updates_response_json = its_issue_updates_response.json()
-
-        if its_issue_updates_response_json.get("count") < 2:
+        # If the key <count> is equal to 1 it means that the wit has not been changed, therefore there is no data to be computed.
+        wit_updates = response_workitems_updates_response.json()
+        if wit_updates.get("count") == 1:
             return []
 
-        list_of_updates = its_issue_updates_response_json["value"]
+        wit_update_values = wit_updates["value"]
         ret = []
 
         filter_out_fields = [
             "System.Rev",
-            "System.AuthorizedDate",
             "System.RevisedDate",
             "System.ChangedDate",
         ]
 
-        for index, single_update in enumerate(list_of_updates):
-            fields = single_update.get("fields")
-            if not index:  # First revision - when the workitem itself is created
-                created_date = single_update["fields"]["System.CreatedDate"]["newValue"]
-                initial_issue_state = single_update["fields"]["System.State"]["newValue"]
-                initial_work_item_type = single_update["fields"]["System.WorkItemType"]["newValue"]
-                update_api_id = single_update["id"]
+        for idx, workitem_update in enumerate(wit_update_values):
+
+            # When just links are added into the wit, it does not change the ChangedDate, hence it is not being considered as a change
+            if not workitem_update.get("fields", {}).get("System.ChangedDate"):
                 continue
-            if fields:
-                for single_field in fields.items():
-                    if single_field[0] in filter_out_fields:
-                        continue
+
+            # It is needed to get the value for those fields at the moment of the wit creation "System.State" & "System.WorkItemType"
+            if not idx:
+                for field in workitem_update["fields"].items():
+                    if field[0] in ["System.State", "System.WorkItemType"]:
+                        ret.append(
+                            _transform_to_ITSIssueChange(
+                                its_project=its_project,
+                                single_update=workitem_update,
+                                single_field=field,
+                                developer_map_callback=developer_map_callback,
+                            )
+                        )
+
+            for field in workitem_update["fields"].items():
+                if field[0] not in filter_out_fields:
                     ret.append(
                         _transform_to_ITSIssueChange(
-                            developer_map_callback=developer_map_callback,
                             its_project=its_project,
-                            single_update=single_update,
-                            single_field=single_field,
+                            single_update=workitem_update,
+                            single_field=field,
+                            developer_map_callback=developer_map_callback,
                         )
                     )
-        initial_change_status_dict = {
-            "created_date": created_date,
-            "updated_at": created_date,
-            "initial_issue_state": initial_issue_state,
-            "update_api_id": update_api_id,
-            "issue_id_or_key": issue_id_or_key,
-            "initial_work_item_type": initial_work_item_type,
-        }
-
-        initial_change_status_obj = _initial_status_transform_to_ITSIssueChange(
-            initial_change_status=initial_change_status_dict,
-            its_project=its_project,
-        )
-
-        ret.insert(0, initial_change_status_obj)
-
         return ret
 
     def _get_single_work_item_all_data(
@@ -559,8 +557,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             log_api_error(single_work_item_details_response)
             return {}
 
-        single_work_item_details_response_json = single_work_item_details_response.json()
-        return single_work_item_details_response_json
+        return single_work_item_details_response.json()
 
     def _get_issue_comments(
         self, token, its_project: ITSProjectInDB, issue_id_or_key: str, developer_map_callback: Callable
@@ -658,7 +655,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         return {}
 
     def get_work_item_type_reference_name(
-        self, token, its_project: ITSProjectInDB, work_item_type: str = None
+        self, token, its_project: ITSProjectInDB, work_item_type: Optional[str] = None
     ) -> Optional[str]:
 
         if not work_item_type:
@@ -713,23 +710,19 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         if not changes:
             return []
 
-        initial_work_item_type = changes[0].extra["initial_work_item_type"]  # type: ignore[index]
-
-        wit_reference_name = self.get_work_item_type_reference_name(
-            token=token, its_project=its_project, work_item_type=initial_work_item_type
-        )
-
+        work_item_type = None
         previous_change = None
         ret: List[ITSIssueTimeInStatus] = []
 
         for current_change in changes:
 
             if current_change.field_name == "System.WorkItemType":
-
-                new_work_item_type = current_change.v_to_string
+                work_item_type = current_change.field_name
                 wit_reference_name = self.get_work_item_type_reference_name(
-                    token=token, its_project=its_project, work_item_type=new_work_item_type
+                    token=token, its_project=its_project, work_item_type=work_item_type
                 )
+            if not work_item_type:
+                continue
 
             if current_change.change_type == ITSIssueChangeType.status:
 
@@ -774,7 +767,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         issue_dict: dict,
         its_project: ITSProjectInDB,
         developer_map_callback: Callable,
-        comment: ITSIssueComment = None,
+        comment: Optional[ITSIssueComment] = None,
     ) -> ITSIssue:
 
         # wit = work item type
@@ -881,10 +874,15 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             )
         return ret
 
-    def list_all_issues_for_project(self, token, its_project: ITSProjectInDB) -> List[ITSIssueHeader]:
+    def list_all_issues_for_project(
+        self,
+        token,
+        its_project: ITSProjectInDB,
+        date_from: Optional[datetime] = None,
+    ) -> List[ITSIssueHeader]:
 
         wit_by_details_batch_response_json = self._raw_fetching_all_issues_per_project(
-            token=token, its_project=its_project
+            token=token, its_project=its_project, date_from=date_from
         )
         ret = []
 

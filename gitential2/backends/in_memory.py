@@ -89,6 +89,9 @@ class InMemAccessLogRepository(AccessLogRepository):
 class InMemRepository(
     BaseRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
+    def count_rows(self) -> int:
+        return len(self._state)
+
     def __init__(self, in_db_cls: Callable[..., InDBType]):
         self._state: dict = {}
         self._counter = 1
@@ -167,6 +170,12 @@ def constant_factory(value):
 class InMemWorkspaceScopedRepository(
     BaseWorkspaceScopedRepository[IdType, CreateType, UpdateType, InDBType]
 ):  # pylint: disable=unsubscriptable-object
+    def count_rows(self, workspace_id: int) -> int:
+        return len(self._state)
+
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
+        pass
+
     def __init__(self, in_db_cls: Callable[..., InDBType]):
         self._state: dict = defaultdict(dict)
         self._counters: dict = defaultdict(constant_factory(1))
@@ -309,6 +318,9 @@ class InMemCredentialRepository(
 class InMemProjectRepository(
     ProjectRepository, InMemWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]
 ):
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
+        pass
+
     def search(self, workspace_id: int, q: str) -> List[ProjectInDB]:
         return [
             ProjectInDB(**item)
@@ -316,16 +328,19 @@ class InMemProjectRepository(
             if q.capitalize() in item.name.capitalize()
         ]
 
-    def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:
+    def update_sprint_by_project_id(self, workspace_id: int, project_id: int, sprint: Sprint) -> bool:  # type: ignore[empty-body]
         pass
 
-    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+    def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:  # type: ignore[empty-body]
         pass
 
 
 class InMemRepositoryRepository(
     RepositoryRepository, InMemWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
 ):
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
+        pass
+
     def get_by_clone_url(self, workspace_id: int, clone_url: str) -> Optional[RepositoryInDB]:
         for o in self._state[workspace_id].values():
             if o.clone_url == clone_url:
@@ -358,6 +373,9 @@ class InMemProjectRepositoryRepository(
     ProjectRepositoryRepository,
     InMemWorkspaceScopedRepository[int, ProjectRepositoryCreate, ProjectRepositoryUpdate, ProjectRepositoryInDB],
 ):
+    def all_ids(self, workspace_id: int) -> List[int]:  # type: ignore[empty-body]
+        pass
+
     def get_repo_ids_for_project(self, workspace_id: int, project_id: int) -> List[int]:
         return [item.repo_id for item in self._state[workspace_id] if item.project_id == project_id]
 
@@ -432,7 +450,7 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def delete_workspace_schema(self, workspace_id: int):
         pass
 
-    def delete_workspace(self, workspace_id: int):
+    def delete_workspace_sql(self, workspace_id: int):
         pass
 
     def duplicate_workspace(self, workspace_id_from: int, workspace_id_to: int):

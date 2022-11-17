@@ -141,6 +141,8 @@ class ExtractionSettings(BaseModel):
     executor: Executor = Executor.process_pool
     process_pool_size: int = 4
     show_progress: bool = False
+    repo_analysis_limit_in_days: Optional[int] = None
+    its_project_analysis_limit_in_days: Optional[int] = None
 
 
 class RefreshSettings(BaseModel):
@@ -178,6 +180,7 @@ class FeaturesSettings(BaseModel):
     enable_its_analytics: bool = False
     enable_resellers: bool = False
     access_approval: AccessApprovalSettings = AccessApprovalSettings()
+    enable_scheduled_data_cleanup: bool = False
 
 
 class ResellerSettings(BaseModel):
@@ -243,6 +246,6 @@ def load_settings(settings_file=None, override_file=None):
             print("!!!", override_dict)
         config_dict = deep_merge_dicts(config_dict, override_dict)
 
-    # Apply environment varible overrides
+    # Apply environment variable overrides
     config_dict = _environtment_overrides(config_dict)
     return GitentialSettings.parse_obj(config_dict)

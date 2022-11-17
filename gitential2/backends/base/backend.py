@@ -1,12 +1,13 @@
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Tuple, Set, Optional
-from abc import ABC, abstractmethod
-from ibis.expr.types import TableExpr
+
 import pandas as pd
+from ibis.expr.types import TableExpr
+
+from gitential2.datatypes.stats import IbisTables
 from gitential2.extraction.output import OutputHandler
 from gitential2.settings import GitentialSettings
-from gitential2.datatypes.stats import IbisTables
-
 from .repositories import (
     AccessApprovalRepository,
     AccessLogRepository,
@@ -46,7 +47,6 @@ from .repositories import (
     DeployCommitRepository,
     AutoExportRepository
 )
-
 from .repositories_its import (
     ITSIssueRepository,
     ITSIssueChangeRepository,
@@ -297,7 +297,7 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
-    def delete_workspace(self, workspace_id: int):
+    def delete_workspace_sql(self, workspace_id: int):
         pass
 
     @abstractmethod

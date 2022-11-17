@@ -428,4 +428,18 @@ def _remove_duplicate_aliases(aliases: List[AuthorAlias]) -> List[AuthorAlias]:
     return ret
 
 
+def force_filling_of_author_names(g: GitentialContext, workspace_id: int):
+
+    # Since the validation is already implemented within the dataclass AuthorBase we do not need extra logic
+    # to correct it se the only thing needed is to reparse the object into AuthorBase object or any other
+    # class which inherits from it
+
+    authors_with_null_name_or_email = g.backend.authors.get_authors_with_null_name_or_email(workspace_id)
+    logger.info(
+        "Authors found with null name or email.", authors_with_null_name_or_email=authors_with_null_name_or_email
+    )
+    for author in authors_with_null_name_or_email:
+        g.backend.authors.update(workspace_id=workspace_id, id_=author.id, obj=get_author_update(author))
+
+
 _COMMON_WORDS = ["mail", "info", "noreply", "email", "user", "test", "github", "github com"]

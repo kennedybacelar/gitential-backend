@@ -80,12 +80,6 @@ static_type_check:
   script:
     - poetry run mypy gitential2
 
-dependency_check:
-  extends: .poetry_common
-  stage: check
-  script:
-    - poetry run invoke dependency-check
-
 unit_tests:
   extends: .poetry_common
   stage: test
