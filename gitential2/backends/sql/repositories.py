@@ -1360,7 +1360,7 @@ class SQLAutoExportRepository(AutoExportRepository):
         self.engine = engine
         self.in_db_cls = in_db_cls
 
-    def create(self, auto_export_data: AutoExportCreate) -> AutoExportInDB:
+    def create(self, auto_export_data: AutoExportCreate):
         """
         @desc: Creates a new auto export schedule
         """

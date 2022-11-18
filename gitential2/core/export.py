@@ -1,4 +1,5 @@
 import tempfile
+from gitential2.cli_v2.export import ExportFormat
 from gitential2.cli_v2.jira import lookup_tempo_worklogs
 from gitential2.core.extended_email_service import ExtendedEmailService
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
@@ -14,12 +15,6 @@ from gitential2.core.refresh_v2 import refresh_workspace
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 
 logger = get_logger(__name__)
-
-class ExportFormat(str, Enum):
-    csv = "csv"
-    json = "json"
-    sqlite = "sqlite"
-    xlsx = "xlsx"
 
 def create_auto_export(
     g: GitentialContext, workspace_id: int, cron_schedule_time:int, tempo_access_token: Optional[str], emails:List[str]) -> AutoExportInDB:
@@ -60,7 +55,7 @@ def auto_export_task(
             # Refresh Tempo Data
             logger.info(msg = f"Starting Tempo data refresh for workspace {workspace.workspace_id}....")
             if workspace.tempo_access_token:
-                lookup_tempo_worklogs(g, workspace.workspace_id, workspace.tempo_access_token, True)
+                lookup_tempo_worklogs(g, workspace.workspace_id, workspace.tempo_access_token, True, datetime.min)
 
             # Export full workspace
             logger.info(msg = f"Starting full workspace export for workspace {workspace.workspace_id}....")
@@ -75,7 +70,7 @@ def auto_export_task(
 
             # Send Exported Sheet via Email
             logger.info(msg = f"Starting Email Dispatch.......")
-            _dispatch_workspace_data_via_email(workspace.workspace_id, workspace.emails)
+            _dispatch_workspace_data_via_email(g, workspace.workspace_id, workspace.emails)
 
             # Update the export schedule row to avoid double exports
             logger.info(msg = f"Updating Export Schedule for workspace {workspace.workspace_id}....")
@@ -83,7 +78,7 @@ def auto_export_task(
             
             logger.info(msg = f"Export Completed! :)")
 
-def _dispatch_workspace_data_via_email(workspace_id: int, recipients):
+def _dispatch_workspace_data_via_email(g: GitentialContext, workspace_id: int, recipients):
     print("Preparing to dispatch reports to admin via email")
     source_path = tempfile.gettempdir() + f"/ws_{workspace_id}_export.xlsx"
     template_name = 'export_workspace'
@@ -95,5 +90,5 @@ def _generate_destination_path(g, workspace_id):
     return Path(f"Data Exports/production-cloud/{str(date)[:10]} {get_workspace_owner(g, workspace_id).full_name}")
 
 def update_export_status(g: GitentialContext, row_id: int, status: bool)-> bool: 
-    g.backend.auto_export.update_export_status(g,row_id, status)
+    g.backend.auto_export.update_export_status(row_id, status)
     return True

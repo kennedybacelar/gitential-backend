@@ -718,4 +718,12 @@ class AutoExportRepository(ABC):
     @abstractmethod
     def _schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
         pass
+    
+    @abstractmethod
+    def all(self)-> Iterable[AutoExportInDB]:
+        pass
+    
+    @abstractmethod
+    def update_export_status(self, row_id: int, status: bool):
+        pass
 
