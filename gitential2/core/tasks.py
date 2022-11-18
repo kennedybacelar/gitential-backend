@@ -218,6 +218,7 @@ def refresh_materialized_views(settings: Optional[GitentialSettings] = None):
 
     logger.info("Finished refreshing materialized views in every workspace.")
 
+
 @celery_app.task
 def schedule_auto_export(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
@@ -227,6 +228,7 @@ def schedule_auto_export(settings: Optional[GitentialSettings] = None):
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
     auto_export_task(g)
+
 
 @celery_app.task
 def scheduled_data_cleanup(settings: Optional[GitentialSettings] = None):

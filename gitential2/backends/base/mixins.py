@@ -35,7 +35,7 @@ from .repositories import (
     ChartRepository,
     ThumbnailRepository,
     DeployCommitRepository,
-    AutoExportRepository
+    AutoExportRepository,
 )
 
 
@@ -277,7 +277,6 @@ class WithRepositoriesMixin:
     @property
     def deploy_commits(self) -> DeployCommitRepository:
         return self._deploy_commits
-
 
     @property
     def auto_export(self):

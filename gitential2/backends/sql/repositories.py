@@ -67,7 +67,7 @@ from gitential2.datatypes import (
     WorkspaceInDB,
     AutoExportCreate,
     AutoExportUpdate,
-    AutoExportInDB
+    AutoExportInDB,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.access_log import AccessLog
@@ -1355,6 +1355,7 @@ class SQLAutoExportRepository(AutoExportRepository):
     """
     SQL Object for the AutoExport Table
     """
+
     def __init__(self, table: sa.Table, engine: sa.engine.Engine, in_db_cls: Callable[..., AutoExportInDB]):
         self.table = table
         self.engine = engine
@@ -1370,7 +1371,7 @@ class SQLAutoExportRepository(AutoExportRepository):
             return auto_export_data
         else:
             return None
-    
+
     def update_export_status(self, row_id: int, status: bool):
         query = self.table.update(values={self.table.c.is_exported: status}).where(self.table.c.id == row_id)
         self._execute_query(query)
@@ -1379,8 +1380,10 @@ class SQLAutoExportRepository(AutoExportRepository):
         """
         @desc: Checks if a schedule already exists, to prevent creating multiple schedules for the same workspace
         """
-        query = self.table.select().where(and_(self.table.c.workspace_id == workspace_id, self.table.c.cron_schedule_time == cron_schedule_time))
-        row = self._execute_query(query,callback_fn=fetchone_)
+        query = self.table.select().where(
+            and_(self.table.c.workspace_id == workspace_id, self.table.c.cron_schedule_time == cron_schedule_time)
+        )
+        row = self._execute_query(query, callback_fn=fetchone_)
         return True if row else False
 
     def all(self) -> Iterable[AutoExportInDB]:
@@ -1392,5 +1395,3 @@ class SQLAutoExportRepository(AutoExportRepository):
         with self.engine.connect() as connection:
             result = connection.execute(query)
             return callback_fn(result)
-
-

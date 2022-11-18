@@ -45,7 +45,7 @@ from .repositories import (
     ChartRepository,
     ThumbnailRepository,
     DeployCommitRepository,
-    AutoExportRepository
+    AutoExportRepository,
 )
 from .repositories_its import (
     ITSIssueRepository,
@@ -365,7 +365,6 @@ class GitentialBackend(ABC):
     @abstractmethod
     def get_ibis_table(self, workspace_id: int, source_name: str) -> TableExpr:
         pass
-
 
     @property
     @abstractmethod

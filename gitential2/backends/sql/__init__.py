@@ -21,7 +21,7 @@ from gitential2.datatypes import (
     ProjectRepositoryInDB,
     WorkspaceMemberInDB,
     AuthorInDB,
-    AutoExportInDB
+    AutoExportInDB,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
@@ -109,7 +109,7 @@ from .repositories import (
     SQLChartRepository,
     SQLThumbnailRepository,
     SQLDeployCommitRepository,
-    SQLAutoExportRepository
+    SQLAutoExportRepository,
 )
 from .repositories_its import (
     SQLITSIssueRepository,
@@ -140,7 +140,7 @@ from .tables import (
     get_workspace_metadata,
     WorkspaceTableNames,
     MaterializedViewNames,
-    auto_export_table
+    auto_export_table,
 )
 from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin
@@ -414,10 +414,10 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         )
 
         self._auto_export = SQLAutoExportRepository(
-            table=auto_export_table, 
+            table=auto_export_table,
             engine=self._engine,
             in_db_cls=AutoExportInDB,
-)
+        )
 
     def _execute_query(self, query):
         with self._engine.connect() as connection:

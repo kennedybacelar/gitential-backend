@@ -149,6 +149,7 @@ class RefreshSettings(BaseModel):
     hourly_maintenance_enabled: bool = True
     interval_minutes: int = 60 * 24
 
+
 class AutoExportSettings(BaseModel):
     start_auto_export: bool = True
 

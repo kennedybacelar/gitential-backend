@@ -18,12 +18,7 @@ EMAIL_TEMPLATES_DIR = Path(__file__).parents[2] / "email_templates"
 
 
 class ExtendedEmailService:
-
-    def __init__(self,
-                 g: GitentialContext,
-                 recipients: list,
-                 attachment_path: str,
-                 template_name: str):
+    def __init__(self, g: GitentialContext, recipients: list, attachment_path: str, template_name: str):
         self.recipients = recipients
         self.attachment_path = attachment_path
         self.template_name = template_name
@@ -36,7 +31,7 @@ class ExtendedEmailService:
             logger.error(f"Email template not found")
             return
         rendered_email = self._render_email_template(template, recipient=email_recipients)
-        self.smtp_send(rendered_email, attachment = self.attachment_path)
+        self.smtp_send(rendered_email, attachment=self.attachment_path)
 
     @staticmethod
     def _rendered_email_to_message(email: RenderedEmail, attachment: Union[str, None] = None) -> MIMEMultipart:
@@ -51,17 +46,15 @@ class ExtendedEmailService:
 
         if attachment:
             with open(attachment, "rb") as fil:
-                part = MIMEApplication(
-                    fil.read(),
-                    Name=basename(attachment)
-                )
+                part = MIMEApplication(fil.read(), Name=basename(attachment))
             # After the file is closed
-            part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachment)
+            part["Content-Disposition"] = 'attachment; filename="%s"' % basename(attachment)
             msg.attach(part)
         return msg
 
-    def _render_email_template(self, template: EmailTemplate, recipient: Union[str, list, None] = None, **kwargs
-                               ) -> RenderedEmail:
+    def _render_email_template(
+        self, template: EmailTemplate, recipient: Union[str, list, None] = None, **kwargs
+    ) -> RenderedEmail:
         def _render_template(s: str) -> str:
             t = Template(s)
             return t.render(settings=self.g.settings, **kwargs)
@@ -86,8 +79,11 @@ class ExtendedEmailService:
                 if email_settings.smtp_username and email_settings.smtp_password:
                     server.login(email_settings.smtp_username, email_settings.smtp_password)
 
-                server.sendmail(email.sender, email.recipient.split(","),
-                                self._rendered_email_to_message(email, attachment=attachment).as_string())
+                server.sendmail(
+                    email.sender,
+                    email.recipient.split(","),
+                    self._rendered_email_to_message(email, attachment=attachment).as_string(),
+                )
                 server.close()
             except Exception:  # pylint: disable=broad-except
                 logger.exception("Failed to send email.")
