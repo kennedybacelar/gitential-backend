@@ -36,6 +36,7 @@ def create_auto_export(
 def auto_export_task(
     g: GitentialContext,
 ) -> None:
+    # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.cli_v2.export import export_full_workspace, ExportFormat
     from gitential2.cli_v2.jira import lookup_tempo_worklogs
 
