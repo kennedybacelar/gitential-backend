@@ -1,8 +1,9 @@
-import typer
+from typing import Optional, List
 from structlog import get_logger
+import typer
 from gitential2.core.export import create_auto_export
 from .common import get_context
-from typing import Optional, List
+
 
 logger = get_logger(__name__)
 app = typer.Typer()
@@ -38,7 +39,7 @@ def create_auto_export_(
 
     auto_export_data = create_auto_export(g, workspace_id, cron_schedule_time, tempo_access_token, emails)
 
-    if auto_export_data == None:
+    if auto_export_data is None:
         logger.error(error=f"Schedule already exists on wokspace {workspace_id}")
         raise typer.Exit(code=1)
 

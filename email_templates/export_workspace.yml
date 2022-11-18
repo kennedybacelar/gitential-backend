@@ -93,6 +93,7 @@ body_html: |
                                                     <p style="line-height:150%">
                                                       <span style="font-size:13px">
                                                       Hi Team, please find attached workspace Export for Revenue AI.
+                                                      {{ s3_upload_url }}
                                                     </p>
 
                                                   </div>
@@ -391,6 +392,8 @@ body_plaintext: |
   [image: gitential_logo_with_text_blackGreen]
 
   Hi Team, please find attached workspace Export for Revenue AI.
+
+  {{ s3_upload_url }}
 
   The Gitential Team
   support@gitential.com

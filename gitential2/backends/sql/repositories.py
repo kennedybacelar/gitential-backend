@@ -66,7 +66,6 @@ from gitential2.datatypes import (
     WorkspaceUpdate,
     WorkspaceInDB,
     AutoExportCreate,
-    AutoExportUpdate,
     AutoExportInDB,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
@@ -1384,7 +1383,7 @@ class SQLAutoExportRepository(AutoExportRepository):
             and_(self.table.c.workspace_id == workspace_id, self.table.c.cron_schedule_time == cron_schedule_time)
         )
         row = self._execute_query(query, callback_fn=fetchone_)
-        return True if row else False
+        return bool(row)
 
     def all(self) -> Iterable[AutoExportInDB]:
         query = self.table.select()
