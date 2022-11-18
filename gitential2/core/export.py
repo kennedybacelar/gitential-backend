@@ -1,12 +1,12 @@
+from typing import Optional, List
+from pathlib import Path
+from datetime import datetime
+from structlog import get_logger
+from gitential2.core.workspaces import get_workspace_owner
 from gitential2.core.emails import send_email_to_address
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.core.context import GitentialContext
-from datetime import datetime
-from pathlib import Path
-from gitential2.core.workspaces import get_workspace_owner
-from structlog import get_logger
 from gitential2.datatypes import AutoExportCreate, AutoExportInDB
-from typing import Optional, List
 from gitential2.core.refresh_v2 import refresh_workspace
 
 logger = get_logger(__name__)
@@ -39,17 +39,6 @@ def auto_export_task(
     from gitential2.cli_v2.export import export_full_workspace, ExportFormat
     from gitential2.cli_v2.jira import lookup_tempo_worklogs
 
-    """
-    @desc: workspace auto refresh function to be triggered by the celery beat conf
-    - Fetch all workspaces in the auto_export schedule table
-    - Verify the crontab schedule time, and run if within the current run time
-    - Run step by step auto export:
-        1. Run the workspace refresh process (wait until it finishes; we set a one-by-one refresh strategy and force refresh)
-        2. Tempo refresh process (wait until it finishes)
-        3. Run the full-workspace data export process with the uploading to the s3 bucket
-
-    @args: g: GitentialContext
-    """
     for workspace in g.backend.auto_export.all():
         if workspace.cron_schedule_time == datetime.now().hour and not workspace.is_exported:
             workspace_id = workspace.workspace_id
