@@ -18,7 +18,7 @@ def create_auto_export(
     cron_schedule_time: int,
     tempo_access_token: Optional[str],
     emails: List[str],
-) -> AutoExportInDB:
+) -> Optional[AutoExportInDB]:
     """
     @desc: create a new scheduled automatic workspace export for a workspace.
     @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recepients)
@@ -30,7 +30,8 @@ def create_auto_export(
         tempo_access_token=tempo_access_token,
         emails=emails,
     )
-    return g.backend.auto_export.create(auto_export_data=auto_export_data)
+    schedule_already_exist = g.backend.auto_export.schedule_exists(workspace_id, cron_schedule_time)
+    return None if schedule_already_exist else g.backend.auto_export.create(auto_export_data)
 
 
 def auto_export_task(
@@ -75,7 +76,8 @@ def auto_export_task(
 
             # Update the export schedule row to avoid double exports
             logger.info(msg=f"Updating Export Schedule for workspace {workspace_id}....")
-            update_export_status(g, workspace.id, True)
+            workspace.is_exported = True
+            g.backend.auto_export.create_or_update(workspace)
 
             logger.info(msg="Export Completed! :)")
 
@@ -89,11 +91,6 @@ def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list
 def _generate_destination_path(g, workspace_id):
     date = datetime.utcnow()
     return Path(f"Exports/production-cloud/{str(date)[:10]}-{get_workspace_owner(g, workspace_id).full_name}")
-
-
-def update_export_status(g: GitentialContext, row_id: int, status: bool) -> bool:
-    g.backend.auto_export.update_export_status(row_id, status)
-    return True
 
 
 def construct_aws_object_url(bucket_name, region: str, destination_path: str, workspace_id: int):

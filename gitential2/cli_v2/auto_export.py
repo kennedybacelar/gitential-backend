@@ -40,7 +40,7 @@ def create_auto_export_(
     auto_export_data = create_auto_export(g, workspace_id, cron_schedule_time, tempo_access_token, emails)
 
     if auto_export_data is None:
-        logger.error(error=f"Schedule already exists on wokspace {workspace_id}")
+        logger.error(error=f"Schedule already exists on workspace {workspace_id}")
         raise typer.Exit(code=1)
 
     logger.info(msg=f"New schedule created for workspace {workspace_id}")

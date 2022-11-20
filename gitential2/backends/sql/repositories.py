@@ -72,6 +72,7 @@ from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessAp
 from gitential2.datatypes.access_log import AccessLog
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmails
+from gitential2.datatypes.auto_export import AutoExportUpdate
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.datatypes.deploys import Deploy, DeployCommit
 from gitential2.datatypes.email_log import (
@@ -1350,32 +1351,10 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         return self.get_or_error(user_id)
 
 
-class SQLAutoExportRepository(AutoExportRepository):
-    """
-    SQL Object for the AutoExport Table
-    """
-
-    def __init__(self, table: sa.Table, engine: sa.engine.Engine, in_db_cls: Callable[..., AutoExportInDB]):
-        self.table = table
-        self.engine = engine
-        self.in_db_cls = in_db_cls
-
-    def create(self, auto_export_data: AutoExportCreate):
-        """
-        @desc: Creates a new auto export schedule
-        """
-        if not self._schedule_exists(auto_export_data.workspace_id, auto_export_data.cron_schedule_time):
-            query = self.table.insert().values(**convert_times_to_utc(auto_export_data.dict()))
-            self._execute_query(query)
-            return auto_export_data
-        else:
-            return None
-
-    def update_export_status(self, row_id: int, status: bool):
-        query = self.table.update(values={self.table.c.is_exported: status}).where(self.table.c.id == row_id)
-        self._execute_query(query)
-
-    def _schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
+class SQLAutoExportRepository(
+    AutoExportRepository, SQLRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]
+):
+    def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
         """
         @desc: Checks if a schedule already exists, to prevent creating multiple schedules for the same workspace
         """
@@ -1384,13 +1363,3 @@ class SQLAutoExportRepository(AutoExportRepository):
         )
         row = self._execute_query(query, callback_fn=fetchone_)
         return bool(row)
-
-    def all(self) -> Iterable[AutoExportInDB]:
-        query = self.table.select()
-        rows = self._execute_query(query, callback_fn=fetchall_)
-        return (self.in_db_cls(**row) for row in rows)
-
-    def _execute_query(self, query, callback_fn=lambda result: result):
-        with self.engine.connect() as connection:
-            result = connection.execute(query)
-            return callback_fn(result)
