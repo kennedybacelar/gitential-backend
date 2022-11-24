@@ -225,7 +225,7 @@ class GitProviderMixin(ABC):
     ) -> bool:
         def get_created_at_timestamp_of_pr() -> Optional[float]:
             result = None
-            date_time_str = pr["created_at"] or pr["created_on"] or pr["creationDate"]
+            date_time_str = pr.get("created_at") or pr.get("created_on") or pr.get("creationDate")
             try:
                 result = parser.parse(date_time_str).timestamp()
             except ValueError as e:
