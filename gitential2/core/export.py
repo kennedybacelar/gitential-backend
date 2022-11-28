@@ -21,9 +21,9 @@ def create_auto_export(
 ) -> Optional[AutoExportInDB]:
     """
     @desc: create a new scheduled automatic workspace export for a workspace.
-    @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recepients)
+    @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recipients)
     """
-    # Data input valudation
+    # Data input validation
     auto_export_data = AutoExportCreate(
         workspace_id=workspace_id,
         cron_schedule_time=cron_schedule_time,
