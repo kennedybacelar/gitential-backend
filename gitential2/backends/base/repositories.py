@@ -74,6 +74,7 @@ from gitential2.datatypes.email_log import (
     EmailLogUpdate,
     EmailLogInDB,
 )
+from gitential2.datatypes.auto_export import AutoExportCreate, AutoExportInDB, AutoExportUpdate
 
 from gitential2.datatypes.sprints import Sprint
 
@@ -703,4 +704,14 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
 
     @abstractmethod
     def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
+        pass
+
+
+class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]):
+    @abstractmethod
+    def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
+        pass
+
+    @abstractmethod
+    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
         pass

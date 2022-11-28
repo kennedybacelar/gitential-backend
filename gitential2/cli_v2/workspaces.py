@@ -35,10 +35,11 @@ def reset_workspace(workspace_id: int, reset_type: ResetType = typer.Option("ful
     confirm_res = typer.confirm("Are you really sure you want to reset the workspace?")
     if confirm_res:
         if workspace:
-            logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
             if reset_type in (ResetType.full, ResetType.sql_only):
+                logger.info("Starting to truncate all of the tables for workspace!", workspace_id=workspace.id)
                 g.backend.reset_workspace(workspace_id=workspace_id)
             if reset_type in (ResetType.full, ResetType.redis_only):
+                logger.info("Starting to remove all data from Redis related to workspace!", workspace_id=workspace.id)
                 g.kvstore.delete_values_for_workspace(workspace_id=workspace_id)
         else:
             logger.exception("Failed to reset workspace! Workspace not found by the provided workspace id!")

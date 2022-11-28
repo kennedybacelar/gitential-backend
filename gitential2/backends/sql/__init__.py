@@ -21,6 +21,7 @@ from gitential2.datatypes import (
     ProjectRepositoryInDB,
     WorkspaceMemberInDB,
     AuthorInDB,
+    AutoExportInDB,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
@@ -108,6 +109,7 @@ from .repositories import (
     SQLChartRepository,
     SQLThumbnailRepository,
     SQLDeployCommitRepository,
+    SQLAutoExportRepository,
 )
 from .repositories_its import (
     SQLITSIssueRepository,
@@ -138,6 +140,7 @@ from .tables import (
     get_workspace_metadata,
     WorkspaceTableNames,
     MaterializedViewNames,
+    auto_export_table,
 )
 from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin
@@ -410,6 +413,12 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=DeployCommit,
         )
 
+        self._auto_export = SQLAutoExportRepository(
+            table=auto_export_table,
+            engine=self._engine,
+            in_db_cls=AutoExportInDB,
+        )
+
     def _execute_query(self, query):
         with self._engine.connect() as connection:
             result = connection.execute(query)
@@ -432,7 +441,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             self.duplicate_workspace(
                 workspace_id_from=workspace_duplicate.id_of_workspace_to_be_duplicated, workspace_id_to=workspace_id
             )
-            self.create_missing_materialized_views(workspace_id=workspace_id)
+            if self.settings.features.enable_additional_materialized_views:
+                self.create_missing_materialized_views(workspace_id=workspace_id)
 
         set_ws_migration_revision_after_create(workspace_id, self._engine)
 
@@ -442,6 +452,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._engine.execute(query)
 
     def delete_workspace_sql(self, workspace_id: int):
+        logger.info("Deleting rows for workspace in auto_export table...", workspace_id=workspace_id)
+        self.auto_export.delete_rows_for_workspace(workspace_id=workspace_id)
+
         logger.info("Deleting rows for workspace in workspace_members table...", workspace_id=workspace_id)
         self.workspace_members.delete_rows_for_workspace(workspace_id=workspace_id)
 

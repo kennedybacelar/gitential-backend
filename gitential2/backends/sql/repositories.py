@@ -50,6 +50,7 @@ from gitential2.backends.base.repositories import (
     DashboardRepository,
     ChartRepository,
     ThumbnailRepository,
+    AutoExportRepository,
 )
 from gitential2.datatypes import (
     UserCreate,
@@ -64,11 +65,14 @@ from gitential2.datatypes import (
     WorkspaceCreate,
     WorkspaceUpdate,
     WorkspaceInDB,
+    AutoExportCreate,
+    AutoExportInDB,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.access_log import AccessLog
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmails
+from gitential2.datatypes.auto_export import AutoExportUpdate
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.datatypes.deploys import Deploy, DeployCommit
 from gitential2.datatypes.email_log import (
@@ -1345,3 +1349,21 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         self._execute_query(query)
         # return [EmailLogInDB(**row) for row in rows]
         return self.get_or_error(user_id)
+
+
+class SQLAutoExportRepository(
+    AutoExportRepository, SQLRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]
+):
+    def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
+        """
+        @desc: Checks if a schedule already exists, to prevent creating multiple schedules for the same workspace
+        """
+        query = self.table.select().where(
+            and_(self.table.c.workspace_id == workspace_id, self.table.c.cron_schedule_time == cron_schedule_time)
+        )
+        row = self._execute_query(query, callback_fn=fetchone_)
+        return bool(row)
+
+    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
+        query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
+        return self._execute_query(query, callback_fn=rowcount_)

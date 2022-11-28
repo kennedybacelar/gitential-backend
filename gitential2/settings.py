@@ -150,6 +150,10 @@ class RefreshSettings(BaseModel):
     interval_minutes: int = 60 * 24
 
 
+class AutoExportSettings(BaseModel):
+    start_auto_export: bool = True
+
+
 class MaintenanceSettings(BaseModel):
     enabled: bool = False
     message: str = ""
@@ -196,6 +200,7 @@ class GitentialSettings(BaseModel):
     web: WebSettings = WebSettings()
     extraction: ExtractionSettings = ExtractionSettings()
     refresh: RefreshSettings = RefreshSettings()
+    auto_export: AutoExportSettings = AutoExportSettings()
     recaptcha: RecaptchaSettings = RecaptchaSettings()
     integrations: Dict[str, IntegrationSettings]
     backend: BackendType = BackendType.in_memory
