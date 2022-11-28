@@ -499,7 +499,7 @@ def __apply_delete_settings_list(
                 wid=wid,
             )
             __log_delete_results(delete_result=delete_result, items_title=ds.items_title)
-    # TODO: DELETE REDIS KEY
+    g.kvstore.delete_value(redis_key)
 
     return c_type
 
