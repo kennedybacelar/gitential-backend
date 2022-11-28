@@ -279,5 +279,5 @@ class WithRepositoriesMixin:
         return self._deploy_commits
 
     @property
-    def auto_export(self):
+    def auto_export(self) -> AutoExportRepository:
         return self._auto_export

@@ -711,3 +711,7 @@ class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdat
     @abstractmethod
     def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
         pass
+
+    @abstractmethod
+    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
+        pass

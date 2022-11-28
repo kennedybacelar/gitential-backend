@@ -1363,3 +1363,7 @@ class SQLAutoExportRepository(
         )
         row = self._execute_query(query, callback_fn=fetchone_)
         return bool(row)
+
+    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
+        query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
+        return self._execute_query(query, callback_fn=rowcount_)

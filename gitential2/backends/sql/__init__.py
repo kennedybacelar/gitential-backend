@@ -451,6 +451,9 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._engine.execute(query)
 
     def delete_workspace_sql(self, workspace_id: int):
+        logger.info("Deleting rows for workspace in auto_export table...", workspace_id=workspace_id)
+        self.auto_export.delete_rows_for_workspace(workspace_id=workspace_id)
+
         logger.info("Deleting rows for workspace in workspace_members table...", workspace_id=workspace_id)
         self.workspace_members.delete_rows_for_workspace(workspace_id=workspace_id)
 
