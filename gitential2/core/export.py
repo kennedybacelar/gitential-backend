@@ -46,7 +46,7 @@ def auto_export_task(
             workspace_id = workspace.workspace_id
             # Refresh full workspace
             logger.info(msg=f"Starting full workspace refresh for workspace {workspace_id}....")
-            refresh_workspace(g, workspace_id, RefreshStrategy.one_by_one, RefreshType.everything, True)
+            refresh_workspace(g, workspace_id, RefreshStrategy.one_by_one, RefreshType.everything, False)
 
             # Refresh Tempo Data
             logger.info(msg=f"Starting Tempo data refresh for workspace {workspace_id}....")
