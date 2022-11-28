@@ -441,7 +441,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             self.duplicate_workspace(
                 workspace_id_from=workspace_duplicate.id_of_workspace_to_be_duplicated, workspace_id_to=workspace_id
             )
-            self.create_missing_materialized_views(workspace_id=workspace_id)
+            if self.settings.features.enable_additional_materialized_views:
+                self.create_missing_materialized_views(workspace_id=workspace_id)
 
         set_ws_migration_revision_after_create(workspace_id, self._engine)
 
