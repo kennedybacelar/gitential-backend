@@ -174,7 +174,9 @@ def __remove_redundant_commit_data(
         ),
     ]
 
-    cleanup_result = __apply_delete_settings_list(wid=wid, delete_settings=delete_settings, c_type=CleanupType.commits)
+    cleanup_result = __apply_delete_settings_list(
+        g=g, wid=wid, delete_settings=delete_settings, c_type=CleanupType.commits
+    )
 
     g.kvstore.delete_value(redis_key)
 
@@ -241,7 +243,7 @@ def __remove_redundant_pull_request_data(
     ]
 
     cleanup_result = __apply_delete_settings_list(
-        wid=wid, delete_settings=delete_settings, c_type=CleanupType.pull_requests
+        g=g, wid=wid, delete_settings=delete_settings, c_type=CleanupType.pull_requests
     )
 
     g.kvstore.delete_value(redis_key)
@@ -347,7 +349,7 @@ def __remove_redundant_data_for_its_projects(
     ]
 
     cleanup_result = __apply_delete_settings_list(
-        wid=wid, delete_settings=delete_settings, c_type=CleanupType.its_projects
+        g=g, wid=wid, delete_settings=delete_settings, c_type=CleanupType.its_projects
     )
 
     g.kvstore.delete_value(redis_key)
@@ -479,13 +481,14 @@ def __log_delete_results(delete_result: DeleteRowsResult, items_title: str):
     )
 
 
-def __apply_delete_settings_list(wid: int, delete_settings: List[DeleteSettings], c_type: CleanupType) -> CleanupType:
+def __apply_delete_settings_list(
+    g: GitentialContext, wid: int, delete_settings: List[DeleteSettings], c_type: CleanupType
+) -> CleanupType:
     redis_key = __get_redis_key_for_cleanup_stage(wid=wid, c_type=c_type)
-    for index, ds in enumerate(delete_settings):
-        redis_value: Optional[int] = 1  # TODO: GET THE REDIS VALUE FROM KVSTORE
+    for index, ds in enumerate(delete_settings, 1):
+        redis_value: Optional[int] = g.kvstore.get_value(redis_key)
         if not redis_value or (redis_value and redis_value <= index):
-            # TODO: SAVE NEW REDIS VALUE WITH THE CURRENT INDEX
-            # kvstore.save(redis_key, index)
+            g.kvstore.set_value(redis_key, index)
             logger.info(f"Cleanup of {ds.items_title} started.")
             delete_result: DeleteRowsResult = __delete_rows(
                 delete_rows_partial_fn=partial(ds.delete_fn, workspace_id=wid),
