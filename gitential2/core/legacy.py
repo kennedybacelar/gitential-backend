@@ -122,9 +122,14 @@ def get_developers(
     team_id: Optional[int] = None,
     from_: Optional[str] = None,
     to_: Optional[str] = None,
+    is_active_filter_on: Optional[bool] = True,
 ) -> list:
     all_active_developers = {
         dev.id: {"name": dev.name, "email": dev.email, "id": dev.id} for dev in g.backend.authors.all(workspace_id)
+        if dev.active
+    } if is_active_filter_on else { 
+        dev.id: {"name": dev.name, "email": dev.email, "id": dev.id} 
+        for dev in g.backend.authors.all(workspace_id)
     }
 
     if project_id or repo_id:
