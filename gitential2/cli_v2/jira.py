@@ -15,7 +15,6 @@ from gitential2.core.context import GitentialContext
 from gitential2.core.credentials import get_update_token_callback, get_fresh_credential
 from gitential2.core.authors import developer_map_callback, get_or_create_optional_author_for_alias
 from gitential2.integrations.jira import JiraIntegration
-from gitential2.integrations.jira.common import format_datetime_for_jql
 from gitential2.settings import IntegrationType
 from .common import get_context, print_results, OutputFormat
 
