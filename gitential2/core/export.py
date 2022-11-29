@@ -51,7 +51,14 @@ def auto_export_task(
             # Refresh Tempo Data
             logger.info(msg=f"Starting Tempo data refresh for workspace {workspace_id}....")
             if workspace.tempo_access_token:
-                lookup_tempo_worklogs(g, workspace_id, workspace.tempo_access_token, True, datetime.min)
+                lookup_tempo_worklogs(
+                    g=g,
+                    workspace_id=workspace_id,
+                    tempo_access_token=workspace.tempo_access_token,
+                    force=True,
+                    date_from=datetime.min,
+                    rewrite_existing_worklogs=False,
+                )
 
             # Export full workspace
             logger.info(msg=f"Starting full workspace export for workspace {workspace_id}....")
