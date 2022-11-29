@@ -274,13 +274,15 @@ def lookup_tempo_worklogs(
 
             # We need this if-condition because sometimes all worklogs are removed from an issue and the issue keeps on its_issue_worklogs table.
             # We have to make to make sure of removing those entries properly.
+            valid_entry = False
             if results_worklogs_for_issue:
                 for wl in worklogs_for_issue[jira_issue_id].get("results", []):
                     if str(wl["jiraWorklogId"]) == worklog.api_id:
                         tempo_worklog = wl
                         break
-            else:
+            if not tempo_worklog:
                 g.backend.its_issue_worklogs.delete(workspace_id, worklog.id)
+                break
 
             # email information is available through an extra api call at - rest/api/2/user?accountId=accountId
 
