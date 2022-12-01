@@ -486,8 +486,8 @@ def __apply_delete_settings_list(
 ) -> CleanupType:
     redis_key = __get_redis_key_for_cleanup_stage(wid=wid, c_type=c_type)
     for index, ds in enumerate(delete_settings, 1):
-        redis_value: Optional[int] = g.kvstore.get_value(redis_key)
-        if not redis_value or (redis_value and redis_value <= index):
+        redis_value = g.kvstore.get_value(redis_key)
+        if not redis_value or (redis_value and redis_value <= index):  # type: ignore[operator]
             g.kvstore.set_value(redis_key, index)
             logger.info(f"Cleanup of {ds.items_title} started.")
             delete_result: DeleteRowsResult = __delete_rows(
