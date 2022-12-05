@@ -93,12 +93,12 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
             "args": (),
         }
 
-    if settings.features.enable_scheduled_data_cleanup:
-        beat_scheduled_conf["scheduled_data_cleanup"] = {
-            "task": "gitential2.core.tasks.scheduled_data_cleanup",
-            "schedule": crontab(day_of_week="0", hour=23),
-            "args": (),
-        }
+    # if settings.features.enable_scheduled_data_cleanup:
+    #     beat_scheduled_conf["scheduled_data_cleanup"] = {
+    #         "task": "gitential2.core.tasks.scheduled_data_cleanup",
+    #         "schedule": crontab(day_of_week="0", hour=23),
+    #         "args": (),
+    #     }
 
     celery_app.conf.beat_schedule = beat_scheduled_conf
     return celery_app
