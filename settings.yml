@@ -43,7 +43,7 @@ features:
   enable_access_approval: false
   enable_resellers: true
   enable_its_analytics: true
-  enable_scheduled_data_cleanup: true
+  enable_scheduled_data_cleanup: false
 resellers:
   - reseller_id: appsumo
     short_name: AppSumo
