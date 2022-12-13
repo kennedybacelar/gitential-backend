@@ -293,7 +293,7 @@ def lookup_tempo_worklogs(
 
             if not tempo_worklog:
                 g.backend.its_issue_worklogs.delete(workspace_id, worklog.id)
-                break
+                continue
 
             if rewrite_existing_worklogs:
                 worklog.time_spent_seconds = tempo_worklog["timeSpentSeconds"]
