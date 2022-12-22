@@ -47,25 +47,6 @@ all_tables_info = {
 }
 
 
-class Commits(str, Enum):
-    calculated_commits = "calculated_commits"
-    extracted_commits = "extracted_commits"
-    extracted_patches = "extracted_patches"
-    calculated_patches = "calculated_patches"
-    extracted_patch_rewrites = "extracted_patch_rewrites"
-    extracted_commit_branches = "extracted_commit_branches"
-
-
-class PullRequests(str, Enum):
-    pull_requests = "pull_requests"
-    pull_request_commits = "pull_request_commits"
-    pull_request_comments = "pull_request_comments"
-    pull_request_labels = "pull_request_labels"
-
-
-# Remember that The key for pull request is repo_id + pr_number
-
-
 def perform_data_cleanup_(
     g: GitentialContext,
     workspace_ids: Optional[List[int]] = None,
@@ -75,6 +56,9 @@ def perform_data_cleanup_(
     its_date_to = __get_date_to(g.settings.extraction.its_project_analysis_limit_in_days)
     for workspace_id in workspace_ids:
         repo_ids_to_delete = __get_repo_ids_to_delete(g, workspace_id)
+        itsp_ids_to_delete = __get_itsp_ids_to_delete(g, workspace_id)
+        print(itsp_ids_to_delete)
+        exit()
         if cleanup_type in (CleanupType.full, CleanupType.commits):
             if date_to or repo_ids_to_delete:
                 __remove_redundant_data(
@@ -86,6 +70,16 @@ def perform_data_cleanup_(
                 )
         if cleanup_type in (CleanupType.full, CleanupType.pull_requests):
             if date_to or repo_ids_to_delete:
+                if date_to or repo_ids_to_delete:
+                    __remove_redundant_data(
+                        g,
+                        workspace_id,
+                        date_to,
+                        repo_ids_to_delete,
+                        CleaningGroup("pull_requests"),
+                    )
+        if cleanup_type in (CleanupType.full, CleanupType.its_projects):
+            if its_date_to or repo_ids_to_delete:
                 if date_to or repo_ids_to_delete:
                     __remove_redundant_data(
                         g,
@@ -151,11 +145,19 @@ def __get_date_to(number_of_days_diff: Optional[int] = None) -> Optional[datetim
 
 
 def __get_repo_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int]:
-    repo_ids_all: List[int] = [r.id for r in g.backend.repositories.all(workspace_id=workspace_id)]
+    repo_ids_all: List[int] = [r.id for r in g.backend.repositories.all(workspace_id)]
     assigned_repos = {r.repo_id for r in g.backend.project_repositories.all(workspace_id)}
 
     repos_to_be_deleted = [rid for rid in repo_ids_all if rid not in assigned_repos]
     return repos_to_be_deleted
+
+
+def __get_itsp_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int]:
+    itsp_ids_all: List[int] = [itsp.id for itsp in g.backend.its_projects.all(workspace_id)]
+    assigned_itsp = {itsp.itsp_id for itsp in g.backend.project_its_projects.all(workspace_id)}
+
+    itsp_ids_to_be_deleted = [itsp_id for itsp_id in itsp_ids_all if itsp_id not in assigned_itsp]
+    return itsp_ids_to_be_deleted
 
 
 def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
