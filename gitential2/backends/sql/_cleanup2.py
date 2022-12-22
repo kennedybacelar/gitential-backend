@@ -19,6 +19,7 @@ class CleaningGroup(str, Enum):
     its_projects = "its_projects"
 
 
+# its_sptrint table is left out - has to be added later on
 all_tables_info = {
     CleaningGroup.commits: {
         "calculated_commits": CommitTables("commit_id", "repo_id"),
@@ -40,7 +41,7 @@ all_tables_info = {
         "its_issue_times_in_statuses": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_comments": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_linked_issues": ITSProjectsTables("issue_id", "itsp_id"),
-        "its_sprints": ITSProjectsTables("issue_id", "itsp_id"),
+        # "its_sprints": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_sprints": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_worklogs": ITSProjectsTables("issue_id", "itsp_id"),
     },
@@ -62,7 +63,7 @@ def perform_data_cleanup_(
                 __remove_redundant_data(
                     g,
                     workspace_id,
-                    date_to,
+                    date_to or datetime.today(),
                     repo_ids_to_delete,
                     CleaningGroup("commits"),
                 )
@@ -71,26 +72,26 @@ def perform_data_cleanup_(
                 __remove_redundant_data(
                     g,
                     workspace_id,
-                    date_to,
+                    date_to or datetime.today(),
                     repo_ids_to_delete,
                     CleaningGroup("pull_requests"),
                 )
         if cleanup_type in (CleanupType.full, CleanupType.its_projects):
-            if date_to or itsp_ids_to_delete:
+            if its_date_to or itsp_ids_to_delete:
                 __remove_redundant_data(
                     g,
                     workspace_id,
-                    date_to,
+                    its_date_to or datetime.today(),
                     itsp_ids_to_delete,
-                    CleaningGroup("pull_requests"),
+                    CleaningGroup("its_projects"),
                 )
 
 
 def __get_keys_to_be_deleted(
     g: GitentialContext,
-    date_to: datetime,
     repo_or_itsp_ids_to_delete: List[int],
     cleaning_group: CleaningGroup,
+    date_to: datetime,
 ):
     # Creating common table expression and returning the commit_ids
     table_ = __get_reference_table(g, cleaning_group)
@@ -126,7 +127,7 @@ def __remove_redundant_data(
     # in case of pull_requests: pr_id + repo_id
     # in case its_issues: issue_id + itsp_id
 
-    cte = __get_keys_to_be_deleted(g, date_to, repo_or_itsp_ids_to_delete, cleaning_group)  # common table expression
+    cte = __get_keys_to_be_deleted(g, repo_or_itsp_ids_to_delete, cleaning_group, date_to)  # common table expression
     for table_name, table_keypair in all_tables_info.get(cleaning_group).items():
         table_ = g.backend.__getattribute__(table_name)
         delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
@@ -172,6 +173,13 @@ def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
             and_(
                 table_.table.c.__getattr__(table_keypair.prid_column_name) == cte.c.number,
                 table_.table.c.__getattr__(table_keypair.repo_id_column_name) == cte.c.repo_id,
+            )
+        )
+    if cleaning_group == CleaningGroup.its_projects:
+        query = table_.table.delete().where(
+            and_(
+                table_.table.c.__getattr__(table_keypair.issue_id_column_name) == cte.c.id,
+                table_.table.c.__getattr__(table_keypair.itsp_id_column_name) == cte.c.itsp_id,
             )
         )
 
