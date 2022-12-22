@@ -57,8 +57,6 @@ def perform_data_cleanup_(
     for workspace_id in workspace_ids:
         repo_ids_to_delete = __get_repo_ids_to_delete(g, workspace_id)
         itsp_ids_to_delete = __get_itsp_ids_to_delete(g, workspace_id)
-        print(itsp_ids_to_delete)
-        exit()
         if cleanup_type in (CleanupType.full, CleanupType.commits):
             if date_to or repo_ids_to_delete:
                 __remove_redundant_data(
@@ -70,30 +68,28 @@ def perform_data_cleanup_(
                 )
         if cleanup_type in (CleanupType.full, CleanupType.pull_requests):
             if date_to or repo_ids_to_delete:
-                if date_to or repo_ids_to_delete:
-                    __remove_redundant_data(
-                        g,
-                        workspace_id,
-                        date_to,
-                        repo_ids_to_delete,
-                        CleaningGroup("pull_requests"),
-                    )
+                __remove_redundant_data(
+                    g,
+                    workspace_id,
+                    date_to,
+                    repo_ids_to_delete,
+                    CleaningGroup("pull_requests"),
+                )
         if cleanup_type in (CleanupType.full, CleanupType.its_projects):
-            if its_date_to or repo_ids_to_delete:
-                if date_to or repo_ids_to_delete:
-                    __remove_redundant_data(
-                        g,
-                        workspace_id,
-                        date_to,
-                        repo_ids_to_delete,
-                        CleaningGroup("pull_requests"),
-                    )
+            if date_to or itsp_ids_to_delete:
+                __remove_redundant_data(
+                    g,
+                    workspace_id,
+                    date_to,
+                    itsp_ids_to_delete,
+                    CleaningGroup("pull_requests"),
+                )
 
 
 def __get_keys_to_be_deleted(
     g: GitentialContext,
     date_to: datetime,
-    repo_ids_to_delete: List[int],
+    repo_or_itsp_ids_to_delete: List[int],
     cleaning_group: CleaningGroup,
 ):
     # Creating common table expression and returning the commit_ids
@@ -101,19 +97,19 @@ def __get_keys_to_be_deleted(
     if cleaning_group == CleaningGroup.commits:
         return (
             select([table_.table.c.commit_id, table_.table.c.repo_id])
-            .where(or_(table_.table.c.date <= date_to, table_.table.c.repo_id.in_(repo_ids_to_delete)))
+            .where(or_(table_.table.c.date <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     if cleaning_group == CleaningGroup.pull_requests:
         return (
             select([table_.table.c.number, table_.table.c.repo_id])
-            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.repo_id.in_(repo_ids_to_delete)))
+            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     if cleaning_group == CleaningGroup.its_projects:
         return (
             select([table_.table.c.id, table_.table.c.itsp_id])
-            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.itsp_id.in_(repo_ids_to_delete)))
+            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.itsp_id.in_(repo_or_itsp_ids_to_delete)))
             .cte()
         )
 
@@ -122,7 +118,7 @@ def __remove_redundant_data(
     g: GitentialContext,
     workspace_id: int,
     date_to: datetime,
-    repo_ids_to_delete: List[int],
+    repo_or_itsp_ids_to_delete: List[int],
     cleaning_group: CleaningGroup,
 ):
     # table keypair is needed because the uniqueness of each row is determined by a pair of fields
@@ -130,7 +126,7 @@ def __remove_redundant_data(
     # in case of pull_requests: pr_id + repo_id
     # in case its_issues: issue_id + itsp_id
 
-    cte = __get_keys_to_be_deleted(g, date_to, repo_ids_to_delete, cleaning_group)  # common table expression
+    cte = __get_keys_to_be_deleted(g, date_to, repo_or_itsp_ids_to_delete, cleaning_group)  # common table expression
     for table_name, table_keypair in all_tables_info.get(cleaning_group).items():
         table_ = g.backend.__getattribute__(table_name)
         delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
