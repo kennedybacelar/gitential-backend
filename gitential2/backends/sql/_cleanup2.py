@@ -2,11 +2,13 @@ from datetime import date, datetime, timedelta
 from typing import Optional, List
 from enum import Enum
 from collections import namedtuple
-
+from structlog import get_logger
 from sqlalchemy import select, or_, and_
 
 from gitential2.core import GitentialContext
 from gitential2.datatypes.cli_v2 import CleanupType
+
+logger = get_logger(__name__)
 
 CommitTables = namedtuple("CommitTables", ["cid_column_name", "repo_id_column_name"])
 PullRequestsTables = namedtuple("PullRequestsTables", ["prid_column_name", "repo_id_column_name"])
@@ -63,7 +65,7 @@ def perform_data_cleanup_(
                 __remove_redundant_data(
                     g,
                     workspace_id,
-                    date_to or datetime.today(),
+                    date_to or datetime.min,
                     repo_ids_to_delete,
                     CleaningGroup("commits"),
                 )
@@ -72,7 +74,7 @@ def perform_data_cleanup_(
                 __remove_redundant_data(
                     g,
                     workspace_id,
-                    date_to or datetime.today(),
+                    date_to or datetime.min,
                     repo_ids_to_delete,
                     CleaningGroup("pull_requests"),
                 )
@@ -81,7 +83,7 @@ def perform_data_cleanup_(
                 __remove_redundant_data(
                     g,
                     workspace_id,
-                    its_date_to or datetime.today(),
+                    its_date_to or datetime.min,
                     itsp_ids_to_delete,
                     CleaningGroup("its_projects"),
                 )
@@ -158,7 +160,7 @@ def __get_itsp_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int
 
 
 def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
-    print("deletando")
+    logger.info(f"Attempting to delete rows from {table_.table.name} table.", workspace_id=workspace_id)
     schema_name = f"ws_{workspace_id}"
     if cleaning_group == CleaningGroup.commits:
         query = table_.table.delete().where(
@@ -167,7 +169,6 @@ def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
                 table_.table.c.__getattr__(table_keypair.repo_id_column_name) == cte.c.repo_id,
             )
         )
-        table_.engine.execution_options(schema_translate_map={None: schema_name}).execute(query)
     if cleaning_group == CleaningGroup.pull_requests:
         query = table_.table.delete().where(
             and_(
@@ -182,6 +183,7 @@ def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
                 table_.table.c.__getattr__(table_keypair.itsp_id_column_name) == cte.c.itsp_id,
             )
         )
+    table_.engine.execution_options(schema_translate_map={None: schema_name}).execute(query)
 
 
 def __get_reference_table(g: GitentialContext, cleaning_group: str):
