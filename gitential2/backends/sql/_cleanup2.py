@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Optional, List
 from enum import Enum
 from collections import namedtuple
@@ -87,6 +87,14 @@ def perform_data_cleanup_(
                     itsp_ids_to_delete,
                     CleaningGroup("its_projects"),
                 )
+        if cleanup_type in (CleanupType.full, CleanupType.redis):
+            if repo_ids_to_delete or itsp_ids_to_delete:
+                __remove_redundant_data_for_redis(
+                    g,
+                    workspace_id,
+                    repo_ids_to_delete,
+                    itsp_ids_to_delete,
+                )
 
 
 def __get_keys_to_be_deleted(
@@ -133,6 +141,31 @@ def __remove_redundant_data(
     for table_name, table_keypair in all_tables_info.get(cleaning_group).items():
         table_ = g.backend.__getattribute__(table_name)
         delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
+
+
+def __remove_redundant_data_for_redis(
+    g: GitentialContext,
+    workspace_id: int,
+    repo_ids_to_delete: List[int],
+    itsp_ids_to_delete: List[int],
+):
+    logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
+    keys = []
+    for rid in repo_ids_to_delete:
+        redis_key_1 = f"ws-{workspace_id}:repository-refresh-{rid}"
+        g.kvstore.delete_value(name=redis_key_1)
+        redis_key_2 = f"ws-{workspace_id}:r-{rid}:extraction"
+        g.kvstore.delete_value(name=redis_key_2)
+        redis_key_3 = f"ws-{workspace_id}:repository-status-{rid}"
+        g.kvstore.delete_value(name=redis_key_3)
+        keys.extend([redis_key_1, redis_key_2, redis_key_3])
+
+    for itsp_id in itsp_ids_to_delete:
+        redis_key = f"ws-{workspace_id}:itsp-{itsp_id}"
+        g.kvstore.delete_value(name=redis_key)
+        keys.append(redis_key)
+
+    logger.info("Keys deleted from redis.", keys=keys)
 
 
 def __get_date_to(number_of_days_diff: Optional[int] = None) -> Optional[datetime]:
