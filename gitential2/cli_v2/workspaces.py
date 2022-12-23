@@ -13,6 +13,8 @@ from ..datatypes.cli_v2 import ResetType, CleanupType
 from ..datatypes.workspaces import WorkspaceDuplicate
 from ..exceptions import SettingsException
 
+from ..backends.sql._cleanup2 import perform_data_cleanup_
+
 app = typer.Typer()
 logger = get_logger(__name__)
 
@@ -158,3 +160,27 @@ def perform_workspace_cleanup(
                     cleanup_type=cleanup_type,
                     remove_residual_data=remove_residual_data,
                 )
+
+
+@app.command("test-cleanup")
+def perform_workspace_cleanup(
+    workspace_id: int = typer.Argument(None),
+    cleanup_type: CleanupType = typer.Option("full", "--type", "-t"),
+):
+
+    g = get_context()
+    workspace = g.backend.workspaces.get(id_=workspace_id) if workspace_id else None
+
+    if workspace_id and not workspace:
+        logger.exception(
+            "Failed to cleanup workspace! Workspace not exists for given workspace id!", workspace_id=workspace_id
+        )
+    else:
+        confirm_res = typer.confirm("Are you sure you want to perform cleanup process on workspace(s)?")
+        if confirm_res:
+            workspace_ids = [workspace.id] if workspace else [w.id for w in g.backend.workspaces.all()]
+            perform_data_cleanup_(
+                g=g,
+                workspace_ids=workspace_ids,
+                cleanup_type=cleanup_type,
+            )

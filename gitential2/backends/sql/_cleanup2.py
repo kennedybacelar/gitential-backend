@@ -216,7 +216,11 @@ def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
                 table_.table.c.__getattr__(table_keypair.itsp_id_column_name) == cte.c.itsp_id,
             )
         )
-    table_.engine.execution_options(schema_translate_map={None: schema_name}).execute(query)
+    with table_.engine.connect().execution_options(
+        autocommit=True,
+        schema_translate_map={None: schema_name},
+    ) as conn:
+        conn.execute(query)
 
 
 def __get_reference_table(g: GitentialContext, cleaning_group: str):
