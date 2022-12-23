@@ -25,20 +25,21 @@ class CleaningGroup(str, Enum):
 all_tables_info = {
     CleaningGroup.commits: {
         "calculated_commits": CommitTables("commit_id", "repo_id"),
-        "extracted_commits": CommitTables("commit_id", "repo_id"),
         "extracted_patches": CommitTables("commit_id", "repo_id"),
         "calculated_patches": CommitTables("commit_id", "repo_id"),
         "extracted_patch_rewrites": CommitTables("commit_id", "repo_id"),
         "extracted_commit_branches": CommitTables("commit_id", "repo_id"),
+        # The reference table should be the last item of iteration
+        "extracted_commits": CommitTables("commit_id", "repo_id"),
     },
     CleaningGroup.pull_requests: {
-        "pull_requests": PullRequestsTables("number", "repo_id"),
         "pull_request_commits": PullRequestsTables("pr_number", "repo_id"),
         "pull_request_comments": PullRequestsTables("pr_number", "repo_id"),
         "pull_request_labels": PullRequestsTables("pr_number", "repo_id"),
+        # The reference table should be the last item of iteration
+        "pull_requests": PullRequestsTables("number", "repo_id"),
     },
     CleaningGroup.its_projects: {
-        "its_issues": ITSProjectsTables("id", "itsp_id"),
         "its_issue_changes": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_times_in_statuses": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_comments": ITSProjectsTables("issue_id", "itsp_id"),
@@ -46,6 +47,8 @@ all_tables_info = {
         # "its_sprints": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_sprints": ITSProjectsTables("issue_id", "itsp_id"),
         "its_issue_worklogs": ITSProjectsTables("issue_id", "itsp_id"),
+        # The reference table should be the last item of iteration
+        "its_issues": ITSProjectsTables("id", "itsp_id"),
     },
 }
 
@@ -108,7 +111,7 @@ def __get_keys_to_be_deleted(
     if cleaning_group == CleaningGroup.commits:
         return (
             select([table_.table.c.commit_id, table_.table.c.repo_id])
-            .where(or_(table_.table.c.date <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
+            .where(or_(table_.table.c.atime <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     if cleaning_group == CleaningGroup.pull_requests:
@@ -226,7 +229,7 @@ def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
 def __get_reference_table(g: GitentialContext, cleaning_group: str):
 
     reference_tables = {
-        CleaningGroup.commits: g.backend.calculated_commits,
+        CleaningGroup.commits: g.backend.extracted_commits,
         CleaningGroup.pull_requests: g.backend.pull_requests,
         CleaningGroup.its_projects: g.backend.its_issues,
     }
