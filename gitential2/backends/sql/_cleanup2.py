@@ -157,8 +157,9 @@ def __remove_redundant_data(
     # in case of pull_requests: pr_id + repo_id
     # in case its_issues: issue_id + itsp_id
 
-    cte = __get_keys_to_be_deleted(g, repo_or_itsp_ids_to_delete, cleaning_group, date_to)  # common table expression
-    for table_name, table_keypair in all_tables_info.get(cleaning_group).items():
+    # cte = common table expression
+    cte = __get_keys_to_be_deleted(g, repo_or_itsp_ids_to_delete, cleaning_group, date_to)
+    for table_name, table_keypair in all_tables_info.get(cleaning_group, {}).items():  # type: ignore[attr-defined]
         table_ = getattr(g.backend, table_name)
         __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
 
