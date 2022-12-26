@@ -105,15 +105,14 @@ def perform_data_cleanup_(
                     itsp_ids_to_delete,
                     CleaningGroup("its_projects"),
                 )
-        if cleanup_type in (CleanupType.full, CleanupType.redis):
-            if repo_ids_to_delete or itsp_ids_to_delete:
+        if repo_ids_to_delete or itsp_ids_to_delete:
+            if cleanup_type in (CleanupType.full, CleanupType.redis):
                 __remove_redundant_data_for_redis(
                     g,
                     workspace_id,
                     repo_ids_to_delete,
                     itsp_ids_to_delete,
                 )
-        if repo_ids_to_delete or itsp_ids_to_delete:
             __delete_repositories_or_itsp_projects(g, workspace_id, repo_ids_to_delete, itsp_ids_to_delete)
 
 
@@ -159,7 +158,7 @@ def __remove_redundant_data(
 
     cte = __get_keys_to_be_deleted(g, repo_or_itsp_ids_to_delete, cleaning_group, date_to)  # common table expression
     for table_name, table_keypair in all_tables_info.get(cleaning_group).items():
-        table_ = g.backend.__getattribute__(table_name)
+        table_ = getattr(g.backend, table_name)
         __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
 
 
@@ -218,22 +217,22 @@ def __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
     if cleaning_group == CleaningGroup.commits:
         query = table_.table.delete().where(
             and_(
-                table_.table.c.__getattr__(table_keypair.cid_column_name) == cte.c.commit_id,
-                table_.table.c.__getattr__(table_keypair.repo_id_column_name) == cte.c.repo_id,
+                getattr(table_.table.c, table_keypair.cid_column_name) == cte.c.commit_id,
+                getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
             )
         )
     if cleaning_group == CleaningGroup.pull_requests:
         query = table_.table.delete().where(
             and_(
-                table_.table.c.__getattr__(table_keypair.prid_column_name) == cte.c.number,
-                table_.table.c.__getattr__(table_keypair.repo_id_column_name) == cte.c.repo_id,
+                getattr(table_.table.c, table_keypair.prid_column_name) == cte.c.number,
+                getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
             )
         )
     if cleaning_group == CleaningGroup.its_projects:
         query = table_.table.delete().where(
             and_(
-                table_.table.c.__getattr__(table_keypair.issue_id_column_name) == cte.c.id,
-                table_.table.c.__getattr__(table_keypair.itsp_id_column_name) == cte.c.itsp_id,
+                getattr(table_.table.c, table_keypair.issue_id_column_name) == cte.c.id,
+                getattr(table_.table.c, table_keypair.itsp_id_column_name) == cte.c.itsp_id,
             )
         )
     with table_.engine.connect().execution_options(
