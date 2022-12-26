@@ -55,7 +55,7 @@ all_tables_info = {
 
 def perform_data_cleanup_(
     g: GitentialContext,
-    workspace_ids: Optional[List[int]] = None,
+    workspace_ids: List[int],
     cleanup_type: Optional[CleanupType] = CleanupType.full,
 ):
     repo_analysis_limit_in_days = g.settings.extraction.repo_analysis_limit_in_days
@@ -142,6 +142,7 @@ def __get_keys_to_be_deleted(
             .where(or_(table_.table.c.created_at <= date_to, table_.table.c.itsp_id.in_(repo_or_itsp_ids_to_delete)))
             .cte()
         )
+    return None
 
 
 def __remove_redundant_data(
@@ -251,7 +252,7 @@ def __delete_repositories_or_itsp_projects(
         g.backend.its_projects.delete_its_projects_by_id(workspace_id, itsp_ids_to_delete)
 
 
-def __get_reference_table(g: GitentialContext, cleaning_group: str):
+def __get_reference_table(g: GitentialContext, cleaning_group: CleaningGroup):
 
     reference_tables = {
         CleaningGroup.commits: g.backend.extracted_commits,

@@ -163,7 +163,7 @@ def perform_workspace_cleanup(
 
 
 @app.command("test-cleanup")
-def perform_workspace_cleanup(
+def perform_workspace_cleanup_(
     workspace_id: int = typer.Argument(None),
     cleanup_type: CleanupType = typer.Option("full", "--type", "-t"),
 ):
