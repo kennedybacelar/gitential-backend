@@ -260,6 +260,10 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
         else:
             return self.create(workspace_id=workspace_id, obj=cast(RepositoryCreate, obj))
 
+    @abstractmethod
+    def delete_repos_by_id(self, workspace_id: int, repo_ids: List[int]):
+        pass
+
 
 class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]):
     @abstractmethod
@@ -278,6 +282,10 @@ class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, 
             return self.update(workspace_id=workspace_id, id_=existing.id, obj=ITSProjectUpdate(**obj.dict()))
         else:
             return self.create(workspace_id=workspace_id, obj=cast(ITSProjectCreate, obj))
+
+    @abstractmethod
+    def delete_its_projects_by_id(self, workspace_id: int, its_project_ids: List[int]):
+        pass
 
 
 class ProjectRepositoryRepository(

@@ -241,6 +241,15 @@ def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
         conn.execute(query)
 
 
+def __delete_repositories_itsp_projects(
+    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], itsp_ids_to_delete: List[int]
+):
+    if repo_ids_to_delete:
+        g.backend.repositories.delete_repos_by_id(workspace_id, repo_ids_to_delete)
+    if itsp_ids_to_delete:
+        g.backend.its_projects.delete_its_projects_by_id(workspace_id, itsp_ids_to_delete)
+
+
 def __get_reference_table(g: GitentialContext, cleaning_group: str):
 
     reference_tables = {
