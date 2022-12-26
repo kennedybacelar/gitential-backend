@@ -113,6 +113,8 @@ def perform_data_cleanup_(
                     repo_ids_to_delete,
                     itsp_ids_to_delete,
                 )
+        if repo_ids_to_delete or itsp_ids_to_delete:
+            __delete_repositories_or_itsp_projects(g, workspace_id, repo_ids_to_delete, itsp_ids_to_delete)
 
 
 def __get_keys_to_be_deleted(
@@ -158,7 +160,7 @@ def __remove_redundant_data(
     cte = __get_keys_to_be_deleted(g, repo_or_itsp_ids_to_delete, cleaning_group, date_to)  # common table expression
     for table_name, table_keypair in all_tables_info.get(cleaning_group).items():
         table_ = g.backend.__getattribute__(table_name)
-        delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
+        __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
 
 
 def __remove_redundant_data_for_redis(
@@ -210,7 +212,7 @@ def __get_itsp_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int
     return itsp_ids_to_be_deleted
 
 
-def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
+def __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
     logger.info(f"Attempting to delete rows from {table_.table.name} table.", workspace_id=workspace_id)
     schema_name = f"ws_{workspace_id}"
     if cleaning_group == CleaningGroup.commits:
@@ -241,7 +243,7 @@ def delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
         conn.execute(query)
 
 
-def __delete_repositories_itsp_projects(
+def __delete_repositories_or_itsp_projects(
     g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], itsp_ids_to_delete: List[int]
 ):
     if repo_ids_to_delete:
