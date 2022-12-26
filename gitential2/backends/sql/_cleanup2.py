@@ -58,11 +58,26 @@ def perform_data_cleanup_(
     workspace_ids: Optional[List[int]] = None,
     cleanup_type: Optional[CleanupType] = CleanupType.full,
 ):
-    date_to = __get_date_to(g.settings.extraction.repo_analysis_limit_in_days)
-    its_date_to = __get_date_to(g.settings.extraction.its_project_analysis_limit_in_days)
+    repo_analysis_limit_in_days = g.settings.extraction.repo_analysis_limit_in_days
+    its_project_analysis_limit_in_days = g.settings.extraction.its_project_analysis_limit_in_days
+    date_to = __get_date_to(repo_analysis_limit_in_days)
+    its_date_to = __get_date_to(its_project_analysis_limit_in_days)
+
     for workspace_id in workspace_ids:
         repo_ids_to_delete = __get_repo_ids_to_delete(g, workspace_id)
         itsp_ids_to_delete = __get_itsp_ids_to_delete(g, workspace_id)
+
+        logger.info(
+            "Starting data cleanup for workspace.",
+            workspace_id=workspace_id,
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            its_project_analysis_limit_in_days=its_project_analysis_limit_in_days,
+            date_to=date_to,
+            its_date_to=its_date_to,
+            repo_ids_to_delete=repo_ids_to_delete,
+            itsp_ids_to_delete=itsp_ids_to_delete,
+        )
+
         if cleanup_type in (CleanupType.full, CleanupType.commits):
             if date_to or repo_ids_to_delete:
                 __remove_redundant_data(
