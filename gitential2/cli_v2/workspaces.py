@@ -125,8 +125,8 @@ def purge_workspace(workspace_id: int):
 def perform_workspace_cleanup(
     workspace_id: int = typer.Argument(None),
     cleanup_type: CleanupType = typer.Option("full", "--type", "-t"),
-    remove_residual_data: bool = False,
 ):
+
     """
     \b
     This command will delete all redundant data from the PostgreSQL database and also from Redis.
@@ -144,17 +144,9 @@ def perform_workspace_cleanup(
     else:
         confirm_res = typer.confirm("Are you sure you want to perform cleanup process on workspace(s)?")
         if confirm_res:
-            if workspace:
-                perform_data_cleanup(
-                    g=g,
-                    workspace_ids=[workspace.id],
-                    cleanup_type=cleanup_type,
-                    remove_residual_data=remove_residual_data,
-                )
-            else:
-                perform_data_cleanup(
-                    g=g,
-                    workspace_ids=[w.id for w in g.backend.workspaces.all()],
-                    cleanup_type=cleanup_type,
-                    remove_residual_data=remove_residual_data,
-                )
+            workspace_ids = [workspace.id] if workspace else [w.id for w in g.backend.workspaces.all()]
+            perform_data_cleanup(
+                g=g,
+                workspace_ids=workspace_ids,
+                cleanup_type=cleanup_type,
+            )

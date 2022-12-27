@@ -357,6 +357,9 @@ class InMemRepositoryRepository(
     def get_repo_id_info_by_repo_name(self, workspace_id: int, repo_name: str):
         pass
 
+    def delete_repos_by_id(self, workspace_id: int, repo_ids: List[int]):
+        pass
+
 
 class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
     def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:

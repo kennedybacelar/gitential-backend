@@ -622,6 +622,10 @@ class SQLRepositoryRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return rows
 
+    def delete_repos_by_id(self, workspace_id: int, repo_ids: List[int]):
+        query = self.table.delete().where(self.table.c.id.in_(repo_ids))
+        return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+
 
 class SQLITSProjectRepository(
     ITSProjectRepository, SQLWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]
@@ -635,6 +639,10 @@ class SQLITSProjectRepository(
         query = self.table.select().where(self.table.c.api_url == api_url)
         row = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchone_)
         return ITSProjectInDB(**row) if row else None
+
+    def delete_its_projects_by_id(self, workspace_id: int, its_project_ids: List[int]):
+        query = self.table.delete().where(self.table.c.id.in_(its_project_ids))
+        return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
 
 
 class SQLProjectRepositoryRepository(
