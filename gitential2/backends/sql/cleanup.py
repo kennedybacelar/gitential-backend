@@ -113,7 +113,8 @@ def perform_data_cleanup(
                     repo_ids_to_delete,
                     itsp_ids_to_delete,
                 )
-            __delete_repositories_or_itsp_projects(g, workspace_id, repo_ids_to_delete, itsp_ids_to_delete)
+            if cleanup_type == CleanupType.full:
+                __delete_repositories_or_itsp_projects(g, workspace_id, repo_ids_to_delete, itsp_ids_to_delete)
 
 
 def __get_keys_to_be_deleted(
