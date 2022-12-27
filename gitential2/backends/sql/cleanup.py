@@ -1,399 +1,192 @@
 from datetime import datetime, timedelta
-from functools import partial
-from typing import Optional, List, Iterable, Set, Callable, Any
-
-from pydantic import BaseModel
+from typing import Optional, List
+from enum import Enum
+from collections import namedtuple
 from structlog import get_logger
+from sqlalchemy import select, or_, and_
 
 from gitential2.core import GitentialContext
-from gitential2.datatypes import ProjectRepositoryInDB
 from gitential2.datatypes.cli_v2 import CleanupType
-from gitential2.datatypes.extraction import ExtractedCommit
-from gitential2.datatypes.project_its_projects import ProjectITSProjectInDB
-from gitential2.datatypes.pull_requests import PullRequest, PullRequestId
-from gitential2.utils import is_list_not_empty
 
 logger = get_logger(__name__)
 
-DELETE_ID_CHUNK_SIZE: int = 1000
+CommitTables = namedtuple("CommitTables", ["cid_column_name", "repo_id_column_name"])
+PullRequestsTables = namedtuple("PullRequestsTables", ["prid_column_name", "repo_id_column_name"])
+ITSProjectsTables = namedtuple("ITSProjectsTables", ["issue_id_column_name", "itsp_id_column_name"])
 
 
-class DeleteRowsResult(BaseModel):
-    no_deleted_rows: int
-    no_rows_before_clean: int
-    no_rows_after_clean: int
+class CleaningGroup(str, Enum):
+    commits = "commits"
+    pull_requests = "pull_requests"
+    its_projects = "its_projects"
 
 
-class DeleteSettings(BaseModel):
-    items_title: str
-    delete_fn: Callable
-    count_rows_fn: Callable
-    delete_ids_key: str
-    item_ids_to_delete: List[Any]
-
-
-class ITSCleanupState(BaseModel):
-    itsp_ids_to_delete: List[int]
-    its_issue_ids_to_be_deleted: List[str]
+# its_sptrint table is left out - has to be added later on
+all_tables_info = {
+    CleaningGroup.commits: {
+        "calculated_commits": CommitTables("commit_id", "repo_id"),
+        "extracted_patches": CommitTables("commit_id", "repo_id"),
+        "calculated_patches": CommitTables("commit_id", "repo_id"),
+        "extracted_patch_rewrites": CommitTables("commit_id", "repo_id"),
+        "extracted_commit_branches": CommitTables("commit_id", "repo_id"),
+        # The reference table should be the last item of iteration
+        "extracted_commits": CommitTables("commit_id", "repo_id"),
+    },
+    CleaningGroup.pull_requests: {
+        "pull_request_commits": PullRequestsTables("pr_number", "repo_id"),
+        "pull_request_comments": PullRequestsTables("pr_number", "repo_id"),
+        "pull_request_labels": PullRequestsTables("pr_number", "repo_id"),
+        # The reference table should be the last item of iteration
+        "pull_requests": PullRequestsTables("number", "repo_id"),
+    },
+    CleaningGroup.its_projects: {
+        "its_issue_changes": ITSProjectsTables("issue_id", "itsp_id"),
+        "its_issue_times_in_statuses": ITSProjectsTables("issue_id", "itsp_id"),
+        "its_issue_comments": ITSProjectsTables("issue_id", "itsp_id"),
+        "its_issue_linked_issues": ITSProjectsTables("issue_id", "itsp_id"),
+        # "its_sprints": ITSProjectsTables("issue_id", "itsp_id"),
+        "its_issue_sprints": ITSProjectsTables("issue_id", "itsp_id"),
+        "its_issue_worklogs": ITSProjectsTables("issue_id", "itsp_id"),
+        # The reference table should be the last item of iteration
+        "its_issues": ITSProjectsTables("id", "itsp_id"),
+    },
+}
 
 
 def perform_data_cleanup(
     g: GitentialContext,
-    remove_residual_data: bool = False,
-    workspace_ids: Optional[List[int]] = None,
+    workspace_ids: List[int],
     cleanup_type: Optional[CleanupType] = CleanupType.full,
 ):
-    wid_list = workspace_ids if is_list_not_empty(workspace_ids) else [w.id for w in g.backend.workspaces.all()]
-    logger.info("Attempting to perform data cleanup process...", workspace_id_list=wid_list)
-    for wid in wid_list:
-        try:
-            cleanup_types = __perform_data_cleanup_on_workspace(
-                g=g, wid=wid, remove_residual_data=remove_residual_data, cleanup_type=cleanup_type
-            )
-            logger.info("Data cleanup finished for workspace.", workspace_id=wid, cleanup_types=cleanup_types)
-        except Exception as e:  # pylint: disable=broad-except
-            logger.exception("Cleanup of workspace failed.", workspace_id=wid, exception=e)
+    repo_analysis_limit_in_days = g.settings.extraction.repo_analysis_limit_in_days
+    its_project_analysis_limit_in_days = g.settings.extraction.its_project_analysis_limit_in_days
+    date_to = __get_date_to(repo_analysis_limit_in_days)
+    its_date_to = __get_date_to(its_project_analysis_limit_in_days)
+
+    for workspace_id in workspace_ids:
+        repo_ids_to_delete = __get_repo_ids_to_delete(g, workspace_id)
+        itsp_ids_to_delete = __get_itsp_ids_to_delete(g, workspace_id)
+
+        logger.info(
+            "Starting data cleanup for workspace.",
+            workspace_id=workspace_id,
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            its_project_analysis_limit_in_days=its_project_analysis_limit_in_days,
+            date_to=date_to,
+            its_date_to=its_date_to,
+            repo_ids_to_delete=repo_ids_to_delete,
+            itsp_ids_to_delete=itsp_ids_to_delete,
+        )
+
+        if cleanup_type in (CleanupType.full, CleanupType.commits):
+            if date_to or repo_ids_to_delete:
+                __remove_redundant_data(
+                    g,
+                    workspace_id,
+                    date_to or datetime.min,
+                    repo_ids_to_delete,
+                    CleaningGroup("commits"),
+                )
+        if cleanup_type in (CleanupType.full, CleanupType.pull_requests):
+            if date_to or repo_ids_to_delete:
+                __remove_redundant_data(
+                    g,
+                    workspace_id,
+                    date_to or datetime.min,
+                    repo_ids_to_delete,
+                    CleaningGroup("pull_requests"),
+                )
+        if cleanup_type in (CleanupType.full, CleanupType.its_projects):
+            if its_date_to or itsp_ids_to_delete:
+                __remove_redundant_data(
+                    g,
+                    workspace_id,
+                    its_date_to or datetime.min,
+                    itsp_ids_to_delete,
+                    CleaningGroup("its_projects"),
+                )
+        if repo_ids_to_delete or itsp_ids_to_delete:
+            if cleanup_type in (CleanupType.full, CleanupType.redis):
+                __remove_redundant_data_for_redis(
+                    g,
+                    workspace_id,
+                    repo_ids_to_delete,
+                    itsp_ids_to_delete,
+                )
+            __delete_repositories_or_itsp_projects(g, workspace_id, repo_ids_to_delete, itsp_ids_to_delete)
 
 
-def __perform_data_cleanup_on_workspace(
+def __get_keys_to_be_deleted(
     g: GitentialContext,
-    wid: int,
-    remove_residual_data: bool = False,
-    cleanup_type: Optional[CleanupType] = CleanupType.full,
-) -> List[CleanupType]:
-    date_to: Optional[datetime] = __get_date_to(g.settings.extraction.repo_analysis_limit_in_days)
-    repo_ids_to_delete = __get_repo_ids_to_delete(g=g, wid=wid)
-    itsp_ids_to_delete = __get_itsp_ids_to_be_deleted(g=g, wid=wid)
-
-    logger.info(
-        "Starting data cleanup for workspace.",
-        workspace_id=wid,
-        repo_analysis_limit_in_days=g.settings.extraction.repo_analysis_limit_in_days,
-        its_project_analysis_limit_in_days=g.settings.extraction.its_project_analysis_limit_in_days,
-        date_to=date_to,
-        repo_ids_to_delete=repo_ids_to_delete,
-        itsp_ids_to_delete=itsp_ids_to_delete,
-    )
-
-    if remove_residual_data:
-        residual_data_cleanup_result: bool = __prepare_state_for_residual_data_of_cleanup_process(g=g, wid=wid)
-        logger.info("Residual data cleanup result.", residual_data_cleanup_result=residual_data_cleanup_result)
-
-    cleanup_types: List[CleanupType] = []
-    if cleanup_type in (CleanupType.full, CleanupType.commits):
-        res_c = __remove_redundant_commit_data(g=g, wid=wid, repo_ids_to_delete=repo_ids_to_delete, date_to=date_to)
-        cleanup_types.append(res_c)
-    if cleanup_type in (CleanupType.full, CleanupType.pull_requests):
-        res_pr = __remove_redundant_pull_request_data(
-            g=g, wid=wid, repo_ids_to_delete=repo_ids_to_delete, date_to=date_to
+    repo_or_itsp_ids_to_delete: List[int],
+    cleaning_group: CleaningGroup,
+    date_to: datetime,
+):
+    # Creating common table expression and returning the commit_ids
+    table_ = __get_reference_table(g, cleaning_group)
+    if cleaning_group == CleaningGroup.commits:
+        return (
+            select([table_.table.c.commit_id, table_.table.c.repo_id])
+            .where(or_(table_.table.c.atime <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
+            .cte()
         )
-        cleanup_types.append(res_pr)
-    if cleanup_type in (CleanupType.full, CleanupType.its_projects):
-        res_its = __remove_redundant_data_for_its_projects(g=g, wid=wid, itsp_ids_to_delete=itsp_ids_to_delete)
-        cleanup_types.append(res_its)
-    if cleanup_type in (CleanupType.full, CleanupType.redis):
-        res_redis = __remove_redundant_data_for_redis(
-            g=g, workspace_id=wid, repo_ids_to_delete=repo_ids_to_delete, itsp_ids_to_delete=itsp_ids_to_delete
+    if cleaning_group == CleaningGroup.pull_requests:
+        return (
+            select([table_.table.c.number, table_.table.c.repo_id])
+            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
+            .cte()
         )
-        if res_redis:
-            cleanup_types.append(res_redis)
-
-    return cleanup_types
-
-
-def __remove_redundant_commit_data(
-    g: GitentialContext, wid: int, repo_ids_to_delete: List[int], date_to: Optional[datetime] = None
-) -> CleanupType:
-    logger.info(
-        "Attempting to remove redundant data for commits...",
-        workspace_id=wid,
-        repo_ids_to_delete=repo_ids_to_delete,
-        date_to=date_to,
-    )
-
-    redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.commits)
-    cleanup_state: List[str] = g.kvstore.get_value(redis_key) or []  # type: ignore
-
-    commits_to_delete: List[ExtractedCommit] = g.backend.extracted_commits.select_extracted_commits(
-        workspace_id=wid, date_to=date_to, repo_ids=repo_ids_to_delete
-    )
-
-    commit_hashes_to_be_deleted: List[str] = list(set([c.commit_id for c in commits_to_delete] + cleanup_state))
-    logger.info(number_of_commit_hashes_selected_for_cleanup=len(commit_hashes_to_be_deleted))
-
-    if not is_list_not_empty(commit_hashes_to_be_deleted):
-        logger.info("Nothing to delete from commits.", workspace_id=wid)
-        return CleanupType.commits
-
-    g.kvstore.set_value(redis_key, commit_hashes_to_be_deleted)
-
-    items_key: str = "commit_ids"
-
-    delete_settings: List[DeleteSettings] = [
-        DeleteSettings(
-            items_title="extracted_commits",
-            delete_fn=g.backend.extracted_commits.delete_commits,
-            count_rows_fn=g.backend.extracted_commits.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=commit_hashes_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="calculated_commits",
-            delete_fn=g.backend.calculated_commits.delete_commits,
-            count_rows_fn=g.backend.calculated_commits.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=commit_hashes_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="extracted_patches",
-            delete_fn=g.backend.extracted_patches.delete_extracted_patches,
-            count_rows_fn=g.backend.extracted_patches.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=commit_hashes_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="calculated_patches",
-            delete_fn=g.backend.calculated_patches.delete_calculated_patches,
-            count_rows_fn=g.backend.calculated_patches.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=commit_hashes_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="extracted_patch_rewrites",
-            delete_fn=g.backend.extracted_patch_rewrites.delete_extracted_patch_rewrites,
-            count_rows_fn=g.backend.extracted_patch_rewrites.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=commit_hashes_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="extracted_commit_branches",
-            delete_fn=g.backend.extracted_commit_branches.delete_extracted_commit_branches,
-            count_rows_fn=g.backend.extracted_commit_branches.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=commit_hashes_to_be_deleted,
-        ),
-    ]
-
-    cleanup_result = __apply_delete_settings_list(
-        g=g, wid=wid, delete_settings=delete_settings, c_type=CleanupType.commits
-    )
-
-    g.kvstore.delete_value(redis_key)
-
-    return cleanup_result
+    if cleaning_group == CleaningGroup.its_projects:
+        return (
+            select([table_.table.c.id, table_.table.c.itsp_id])
+            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.itsp_id.in_(repo_or_itsp_ids_to_delete)))
+            .cte()
+        )
+    return None
 
 
-def __remove_redundant_pull_request_data(
-    g: GitentialContext, wid: int, repo_ids_to_delete: List[int], date_to: Optional[datetime]
-) -> CleanupType:
-    logger.info(
-        "Attempting to remove redundant data for pull requests...",
-        workspace_id=wid,
-        repo_ids_to_delete=repo_ids_to_delete,
-        date_to=date_to,
-    )
+def __remove_redundant_data(
+    g: GitentialContext,
+    workspace_id: int,
+    date_to: datetime,
+    repo_or_itsp_ids_to_delete: List[int],
+    cleaning_group: CleaningGroup,
+):
+    # table keypair is needed because the uniqueness of each row is determined by a pair of fields
+    # in case of commits: repo_id + commit_id
+    # in case of pull_requests: pr_id + repo_id
+    # in case its_issues: issue_id + itsp_id
 
-    redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.pull_requests)
-    redis_value: List[dict] = g.kvstore.get_value(redis_key)  # type: ignore
-    cleanup_state: List[PullRequestId] = [PullRequestId(**item) for item in redis_value] if redis_value else []
-
-    prs_to_be_deleted: List[PullRequest] = g.backend.pull_requests.select_pull_requests(
-        workspace_id=wid, date_to=date_to, repo_ids=repo_ids_to_delete
-    )
-    pr_ids_to_be_deleted: List[PullRequestId] = [pr.id_ for pr in prs_to_be_deleted] + cleanup_state
-    logger.info("Pull requests selected for cleanup.", number_of_pull_requests_to_be_deleted=len(pr_ids_to_be_deleted))
-
-    if not is_list_not_empty(pr_ids_to_be_deleted):
-        logger.info("Nothing to delete from pull requests.", workspace_id=wid)
-        return CleanupType.commits
-
-    g.kvstore.set_value(redis_key, pr_ids_to_be_deleted)
-
-    items_key: str = "pr_ids"
-
-    delete_settings: List[DeleteSettings] = [
-        DeleteSettings(
-            items_title="pull_requests",
-            delete_fn=g.backend.pull_requests.delete_pull_requests,
-            count_rows_fn=g.backend.pull_requests.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=pr_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="pull_request_commits",
-            delete_fn=g.backend.pull_request_commits.delete_pull_request_commits,
-            count_rows_fn=g.backend.pull_request_commits.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=pr_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="pull_request_comments",
-            delete_fn=g.backend.pull_request_comments.delete_pull_request_comment,
-            count_rows_fn=g.backend.pull_request_comments.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=pr_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="pull_request_labels",
-            delete_fn=g.backend.pull_request_labels.delete_pull_request_labels,
-            count_rows_fn=g.backend.pull_request_labels.count_rows,
-            delete_ids_key=items_key,
-            item_ids_to_delete=pr_ids_to_be_deleted,
-        ),
-    ]
-
-    cleanup_result = __apply_delete_settings_list(
-        g=g, wid=wid, delete_settings=delete_settings, c_type=CleanupType.pull_requests
-    )
-
-    g.kvstore.delete_value(redis_key)
-
-    return cleanup_result
-
-
-def __remove_redundant_data_for_its_projects(
-    g: GitentialContext, wid: int, itsp_ids_to_delete: List[int]
-) -> CleanupType:
-    date_to: Optional[datetime] = __get_date_to(g.settings.extraction.its_project_analysis_limit_in_days)
-
-    logger.info(
-        "Attempting to remove redundant data for ITS projects...",
-        workspace_id=wid,
-        its_issues_to_be_deleted=itsp_ids_to_delete,
-        date_to=date_to,
-    )
-
-    redis_key: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.its_projects)
-    redis_value = g.kvstore.get_value(redis_key)
-    cleanup_state: ITSCleanupState = (
-        ITSCleanupState(**redis_value)  # type: ignore
-        if redis_value
-        else ITSCleanupState(itsp_ids_to_delete=[], its_issue_ids_to_be_deleted=[])
-    )
-
-    its_issues_to_delete = g.backend.its_issues.select_its_issues(
-        workspace_id=wid, date_to=date_to, itsp_ids=itsp_ids_to_delete
-    )
-    its_issue_ids_to_be_deleted: List[str] = [
-        its.id for its in its_issues_to_delete
-    ] + cleanup_state.its_issue_ids_to_be_deleted
-    itsp_ids_to_delete_corrected: List[int] = itsp_ids_to_delete + cleanup_state.itsp_ids_to_delete
-    logger.info("ITS Issues selected for cleanup.", no_its_issue_ids_to_be_deleted=len(its_issue_ids_to_be_deleted))
-
-    if not is_list_not_empty(its_issue_ids_to_be_deleted) and not is_list_not_empty(itsp_ids_to_delete_corrected):
-        logger.info("Nothing to delete from its projects.", workspace_id=wid)
-        return CleanupType.its_projects
-
-    its_cleanup_state = ITSCleanupState(
-        itsp_ids_to_delete=itsp_ids_to_delete_corrected, its_issue_ids_to_be_deleted=its_issue_ids_to_be_deleted
-    )
-    g.kvstore.set_value(redis_key, its_cleanup_state.dict())
-
-    delete_settings: List[DeleteSettings] = [
-        DeleteSettings(
-            items_title="its_issues",
-            delete_fn=g.backend.its_issues.delete_its_issues,
-            count_rows_fn=g.backend.its_issues.count_rows,
-            delete_ids_key="its_issue_ids",
-            item_ids_to_delete=its_issue_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="its_issue_changes",
-            delete_fn=g.backend.its_issue_changes.delete_its_issue_changes,
-            count_rows_fn=g.backend.its_issue_changes.count_rows,
-            delete_ids_key="its_ids",
-            item_ids_to_delete=its_issue_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="its_issue_times_in_statuses",
-            delete_fn=g.backend.its_issue_times_in_statuses.delete_its_issue_time_in_statuses,
-            count_rows_fn=g.backend.its_issue_times_in_statuses.count_rows,
-            delete_ids_key="its_ids",
-            item_ids_to_delete=its_issue_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="its_issue_comments",
-            delete_fn=g.backend.its_issue_comments.delete_its_issue_comments,
-            count_rows_fn=g.backend.its_issue_comments.count_rows,
-            delete_ids_key="its_ids",
-            item_ids_to_delete=its_issue_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="its_issue_linked_issues",
-            delete_fn=g.backend.its_issue_linked_issues.delete_its_issue_linked_issues,
-            count_rows_fn=g.backend.its_issue_linked_issues.count_rows,
-            delete_ids_key="its_ids",
-            item_ids_to_delete=its_issue_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="its_sprints",
-            delete_fn=g.backend.its_sprints.delete_its_sprints,
-            count_rows_fn=g.backend.its_sprints.count_rows,
-            delete_ids_key="itsp_ids",
-            item_ids_to_delete=itsp_ids_to_delete_corrected,
-        ),
-        DeleteSettings(
-            items_title="its_issue_sprints",
-            delete_fn=g.backend.its_issue_sprints.delete_its_issue_sprints,
-            count_rows_fn=g.backend.its_issue_sprints.count_rows,
-            delete_ids_key="its_ids",
-            item_ids_to_delete=its_issue_ids_to_be_deleted,
-        ),
-        DeleteSettings(
-            items_title="its_issue_worklogs",
-            delete_fn=g.backend.its_issue_worklogs.delete_its_issue_worklogs,
-            count_rows_fn=g.backend.its_issue_worklogs.count_rows,
-            delete_ids_key="its_ids",
-            item_ids_to_delete=its_issue_ids_to_be_deleted,
-        ),
-    ]
-
-    cleanup_result = __apply_delete_settings_list(
-        g=g, wid=wid, delete_settings=delete_settings, c_type=CleanupType.its_projects
-    )
-
-    g.kvstore.delete_value(redis_key)
-
-    return cleanup_result
+    # cte = common table expression
+    cte = __get_keys_to_be_deleted(g, repo_or_itsp_ids_to_delete, cleaning_group, date_to)
+    for table_name, table_keypair in all_tables_info.get(cleaning_group, {}).items():  # type: ignore[attr-defined]
+        table_ = getattr(g.backend, table_name)
+        __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair)
 
 
 def __remove_redundant_data_for_redis(
-    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], itsp_ids_to_delete: List[int]
-) -> Optional[CleanupType]:
-    is_rids = is_list_not_empty(repo_ids_to_delete)
-    is_itsp_ids = is_list_not_empty(itsp_ids_to_delete)
+    g: GitentialContext,
+    workspace_id: int,
+    repo_ids_to_delete: List[int],
+    itsp_ids_to_delete: List[int],
+):
+    logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
+    keys = []
+    for rid in repo_ids_to_delete:
+        redis_key_1 = f"ws-{workspace_id}:repository-refresh-{rid}"
+        g.kvstore.delete_value(name=redis_key_1)
+        redis_key_2 = f"ws-{workspace_id}:r-{rid}:extraction"
+        g.kvstore.delete_value(name=redis_key_2)
+        redis_key_3 = f"ws-{workspace_id}:repository-status-{rid}"
+        g.kvstore.delete_value(name=redis_key_3)
+        keys.extend([redis_key_1, redis_key_2, redis_key_3])
 
-    result = None
+    for itsp_id in itsp_ids_to_delete:
+        redis_key = f"ws-{workspace_id}:itsp-{itsp_id}"
+        g.kvstore.delete_value(name=redis_key)
+        keys.append(redis_key)
 
-    if is_rids or is_itsp_ids:
-        logger.info("Attempting to clean redis data.", workspace_id=workspace_id)
-        keys = []
-
-        if is_rids:
-            for rid in repo_ids_to_delete:
-                redis_key_1 = f"ws-{workspace_id}:repository-refresh-{rid}"
-                g.kvstore.delete_value(name=redis_key_1)
-                redis_key_2 = f"ws-{workspace_id}:r-{rid}:extraction"
-                g.kvstore.delete_value(name=redis_key_2)
-                redis_key_3 = f"ws-{workspace_id}:repository-status-{rid}"
-                g.kvstore.delete_value(name=redis_key_3)
-                keys.append(redis_key_1)
-                keys.append(redis_key_2)
-                keys.append(redis_key_3)
-
-        if is_itsp_ids:
-            for itsp_id in itsp_ids_to_delete:
-                redis_key = f"ws-{workspace_id}:itsp-{itsp_id}"
-                g.kvstore.delete_value(name=redis_key)
-                keys.append(redis_key)
-
-        logger.info("Keys deleted from redis.", keys=keys)
-
-        result = CleanupType.redis
-    else:
-        logger.info("Can not perform redis cleanup. Both repo_ids_to_delete and itsp_ids_to_delete were empty.")
-
-    return result
+    logger.info("Keys deleted from redis.", keys=keys)
 
 
 def __get_date_to(number_of_days_diff: Optional[int] = None) -> Optional[datetime]:
@@ -404,216 +197,68 @@ def __get_date_to(number_of_days_diff: Optional[int] = None) -> Optional[datetim
     )
 
 
-def __get_repo_ids_to_delete(g: GitentialContext, wid: int) -> List[int]:
-    repo_ids_all: List[int] = [r.id for r in g.backend.repositories.all(workspace_id=wid)]
-    repo_ids_in_extracted_commits: List[int] = g.backend.extracted_commits.get_list_of_repo_ids_distinct(
-        workspace_id=wid
-    )
+def __get_repo_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int]:
+    repo_ids_all: List[int] = [r.id for r in g.backend.repositories.all(workspace_id)]
+    assigned_repos = {r.repo_id for r in g.backend.project_repositories.all(workspace_id)}
 
-    project_repos: Iterable[ProjectRepositoryInDB] = g.backend.project_repositories.all(workspace_id=wid)
-    rids: Set[int] = {item.repo_id for item in project_repos}
-
-    return [rid for rid in repo_ids_in_extracted_commits if rid not in repo_ids_all or rid not in rids]
+    repos_to_be_deleted = [rid for rid in repo_ids_all if rid not in assigned_repos]
+    return repos_to_be_deleted
 
 
-def __get_itsp_ids_to_be_deleted(g: GitentialContext, wid: int) -> List[int]:
-    itsp_ids_all: List[int] = [itsp.id for itsp in g.backend.its_projects.all(workspace_id=wid)]
-    itsp_ids_in_its_issues: List[int] = g.backend.its_issues.get_list_of_itsp_ids_distinct(workspace_id=wid)
+def __get_itsp_ids_to_delete(g: GitentialContext, workspace_id: int) -> List[int]:
+    itsp_ids_all: List[int] = [itsp.id for itsp in g.backend.its_projects.all(workspace_id)]
+    assigned_itsp = {itsp.itsp_id for itsp in g.backend.project_its_projects.all(workspace_id)}
 
-    project_its_projects: Iterable[ProjectITSProjectInDB] = g.backend.project_its_projects.all(workspace_id=wid)
-    itsp_ids: Set[int] = {item.itsp_id for item in project_its_projects}
-
-    return [itsp_id for itsp_id in itsp_ids_in_its_issues if itsp_id not in itsp_ids_all or itsp_id not in itsp_ids]
+    itsp_ids_to_be_deleted = [itsp_id for itsp_id in itsp_ids_all if itsp_id not in assigned_itsp]
+    return itsp_ids_to_be_deleted
 
 
-def __delete_rows(
-    delete_rows_partial_fn,
-    check_no_rows_partial_fn,
-    items_key: str,
-    item_ids_to_delete: List[Any],
-    table_name: str,
-    wid: int,
-) -> DeleteRowsResult:
-    number_of_rows_before_clean: int = check_no_rows_partial_fn()
-
-    def __log_delete_attempt(chuck_size: int):
-        logger.info(
-            f"Attempting to delete rows from {table_name} table.",
-            workspace_id=wid,
-            number_of_rows_to_be_deleted=chuck_size,
-        )
-
-    number_of_deleted_rows: int = 0
-    if is_list_not_empty(item_ids_to_delete):
-        if len(item_ids_to_delete) <= DELETE_ID_CHUNK_SIZE:
-            __log_delete_attempt(chuck_size=len(item_ids_to_delete))
-            number_of_deleted_rows = delete_rows_partial_fn(**{items_key: item_ids_to_delete})
-        else:
-            delete_chunks = [
-                item_ids_to_delete[x : x + DELETE_ID_CHUNK_SIZE]
-                for x in range(0, len(item_ids_to_delete), DELETE_ID_CHUNK_SIZE)
-            ]
-            for chunk in delete_chunks:
-                __log_delete_attempt(chuck_size=len(chunk))
-                delete_result: int = delete_rows_partial_fn(**{items_key: chunk})
-                logger.info(
-                    "Rows deleted from table.",
-                    table_name=table_name,
-                    workspace_id=wid,
-                    number_of_deleted_rows=delete_result,
-                )
-                number_of_deleted_rows += delete_result
-
-    number_of_rows_after_clean: int = check_no_rows_partial_fn()
-    return DeleteRowsResult(
-        no_deleted_rows=number_of_deleted_rows,
-        no_rows_before_clean=number_of_rows_before_clean,
-        no_rows_after_clean=number_of_rows_after_clean,
-    )
-
-
-def __log_delete_results(delete_result: DeleteRowsResult, items_title: str):
-    logger.info(
-        f"Cleanup of '{items_title}' finished.",
-        number_of_deleted_rows=delete_result.no_deleted_rows,
-        number_of_rows_before_clean=delete_result.no_rows_before_clean,
-        number_of_rows_after_clean=delete_result.no_rows_after_clean,
-    )
-
-
-def __apply_delete_settings_list(
-    g: GitentialContext, wid: int, delete_settings: List[DeleteSettings], c_type: CleanupType
-) -> CleanupType:
-    redis_key = __get_redis_key_for_cleanup_stage(wid=wid, c_type=c_type)
-    for index, ds in enumerate(delete_settings, 1):
-        redis_value = g.kvstore.get_value(redis_key)
-        if not redis_value or (redis_value and redis_value <= index):  # type: ignore[operator]
-            g.kvstore.set_value(redis_key, index)
-            logger.info(f"Cleanup of {ds.items_title} started.")
-            delete_result: DeleteRowsResult = __delete_rows(
-                delete_rows_partial_fn=partial(ds.delete_fn, workspace_id=wid),
-                check_no_rows_partial_fn=partial(ds.count_rows_fn, workspace_id=wid),
-                items_key=ds.delete_ids_key,
-                item_ids_to_delete=ds.item_ids_to_delete,
-                table_name=ds.items_title,
-                wid=wid,
+def __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
+    logger.info(f"Attempting to delete rows from {table_.table.name} table.", workspace_id=workspace_id)
+    schema_name = f"ws_{workspace_id}"
+    if cleaning_group == CleaningGroup.commits:
+        query = table_.table.delete().where(
+            and_(
+                getattr(table_.table.c, table_keypair.cid_column_name) == cte.c.commit_id,
+                getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
             )
-            __log_delete_results(delete_result=delete_result, items_title=ds.items_title)
-    g.kvstore.delete_value(redis_key)
-
-    return c_type
-
-
-def __get_redis_key_for_cleanup(wid: int, c_type: CleanupType) -> str:
-    return f"cleanup_started_for_workspace_{wid}__cleanup_type:{c_type}"
-
-
-def __get_redis_key_for_cleanup_stage(wid: int, c_type: CleanupType) -> str:
-    return f"cleanup_stage_for_workspace_{wid}__cleanup_type:{c_type}"
-
-
-def __prepare_state_for_residual_data_of_cleanup_process(g: GitentialContext, wid: int) -> bool:
-    """
-    The purpose of this function is the remove the residual data of the first cleanup process run by P&G.
-    The first implementation was not designed to deal with the possibility that the cleanup process could be
-    interrupted or an error could be thrown.
-    """
-    logger.info("Started to prepare state for residual data of cleanup process.", workspace_id=wid)
-
-    redis_key_for_commits: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.commits)
-    commits_cleanup_new_state: List[str] = __get_new_residual_cleanup_state_for_commits(
-        g=g, wid=wid, redis_key=redis_key_for_commits
-    )
-    logger.info(commits_cleanup_new_state_length=len(commits_cleanup_new_state))
-    g.kvstore.set_value(redis_key_for_commits, list(commits_cleanup_new_state))
-
-    redis_key_for_prs: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.pull_requests)
-    prs_cleanup_new_state: List[PullRequestId] = __get_new_residual_cleanup_state_for_pull_requests(
-        g=g, wid=wid, redis_key=redis_key_for_prs
-    )
-    logger.info(prs_cleanup_new_state_length=len(prs_cleanup_new_state))
-    g.kvstore.set_value(redis_key_for_prs, prs_cleanup_new_state)
-
-    redis_key_for_its_projects: str = __get_redis_key_for_cleanup(wid=wid, c_type=CleanupType.its_projects)
-    its_cleanup_state_new: ITSCleanupState = __get_new_residual_cleanup_state_for_its_projects(
-        g=g, wid=wid, redis_key=redis_key_for_its_projects
-    )
-    logger.info(its_issue_ids_to_be_deleted_length=len(its_cleanup_state_new.its_issue_ids_to_be_deleted))
-    g.kvstore.set_value(redis_key_for_its_projects, its_cleanup_state_new.dict())
-
-    return True
+        )
+    if cleaning_group == CleaningGroup.pull_requests:
+        query = table_.table.delete().where(
+            and_(
+                getattr(table_.table.c, table_keypair.prid_column_name) == cte.c.number,
+                getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
+            )
+        )
+    if cleaning_group == CleaningGroup.its_projects:
+        query = table_.table.delete().where(
+            and_(
+                getattr(table_.table.c, table_keypair.issue_id_column_name) == cte.c.id,
+                getattr(table_.table.c, table_keypair.itsp_id_column_name) == cte.c.itsp_id,
+            )
+        )
+    with table_.engine.connect().execution_options(
+        autocommit=True,
+        schema_translate_map={None: schema_name},
+    ) as conn:
+        conn.execute(query)
 
 
-def __get_new_residual_cleanup_state_for_commits(g: GitentialContext, wid: int, redis_key: str) -> List[str]:
-    logger.info("Starting to get new residual cleanup state for commits.", workspace_id=wid, redis_key=redis_key)
-    commit_ids_from_extracted_commits: Set[str] = set(g.backend.extracted_commits.get_commit_ids_all(workspace_id=wid))
-    other_commit_ids_list: Set[str] = set(
-        g.backend.calculated_commits.get_commit_ids_all(workspace_id=wid)
-        + g.backend.extracted_patches.get_commit_ids_all(workspace_id=wid)
-        + g.backend.calculated_patches.get_commit_ids_all(workspace_id=wid)
-        + g.backend.extracted_patch_rewrites.get_commit_ids_all(workspace_id=wid)
-    )
-    commit_ids_to_delete: Set[str] = {
-        cid for cid in other_commit_ids_list if cid not in commit_ids_from_extracted_commits
+def __delete_repositories_or_itsp_projects(
+    g: GitentialContext, workspace_id: int, repo_ids_to_delete: List[int], itsp_ids_to_delete: List[int]
+):
+    if repo_ids_to_delete:
+        g.backend.repositories.delete_repos_by_id(workspace_id, repo_ids_to_delete)
+    if itsp_ids_to_delete:
+        g.backend.its_projects.delete_its_projects_by_id(workspace_id, itsp_ids_to_delete)
+
+
+def __get_reference_table(g: GitentialContext, cleaning_group: CleaningGroup):
+
+    reference_tables = {
+        CleaningGroup.commits: g.backend.extracted_commits,
+        CleaningGroup.pull_requests: g.backend.pull_requests,
+        CleaningGroup.its_projects: g.backend.its_issues,
     }
 
-    cleanup_state: List[str] = g.kvstore.get_value(redis_key) or []  # type: ignore
-
-    new_state: Set[str] = commit_ids_to_delete.union(cleanup_state)
-    return list(new_state)
-
-
-def __get_new_residual_cleanup_state_for_pull_requests(
-    g: GitentialContext, wid: int, redis_key: str
-) -> List[PullRequestId]:
-    logger.info("Starting to get new residual cleanup state for pull requests.", workspace_id=wid, redis_key=redis_key)
-
-    def __get_pr_id_from_pr_id_str(pr_id: str) -> PullRequestId:
-        splitted = pr_id.split("__")
-        return PullRequestId(repo_id=int(splitted[0]), number=int(splitted[1]))
-
-    pr_id_list: Set[str] = {f"{pr.repo_id}__{pr.number}" for pr in g.backend.pull_requests.all(workspace_id=wid)}
-    prs_other: Set[str] = set(
-        [f"{prc.repo_id}__{prc.pr_number}" for prc in g.backend.pull_request_commits.all(workspace_id=wid)]
-        + [f"{prc.repo_id}__{prc.pr_number}" for prc in g.backend.pull_request_comments.all(workspace_id=wid)]
-        + [f"{prl.repo_id}__{prl.pr_number}" for prl in g.backend.pull_request_labels.all(workspace_id=wid)]
-    )
-
-    pr_ids_to_delete: Set[str] = {pr_id for pr_id in prs_other if pr_id not in pr_id_list}
-
-    cleanup_state_raw: List[dict] = g.kvstore.get_value(redis_key)  # type: ignore
-    cleanup_state_edited = (
-        {f"{item['repo_id']}__{item['number']}" for item in cleanup_state_raw} if cleanup_state_raw else {}
-    )
-
-    new_state_raw: Set[str] = pr_ids_to_delete.union(cleanup_state_edited)
-    return [__get_pr_id_from_pr_id_str(pr_id) for pr_id in new_state_raw]
-
-
-def __get_new_residual_cleanup_state_for_its_projects(g: GitentialContext, wid: int, redis_key: str) -> ITSCleanupState:
-    logger.info("Starting to get new residual cleanup state for its projects.", workspace_id=wid, redis_key=redis_key)
-    its_issue_ids: List[str] = [its_issue.id for its_issue in g.backend.its_issues.all(workspace_id=wid)]
-    its_issue_ids_other: Set[str] = set(
-        [item.issue_id for item in g.backend.its_issue_changes.all(workspace_id=wid)]
-        + [item.issue_id for item in g.backend.its_issue_times_in_statuses.all(workspace_id=wid)]
-        + [item.issue_id for item in g.backend.its_issue_comments.all(workspace_id=wid)]
-        + [item.issue_id for item in g.backend.its_issue_linked_issues.all(workspace_id=wid)]
-        + [item.issue_id for item in g.backend.its_issue_sprints.all(workspace_id=wid)]
-        + [item.issue_id for item in g.backend.its_issue_worklogs.all(workspace_id=wid)]
-    )
-
-    its_issue_ids_to_delete: Set[str] = {
-        its_issue_id for its_issue_id in its_issue_ids_other if its_issue_id not in its_issue_ids
-    }
-
-    redis_value = g.kvstore.get_value(redis_key)
-    cleanup_state: ITSCleanupState = (
-        ITSCleanupState(**redis_value)  # type: ignore
-        if redis_value
-        else ITSCleanupState(itsp_ids_to_delete=[], its_issue_ids_to_be_deleted=[])  # type: ignore
-    )
-
-    new_state_its_issue_ids: Set[str] = its_issue_ids_to_delete.union(cleanup_state.its_issue_ids_to_be_deleted)
-    return ITSCleanupState(
-        itsp_ids_to_delete=cleanup_state.itsp_ids_to_delete, its_issue_ids_to_be_deleted=list(new_state_its_issue_ids)
-    )
+    return reference_tables.get(cleaning_group)
