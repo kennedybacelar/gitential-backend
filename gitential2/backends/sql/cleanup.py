@@ -3,7 +3,7 @@ from typing import Optional, List
 from enum import Enum
 from collections import namedtuple
 from structlog import get_logger
-from sqlalchemy import select, or_, and_
+from sqlalchemy import select, or_, and_, exists
 
 from gitential2.core import GitentialContext
 from gitential2.datatypes.cli_v2 import CleanupType
@@ -128,19 +128,19 @@ def __get_keys_to_be_deleted(
     if cleaning_group == CleaningGroup.commits:
         return (
             select([table_.table.c.commit_id, table_.table.c.repo_id])
-            .where(or_(table_.table.c.atime <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
+            .where(or_(table_.table.c.atime > date_to, table_.table.c.repo_id.not_in(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     if cleaning_group == CleaningGroup.pull_requests:
         return (
             select([table_.table.c.number, table_.table.c.repo_id])
-            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.repo_id.in_(repo_or_itsp_ids_to_delete)))
+            .where(or_(table_.table.c.created_at > date_to, table_.table.c.repo_id.not_in(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     if cleaning_group == CleaningGroup.its_projects:
         return (
             select([table_.table.c.id, table_.table.c.itsp_id])
-            .where(or_(table_.table.c.created_at <= date_to, table_.table.c.itsp_id.in_(repo_or_itsp_ids_to_delete)))
+            .where(or_(table_.table.c.created_at > date_to, table_.table.c.itsp_id.not_in(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     return None
@@ -219,23 +219,29 @@ def __delete_records(workspace_id, table_, cte, cleaning_group, table_keypair):
     schema_name = f"ws_{workspace_id}"
     if cleaning_group == CleaningGroup.commits:
         query = table_.table.delete().where(
-            and_(
-                getattr(table_.table.c, table_keypair.cid_column_name) == cte.c.commit_id,
-                getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
+            ~exists().where(
+                and_(
+                    getattr(table_.table.c, table_keypair.cid_column_name) == cte.c.commit_id,
+                    getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
+                )
             )
         )
     if cleaning_group == CleaningGroup.pull_requests:
         query = table_.table.delete().where(
-            and_(
-                getattr(table_.table.c, table_keypair.prid_column_name) == cte.c.number,
-                getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
+            ~exists().where(
+                and_(
+                    getattr(table_.table.c, table_keypair.prid_column_name) == cte.c.number,
+                    getattr(table_.table.c, table_keypair.repo_id_column_name) == cte.c.repo_id,
+                )
             )
         )
     if cleaning_group == CleaningGroup.its_projects:
         query = table_.table.delete().where(
-            and_(
-                getattr(table_.table.c, table_keypair.issue_id_column_name) == cte.c.id,
-                getattr(table_.table.c, table_keypair.itsp_id_column_name) == cte.c.itsp_id,
+            ~exists().where(
+                and_(
+                    getattr(table_.table.c, table_keypair.issue_id_column_name) == cte.c.id,
+                    getattr(table_.table.c, table_keypair.itsp_id_column_name) == cte.c.itsp_id,
+                )
             )
         )
     with table_.engine.connect().execution_options(
