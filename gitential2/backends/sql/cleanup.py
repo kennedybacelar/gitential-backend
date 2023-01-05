@@ -128,19 +128,19 @@ def __get_keys_to_be_deleted(
     if cleaning_group == CleaningGroup.commits:
         return (
             select([table_.table.c.commit_id, table_.table.c.repo_id])
-            .where(or_(table_.table.c.atime > date_to, table_.table.c.repo_id.not_in(repo_or_itsp_ids_to_delete)))
+            .where(and_(table_.table.c.atime > date_to, table_.table.c.repo_id.not_in(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     if cleaning_group == CleaningGroup.pull_requests:
         return (
             select([table_.table.c.number, table_.table.c.repo_id])
-            .where(or_(table_.table.c.created_at > date_to, table_.table.c.repo_id.not_in(repo_or_itsp_ids_to_delete)))
+            .where(and_(table_.table.c.created_at > date_to, table_.table.c.repo_id.not_in(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     if cleaning_group == CleaningGroup.its_projects:
         return (
             select([table_.table.c.id, table_.table.c.itsp_id])
-            .where(or_(table_.table.c.created_at > date_to, table_.table.c.itsp_id.not_in(repo_or_itsp_ids_to_delete)))
+            .where(and_(table_.table.c.created_at > date_to, table_.table.c.itsp_id.not_in(repo_or_itsp_ids_to_delete)))
             .cte()
         )
     return None
