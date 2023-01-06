@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List
 
 import typer
@@ -125,6 +126,8 @@ def purge_workspace(workspace_id: int):
 def perform_workspace_cleanup(
     workspace_id: int = typer.Argument(None),
     cleanup_type: CleanupType = typer.Option("full", "--type", "-t"),
+    date_to: Optional[datetime] = None,
+    its_date_to: Optional[datetime] = None,
 ):
 
     """
@@ -149,4 +152,6 @@ def perform_workspace_cleanup(
                 g=g,
                 workspace_ids=workspace_ids,
                 cleanup_type=cleanup_type,
+                date_to=date_to,
+                its_date_to=its_date_to,
             )
