@@ -57,11 +57,13 @@ def perform_data_cleanup(
     g: GitentialContext,
     workspace_ids: List[int],
     cleanup_type: Optional[CleanupType] = CleanupType.full,
+    date_to: Optional[datetime] = None,
+    its_date_to: Optional[datetime] = None,
 ):
     repo_analysis_limit_in_days = g.settings.extraction.repo_analysis_limit_in_days
     its_project_analysis_limit_in_days = g.settings.extraction.its_project_analysis_limit_in_days
-    date_to = __get_date_to(repo_analysis_limit_in_days)
-    its_date_to = __get_date_to(its_project_analysis_limit_in_days)
+    date_to = date_to or __get_date_to(repo_analysis_limit_in_days)
+    its_date_to = its_date_to or __get_date_to(its_project_analysis_limit_in_days)
 
     for workspace_id in workspace_ids:
         repo_ids_to_delete = __get_repo_ids_to_delete(g, workspace_id)
