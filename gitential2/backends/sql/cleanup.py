@@ -3,7 +3,7 @@ from typing import Optional, List
 from enum import Enum
 from collections import namedtuple
 from structlog import get_logger
-from sqlalchemy import select, or_, and_, exists
+from sqlalchemy import select, and_, exists
 
 from gitential2.core import GitentialContext
 from gitential2.datatypes.cli_v2 import CleanupType
