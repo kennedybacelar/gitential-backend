@@ -4,6 +4,7 @@ import math
 from typing import Generator, List, Any, Dict, Optional, cast
 from datetime import datetime, date, timedelta, timezone
 
+from functools import partial
 from structlog import get_logger
 from pydantic import BaseModel
 import pandas as pd
@@ -104,8 +105,10 @@ def _prepare_dimension(
             return (ibis_table[date_field_name].hour()).name("hour_of_day")
         elif dimension == DimensionName.sprint:
             sprint = _get_sprint_info(g, workspace_id, query.extra)
-            print(sprint)
-            exit()
+            if not sprint:
+                return None
+
+            _prepare_sprint_x_ref_aggregation(g, workspace_id, query, sprint)
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
@@ -299,9 +302,40 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
 
 def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: dict) -> Optional[Sprint]:
     project_id = query_raw_filters.get(FilterName.project_id)
-    print(query_raw_filters)
-    exit()
     return g.backend.projects.get_or_error(workspace_id, project_id).sprint
+
+
+def _calculate_first_sprint_date(sprint: Sprint, from_date_sprint_range: date):
+    total_delta = (sprint.date - from_date_sprint_range).total_seconds()
+
+    # count_of_sprints = Count of sprints between date_min and sprint start date (info fetched from project table)
+    # gap_in_seconds_from_date_min_to_first_sprint = The offset between the date_min and the first sprint aggregation
+    _count_of_sprints, gap_in_seconds_from_date_min_to_first_sprint = divmod(
+        total_delta, timedelta(weeks=sprint.weeks).total_seconds()
+    )
+    first_sprint_initial_date = from_date_sprint_range + timedelta(
+        days=timedelta(seconds=gap_in_seconds_from_date_min_to_first_sprint).days
+    )
+    return first_sprint_initial_date
+
+
+def _prepare_sprint_x_ref_aggregation(g: GitentialContext, workspace_id: int, query: Query, sprint: Sprint) -> dict:
+    """
+    Calculate all sprints in a given interval based in the sprint lenght and initial date
+    """
+    # from_date_sprint_range: The minimum value of the sprint range in case the key 'day' is not passed in the query filter - default has been set to 2000-01-01
+    # to_date_sprint_range: in case a upper date limit is not passed in the day filter, today is considered as the default entry
+    from_date_sprint_range = query.filters["day"][0].date() if query.filters.get("day") else date(2000, 1, 1)
+    to_date_sprint_range = query.filters["day"][1].date() if query.filters.get("day") else datetime.today().date()
+
+    first_sprint_date = _calculate_first_sprint_date(sprint, from_date_sprint_range)
+    all_sprint_timestamps = [
+        int(ts.timestamp()) * 1000
+        for ts in _calculate_timestamps_between(DimensionName.sprint, from_date_sprint_range, to_date_sprint_range)
+    ]
+
+    print(all_sprint_timestamps)
+    exit()
 
 
 def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: List[str]):
@@ -563,8 +597,15 @@ def _next_month(d: datetime) -> datetime:
         return d.replace(month=d.month + 1)
 
 
+def _next_sprint(d: datetime, sprint_lenght_in_weeks: int) -> datetime:
+    return d + timedelta(weeks=sprint_lenght_in_weeks)
+
+
 def _calculate_timestamps_between(
-    date_dimension: DimensionName, from_date: date, to_date: date
+    date_dimension: DimensionName,
+    from_date: date,
+    to_date: date,
+    sprint_lenght_in_weeks: int = 1,
 ) -> Generator[datetime, None, None]:
     from_ = _start_of_the_day(from_date)
     to_ = _end_of_the_day(to_date)
@@ -580,6 +621,9 @@ def _calculate_timestamps_between(
     elif date_dimension == DimensionName.month:
         start_ts = from_ - timedelta(days=from_date.day - 1)
         get_next = _next_month
+    elif date_dimension == DimensionName.sprint:
+        start_ts = from_
+        get_next = partial(_next_sprint, sprint_lenght_in_weeks=sprint_lenght_in_weeks)
     current_ts = start_ts
     while current_ts < to_:
         yield current_ts
