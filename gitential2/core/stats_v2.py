@@ -108,7 +108,30 @@ def _prepare_dimension(
             if not sprint:
                 return None
 
-            _prepare_sprint_x_ref_aggregation(g, workspace_id, query, sprint)
+            # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
+            sprints_timestamps_to_replace: dict = _prepare_sprint_x_ref_aggregation(g, workspace_id, query, sprint)
+
+            datetime_column_to_timestamp = (
+                ibis_table[date_field_name].date().truncate("W").epoch_seconds()
+                + timedelta(days=sprint.date.weekday()).total_seconds()
+            ) * 1000
+
+            datetime_column_to_timestamp = datetime_column_to_timestamp.substitute(sprints_timestamps_to_replace).name(
+                "date"
+            )
+            return datetime_column_to_timestamp
+
+            return (
+                (
+                    (
+                        ibis_table[date_field_name].date().truncate("W").epoch_seconds()
+                        + timedelta(days=sprint.date.weekday()).total_seconds()
+                    )
+                    * 1000
+                )
+                .substitute(sprints_timestamps_to_replace)
+                .name("date")
+            )
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
@@ -328,14 +351,26 @@ def _prepare_sprint_x_ref_aggregation(g: GitentialContext, workspace_id: int, qu
     from_date_sprint_range = query.filters["day"][0].date() if query.filters.get("day") else date(2000, 1, 1)
     to_date_sprint_range = query.filters["day"][1].date() if query.filters.get("day") else datetime.today().date()
 
+    # The effective date of the first sprint given the interval
     first_sprint_date = _calculate_first_sprint_date(sprint, from_date_sprint_range)
     all_sprint_timestamps = [
-        int(ts.timestamp()) * 1000
-        for ts in _calculate_timestamps_between(DimensionName.sprint, from_date_sprint_range, to_date_sprint_range)
+        int(ts.timestamp())
+        for ts in _calculate_timestamps_between(
+            date_dimension=DimensionName.sprint,
+            from_date=first_sprint_date,
+            to_date=to_date_sprint_range,
+            sprint_lenght_in_weeks=sprint.weeks,
+        )
     ]
+    dict_all_sprint_timestamps = {}
 
-    print(all_sprint_timestamps)
-    exit()
+    for sprint_timestamp in all_sprint_timestamps:
+        for idx in range(sprint.weeks):
+            if idx:
+                key = (sprint_timestamp + timedelta(weeks=idx).total_seconds()) * 1000
+                dict_all_sprint_timestamps[key] = sprint_timestamp * 1000
+
+    return dict_all_sprint_timestamps
 
 
 def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: List[str]):
