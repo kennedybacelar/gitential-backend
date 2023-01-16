@@ -27,6 +27,7 @@ from gitential2.datatypes.stats import (
     DATE_DIMENSIONS,
 )
 from gitential2.datatypes.pull_requests import PullRequestState
+from gitential2.datatypes.sprints import Sprint
 
 from .context import GitentialContext
 from .authors import list_active_author_ids
@@ -42,13 +43,15 @@ class QueryResult(BaseModel):
         arbitrary_types_allowed = True
 
 
-def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table):
+def _prepare_dimensions(
+    dimensions, table_def: TableDef, ibis_tables, ibis_table, g: GitentialContext, workspace_id: int, query: Query
+):
     ret = []
     # Try this out first
     # if (DimensionName.name in dimensions or DimensionName.email in dimensions) and DimensionName.aid not in dimensions:
     #     dimensions.append(DimensionName.aid)
     for dimension in dimensions:
-        res = _prepare_dimension(dimension, table_def, ibis_tables, ibis_table)
+        res = _prepare_dimension(dimension, table_def, ibis_tables, ibis_table, g, workspace_id, query)
         if res is not None:
             ret.append(res)
     return ret
@@ -56,7 +59,13 @@ def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table
 
 # pylint: disable=too-many-return-statements
 def _prepare_dimension(
-    dimension: DimensionName, table_def: TableDef, ibis_tables: IbisTables, ibis_table
+    dimension: DimensionName,
+    table_def: TableDef,
+    ibis_tables: IbisTables,
+    ibis_table,
+    g: GitentialContext,
+    workspace_id: int,
+    query: Query,
 ):  # pylint: disable=too-complex
     if dimension in DATE_DIMENSIONS:
         if TableName.pull_requests in table_def:
@@ -93,6 +102,10 @@ def _prepare_dimension(
             return (ibis_table[date_field_name].date().day_of_week.index()).name("day_of_week")
         elif dimension == DimensionName.hour_of_day:
             return (ibis_table[date_field_name].hour()).name("hour_of_day")
+        elif dimension == DimensionName.sprint:
+            sprint = _get_sprint_info(g, workspace_id, query.extra)
+            print(sprint)
+            exit()
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
@@ -284,6 +297,13 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     return pr_metrics.get(metric)
 
 
+def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: dict) -> Optional[Sprint]:
+    project_id = query_raw_filters.get(FilterName.project_id)
+    print(query_raw_filters)
+    exit()
+    return g.backend.projects.get_or_error(workspace_id, project_id).sprint
+
+
 def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: List[str]):
     ret = []
     emails_set = set(emails)
@@ -384,7 +404,15 @@ class IbisQuery:
         ibis_table = ibis_tables.get_table(self.query.table_def)
         ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table_def, ibis_tables, ibis_table, self.query)
         ibis_dimensions = (
-            _prepare_dimensions(self.query.dimensions, self.query.table_def, ibis_tables, ibis_table)
+            _prepare_dimensions(
+                self.query.dimensions,
+                self.query.table_def,
+                ibis_tables,
+                ibis_table,
+                self.g,
+                self.workspace_id,
+                self.query,
+            )
             if self.query.dimensions
             else None
         )
