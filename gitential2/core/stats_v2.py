@@ -121,18 +121,6 @@ def _prepare_dimension(
             )
             return datetime_column_to_timestamp
 
-            return (
-                (
-                    (
-                        ibis_table[date_field_name].date().truncate("W").epoch_seconds()
-                        + timedelta(days=sprint.date.weekday()).total_seconds()
-                    )
-                    * 1000
-                )
-                .substitute(sprints_timestamps_to_replace)
-                .name("date")
-            )
-
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
 
