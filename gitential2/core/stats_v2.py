@@ -608,6 +608,7 @@ def prepare_query(g: GitentialContext, workspace_id: int, query: Query) -> Query
             sort_by=query.sort_by,
             type=query.type,
             table=query.table,
+            extra=query.filters,
         ),
     )
 
