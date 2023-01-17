@@ -82,6 +82,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             client,
             f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED",
             repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            time_restriction_check_key="created_on",
         )
         return prs
 
@@ -99,8 +100,12 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         resp.raise_for_status()
         pr_details = resp.json()
 
-        commits = _walk_paginated_results(client, pr_details["links"]["commits"]["href"])
-        review_comments = _walk_paginated_results(client, pr_details["links"]["comments"]["href"])
+        commits = _walk_paginated_results(
+            client, pr_details["links"]["commits"]["href"], time_restriction_check_key="date"
+        )
+        review_comments = _walk_paginated_results(
+            client, pr_details["links"]["comments"]["href"], time_restriction_check_key="created_on"
+        )
         diffstat = _walk_paginated_results(client, pr_details["links"]["diffstat"]["href"])
         return {"pr": pr_details, "commits": commits, "review_comments": review_comments, "diffstat": diffstat}
 
@@ -267,7 +272,9 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
-        repository_list = _walk_paginated_results(client, f"{api_base_url}repositories?role=member&pagelen=100")
+        repository_list = _walk_paginated_results(
+            client, f"{api_base_url}repositories?role=member&pagelen=100", time_restriction_check_key="created_on"
+        )
         client.close()
         return [self._repo_to_create_repo(repo) for repo in repository_list]
 
@@ -319,7 +326,13 @@ def _get_protocol_and_clone_url(clone_links):
 #         return acc
 
 
-def _walk_paginated_results(client, starting_url, acc=None, repo_analysis_limit_in_days: Optional[int] = None):
+def _walk_paginated_results(
+    client,
+    starting_url,
+    acc=None,
+    repo_analysis_limit_in_days: Optional[int] = None,
+    time_restriction_check_key: Optional[str] = None,
+):
     acc = acc or []
     next_url = starting_url
     while True:
@@ -333,7 +346,9 @@ def _walk_paginated_results(client, starting_url, acc=None, repo_analysis_limit_
             acc += data["values"]
 
         if __is_able_to_continue_walking(
-            data, repo_analysis_limit_in_days=repo_analysis_limit_in_days, time_restriction_check_key="created_on"
+            data,
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            time_restriction_check_key=time_restriction_check_key,
         ):
             next_url = data["next"]
         else:
@@ -345,14 +360,21 @@ def _walk_paginated_results(client, starting_url, acc=None, repo_analysis_limit_
 def __is_able_to_continue_walking(
     data, repo_analysis_limit_in_days: Optional[int] = None, time_restriction_check_key: Optional[str] = None
 ) -> bool:
-    time_of_last_el = get_time_of_last_element(data["values"], time_restriction_check_key)
+    time_of_last_el = (
+        not time_restriction_check_key
+        or time_restriction_check_key
+        and get_time_of_last_element(data["values"], time_restriction_check_key)
+    )
     return bool(
         "next" in data
         and (
             not repo_analysis_limit_in_days
             or repo_analysis_limit_in_days
+            and time_restriction_check_key
             and time_of_last_el
             and is_timestamp_within_days(time_of_last_el, repo_analysis_limit_in_days)
+            or repo_analysis_limit_in_days
+            and not time_restriction_check_key
         )
     )
 
