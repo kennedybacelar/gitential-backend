@@ -114,6 +114,8 @@ def _prepare_dimension(
             # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
             datetime_column_to_timestamp = ibis_table[date_field_name].date().truncate("W").epoch_seconds() * 1000
 
+            # After truncating, every record has been moved to Monday (day 0 of week)
+            # It is needed to adjust if the sprint start date is set to a different day than Monday
             if first_sprint_date.weekday():
                 datetime_column_to_timestamp = datetime_column_to_timestamp - (
                     timedelta(days=abs(first_sprint_date.weekday() - 7)).total_seconds() * 1000
