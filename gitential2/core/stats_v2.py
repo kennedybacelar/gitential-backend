@@ -315,8 +315,13 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
 def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: Optional[dict]) -> Optional[Sprint]:
     if query_raw_filters:
         project_id = query_raw_filters.get(FilterName.project_id)
-        if project_id:
-            return g.backend.projects.get_or_error(workspace_id, project_id).sprint
+        if not project_id:
+            logger.warning("NO_PROJECT_ID_IN_QUERY_FILTER")
+        else:
+            sprint = g.backend.projects.get_or_error(workspace_id, project_id).sprint
+            if sprint:
+                return sprint
+            logger.warning("NO_SPRINT_SET_FOR_PROJECT", workspace_id=workspace_id, project_id=project_id)
     return None
 
 
