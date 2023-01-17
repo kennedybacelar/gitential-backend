@@ -151,7 +151,7 @@ class RefreshSettings(BaseModel):
 
 
 class AutoExportSettings(BaseModel):
-    start_auto_export: bool = True
+    start_auto_export: bool = False
 
 
 class MaintenanceSettings(BaseModel):

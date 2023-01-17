@@ -6,6 +6,8 @@ extraction:
   executor: process_pool
 #  repo_analysis_limit_in_days: 90
 #  its_project_analysis_limit_in_days: 90
+auto_export:
+  start_auto_export: false
 web:
   base_url: https://localhost:8443
   frontend_url: https://localhost:8443
