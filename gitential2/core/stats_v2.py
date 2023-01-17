@@ -109,7 +109,7 @@ def _prepare_dimension(
                 return None
 
             # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
-            sprints_timestamps_to_replace: dict = _prepare_sprint_x_ref_aggregation(g, workspace_id, query, sprint)
+            sprints_timestamps_to_replace: dict = _prepare_sprint_x_ref_aggregation(query, sprint)
 
             datetime_column_to_timestamp = (
                 ibis_table[date_field_name].date().truncate("W").epoch_seconds()
@@ -312,9 +312,12 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     return pr_metrics.get(metric)
 
 
-def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: dict) -> Optional[Sprint]:
-    project_id = query_raw_filters.get(FilterName.project_id)
-    return g.backend.projects.get_or_error(workspace_id, project_id).sprint
+def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: Optional[dict]) -> Optional[Sprint]:
+    if query_raw_filters:
+        project_id = query_raw_filters.get(FilterName.project_id)
+        if project_id:
+            return g.backend.projects.get_or_error(workspace_id, project_id).sprint
+    return None
 
 
 def _calculate_first_sprint_date(sprint: Sprint, from_date_sprint_range: date):
@@ -331,14 +334,18 @@ def _calculate_first_sprint_date(sprint: Sprint, from_date_sprint_range: date):
     return first_sprint_initial_date
 
 
-def _prepare_sprint_x_ref_aggregation(g: GitentialContext, workspace_id: int, query: Query, sprint: Sprint) -> dict:
+def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> dict:
     """
     Calculate all sprints in a given interval based in the sprint lenght and initial date
     """
     # from_date_sprint_range: The minimum value of the sprint range in case the key 'day' is not passed in the query filter - default has been set to 2000-01-01
     # to_date_sprint_range: in case a upper date limit is not passed in the day filter, today is considered as the default entry
-    from_date_sprint_range = query.filters["day"][0].date() if query.filters.get("day") else date(2000, 1, 1)
-    to_date_sprint_range = query.filters["day"][1].date() if query.filters.get("day") else datetime.today().date()
+    from_date_sprint_range = (
+        query.filters[FilterName.day][0].date() if query.filters.get(FilterName.day) else date(2000, 1, 1)
+    )
+    to_date_sprint_range = (
+        query.filters[FilterName.day][1].date() if query.filters.get(FilterName.day) else datetime.today().date()
+    )
 
     # The effective date of the first sprint given the interval
     first_sprint_date = _calculate_first_sprint_date(sprint, from_date_sprint_range)
