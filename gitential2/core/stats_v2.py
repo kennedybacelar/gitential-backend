@@ -116,9 +116,10 @@ def _prepare_dimension(
                 + timedelta(days=sprint.date.weekday()).total_seconds()
             ) * 1000
 
-            datetime_column_to_timestamp = datetime_column_to_timestamp.substitute(sprints_timestamps_to_replace).name(
-                "date"
-            )
+            if sprints_timestamps_to_replace:
+                datetime_column_to_timestamp = datetime_column_to_timestamp.substitute(sprints_timestamps_to_replace)
+            datetime_column_to_timestamp = datetime_column_to_timestamp.name("date")
+
             return datetime_column_to_timestamp
 
     elif dimension == DimensionName.pr_state:
