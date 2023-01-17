@@ -112,13 +112,15 @@ def _prepare_dimension(
             changing_day_filter_lower_value(query, first_sprint_date)
 
             # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
-            datetime_column_to_timestamp = (
-                ibis_table[date_field_name].date().truncate("W").epoch_seconds()
-                + timedelta(days=sprint.date.weekday()).total_seconds()
-            ) * 1000
+            datetime_column_to_timestamp = ibis_table[date_field_name].date().truncate("W").epoch_seconds() * 1000
 
+            if first_sprint_date.weekday():
+                datetime_column_to_timestamp = datetime_column_to_timestamp - (
+                    timedelta(days=abs(first_sprint_date.weekday() - 7)).total_seconds() * 1000
+                )
             if sprints_timestamps_to_replace:
                 datetime_column_to_timestamp = datetime_column_to_timestamp.substitute(sprints_timestamps_to_replace)
+
             datetime_column_to_timestamp = datetime_column_to_timestamp.name("date")
 
             return datetime_column_to_timestamp
