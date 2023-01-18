@@ -1,5 +1,4 @@
 # pylint: disable=too-complex,too-many-branches
-
 import math
 from typing import Generator, List, Any, Dict, Optional, cast, Tuple
 from datetime import datetime, date, timedelta, timezone
@@ -112,14 +111,9 @@ def _prepare_dimension(
             changing_day_filter_lower_value(query, first_sprint_date)
 
             # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
-            datetime_column_to_timestamp = ibis_table[date_field_name].date().truncate("W").epoch_seconds() * 1000
+            datetime_column_to_timestamp = ibis_table[date_field_name].date().epoch_seconds() * 1000
 
-            # After truncating, every record has been moved to Monday (day 0 of week)
-            # It is needed to adjust if the sprint start date is set to a different day than Monday
-            if first_sprint_date.weekday():
-                datetime_column_to_timestamp = datetime_column_to_timestamp - (
-                    timedelta(days=abs(first_sprint_date.weekday() - 7)).total_seconds() * 1000
-                )
+            # Replacing the dates for the dates whose sprint they belong
             if sprints_timestamps_to_replace:
                 datetime_column_to_timestamp = datetime_column_to_timestamp.substitute(sprints_timestamps_to_replace)
 
@@ -355,11 +349,12 @@ def changing_day_filter_lower_value(query: Query, first_sprint_date: date):
 
 def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> Tuple[date, dict]:
     """
-    Calculate all sprints in a given interval based in the sprint lenght and initial date
+    Return a dictionary with all the dates that have to be replaced by the sprint date which they belong to
+    Also return the date of the first sprint in a given interval (determined by the filter day in the query)
     """
 
     # from_date_sprint_range: The minimum value of the sprint range in case the key 'day' is not passed in the query filter - default has been set to 2000-01-01
-    # to_date_sprint_range: in case a upper date limit is not passed in the day filter, today is considered as the default entry
+    # to_date_sprint_range: in case a upper date limit is not passed in the day filter, today() is considered as the default value
     from_date_sprint_range = (
         query.filters[FilterName.day][0].date() if query.filters.get(FilterName.day) else date(2000, 1, 1)
     )
@@ -378,15 +373,15 @@ def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> Tuple[dat
             sprint_lenght_in_weeks=sprint.weeks,
         )
     ]
-    dict_all_sprint_timestamps = {}
+    dict_all_sprint_timestamps_to_replace = {}
 
     for sprint_timestamp in all_sprint_timestamps:
-        for idx in range(sprint.weeks):
+        for idx in range(timedelta(weeks=sprint.weeks).days):
             if idx:
-                key = (sprint_timestamp + timedelta(weeks=idx).total_seconds()) * 1000
-                dict_all_sprint_timestamps[key] = sprint_timestamp * 1000
+                day_belonged_to_sprint = (sprint_timestamp + timedelta(days=idx).total_seconds()) * 1000
+                dict_all_sprint_timestamps_to_replace[day_belonged_to_sprint] = sprint_timestamp * 1000
 
-    return first_sprint_date, dict_all_sprint_timestamps
+    return first_sprint_date, dict_all_sprint_timestamps_to_replace
 
 
 def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: List[str]):
