@@ -364,7 +364,7 @@ def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> Tuple[dat
 
     # The effective date of the first sprint given the interval
     first_sprint_date = _calculate_first_sprint_date(sprint, from_date_sprint_range)
-    all_sprint_timestamps = [
+    all_sprint_timestamps = list(
         ts
         for ts in _calculate_timestamps_between(
             date_dimension=DimensionName.sprint,
@@ -372,7 +372,8 @@ def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> Tuple[dat
             to_date=to_date_sprint_range,
             sprint_lenght_in_weeks=sprint.weeks,
         )
-    ]
+    )
+
     dict_all_sprint_timestamps_to_replace = {}
 
     for sprint_timestamp in all_sprint_timestamps:
