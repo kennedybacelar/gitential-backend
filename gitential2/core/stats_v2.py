@@ -110,14 +110,14 @@ def _prepare_dimension(
             first_sprint_date, sprints_timestamps_to_replace = _prepare_sprint_x_ref_aggregation(query, sprint)
             changing_day_filter_lower_value(query, first_sprint_date)
 
-            # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
-            datetime_column_to_timestamp = ibis_table[date_field_name].date().epoch_seconds() * 1000
+            datetime_column_to_timestamp = ibis_table[date_field_name].date()
 
             # Replacing the dates for the dates whose sprint they belong
             if sprints_timestamps_to_replace:
                 datetime_column_to_timestamp = datetime_column_to_timestamp.substitute(sprints_timestamps_to_replace)
 
-            datetime_column_to_timestamp = datetime_column_to_timestamp.name("date")
+            # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
+            datetime_column_to_timestamp = (datetime_column_to_timestamp.epoch_seconds() * 1000).name("date")
 
             return datetime_column_to_timestamp
 
@@ -365,7 +365,7 @@ def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> Tuple[dat
     # The effective date of the first sprint given the interval
     first_sprint_date = _calculate_first_sprint_date(sprint, from_date_sprint_range)
     all_sprint_timestamps = [
-        int(ts.timestamp())
+        ts
         for ts in _calculate_timestamps_between(
             date_dimension=DimensionName.sprint,
             from_date=first_sprint_date,
@@ -378,8 +378,8 @@ def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> Tuple[dat
     for sprint_timestamp in all_sprint_timestamps:
         for idx in range(timedelta(weeks=sprint.weeks).days):
             if idx:
-                day_belonged_to_sprint = (sprint_timestamp + timedelta(days=idx).total_seconds()) * 1000
-                dict_all_sprint_timestamps_to_replace[day_belonged_to_sprint] = sprint_timestamp * 1000
+                day_belonged_to_sprint = sprint_timestamp + timedelta(days=idx)
+                dict_all_sprint_timestamps_to_replace[day_belonged_to_sprint] = sprint_timestamp
 
     return first_sprint_date, dict_all_sprint_timestamps_to_replace
 
@@ -496,6 +496,7 @@ class IbisQuery:
             if self.query.dimensions
             else None
         )
+
         # ibis_dimensions = None
         ibis_filters = _prepare_filters(self.g, self.workspace_id, self.query.filters, self.query.table_def, ibis_table)
 
