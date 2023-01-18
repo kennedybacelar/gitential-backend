@@ -330,7 +330,7 @@ def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: 
     return None
 
 
-def _calculate_first_sprint_date(sprint: Sprint, from_date_sprint_range: date):
+def _calculate_first_sprint_date(sprint: Sprint, from_date_sprint_range: date) -> date:
     total_delta = (sprint.date - from_date_sprint_range).total_seconds()
 
     # count_of_sprints = Count of sprints between date_min and sprint start date (info fetched from project table)
