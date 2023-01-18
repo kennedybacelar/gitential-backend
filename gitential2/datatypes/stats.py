@@ -223,6 +223,7 @@ class Query(BaseModel):
     sort_by: Optional[List[Any]] = None
     type: QueryType
     table: Optional[TableName] = None
+    extra: Optional[dict] = None
 
     # @validator("metrics")
     # def mixed_metrics(cls, v):
