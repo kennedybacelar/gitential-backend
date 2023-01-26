@@ -2,6 +2,7 @@ import traceback
 from datetime import timedelta
 from functools import partial
 from typing import Callable, Optional
+from sqlalchemy import exc
 
 from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias
@@ -330,6 +331,22 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
                 commits_last_successful_run=g.current_time(),
                 commits_last_run=g.current_time(),
             )
+        except exc.DBAPIError as err:
+            # If error includes a .connection_invalidated
+            # attribute it means this connection experienced a "disconnect"
+            if err.connection_invalidated:
+                # Rerun persist phase
+                _refresh_repository_commits_persist_phase(g, workspace_id, repository_id, _update_state)
+                _update_state(
+                    commits_phase=RefreshCommitsPhase.done,
+                    commits_in_progress=False,
+                    commits_error=False,
+                    commits_error_msg="",
+                    commits_last_successful_run=g.current_time(),
+                    commits_last_run=g.current_time(),
+                )
+            else:
+                raise
         except LockError:
             logger.warning("Failed to acquire lock, maybe rescheduling")
             raise
