@@ -255,7 +255,6 @@ email_log_table = sa.Table(
     sa.Column("sent_at", sa.DateTime, nullable=True),
 )
 
-
 auto_export_table = sa.Table(
     "auto_export",
     metadata,
@@ -268,6 +267,43 @@ auto_export_table = sa.Table(
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("is_exported", sa.Boolean, default=False),
 )
+
+user_repositories_cache_table = sa.Table(
+    "user_repositories_cache",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column(
+        "user_id",
+        sa.Integer,
+        sa.ForeignKey("users.id"),
+        nullable=False,
+    ),
+    sa.Column("clone_url", sa.String(256), nullable=False, unique=True),
+    sa.Column("protocol", sa.Enum(GitProtocol), default=GitProtocol.https),
+    sa.Column("name", sa.String(128)),
+    sa.Column("namespace", sa.String(128)),
+    sa.Column("private", sa.Boolean, nullable=False, default=True),
+    sa.Column("integration_type", sa.String(64), nullable=True),
+    sa.Column("integration_name", sa.String(64), nullable=True),
+    sa.Column("credential_id", sa.Integer, nullable=True),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("extra", sa.JSON, nullable=True),
+)
+
+user_repositories_cache_last_refresh_table = sa.Table(
+    "user_repositories_cache_last_refresh",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column(
+        "user_id",
+        sa.Integer,
+        sa.ForeignKey("users.id"),
+        nullable=False,
+    ),
+    sa.Column("last_refresh", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+)
+
 
 # pylint: disable=unused-variable,too-many-locals
 def get_workspace_metadata(schema: Optional[str] = None):

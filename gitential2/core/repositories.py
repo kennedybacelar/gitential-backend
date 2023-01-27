@@ -24,16 +24,15 @@ def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -
 
 
 def list_available_repositories(
-    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]]
+    g: GitentialContext, workspace_id: int, user_id: int, user_organization_name_list: Optional[List[str]]
 ) -> List[RepositoryCreate]:
     def _merge_repo_lists(first: List[RepositoryCreate], second: List[RepositoryCreate]):
         existing_clone_urls = [r.clone_url for r in first]
         new_repos = [r for r in second if r.clone_url not in existing_clone_urls]
         return first + new_repos
 
-    all_already_used_repositories = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
-
-    results: List[RepositoryCreate] = all_already_used_repositories
+    # Get all already used repositories
+    results: List[RepositoryCreate] = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
 
     available_repos_for_credential = partial(
         list_available_repositories_for_credential, g, workspace_id, user_organization_name_list

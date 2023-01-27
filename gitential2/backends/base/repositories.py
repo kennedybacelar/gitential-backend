@@ -1,10 +1,10 @@
 # pylint: disable=unsubscriptable-object
-from datetime import datetime
 from abc import ABC, abstractmethod
-
+from datetime import datetime
 from typing import Iterable, Optional, List, Tuple, Dict, Union, cast, Set
 
 import pandas
+
 from gitential2.datatypes import (
     UserCreate,
     UserUpdate,
@@ -20,45 +20,17 @@ from gitential2.datatypes import (
     CredentialInDB,
     AccessLog,
 )
-from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
-from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.deploys import Deploy, DeployCommit
-
-from gitential2.datatypes.pull_requests import (
-    PullRequest,
-    PullRequestId,
-    PullRequestComment,
-    PullRequestCommentId,
-    PullRequestCommit,
-    PullRequestCommitId,
-    PullRequestLabel,
-    PullRequestLabelId,
-)
-from gitential2.datatypes.reseller_codes import ResellerCode
-from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB
-from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
-from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
-from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
-from gitential2.datatypes.project_repositories import (
-    ProjectRepositoryCreate,
-    ProjectRepositoryInDB,
-    ProjectRepositoryUpdate,
-)
-from gitential2.datatypes.project_its_projects import (
-    ProjectITSProjectCreate,
-    ProjectITSProjectUpdate,
-    ProjectITSProjectInDB,
-)
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB, AuthorNamesAndEmails
-from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
-from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
-from gitential2.datatypes.workspace_invitations import (
-    WorkspaceInvitationCreate,
-    WorkspaceInvitationUpdate,
-    WorkspaceInvitationInDB,
+from gitential2.datatypes.auto_export import AutoExportCreate, AutoExportInDB, AutoExportUpdate
+from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
+from gitential2.datatypes.deploys import Deploy, DeployCommit
+from gitential2.datatypes.email_log import (
+    EmailLogCreate,
+    EmailLogUpdate,
+    EmailLogInDB,
 )
-from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from gitential2.datatypes.extraction import (
     ExtractedCommit,
     ExtractedCommitId,
@@ -69,19 +41,54 @@ from gitential2.datatypes.extraction import (
     ExtractedCommitBranch,
     ExtractedCommitBranchId,
 )
-from gitential2.datatypes.email_log import (
-    EmailLogCreate,
-    EmailLogUpdate,
-    EmailLogInDB,
+from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB
+from gitential2.datatypes.project_its_projects import (
+    ProjectITSProjectCreate,
+    ProjectITSProjectUpdate,
+    ProjectITSProjectInDB,
 )
-from gitential2.datatypes.auto_export import AutoExportCreate, AutoExportInDB, AutoExportUpdate
-
+from gitential2.datatypes.project_repositories import (
+    ProjectRepositoryCreate,
+    ProjectRepositoryInDB,
+    ProjectRepositoryUpdate,
+)
+from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.pull_requests import (
+    PullRequest,
+    PullRequestId,
+    PullRequestComment,
+    PullRequestCommentId,
+    PullRequestCommit,
+    PullRequestCommitId,
+    PullRequestLabel,
+    PullRequestLabelId,
+)
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, RepositoryUpdate
+from gitential2.datatypes.reseller_codes import ResellerCode
 from gitential2.datatypes.sprints import Sprint
-
+from gitential2.datatypes.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionInDB
+from gitential2.datatypes.teammembers import TeamMemberCreate, TeamMemberInDB, TeamMemberUpdate
+from gitential2.datatypes.teams import TeamCreate, TeamUpdate, TeamInDB
+from gitential2.datatypes.workspace_invitations import (
+    WorkspaceInvitationCreate,
+    WorkspaceInvitationUpdate,
+    WorkspaceInvitationInDB,
+)
+from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
 from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
 from ...datatypes.thumbnails import ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB
+from ...datatypes.user_repositories_cache import (
+    UserRepositoriesCacheCreate,
+    UserRepositoriesCacheUpdate,
+    UserRepositoriesCacheInDB,
+)
+from ...datatypes.user_repositories_cache_last_refresh import (
+    UserRepositoriesCacheLastRefreshCreate,
+    UserRepositoriesCacheLastRefreshUpdate,
+    UserRepositoriesCacheLastRefreshInDB,
+)
 
 
 class AccessLogRepository(ABC):
@@ -221,6 +228,37 @@ class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, Works
 
     @abstractmethod
     def delete_rows_for_workspace(self, workspace_id: int):
+        pass
+
+
+class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]):
+    @abstractmethod
+    def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
+        pass
+
+    @abstractmethod
+    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
+        pass
+
+
+class UserRepositoriesCacheRepository(
+    BaseRepository[int, UserRepositoriesCacheCreate, UserRepositoriesCacheUpdate, UserRepositoriesCacheInDB]
+):
+    @abstractmethod
+    def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoriesCacheInDB]:
+        pass
+
+
+class UserRepositoriesCacheLastRefreshRepository(
+    BaseRepository[
+        int,
+        UserRepositoriesCacheLastRefreshCreate,
+        UserRepositoriesCacheLastRefreshUpdate,
+        UserRepositoriesCacheLastRefreshInDB,
+    ]
+):
+    @abstractmethod
+    def get_last_refresh_for_user(self, user_id: int) -> UserRepositoriesCacheLastRefreshInDB:
         pass
 
 
@@ -712,14 +750,4 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
 
     @abstractmethod
     def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
-        pass
-
-
-class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]):
-    @abstractmethod
-    def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
-        pass
-
-    @abstractmethod
-    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
         pass

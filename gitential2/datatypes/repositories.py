@@ -49,7 +49,7 @@ class RepositoryInDB(IDModelMixin, DateTimeModelMixin, RepositoryBase, Exportabl
         ]
 
     def export_names(self) -> Tuple[str, str]:
-        return ("repository", "repositories")
+        return "repository", "repositories"
 
 
 class RepositoryPublic(IDModelMixin, DateTimeModelMixin, RepositoryBase):
