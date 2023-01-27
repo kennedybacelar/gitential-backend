@@ -346,7 +346,7 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
                     commits_last_run=g.current_time(),
                 )
             else:
-                raise
+                raise err
         except LockError:
             logger.warning("Failed to acquire lock, maybe rescheduling")
             raise
