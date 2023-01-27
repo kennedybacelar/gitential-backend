@@ -5,19 +5,19 @@ from gitential2.datatypes.repositories import RepositoryBase
 from .common import IDModelMixin, DateTimeModelMixin
 
 
-class UserRepositoriesCacheBase(RepositoryBase):
+class UserRepositoryCacheBase(RepositoryBase):
     user_id: int
 
 
-class UserRepositoriesCacheCreate(UserRepositoriesCacheBase):
+class UserRepositoryCacheCreate(UserRepositoryCacheBase):
     pass
 
 
-class UserRepositoriesCacheUpdate(UserRepositoriesCacheBase):
+class UserRepositoryCacheUpdate(UserRepositoryCacheBase):
     pass
 
 
-class UserRepositoriesCacheInDB(IDModelMixin, DateTimeModelMixin, UserRepositoriesCacheBase, ExportableModel):
+class UserRepositoryCacheInDB(IDModelMixin, DateTimeModelMixin, UserRepositoryCacheBase, ExportableModel):
     def export_fields(self) -> List[str]:
         return [
             "id",

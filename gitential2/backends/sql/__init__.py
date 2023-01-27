@@ -151,7 +151,7 @@ from ..base.mixins import WithRepositoriesMixin
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB
-from ...datatypes.user_repositories_cache import UserRepositoriesCacheInDB
+from ...datatypes.user_repositories_cache import UserRepositoryCacheInDB
 from ...datatypes.user_repositories_cache_last_refresh import UserRepositoriesCacheLastRefreshInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
 from ...utils import get_schema_name
@@ -218,7 +218,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self._user_repositories_cache = SQLUserRepositoryCacheRepository(
             table=user_repositories_cache_table,
             engine=self._engine,
-            in_db_cls=UserRepositoriesCacheInDB,
+            in_db_cls=UserRepositoryCacheInDB,
         )
 
         self._user_repositories_cache_last_refresh = SQLUserRepositoriesCacheLastRefreshRepository(

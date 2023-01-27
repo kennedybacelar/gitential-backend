@@ -137,9 +137,9 @@ from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...datatypes.user_repositories_cache import (
-    UserRepositoriesCacheCreate,
-    UserRepositoriesCacheUpdate,
-    UserRepositoriesCacheInDB,
+    UserRepositoryCacheCreate,
+    UserRepositoryCacheUpdate,
+    UserRepositoryCacheInDB,
 )
 from ...datatypes.user_repositories_cache_last_refresh import (
     UserRepositoriesCacheLastRefreshCreate,
@@ -615,12 +615,12 @@ class SQLAutoExportRepository(
 
 class SQLUserRepositoryCacheRepository(
     UserRepositoriesCacheRepository,
-    SQLRepository[int, UserRepositoriesCacheCreate, UserRepositoriesCacheUpdate, UserRepositoriesCacheInDB],
+    SQLRepository[int, UserRepositoryCacheCreate, UserRepositoryCacheUpdate, UserRepositoryCacheInDB],
 ):
-    def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoriesCacheInDB]:
+    def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoryCacheInDB]:
         query = self.table.select().where(self.table.c.user_id == user_id)
         rows = self._execute_query(query, callback_fn=fetchall_)
-        return [UserRepositoriesCacheInDB(**row) for row in rows]
+        return [UserRepositoryCacheInDB(**row) for row in rows]
 
 
 class SQLUserRepositoriesCacheLastRefreshRepository(
@@ -632,10 +632,10 @@ class SQLUserRepositoriesCacheLastRefreshRepository(
         UserRepositoriesCacheLastRefreshInDB,
     ],
 ):
-    def get_last_refresh_for_user(self, user_id: int) -> UserRepositoriesCacheLastRefreshInDB:
+    def get_last_refresh_for_user(self, user_id: int) -> Optional[UserRepositoriesCacheLastRefreshInDB]:
         query = self.table.select().where(self.table.c.user_id == user_id)
-        rows = self._execute_query(query, callback_fn=fetchall_)
-        return [UserRepositoriesCacheLastRefreshInDB(**row) for row in rows][0]
+        row = self._execute_query(query, callback_fn=fetchone_)
+        return UserRepositoriesCacheLastRefreshInDB(**row) if row else None
 
 
 class SQLProjectRepository(

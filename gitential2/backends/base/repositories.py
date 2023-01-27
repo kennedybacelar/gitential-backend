@@ -80,9 +80,9 @@ from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
 from ...datatypes.thumbnails import ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB
 from ...datatypes.user_repositories_cache import (
-    UserRepositoriesCacheCreate,
-    UserRepositoriesCacheUpdate,
-    UserRepositoriesCacheInDB,
+    UserRepositoryCacheCreate,
+    UserRepositoryCacheUpdate,
+    UserRepositoryCacheInDB,
 )
 from ...datatypes.user_repositories_cache_last_refresh import (
     UserRepositoriesCacheLastRefreshCreate,
@@ -242,10 +242,10 @@ class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdat
 
 
 class UserRepositoriesCacheRepository(
-    BaseRepository[int, UserRepositoriesCacheCreate, UserRepositoriesCacheUpdate, UserRepositoriesCacheInDB]
+    BaseRepository[int, UserRepositoryCacheCreate, UserRepositoryCacheUpdate, UserRepositoryCacheInDB]
 ):
     @abstractmethod
-    def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoriesCacheInDB]:
+    def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoryCacheInDB]:
         pass
 
 
@@ -258,7 +258,7 @@ class UserRepositoriesCacheLastRefreshRepository(
     ]
 ):
     @abstractmethod
-    def get_last_refresh_for_user(self, user_id: int) -> UserRepositoriesCacheLastRefreshInDB:
+    def get_last_refresh_for_user(self, user_id: int) -> Optional[UserRepositoriesCacheLastRefreshInDB]:
         pass
 
 

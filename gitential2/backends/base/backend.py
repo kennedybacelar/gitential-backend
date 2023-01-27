@@ -45,7 +45,9 @@ from .repositories import (
     ChartRepository,
     ThumbnailRepository,
     DeployCommitRepository,
-    AutoExportRepository, UserRepositoriesCacheRepository, UserRepositoriesCacheLastRefreshRepository,
+    AutoExportRepository,
+    UserRepositoriesCacheRepository,
+    UserRepositoriesCacheLastRefreshRepository,
 )
 from .repositories_its import (
     ITSIssueRepository,

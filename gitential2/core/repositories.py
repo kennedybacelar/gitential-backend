@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -14,7 +15,7 @@ from .credentials import (
     list_credentials_for_workspace,
     get_update_token_callback,
 )
-
+from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB
 
 logger = get_logger(__name__)
 
@@ -35,7 +36,7 @@ def list_available_repositories(
     results: List[RepositoryCreate] = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
 
     available_repos_for_credential = partial(
-        list_available_repositories_for_credential, g, workspace_id, user_organization_name_list
+        list_available_repositories_for_credential, g, workspace_id, user_id, user_organization_name_list
     )
     with ThreadPoolExecutor() as executor:
         collected_results = executor.map(
@@ -63,7 +64,11 @@ def list_available_repositories(
 
 
 def list_available_repositories_for_credential(
-    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]], credential: CredentialInDB
+    g: GitentialContext,
+    workspace_id: int,
+    user_id: int,
+    user_organization_name_list: Optional[List[str]],
+    credential: CredentialInDB,
 ) -> List[RepositoryCreate]:
     results = []
 
@@ -83,12 +88,49 @@ def list_available_repositories_for_credential(
                     if credential.owner_id
                     else None
                 )
-                collected_repositories = integration.list_available_private_repositories(
-                    token=token,
-                    update_token=get_update_token_callback(g, credential),
-                    provider_user_id=userinfo.sub if userinfo else None,
-                    user_organization_name_list=user_organization_name_list,
-                )
+
+                collected_repositories: List[RepositoryCreate] = []
+                refresh = g.backend.user_repositories_cache_last_refresh.get_last_refresh_for_user(user_id)
+                if refresh:
+
+                    def get_repos_cache() -> List[RepositoryCreate]:
+                        collected_repositories_cache: List[
+                            UserRepositoryCacheInDB
+                        ] = g.backend.user_repositories_cache.get_all_repositories_for_user(user_id)
+                        return [
+                            RepositoryCreate(
+                                clone_url=repo.clone_url,
+                                protocol=repo.protocol,
+                                name=repo.name,
+                                namespace=repo.namespace,
+                                private=repo.private,
+                                integration_type=repo.integration_type,
+                                integration_name=repo.integration_name,
+                                extra=repo.extra,
+                            )
+                            for repo in collected_repositories_cache
+                        ]
+
+                    if (g.current_time() - timedelta(days=1)) > refresh.last_refresh:
+                        # last refresh date older than 1 day -> get new repos since last refresh date
+                        # TODO: get newest repos since last refresh date
+                        # TODO: save new repos to cache
+
+                        # get cache from db && convert cache to a list of RepositoryCreate
+                        collected_repositories = get_repos_cache()
+                    else:
+                        # last refresh date is not old enough -> get cache from db
+                        collected_repositories = get_repos_cache()
+                else:
+                    # no last refresh date found -> list all available repositories
+                    collected_repositories = integration.list_available_private_repositories(
+                        token=token,
+                        update_token=get_update_token_callback(g, credential),
+                        provider_user_id=userinfo.sub if userinfo else None,
+                        user_organization_name_list=user_organization_name_list,
+                    )
+                    # TODO: save collected repos to cache
+                    # TODO: save last refreshed date
 
                 logger.debug(
                     "collected_private_repositories",
