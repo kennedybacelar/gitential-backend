@@ -294,10 +294,12 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         client: OAuth2Session, api_base_url: str, user_organization_names: Optional[List[str]]
     ):
         results = []
+        # We needed to put this if statement just to serve procter & gamble's requests.
+        # So there is no need to use this feature on the production environment.
         if is_on_prem_installation():
             if is_list_not_empty(user_organization_names):
                 logger.debug(
-                    "Starting to get github repos for provided user provided organization names.",
+                    "Starting to get github repos for organization names.",
                     user_organization_name_list=user_organization_names,
                 )
                 results = GithubIntegration.get_repos_for_list_of_github_user_organizations(
@@ -327,6 +329,42 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             ]
             repo_list += user_orgs_repos_reduced
         return repo_list
+
+    def get_newest_repos_since_last_refresh(
+        self, token, update_token, last_refresh: datetime, user_organization_names: Optional[List[str]]
+    ) -> List[RepositoryCreate]:
+        org_repos = []
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        api_base_url = self.oauth_register()["api_base_url"]
+
+        # We needed to put this if statement just to serve procter & gamble's requests.
+        # So there is no need to use this feature on the production environment.
+        if is_on_prem_installation():
+            user_orgs: List[str] = (
+                user_organization_names
+                if is_list_not_empty(user_organization_names)
+                else GithubIntegration.get_organization_names_for_github_user(client, api_base_url)
+            )
+            if is_list_not_empty(user_orgs):
+                logger.debug(
+                    "Starting to get newest github repos for organization names since last refresh date.",
+                    user_organization_name_list=user_organization_names,
+                    last_refresh=last_refresh,
+                )
+                for org in user_orgs:
+                    query = f"org:{org} created:>{last_refresh}"
+                    repos = self.search_public_repositories(query, token, update_token, None)
+                    org_repos.extend(repos)
+            logger.debug(
+                "GitHub repositories from user organizations.", number_of_repositories_from_organizations=len(results)
+            )
+
+        starting_url = f"{api_base_url}user/repos?per_page=100&type=all&since={last_refresh}"
+        repository_list = walk_next_link(client, starting_url, integration_name="github_private_repos")
+
+        merged_repos = GithubIntegration.get_merged_repos(repository_list, org_repos)
+        client.close()
+        return [self._repo_to_create_repo(repo) for repo in merged_repos]
 
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]

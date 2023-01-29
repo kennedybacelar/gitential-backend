@@ -111,16 +111,18 @@ def list_available_repositories_for_credential(
                             for repo in collected_repositories_cache
                         ]
 
+                    # If the last refresh date older than 1 day -> get new repos since last refresh date
                     if (g.current_time() - timedelta(days=1)) > refresh.last_refresh:
-                        # last refresh date older than 1 day -> get new repos since last refresh date
-                        # TODO: get newest repos since last refresh date
+                        integration.get_newest_repos_since_last_refresh(
+                            token=token,
+                            update_token=get_update_token_callback(g, credential),
+                            last_refresh=refresh.last_refresh,
+                            user_organization_name_list=user_organization_name_list,
+                        )
+
                         # TODO: save new repos to cache
 
-                        # get cache from db && convert cache to a list of RepositoryCreate
-                        collected_repositories = get_repos_cache()
-                    else:
-                        # last refresh date is not old enough -> get cache from db
-                        collected_repositories = get_repos_cache()
+                    collected_repositories = get_repos_cache()
                 else:
                     # no last refresh date found -> list all available repositories
                     collected_repositories = integration.list_available_private_repositories(
