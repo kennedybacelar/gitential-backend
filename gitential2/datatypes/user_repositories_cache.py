@@ -21,7 +21,8 @@ class UserRepositoryCacheInDB(IDModelMixin, DateTimeModelMixin, UserRepositoryCa
     def export_fields(self) -> List[str]:
         return [
             "id",
-            "user_id" "created_at",
+            "user_id",
+            "created_at",
             "updated_at",
             "clone_url",
             "protocol",
@@ -35,4 +36,4 @@ class UserRepositoryCacheInDB(IDModelMixin, DateTimeModelMixin, UserRepositoryCa
         ]
 
     def export_names(self) -> Tuple[str, str]:
-        return "user_repositories_cache", "user_repositories_cache"
+        return "user_repositories_cache", "user_repositories_caches"

@@ -1,13 +1,15 @@
-from datetime import timedelta
-from typing import List, Optional
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from functools import partial
+from typing import List, Optional
+
 from structlog import get_logger
+
 from gitential2.datatypes.credentials import CredentialInDB
-from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryInDB, GitProtocol
 from gitential2.datatypes.userinfos import UserInfoInDB
-
+from gitential2.integrations import REPOSITORY_SOURCES
 from gitential2.utils import levenshtein, find_first, is_list_not_empty, is_string_not_empty
 from .context import GitentialContext
 from .credentials import (
@@ -15,7 +17,8 @@ from .credentials import (
     list_credentials_for_workspace,
     get_update_token_callback,
 )
-from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB
+from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB, UserRepositoryCacheCreate
+from ..datatypes.user_repositories_cache_last_refresh import UserRepositoriesCacheLastRefreshCreate
 
 logger = get_logger(__name__)
 
@@ -89,7 +92,32 @@ def list_available_repositories_for_credential(
                     else None
                 )
 
+                def save_repos_to_cache(repo_list: List[RepositoryCreate]):
+                    repos_to_cache: List[UserRepositoryCacheCreate] = [
+                        UserRepositoryCacheCreate(
+                            user_id=user_id,
+                            clone_url=repo.clone_url,
+                            protocol=repo.protocol,
+                            name=repo.name,
+                            namespace=repo.namespace,
+                            private=repo.private,
+                            integration_type=repo.integration_type,
+                            integration_name=repo.integration_name,
+                            credential_id=repo.credential_id,
+                            extra=repo.extra,
+                        )
+                        for repo in repo_list
+                    ]
+                    g.backend.user_repositories_cache.insert_repositories_cache_for_user(repos_to_cache)
+
+                def save_last_refresh_date():
+                    refresh_save = UserRepositoriesCacheLastRefreshCreate(
+                        user_id=user_id, last_refresh=datetime.utcnow()
+                    )
+                    g.backend.user_repositories_cache_last_refresh.create(refresh_save)
+
                 collected_repositories: List[RepositoryCreate] = []
+
                 refresh = g.backend.user_repositories_cache_last_refresh.get_last_refresh_for_user(user_id)
                 if refresh:
 
@@ -113,14 +141,14 @@ def list_available_repositories_for_credential(
 
                     # If the last refresh date older than 1 day -> get new repos since last refresh date
                     if (g.current_time() - timedelta(days=1)) > refresh.last_refresh:
-                        integration.get_newest_repos_since_last_refresh(
+                        new_repos: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
                             token=token,
                             update_token=get_update_token_callback(g, credential),
                             last_refresh=refresh.last_refresh,
                             user_organization_name_list=user_organization_name_list,
                         )
-
-                        # TODO: save new repos to cache
+                        save_repos_to_cache(new_repos)
+                        save_last_refresh_date()
 
                     collected_repositories = get_repos_cache()
                 else:
@@ -131,8 +159,8 @@ def list_available_repositories_for_credential(
                         provider_user_id=userinfo.sub if userinfo else None,
                         user_organization_name_list=user_organization_name_list,
                     )
-                    # TODO: save collected repos to cache
-                    # TODO: save last refreshed date
+                    save_repos_to_cache(collected_repositories)
+                    save_last_refresh_date()
 
                 logger.debug(
                     "collected_private_repositories",

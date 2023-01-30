@@ -248,6 +248,16 @@ class UserRepositoriesCacheRepository(
     def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoryCacheInDB]:
         pass
 
+    @abstractmethod
+    def insert_repository_cache_for_user(self, repo: UserRepositoryCacheCreate) -> UserRepositoryCacheInDB:
+        pass
+
+    @abstractmethod
+    def insert_repositories_cache_for_user(
+        self, repos: List[UserRepositoryCacheCreate]
+    ) -> List[UserRepositoryCacheInDB]:
+        pass
+
 
 class UserRepositoriesCacheLastRefreshRepository(
     BaseRepository[

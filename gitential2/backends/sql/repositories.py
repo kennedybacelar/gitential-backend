@@ -622,6 +622,30 @@ class SQLUserRepositoryCacheRepository(
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [UserRepositoryCacheInDB(**row) for row in rows]
 
+    def insert_repository_cache_for_user(self, repo: UserRepositoryCacheCreate) -> UserRepositoryCacheInDB:
+        return self.create(repo)
+
+    def insert_repositories_cache_for_user(
+        self, repos: List[UserRepositoryCacheCreate]
+    ) -> List[UserRepositoryCacheInDB]:
+        query = self.table.insert(repos).returning(
+            self.table.c.id,
+            self.table.c.user_id,
+            self.table.c.clone_url,
+            self.table.c.protocol,
+            self.table.c.name,
+            self.table.c.namespace,
+            self.table.c.private,
+            self.table.c.integration_type,
+            self.table.c.integration_name,
+            self.table.c.credential_id,
+            self.table.c.created_at,
+            self.table.c.updated_at,
+            self.table.c.extra,
+        )
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [UserRepositoryCacheInDB(**row) for row in rows]
+
 
 class SQLUserRepositoriesCacheLastRefreshRepository(
     UserRepositoriesCacheLastRefreshRepository,

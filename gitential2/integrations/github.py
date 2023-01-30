@@ -334,6 +334,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         self, token, update_token, last_refresh: datetime, user_organization_names: Optional[List[str]]
     ) -> List[RepositoryCreate]:
         org_repos = []
+        last_refresh_formatted = last_refresh.strftime("%Y-%m-%d")
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
 
@@ -352,15 +353,16 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
                     last_refresh=last_refresh,
                 )
                 for org in user_orgs:
-                    query = f"org:{org} created:>{last_refresh}"
+                    query = f"org:{org} created:>{last_refresh_formatted}"
                     repos = self.search_public_repositories(query, token, update_token, None)
                     org_repos.extend(repos)
-            logger.debug(
-                "GitHub repositories from user organizations.", number_of_repositories_from_organizations=len(results)
-            )
+                logger.debug(
+                    "GitHub repositories from user organizations.",
+                    number_of_repositories_from_organizations=len(org_repos),
+                )
 
-        starting_url = f"{api_base_url}user/repos?per_page=100&type=all&since={last_refresh}"
-        repository_list = walk_next_link(client, starting_url, integration_name="github_private_repos")
+        starting_url = f"{api_base_url}user/repos?per_page=100&type=all&since={last_refresh_formatted}"
+        repository_list = walk_next_link(client, starting_url, integration_name="github_private_repos_newly_created")
 
         merged_repos = GithubIntegration.get_merged_repos(repository_list, org_repos)
         client.close()
