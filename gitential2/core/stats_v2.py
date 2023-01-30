@@ -107,7 +107,7 @@ def _prepare_dimension(
         elif dimension == DimensionName.sprint:
             sprint = _get_sprint_info(g, workspace_id, query.extra)
             if not sprint:
-                raise NotFoundException("NO SPRINT SET FOR PROJECT OR TEAM")
+                raise NotFoundException("No Sprint set for projet or team")
 
             first_sprint_date, sprints_timestamps_to_replace = _prepare_sprint_x_ref_aggregation(query, sprint)
             changing_day_filter_lower_value(query, first_sprint_date)
@@ -323,7 +323,7 @@ def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: 
         elif team_id:
             sprint = g.backend.teams.get_or_error(workspace_id, team_id).sprint
         else:
-            raise NotFoundException("NO PROJECT OR TEAM ID IN QUERY FILTER")
+            raise NotFoundException("Missing project_id or team_id in the query's filters")
         return sprint
     return None
 
