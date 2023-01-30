@@ -236,17 +236,38 @@ def lookup_tempo(
     workspace_id: int,
     tempo_access_token: str = typer.Argument("", envvar="TEMPO_ACCESS_TOKEN"),
     force: bool = False,
+    date_from: datetime = datetime.min,
+    rewrite_existing_worklogs: bool = typer.Option(False, "--rewrite-existing-worklogs"),
 ):
-
+    """
+    Arguments:
+        workspace_id: workspace_id
+        tempo_access_token: environment variable - bearer token
+        force: determines if authors will be calculated
+        date_from (datetime, optional): determines from what date the worklogs will be considered
+        rewrite_existing_worklogs: It forces the update of the time logged in the worklogs entries - users may have updated them.
+    """
     g = get_context()
-    lookup_tempo_worklogs(g, workspace_id, tempo_access_token, force)
+    lookup_tempo_worklogs(g, workspace_id, tempo_access_token, force, date_from, rewrite_existing_worklogs)
 
 
-def lookup_tempo_worklogs(g: GitentialContext, workspace_id: int, tempo_access_token: str, force):
+# pylint: disable=too-complex
+def lookup_tempo_worklogs(
+    g: GitentialContext,
+    workspace_id: int,
+    tempo_access_token: str,
+    force,
+    date_from: datetime,
+    rewrite_existing_worklogs: bool,
+):
     worklogs_for_issue = {}
     _author_callback_partial = partial(_author_callback, g=g, workspace_id=workspace_id)
 
     for worklog in g.backend.its_issue_worklogs.iterate_desc(workspace_id):
+
+        # date_from (created_at field) is never None, at table creation it has the default value set as dt.datetime.utcnow
+        if worklog.created_at < date_from:  # type: ignore[operator]
+            break
 
         if not worklog.author_dev_id or force:
             author = None
@@ -259,18 +280,33 @@ def lookup_tempo_worklogs(g: GitentialContext, workspace_id: int, tempo_access_t
             if jira_issue_id not in worklogs_for_issue:
                 worklogs_for_issue[jira_issue_id] = _get_tempo_worklogs_for_issue(tempo_access_token, jira_issue_id)
 
-            for wl in worklogs_for_issue[jira_issue_id].get("results", []):
-                if str(wl["jiraWorklogId"]) == worklog.api_id:
-                    tempo_worklog = wl
-                    break
+            results_worklogs_for_issue = worklogs_for_issue[jira_issue_id].get("results", [])
 
-            if tempo_worklog:
-                author = _author_callback_partial(AuthorAlias(name=tempo_worklog["author"]["displayName"]))
+            # We need this if-condition because sometimes all worklogs are removed from an issue and the issue keeps on its_issue_worklogs table.
+            # We have to make to make sure of removing those entries properly.
 
+            if results_worklogs_for_issue:
+                for wl in worklogs_for_issue[jira_issue_id].get("results", []):
+                    if str(wl["jiraWorklogId"]) == worklog.api_id:
+                        tempo_worklog = wl
+                        break
+
+            if not tempo_worklog:
+                g.backend.its_issue_worklogs.delete(workspace_id, worklog.id)
+                continue
+
+            if rewrite_existing_worklogs:
+                worklog.time_spent_seconds = tempo_worklog["timeSpentSeconds"]
+                worklog.time_spent_display_str = _from_seconds_to_day_hour_min(tempo_worklog["timeSpentSeconds"])
+
+            # email information is available through an extra api call at - rest/api/2/user?accountId=accountId
+            author = _author_callback_partial(AuthorAlias(name=tempo_worklog["author"]["displayName"]))
             if author:
                 print(worklog.created_at, worklog.api_id, jira_issue_id, author.id, author.name)
                 worklog.author_dev_id = author.id
                 worklog.author_name = author.name
+                worklog.author_email = author.email
+
                 g.backend.its_issue_worklogs.update(workspace_id, worklog.id, worklog)
             else:
                 print(worklog.created_at, worklog.api_id, jira_issue_id, tempo_worklog)
@@ -281,6 +317,7 @@ def _get_tempo_worklogs_for_issue(tempo_access_token: str, jira_issue_id) -> dic
     response = requests.get(
         f"https://api.tempo.io/core/3/worklogs?issue={jira_issue_id}",
         headers={"Authorization": f"Bearer {tempo_access_token}"},
+        timeout=300,
     )
     response.raise_for_status()
     return response.json()
@@ -296,3 +333,23 @@ def _author_callback(
         return author
     else:
         return None
+
+
+def _from_seconds_to_day_hour_min(delta_time_in_seconds: int) -> str:
+    """
+    This function convert total delta time in seconds to a str in the following format:
+    Example: 1d 2h 30m
+    Remind: The day considered has 8 hours = 28800 seconds
+    """
+    time_dimension_unit_reference = {0: "d", 1: "h", 2: "m"}
+    day_hour_minute = (
+        delta_time_in_seconds // 28800,
+        (delta_time_in_seconds % 28800) // 3600,
+        (delta_time_in_seconds // 60) % 60,
+    )
+    ret = []
+    for index, time_dimension in enumerate(day_hour_minute):
+        if time_dimension:
+            ret.append(f"{time_dimension}{time_dimension_unit_reference[index]}")
+
+    return " ".join(ret)

@@ -87,7 +87,9 @@ def get_pull_requests(
     limit: int = 100,
     offset: int = 0,
 ) -> Tuple[int, List[PullRequest]]:
-    if project_id:
+
+    # If no repo is sent as param, all repos of the projects will be considered
+    if project_id and not repo_ids:
         repo_ids = g.backend.project_repositories.get_repo_ids_for_project(
             workspace_id=workspace_id, project_id=project_id
         )
@@ -96,23 +98,22 @@ def get_pull_requests(
     if developer_id:
         developer_ids = [developer_id]
 
-    return (
-        g.backend.pull_requests.count(
-            workspace_id=workspace_id,
-            repository_ids=repo_ids,
-            developer_ids=developer_ids,
-            from_=from_,
-            to_=to_,
-        ),
-        list(
-            g.backend.pull_requests.select(
-                workspace_id=workspace_id,
-                repository_ids=repo_ids,
-                developer_ids=developer_ids,
-                from_=from_,
-                to_=to_,
-                limit=limit,
-                offset=offset,
-            )
-        ),
+    prs_count = g.backend.pull_requests.count(
+        workspace_id=workspace_id,
+        repository_ids=repo_ids,
+        developer_ids=developer_ids,
+        from_=from_,
+        to_=to_,
     )
+
+    prs = g.backend.pull_requests.select(
+        workspace_id=workspace_id,
+        repository_ids=repo_ids,
+        developer_ids=developer_ids,
+        from_=from_,
+        to_=to_,
+        limit=limit,
+        offset=offset,
+    )
+
+    return prs_count, list(prs)

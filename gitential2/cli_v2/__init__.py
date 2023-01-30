@@ -40,6 +40,7 @@ from .tasks import app as tasks_app
 from .usage_stats import app as usage_stats_app
 from .users import app as users_app
 from .vsts import app as vsts_app
+from .auto_export import app as auto_export_app
 from .workspaces import app as workspaces_app
 
 logger = get_logger(__name__)
@@ -65,6 +66,7 @@ app.add_typer(data_queries_app, name="data-query")
 app.add_typer(reseller_codes, name="reseller-codes")
 app.add_typer(deploys_app, name="deploys")
 app.add_typer(authors_app, name="authors")
+app.add_typer(auto_export_app, name="auto-export")
 app.add_typer(workspaces_app, name="workspaces")
 
 
@@ -94,8 +96,8 @@ def initialize_database():
     g = get_context()
     g.backend.initialize()
     g.backend.migrate()
-    workspaces = g.backend.workspaces.all()
-    for w in workspaces:
+    workspaces_list = g.backend.workspaces.all()
+    for w in workspaces_list:
         # logger.info("Initializing workspace schema", workspace_id=w.id)
         try:
             # g.backend.initialize_workspace(w.id)

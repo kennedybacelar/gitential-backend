@@ -141,11 +141,17 @@ class ExtractionSettings(BaseModel):
     executor: Executor = Executor.process_pool
     process_pool_size: int = 4
     show_progress: bool = False
+    repo_analysis_limit_in_days: Optional[int] = None
+    its_project_analysis_limit_in_days: Optional[int] = None
 
 
 class RefreshSettings(BaseModel):
     hourly_maintenance_enabled: bool = True
     interval_minutes: int = 60 * 24
+
+
+class AutoExportSettings(BaseModel):
+    start_auto_export: bool = False
 
 
 class MaintenanceSettings(BaseModel):
@@ -175,6 +181,7 @@ class FeaturesSettings(BaseModel):
     enable_its_analytics: bool = False
     enable_resellers: bool = False
     access_approval: AccessApprovalSettings = AccessApprovalSettings()
+    enable_scheduled_data_cleanup: bool = False
 
 
 class ResellerSettings(BaseModel):
@@ -193,6 +200,7 @@ class GitentialSettings(BaseModel):
     web: WebSettings = WebSettings()
     extraction: ExtractionSettings = ExtractionSettings()
     refresh: RefreshSettings = RefreshSettings()
+    auto_export: AutoExportSettings = AutoExportSettings()
     recaptcha: RecaptchaSettings = RecaptchaSettings()
     integrations: Dict[str, IntegrationSettings]
     backend: BackendType = BackendType.in_memory
@@ -239,6 +247,6 @@ def load_settings(settings_file=None, override_file=None):
             print("!!!", override_dict)
         config_dict = deep_merge_dicts(config_dict, override_dict)
 
-    # Apply environment varible overrides
+    # Apply environment variable overrides
     config_dict = _environtment_overrides(config_dict)
     return GitentialSettings.parse_obj(config_dict)

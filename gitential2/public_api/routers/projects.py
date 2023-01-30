@@ -176,7 +176,7 @@ def refresh_project_rebuild(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.project, Action.update, workspace_id=workspace_id, project_id=project_id)
-    refresh_project(g, workspace_id, project_id)
+    refresh_project(g, workspace_id, project_id, force=True)
     return get_project_refresh_status(g, workspace_id, project_id=project_id)
 
 

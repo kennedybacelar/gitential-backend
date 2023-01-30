@@ -539,6 +539,7 @@ def refresh_repository_pull_requests(g: GitentialContext, workspace_id: int, rep
                     author_callback=_author_callback_partial,
                     prs_we_already_have=prs_we_already_have,
                     limit=200,
+                    repo_analysis_limit_in_days=g.settings.extraction.repo_analysis_limit_in_days,
                 )
                 logger.info(
                     "collect_pull_requests results",

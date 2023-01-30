@@ -1,12 +1,11 @@
 import asyncio
+from typing import Optional
+
+from fastapi import APIRouter, Request, HTTPException, Depends, Query
+from fastapi.responses import RedirectResponse
 from structlog import get_logger
 
-from fastapi import APIRouter, Request, HTTPException, Depends
-from fastapi.responses import RedirectResponse
-from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.context import GitentialContext
-from gitential2.core.users import handle_authorize
-from gitential2.core.permissions import check_permission
 from gitential2.core.legacy import (
     get_dev_related_projects,
     get_repos_projects,
@@ -14,11 +13,12 @@ from gitential2.core.legacy import (
     get_dev_top_repos,
     get_developers,
 )
-
+from gitential2.core.permissions import check_permission
+from gitential2.core.users import handle_authorize
+from gitential2.datatypes.permissions import Entity, Action
 from gitential2.exceptions import AuthenticationException
-
-from ..dependencies import gitential_context, OAuth, current_user
 from .auth import _get_token, _get_user_info
+from ..dependencies import gitential_context, OAuth, current_user
 
 logger = get_logger(__name__)
 
@@ -31,9 +31,9 @@ router = APIRouter()
 async def legacy_login(
     request: Request,
     source: str = "vsts",
-    id_token: str = None,
-    code: str = None,
-    oauth_verifier: str = None,
+    id_token: Optional[str] = None,
+    code: Optional[str] = None,
+    oauth_verifier: Optional[str] = None,
     g: GitentialContext = Depends(gitential_context),
     oauth: OAuth = Depends(),
     current_user=Depends(current_user),
@@ -96,22 +96,26 @@ def dev_top_repos(
 @router.get("/v2/workspaces/{workspace_id}/developers")
 def developers(
     workspace_id: int,
+    is_dev_active_filter_on: Optional[bool] = Query(True, alias="is_dev_active_filter_on"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return get_developers(g, workspace_id)
+    return get_developers(g=g, workspace_id=workspace_id, is_dev_active_filter_on=is_dev_active_filter_on)
 
 
 @router.get("/v2/workspaces/{workspace_id}/repos/{repo_id}/developers")
 def developers_repo_level(
     workspace_id: int,
     repo_id: int,
+    is_dev_active_filter_on: Optional[bool] = Query(True, alias="is_dev_active_filter_on"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return get_developers(g, workspace_id=workspace_id, repo_id=repo_id)
+    return get_developers(
+        g=g, workspace_id=workspace_id, repo_id=repo_id, is_dev_active_filter_on=is_dev_active_filter_on
+    )
 
 
 @router.get("/v2/workspaces/{workspace_id}/projects/{project_id}/developers")
@@ -120,11 +124,14 @@ def developers_project_level(
     limit: int,
     workspace_id: int,
     project_id: int,
+    is_dev_active_filter_on: Optional[bool] = Query(True, alias="is_dev_active_filter_on"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):  # pylint: disable=unused-argument
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return get_developers(g, workspace_id=workspace_id, project_id=project_id)
+    return get_developers(
+        g=g, workspace_id=workspace_id, project_id=project_id, is_dev_active_filter_on=is_dev_active_filter_on
+    )
 
 
 @router.get("/v2/workspaces/{workspace_id}/teams/{team_id}/developers")
@@ -133,11 +140,14 @@ def developers_for_team(
     limit: int,
     workspace_id: int,
     team_id: int,
+    is_dev_active_filter_on: Optional[bool] = Query(True, alias="is_dev_active_filter_on"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):  # pylint: disable=unused-argument
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return get_developers(g, workspace_id=workspace_id, team_id=team_id)
+    return get_developers(
+        g=g, workspace_id=workspace_id, team_id=team_id, is_dev_active_filter_on=is_dev_active_filter_on
+    )
 
 
 @router.get("/v2/workspaces/{workspace_id}/dev_related_projects")
@@ -147,4 +157,4 @@ def dev_related_projects(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return get_dev_related_projects(g, workspace_id)
+    return get_dev_related_projects(g=g, workspace_id=workspace_id)

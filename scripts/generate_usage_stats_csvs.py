@@ -1,9 +1,11 @@
-import sys
-import subprocess
-import csv
 import argparse
+import csv
+import subprocess
 from datetime import date, datetime
 from json import loads
+from typing import List
+
+import pandas
 
 
 def _log(msg):
@@ -23,11 +25,12 @@ def _simplify_user_data(user_data):
     return ret
 
 
-def create_usage_stat_csvs(prefix):
+def create_usage_stat_csvs_and_xls(file_name_base_with_abs_path) -> List[str]:
+    file_names: List[str] = []
 
-    with open(f"{prefix}.json", "r", encoding="utf-8") as usage_file:
+    with open(f"{file_name_base_with_abs_path}.json", "r", encoding="utf-8") as usage_file:
         usage_data = loads(usage_file.read())
-    _log(f"Loaded usage data from {prefix}.json")
+    _log(f"Loaded usage data from {file_name_base_with_abs_path}.json")
 
     result = []
     for user in usage_data:
@@ -45,7 +48,9 @@ def create_usage_stat_csvs(prefix):
 
             result_workspace.append(w)
 
-    with open(f"{prefix}.csv", "w", encoding="utf-8") as csvfile:
+    usage_stats_file_name_csv = f"{file_name_base_with_abs_path}.csv"
+    usage_stats_file_name_xls = f"{file_name_base_with_abs_path}.xls"
+    with open(usage_stats_file_name_csv, "w", encoding="utf-8") as csvfile:
         fieldnames = [
             "user_id",
             "workspace_ids",
@@ -102,10 +107,17 @@ def create_usage_stat_csvs(prefix):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for r in result:
-            _log(f"Writing a row to {prefix}.csv")
+            _log(f"Writing a row to {usage_stats_file_name_csv}")
             writer.writerow(r)
 
-    with open(f"{prefix}_workspaces.csv", "w", encoding="utf-8") as csvfile:
+        file_names.append(usage_stats_file_name_csv)
+
+        pandas.read_csv(usage_stats_file_name_csv).to_excel(usage_stats_file_name_xls, index=None, header=True)
+        file_names.append(usage_stats_file_name_csv)
+
+    usage_stats_workspaces_file_name_csv = f"{file_name_base_with_abs_path}_workspaces.csv"
+    usage_stats_workspaces_file_name_xls = f"{file_name_base_with_abs_path}_workspaces.xls"
+    with open(usage_stats_workspaces_file_name_csv, "w", encoding="utf-8") as csvfile:
         fieldnames = [
             "user_id",
             "workspace_id",
@@ -138,8 +150,17 @@ def create_usage_stat_csvs(prefix):
         writer.writeheader()
         for r in result_workspace:
             r_ = {f: r[f] for f in fieldnames}
-            _log(f"Writing a row to {prefix}_workspaces.csv")
+            _log(f"Writing a row to {file_name_base_with_abs_path}_workspaces.csv")
             writer.writerow(r_)
+
+        file_names.append(usage_stats_workspaces_file_name_csv)
+
+        pandas.read_csv(usage_stats_workspaces_file_name_csv).to_excel(
+            usage_stats_workspaces_file_name_xls, index=None, header=True
+        )
+        file_names.append(usage_stats_workspaces_file_name_xls)
+
+    return file_names
 
 
 def get_usage_stats(output_file: str, environment: str):
@@ -155,8 +176,8 @@ def get_usage_stats(output_file: str, environment: str):
         return ""
 
 
-def upload_files(prefix: str, bucket_name: str, environment: str):
-    for file in [f"{prefix}.json", f"{prefix}.csv", f"{prefix}_workspaces.csv"]:
+def upload_files(file_names: List[str], bucket_name: str, environment: str):
+    for file in file_names:
         upload_cmd = f"aws s3 cp {file} s3://{bucket_name}/{environment}/usage-stats/"
         subprocess.call(upload_cmd.split())
         _log(f"Uploaded {file} to s3://{bucket_name}/{environment}/usage-stats/")
@@ -175,7 +196,10 @@ if __name__ == "__main__":
 
     usage_stat_json_file = f"{prefix}.json"
     if get_usage_stats(usage_stat_json_file, args.environment):
-        # We've got usage stats, generate the csv files
-        create_usage_stat_csvs(prefix)
+        # We've got usage stats, generate the csv and xls files
+        usage_stats_csv_file_names = create_usage_stat_csvs_and_xls(prefix)
+
         # Upload to AWS S3
-        upload_files(prefix, args.upload_bucket, args.environment)
+        file_names_to_upload = [usage_stat_json_file, *usage_stats_csv_file_names]
+        _log(file_names_to_upload)
+        upload_files(file_names_to_upload, args.upload_bucket, args.environment)

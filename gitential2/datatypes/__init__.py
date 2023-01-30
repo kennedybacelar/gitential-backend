@@ -45,3 +45,5 @@ from .project_repositories import ProjectRepositoryCreate, ProjectRepositoryUpda
 from .authors import AuthorAlias, AuthorCreate, AuthorUpdate, AuthorInDB
 from .stats import StatsRequest
 from .data_queries import *
+
+from .auto_export import AutoExportCreate, AutoExportUpdate, AutoExportInDB

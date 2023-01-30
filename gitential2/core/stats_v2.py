@@ -1,9 +1,9 @@
 # pylint: disable=too-complex,too-many-branches
-
 import math
-from typing import Generator, List, Any, Dict, Optional, cast
+from typing import Generator, List, Any, Dict, Optional, cast, Tuple
 from datetime import datetime, date, timedelta, timezone
 
+from functools import partial
 from structlog import get_logger
 from pydantic import BaseModel
 import pandas as pd
@@ -27,6 +27,7 @@ from gitential2.datatypes.stats import (
     DATE_DIMENSIONS,
 )
 from gitential2.datatypes.pull_requests import PullRequestState
+from gitential2.datatypes.sprints import Sprint
 
 from .context import GitentialContext
 from .authors import list_active_author_ids
@@ -42,13 +43,15 @@ class QueryResult(BaseModel):
         arbitrary_types_allowed = True
 
 
-def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table):
+def _prepare_dimensions(
+    dimensions, table_def: TableDef, ibis_tables, ibis_table, g: GitentialContext, workspace_id: int, query: Query
+):
     ret = []
     # Try this out first
     # if (DimensionName.name in dimensions or DimensionName.email in dimensions) and DimensionName.aid not in dimensions:
     #     dimensions.append(DimensionName.aid)
     for dimension in dimensions:
-        res = _prepare_dimension(dimension, table_def, ibis_tables, ibis_table)
+        res = _prepare_dimension(dimension, table_def, ibis_tables, ibis_table, g, workspace_id, query)
         if res is not None:
             ret.append(res)
     return ret
@@ -56,7 +59,13 @@ def _prepare_dimensions(dimensions, table_def: TableDef, ibis_tables, ibis_table
 
 # pylint: disable=too-many-return-statements
 def _prepare_dimension(
-    dimension: DimensionName, table_def: TableDef, ibis_tables: IbisTables, ibis_table
+    dimension: DimensionName,
+    table_def: TableDef,
+    ibis_tables: IbisTables,
+    ibis_table,
+    g: GitentialContext,
+    workspace_id: int,
+    query: Query,
 ):  # pylint: disable=too-complex
     if dimension in DATE_DIMENSIONS:
         if TableName.pull_requests in table_def:
@@ -93,6 +102,24 @@ def _prepare_dimension(
             return (ibis_table[date_field_name].date().day_of_week.index()).name("day_of_week")
         elif dimension == DimensionName.hour_of_day:
             return (ibis_table[date_field_name].hour()).name("hour_of_day")
+        elif dimension == DimensionName.sprint:
+            sprint = _get_sprint_info(g, workspace_id, query.extra)
+            if not sprint:
+                return None
+
+            first_sprint_date, sprints_timestamps_to_replace = _prepare_sprint_x_ref_aggregation(query, sprint)
+            changing_day_filter_lower_value(query, first_sprint_date)
+
+            datetime_column_to_timestamp = ibis_table[date_field_name].date()
+
+            # Replacing the dates for the dates whose sprint they belong
+            if sprints_timestamps_to_replace:
+                datetime_column_to_timestamp = datetime_column_to_timestamp.substitute(sprints_timestamps_to_replace)
+
+            # Epoch seconds values have to be multiplied by 1000 because java script (frontend) has a different internal scale
+            datetime_column_to_timestamp = (datetime_column_to_timestamp.epoch_seconds() * 1000).name("date")
+
+            return datetime_column_to_timestamp
 
     elif dimension == DimensionName.pr_state:
         return ibis_tables.pull_requests.state.name("pr_state")
@@ -189,6 +216,7 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
     sum_ploc = (commits.loc_i_c.sum() - commits.uploc_c.sum()).name("sum_ploc")
     sum_uploc = commits.uploc_c.sum().name("sum_uploc")
     efficiency = (sum_ploc / (commits.loc_i_c.sum()).nullif(0) * 100).name("efficiency")
+    churn_calc = (100 - (sum_ploc / (commits.loc_i_c.sum()).nullif(0) * 100)).name("churn_calc")
     nunique_contributors = commits.aid.nunique().name("nunique_contributors")
     comp_sum = (commits.comp_i_c.sum() - commits.comp_d_c.sum()).name("comp_sum")
     utilization = (sum_hours / q.utilization_working_hours() * 100).name("utilization")
@@ -209,6 +237,7 @@ def _prepare_commits_metric(metric: MetricName, ibis_table, q: Query):
         MetricName.utilization: utilization,
         MetricName.avg_velocity: avg_velocity,
         MetricName.loc_sum: loc_sum,
+        MetricName.churn_calc: churn_calc,
     }
     if metric not in commit_metrics:
         raise ValueError(f"missing metric {metric}")
@@ -280,6 +309,80 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
     }
 
     return pr_metrics.get(metric)
+
+
+def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: Optional[dict]) -> Optional[Sprint]:
+    if query_raw_filters:
+        project_id = query_raw_filters.get(FilterName.project_id)
+        if not project_id:
+            logger.warning("NO_PROJECT_ID_IN_QUERY_FILTER")
+        else:
+            sprint = g.backend.projects.get_or_error(workspace_id, project_id).sprint
+            if sprint:
+                return sprint
+            logger.warning("NO_SPRINT_SET_FOR_PROJECT", workspace_id=workspace_id, project_id=project_id)
+    return None
+
+
+def _calculate_first_sprint_date(sprint: Sprint, from_date_sprint_range: date) -> date:
+    total_delta = (sprint.date - from_date_sprint_range).total_seconds()
+
+    # count_of_sprints = Count of sprints between date_min and sprint start date (info fetched from project table)
+    # gap_in_seconds_from_date_min_to_first_sprint = The offset between the date_min and the first sprint aggregation
+    _count_of_sprints, gap_in_seconds_from_date_min_to_first_sprint = divmod(
+        total_delta, timedelta(weeks=sprint.weeks).total_seconds()
+    )
+    first_sprint_initial_date = from_date_sprint_range + timedelta(
+        days=timedelta(seconds=gap_in_seconds_from_date_min_to_first_sprint).days
+    )
+    return first_sprint_initial_date
+
+
+def changing_day_filter_lower_value(query: Query, first_sprint_date: date):
+    """
+    Changing the lower bond of day filter to the first sprint date.
+    That way there will be no records that belong to sprints started in a date prior to the date range define in the filter
+    """
+    if query.filters.get(FilterName.day):
+        query.filters[FilterName.day][0] = first_sprint_date
+
+
+def _prepare_sprint_x_ref_aggregation(query: Query, sprint: Sprint) -> Tuple[date, dict]:
+    """
+    Return a dictionary with all the dates that have to be replaced by the sprint date which they belong to
+    Also return the date of the first sprint in a given interval (determined by the filter day in the query)
+    """
+
+    # from_date_sprint_range: The minimum value of the sprint range in case the key 'day' is not passed in the query filter - default has been set to 2000-01-01
+    # to_date_sprint_range: in case a upper date limit is not passed in the day filter, today() is considered as the default value
+    from_date_sprint_range = (
+        query.filters[FilterName.day][0].date() if query.filters.get(FilterName.day) else date(2000, 1, 1)
+    )
+    to_date_sprint_range = (
+        query.filters[FilterName.day][1].date() if query.filters.get(FilterName.day) else datetime.today().date()
+    )
+
+    # The effective date of the first sprint given the interval
+    first_sprint_date = _calculate_first_sprint_date(sprint, from_date_sprint_range)
+    all_sprint_timestamps = list(
+        ts
+        for ts in _calculate_timestamps_between(
+            date_dimension=DimensionName.sprint,
+            from_date=first_sprint_date,
+            to_date=to_date_sprint_range,
+            sprint_lenght_in_weeks=sprint.weeks,
+        )
+    )
+
+    dict_all_sprint_timestamps_to_replace = {}
+
+    for sprint_timestamp in all_sprint_timestamps:
+        for idx in range(timedelta(weeks=sprint.weeks).days):
+            if idx:
+                day_belonged_to_sprint = sprint_timestamp + timedelta(days=idx)
+                dict_all_sprint_timestamps_to_replace[day_belonged_to_sprint] = sprint_timestamp
+
+    return first_sprint_date, dict_all_sprint_timestamps_to_replace
 
 
 def _get_author_ids_from_emails(g: GitentialContext, workspace_id: int, emails: List[str]):
@@ -382,10 +485,19 @@ class IbisQuery:
         ibis_table = ibis_tables.get_table(self.query.table_def)
         ibis_metrics = _prepare_metrics(self.query.metrics, self.query.table_def, ibis_tables, ibis_table, self.query)
         ibis_dimensions = (
-            _prepare_dimensions(self.query.dimensions, self.query.table_def, ibis_tables, ibis_table)
+            _prepare_dimensions(
+                self.query.dimensions,
+                self.query.table_def,
+                ibis_tables,
+                ibis_table,
+                self.g,
+                self.workspace_id,
+                self.query,
+            )
             if self.query.dimensions
             else None
         )
+
         # ibis_dimensions = None
         ibis_filters = _prepare_filters(self.g, self.workspace_id, self.query.filters, self.query.table_def, ibis_table)
 
@@ -533,8 +645,15 @@ def _next_month(d: datetime) -> datetime:
         return d.replace(month=d.month + 1)
 
 
+def _next_sprint(d: datetime, sprint_lenght_in_weeks: int) -> datetime:
+    return d + timedelta(weeks=sprint_lenght_in_weeks)
+
+
 def _calculate_timestamps_between(
-    date_dimension: DimensionName, from_date: date, to_date: date
+    date_dimension: DimensionName,
+    from_date: date,
+    to_date: date,
+    sprint_lenght_in_weeks: int = 1,
 ) -> Generator[datetime, None, None]:
     from_ = _start_of_the_day(from_date)
     to_ = _end_of_the_day(to_date)
@@ -550,6 +669,9 @@ def _calculate_timestamps_between(
     elif date_dimension == DimensionName.month:
         start_ts = from_ - timedelta(days=from_date.day - 1)
         get_next = _next_month
+    elif date_dimension == DimensionName.sprint:
+        start_ts = from_
+        get_next = partial(_next_sprint, sprint_lenght_in_weeks=sprint_lenght_in_weeks)
     current_ts = start_ts
     while current_ts < to_:
         yield current_ts
@@ -578,6 +700,7 @@ def prepare_query(g: GitentialContext, workspace_id: int, query: Query) -> Query
             sort_by=query.sort_by,
             type=query.type,
             table=query.table,
+            extra=query.filters,
         ),
     )
 

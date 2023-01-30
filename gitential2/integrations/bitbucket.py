@@ -1,16 +1,13 @@
-from typing import Optional, Callable, List, Tuple
 from datetime import datetime
+from typing import Optional, Callable, List, Tuple
 from urllib.parse import urlparse
 
-from structlog import get_logger
-
 from authlib.integrations.requests_client import OAuth2Session
-
 from pydantic.datetime_parse import parse_datetime
+from structlog import get_logger
 
 from gitential2.datatypes import UserInfoCreate, RepositoryCreate, GitProtocol, RepositoryInDB
 from gitential2.datatypes.authors import AuthorAlias
-
 from gitential2.datatypes.pull_requests import (
     PullRequest,
     PullRequestState,
@@ -18,9 +15,9 @@ from gitential2.datatypes.pull_requests import (
     PullRequestCommit,
     PullRequestComment,
 )
-from gitential2.utils import calc_repo_namespace
+from gitential2.utils import calc_repo_namespace, is_timestamp_within_days
 from .base import BaseIntegration, OAuthLoginMixin, GitProviderMixin
-from .common import log_api_error
+from .common import log_api_error, get_time_of_last_element
 from ..utils.is_bugfix import calculate_is_bugfix
 
 logger = get_logger(__name__)
@@ -76,19 +73,25 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         client.close()
         return new_token
 
-    def _collect_raw_pull_requests(self, repository: RepositoryInDB, client) -> list:
+    def _collect_raw_pull_requests(
+        self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> list:
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
         prs = _walk_paginated_results(
             client,
             f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED",
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            time_restriction_check_key="created_on",
         )
         return prs
 
     def _raw_pr_number_and_updated_at(self, raw_pr: dict) -> Tuple[int, datetime]:
         return raw_pr["id"], parse_datetime(raw_pr["updated_on"])
 
-    def _collect_raw_pull_request(self, repository: RepositoryInDB, pr_number: int, client) -> dict:
+    def _collect_raw_pull_request(
+        self, repository: RepositoryInDB, pr_number: int, client, repo_analysis_limit_in_days: Optional[int] = None
+    ) -> dict:
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
         pr_url = f"{api_base_url}repositories/{workspace}/{repo_slug}/pullrequests/{pr_number}"
@@ -97,8 +100,12 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         resp.raise_for_status()
         pr_details = resp.json()
 
-        commits = _walk_paginated_results(client, pr_details["links"]["commits"]["href"])
-        review_comments = _walk_paginated_results(client, pr_details["links"]["comments"]["href"])
+        commits = _walk_paginated_results(
+            client, pr_details["links"]["commits"]["href"], time_restriction_check_key="date"
+        )
+        review_comments = _walk_paginated_results(
+            client, pr_details["links"]["comments"]["href"], time_restriction_check_key="created_on"
+        )
         diffstat = _walk_paginated_results(client, pr_details["links"]["diffstat"]["href"])
         return {"pr": pr_details, "commits": commits, "review_comments": review_comments, "diffstat": diffstat}
 
@@ -265,7 +272,9 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
-        repository_list = _walk_paginated_results(client, f"{api_base_url}repositories?role=member&pagelen=100")
+        repository_list = _walk_paginated_results(
+            client, f"{api_base_url}repositories?role=member&pagelen=100", time_restriction_check_key="created_on"
+        )
         client.close()
         return [self._repo_to_create_repo(repo) for repo in repository_list]
 
@@ -317,7 +326,13 @@ def _get_protocol_and_clone_url(clone_links):
 #         return acc
 
 
-def _walk_paginated_results(client, starting_url, acc=None):
+def _walk_paginated_results(
+    client,
+    starting_url,
+    acc=None,
+    repo_analysis_limit_in_days: Optional[int] = None,
+    time_restriction_check_key: Optional[str] = None,
+):
     acc = acc or []
     next_url = starting_url
     while True:
@@ -330,12 +345,38 @@ def _walk_paginated_results(client, starting_url, acc=None):
         if "values" in data:
             acc += data["values"]
 
-        if "next" in data:
+        if __is_able_to_continue_walking(
+            data,
+            repo_analysis_limit_in_days=repo_analysis_limit_in_days,
+            time_restriction_check_key=time_restriction_check_key,
+        ):
             next_url = data["next"]
         else:
             break
 
     return acc
+
+
+def __is_able_to_continue_walking(
+    data, repo_analysis_limit_in_days: Optional[int] = None, time_restriction_check_key: Optional[str] = None
+) -> bool:
+    time_of_last_el = (
+        not time_restriction_check_key
+        or time_restriction_check_key
+        and get_time_of_last_element(data["values"], time_restriction_check_key)
+    )
+    return bool(
+        "next" in data
+        and (
+            not repo_analysis_limit_in_days
+            or repo_analysis_limit_in_days
+            and time_restriction_check_key
+            and time_of_last_el
+            and is_timestamp_within_days(time_of_last_el, repo_analysis_limit_in_days)
+            or repo_analysis_limit_in_days
+            and not time_restriction_check_key
+        )
+    )
 
 
 def _get_profile(data):

@@ -24,6 +24,7 @@ class MetricName(str, Enum):
     avg_velocity = "avg_velocity"
     loc_sum = "loc_sum"
     avg_hours = "avg_hours"
+    churn_calc = "churn_calc"
 
     # PR metrics
     avg_pr_commit_count = "avg_pr_commit_count"
@@ -74,6 +75,7 @@ COMMIT_METRICS = [
     MetricName.avg_velocity,
     MetricName.loc_sum,
     MetricName.avg_hours,
+    MetricName.churn_calc,
 ]
 
 PATCH_METRICS = [
@@ -221,6 +223,7 @@ class Query(BaseModel):
     sort_by: Optional[List[Any]] = None
     type: QueryType
     table: Optional[TableName] = None
+    extra: Optional[dict] = None
 
     # @validator("metrics")
     # def mixed_metrics(cls, v):
