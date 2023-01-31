@@ -316,12 +316,12 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
 def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: Optional[dict]) -> Optional[Sprint]:
     sprint = None
     if query_raw_filters:
-        project_id = query_raw_filters.get(FilterName.project_id)
         team_id = query_raw_filters.get(FilterName.team_id)
+        project_id = query_raw_filters.get(FilterName.project_id)
         if team_id:
-            sprint = g.backend.projects.get_or_error(workspace_id, team_id).sprint
+            sprint = g.backend.teams.get_or_error(workspace_id, team_id).sprint
         elif project_id:
-            sprint = g.backend.teams.get_or_error(workspace_id, project_id).sprint
+            sprint = g.backend.projects.get_or_error(workspace_id, project_id).sprint
         else:
             raise NotFoundException("Missing project_id or team_id in the query's filters")
     return sprint
