@@ -107,7 +107,7 @@ def _prepare_dimension(
         elif dimension == DimensionName.sprint:
             sprint = _get_sprint_info(g, workspace_id, query.extra)
             if not sprint:
-                raise NotFoundException("No Sprint set for projet or team")
+                raise NotFoundException("No Sprint set for project or team")
 
             first_sprint_date, sprints_timestamps_to_replace = _prepare_sprint_x_ref_aggregation(query, sprint)
             changing_day_filter_lower_value(query, first_sprint_date)
