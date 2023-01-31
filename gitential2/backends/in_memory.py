@@ -24,7 +24,6 @@ from gitential2.datatypes import (
     CredentialUpdate,
     CredentialInDB,
     AccessLog,
-    # WorkspaceWithPermission,
 )
 from gitential2.backends.base.repositories import (
     AccessLogRepository,

@@ -36,6 +36,8 @@ from .repositories import (
     ThumbnailRepository,
     DeployCommitRepository,
     AutoExportRepository,
+    UserRepositoriesCacheRepository,
+    UserRepositoriesCacheLastRefreshRepository,
 )
 
 
@@ -101,6 +103,9 @@ class WithRepositoriesMixin:
     _deploy_commits: DeployCommitRepository
 
     _auto_export: AutoExportRepository
+
+    _user_repositories_cache: UserRepositoriesCacheRepository
+    _user_repositories_cache_last_refresh: UserRepositoriesCacheLastRefreshRepository
 
     @property
     def access_logs(self):
@@ -281,3 +286,11 @@ class WithRepositoriesMixin:
     @property
     def auto_export(self) -> AutoExportRepository:
         return self._auto_export
+
+    @property
+    def user_repositories_cache(self) -> UserRepositoriesCacheRepository:
+        return self._user_repositories_cache
+
+    @property
+    def user_repositories_cache_last_refresh(self) -> UserRepositoriesCacheLastRefreshRepository:
+        return self._user_repositories_cache_last_refresh

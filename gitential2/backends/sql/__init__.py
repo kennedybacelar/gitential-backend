@@ -209,6 +209,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             table=workspace_members_table, engine=self._engine, in_db_cls=WorkspaceMemberInDB
         )
 
+        self._email_log = SQLEmailLogRepository(table=email_log_table, engine=self._engine, in_db_cls=EmailLogInDB)
+
         self._auto_export = SQLAutoExportRepository(
             table=auto_export_table,
             engine=self._engine,
@@ -365,7 +367,6 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             metadata=self._workspace_tables,
             in_db_cls=PullRequestLabel,
         )
-        self._email_log = SQLEmailLogRepository(table=email_log_table, engine=self._engine, in_db_cls=EmailLogInDB)
 
         self._its_issues = SQLITSIssueRepository(
             table=self._workspace_tables.tables["its_issues"],

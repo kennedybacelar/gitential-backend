@@ -17,6 +17,7 @@ logger = get_logger(__name__)
 @app.command("list")
 def list_repositories_(
     workspace_id: int,
+    user_id: int,
     project_id: Optional[int] = None,
     available: bool = False,
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
@@ -26,7 +27,7 @@ def list_repositories_(
     g = get_context()
     results: list = []
     if available:
-        results = list_available_repositories(g, workspace_id, organizations_name_list)
+        results = list_available_repositories(g, workspace_id, user_id, organizations_name_list)
     elif project_id:
         results = list_project_repositories(g, workspace_id, project_id)
     else:

@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Optional, Callable, List, Tuple
+from urllib import parse as parse_url
 
 from authlib.integrations.requests_client import OAuth2Session
+from dateutil import parser
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
 
@@ -67,10 +69,22 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             extra=data,
         )
 
+    def get_newest_repos_since_last_refresh(
+        self, token, update_token, last_refresh: datetime, user_organization_names: Optional[List[str]]
+    ) -> List[RepositoryCreate]:
+        last_refresh_formatted = last_refresh.strftime("%Y-%m-%d")
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        # Allowed values are asc or desc only. If not set, results are sorted by created_at in descending
+        # order for basic search
+        query_params = {"membership": 1, "per_page": 100, "last_activity_after": last_refresh_formatted}
+        url = f"{self.api_base_url}/projects?{parse_url.urlencode(query_params)}"
+        projects = walk_next_link(client, url, integration_name="gitlab_private_newest_repos_since_last_refresh")
+        client.close()
+        return [self._project_to_repo_create(p) for p in projects if parser.parse(p["created_at"]) > last_refresh]
+
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:
-
         client = self.get_oauth2_client(token=token, update_token=update_token)
         url = f"{self.api_base_url}/projects?membership=1&pagination=keyset&order_by=id&per_page=100"
         projects = walk_next_link(client, url, integration_name="gitlab_private_repos")

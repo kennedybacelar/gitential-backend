@@ -291,6 +291,12 @@ class GitProviderMixin(ABC):
     #     pass
 
     @abstractmethod
+    def get_newest_repos_since_last_refresh(
+        self, token, update_token, last_refresh: datetime, user_organization_names: Optional[List[str]]
+    ) -> List[RepositoryCreate]:
+        pass
+
+    @abstractmethod
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:

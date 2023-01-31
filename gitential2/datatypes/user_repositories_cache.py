@@ -1,12 +1,20 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from gitential2.datatypes.export import ExportableModel
-from gitential2.datatypes.repositories import RepositoryBase
-from .common import IDModelMixin, DateTimeModelMixin
+from gitential2.datatypes.repositories import GitProtocol
+from .common import IDModelMixin, DateTimeModelMixin, ExtraFieldMixin, CoreModel
 
 
-class UserRepositoryCacheBase(RepositoryBase):
+class UserRepositoryCacheBase(ExtraFieldMixin, CoreModel):
     user_id: int
+    clone_url: str
+    protocol: GitProtocol
+    name: str = ""
+    namespace: str = ""
+    private: bool = False
+    integration_type: Optional[str] = None
+    integration_name: Optional[str] = None
+    credential_id: Optional[int] = None
 
 
 class UserRepositoryCacheCreate(UserRepositoryCacheBase):

@@ -1,6 +1,5 @@
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import partial
 from typing import List, Optional
 
