@@ -32,6 +32,8 @@ from gitential2.datatypes.sprints import Sprint
 from .context import GitentialContext
 from .authors import list_active_author_ids
 
+from ..exceptions import NotFoundException
+
 logger = get_logger(__name__)
 
 
@@ -105,7 +107,7 @@ def _prepare_dimension(
         elif dimension == DimensionName.sprint:
             sprint = _get_sprint_info(g, workspace_id, query.extra)
             if not sprint:
-                return None
+                raise NotFoundException("No Sprint set for project or team")
 
             first_sprint_date, sprints_timestamps_to_replace = _prepare_sprint_x_ref_aggregation(query, sprint)
             changing_day_filter_lower_value(query, first_sprint_date)
@@ -312,16 +314,17 @@ def _prepare_prs_metric(metric: MetricName, ibis_tables: IbisTables):
 
 
 def _get_sprint_info(g: GitentialContext, workspace_id: int, query_raw_filters: Optional[dict]) -> Optional[Sprint]:
+    sprint = None
     if query_raw_filters:
+        team_id = query_raw_filters.get(FilterName.team_id)
         project_id = query_raw_filters.get(FilterName.project_id)
-        if not project_id:
-            logger.warning("NO_PROJECT_ID_IN_QUERY_FILTER")
-        else:
+        if team_id:
+            sprint = g.backend.teams.get_or_error(workspace_id, team_id).sprint
+        elif project_id:
             sprint = g.backend.projects.get_or_error(workspace_id, project_id).sprint
-            if sprint:
-                return sprint
-            logger.warning("NO_SPRINT_SET_FOR_PROJECT", workspace_id=workspace_id, project_id=project_id)
-    return None
+        else:
+            raise NotFoundException("Missing project_id or team_id in the query's filters")
+    return sprint
 
 
 def _calculate_first_sprint_date(sprint: Sprint, from_date_sprint_range: date) -> date:
