@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Callable, List, Tuple
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 
 from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
@@ -267,14 +267,23 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             ret.append(comment)
         return ret
 
+    def get_newest_repos_since_last_refresh(
+        self, token, update_token, last_refresh: datetime, user_organization_names: Optional[List[str]]
+    ) -> List[RepositoryCreate]:
+        last_refresh_formatted = last_refresh.strftime("%Y-%m-%d")
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        api_base_url = self.oauth_register()["api_base_url"]
+        query_params = {"role": "member", "pagelen": 100, "after": last_refresh_formatted}
+        repository_list = _walk_paginated_results(client, f"{api_base_url}repositories?{urlencode(query_params)}")
+        client.close()
+        return [self._repo_to_create_repo(repo) for repo in repository_list]
+
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
-        repository_list = _walk_paginated_results(
-            client, f"{api_base_url}repositories?role=member&pagelen=100", time_restriction_check_key="created_on"
-        )
+        repository_list = _walk_paginated_results(client, f"{api_base_url}repositories?role=member&pagelen=100")
         client.close()
         return [self._repo_to_create_repo(repo) for repo in repository_list]
 
