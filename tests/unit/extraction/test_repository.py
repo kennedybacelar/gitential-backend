@@ -18,7 +18,7 @@ from gitential2.extraction.repository import (
     extract_commit_branches,
 )
 
-TEST_PUBLIC_REPOSITORY = "https://github.com/laco/hostname.git"
+TEST_PUBLIC_REPOSITORY = "https://github.com/benbal87/unicode-string-converter.git"
 TEST_SSH_PRIVATE_REPOSITORY = "git@gitlab.com:gitential-com/test-repository.git"
 TEST_HTTPS_PRIVATE_REPOSITORY = "https://gitlab.com/gitential-com/test-repository.git"
 
@@ -71,9 +71,10 @@ def test_get_repository_state(test_repositories):
     assert "1.0" in state.tags and state.tags["1.0"] == "291f3c338c4d302dbde01ab9153a7817e5a780f5"
 
 
-def test_get_commits_fist_time_returns_all_commits(test_repositories):
-    commit_ids = list(get_commits(test_repositories["hostname"]))
-    assert "26e47101fa3d283ce44dc565c04ecc8e95de3e9d" in commit_ids
+def test_get_commits_first_time_returns_all_commits(test_repositories):
+    commit_ids = list(get_commits(test_repositories["unicode-string-converter"]))
+    assert "cdfbde88cf6651fbbd0dcb80efb64c76a7ccb72e" in commit_ids
+    assert "1b9f02dce731f241d75f1ce562b5b7149f20bc88" in commit_ids
 
 
 def test_get_commits_empty_if_no_changes_have_made(test_repositories):
@@ -84,18 +85,18 @@ def test_get_commits_empty_if_no_changes_have_made(test_repositories):
 
 
 def test_get_commits_return_only_new_commits(test_repositories):
-    repo = test_repositories["hostname"]
+    repo = test_repositories["unicode-string-converter"]
     state = get_repository_state(repo)
 
     commit_ids = list(
         get_commits(
             repo,
-            previous_state=GitRepositoryState(branches={"master": "db0f1427e9201b274fc9015455901c0800eb4d3f"}, tags={}),
+            previous_state=GitRepositoryState(branches={"master": "cdfbde88cf6651fbbd0dcb80efb64c76a7ccb72e"}, tags={}),
             current_state=state,
         )
     )
-    assert "db0f1427e9201b274fc9015455901c0800eb4d3f" not in commit_ids
-    assert "26e47101fa3d283ce44dc565c04ecc8e95de3e9d" in commit_ids
+    assert "cdfbde88cf6651fbbd0dcb80efb64c76a7ccb72e" not in commit_ids
+    assert "1b9f02dce731f241d75f1ce562b5b7149f20bc88" in commit_ids
 
 
 def test_extract_commit(test_repositories):
@@ -179,7 +180,7 @@ def test_blame_porcelain(test_repositories):
 def test_extract_incremental(settings, test_repositories):
     output = DataCollector()
     repository = RepositoryInDB(
-        id=1, clone_url=str(test_repositories["hostname"].directory), protocol=GitProtocol.https
+        id=1, clone_url=str(test_repositories["unicode-string-converter"].directory), protocol=GitProtocol.https
     )
     result = extract_incremental(
         repository=repository,
