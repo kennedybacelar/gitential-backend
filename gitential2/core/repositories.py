@@ -144,6 +144,7 @@ def list_available_repositories_for_credential(
                             token=token,
                             update_token=get_update_token_callback(g, credential),
                             last_refresh=refresh.last_refresh,
+                            provider_user_id=userinfo.sub if userinfo else None,
                             user_organization_name_list=user_organization_name_list,
                         )
                         save_repos_to_cache(new_repos)

@@ -70,7 +70,12 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         )
 
     def get_newest_repos_since_last_refresh(
-        self, token, update_token, last_refresh: datetime, user_organization_names: Optional[List[str]]
+        self,
+        token,
+        update_token,
+        last_refresh: datetime,
+        provider_user_id: Optional[str],
+        user_organization_names: Optional[List[str]],
     ) -> List[RepositoryCreate]:
         last_refresh_formatted = last_refresh.strftime("%Y-%m-%d")
         client = self.get_oauth2_client(token=token, update_token=update_token)

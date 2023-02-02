@@ -331,7 +331,12 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         return repo_list
 
     def get_newest_repos_since_last_refresh(
-        self, token, update_token, last_refresh: datetime, user_organization_names: Optional[List[str]]
+        self,
+        token,
+        update_token,
+        last_refresh: datetime,
+        provider_user_id: Optional[str],
+        user_organization_names: Optional[List[str]],
     ) -> List[RepositoryCreate]:
         org_repos = []
         last_refresh_formatted = last_refresh.strftime("%Y-%m-%d")

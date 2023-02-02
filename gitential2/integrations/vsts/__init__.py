@@ -281,6 +281,24 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         else:
             return None
 
+    def get_newest_repos_since_last_refresh(
+        self,
+        token,
+        update_token,
+        last_refresh: datetime,
+        provider_user_id: Optional[str],
+        user_organization_names: Optional[List[str]],
+    ) -> List[RepositoryCreate]:
+        # TODO: Currently it is not possible to get the newest repositories from Azure DevOps API.
+        #  So we just returning back all of the available private repositories for the user.
+        #  We can not do anything more until this feature is not developed for Microsoft.
+        return self.list_available_private_repositories(
+            token=token,
+            update_token=update_token,
+            provider_user_id=provider_user_id,
+            user_organization_name_list=user_organization_names,
+        )
+
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:
