@@ -95,6 +95,7 @@ def list_available_repositories_for_credential(
                     repos_to_cache: List[UserRepositoryCacheCreate] = [
                         UserRepositoryCacheCreate(
                             user_id=user_id,
+                            repo_provider_id=repo.extra["id"] if "id" in repo.extra else repo.extra["uuid"],
                             clone_url=repo.clone_url,
                             protocol=repo.protocol,
                             name=repo.name,

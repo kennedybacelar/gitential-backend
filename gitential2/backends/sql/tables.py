@@ -271,13 +271,8 @@ auto_export_table = sa.Table(
 user_repositories_cache_table = sa.Table(
     "user_repositories_cache",
     metadata,
-    sa.Column("id", sa.Integer, primary_key=True),
-    sa.Column(
-        "user_id",
-        sa.Integer,
-        sa.ForeignKey("users.id"),
-        nullable=False,
-    ),
+    sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("repo_provider_id", sa.String(256), nullable=False, unique=False),
     sa.Column("clone_url", sa.String(256), nullable=False, unique=True),
     sa.Column("protocol", sa.Enum(GitProtocol), default=GitProtocol.https),
     sa.Column("name", sa.String(128)),
@@ -289,6 +284,7 @@ user_repositories_cache_table = sa.Table(
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("extra", sa.JSON, nullable=True),
+    sa.PrimaryKeyConstraint("user_id", "repo_provider_id", "clone_url"),
 )
 
 user_repositories_cache_last_refresh_table = sa.Table(

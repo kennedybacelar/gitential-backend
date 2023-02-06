@@ -7,6 +7,7 @@ from .common import IDModelMixin, DateTimeModelMixin, ExtraFieldMixin, CoreModel
 
 class UserRepositoryCacheBase(ExtraFieldMixin, CoreModel):
     user_id: int
+    repo_provider_id: str
     clone_url: str
     protocol: GitProtocol
     name: str = ""
@@ -28,10 +29,8 @@ class UserRepositoryCacheUpdate(UserRepositoryCacheBase):
 class UserRepositoryCacheInDB(IDModelMixin, DateTimeModelMixin, UserRepositoryCacheBase, ExportableModel):
     def export_fields(self) -> List[str]:
         return [
-            "id",
             "user_id",
-            "created_at",
-            "updated_at",
+            "repo_provider_id",
             "clone_url",
             "protocol",
             "name",
@@ -40,6 +39,8 @@ class UserRepositoryCacheInDB(IDModelMixin, DateTimeModelMixin, UserRepositoryCa
             "integration_type",
             "integration_name",
             "credential_id",
+            "created_at",
+            "updated_at",
             "extra",
         ]
 
