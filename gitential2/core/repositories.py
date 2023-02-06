@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import List, Optional
 
@@ -272,7 +272,7 @@ def _get_repos_last_refresh_date(g: GitentialContext, user_id: int) -> Optional[
     refresh_raw = g.kvstore.get_value(_get_repos_last_refresh_kvstore_key(user_id))
     if is_string_not_empty(refresh_raw):
         try:
-            result = parse_date_str(refresh_raw)
+            result = parse_date_str(refresh_raw).replace(tzinfo=timezone.utc)
         except ValueError:
             logger.debug(f"Last refresh date is invalid for user_id: {user_id}")
     return result
