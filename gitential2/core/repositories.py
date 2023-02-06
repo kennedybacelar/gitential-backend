@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from dateutil.parser import parse as parse_date_str
 from datetime import datetime, timedelta
 from functools import partial
 from typing import List, Optional
@@ -110,17 +111,27 @@ def list_available_repositories_for_credential(
                     ]
                     g.backend.user_repositories_cache.insert_repositories_cache_for_user(repos_to_cache)
 
+                def get_last_refresh_kvstore_key():
+                    return f"repository_cache_for_user_last_refresh_datetime:{user_id}"
+
+                def get_last_refresh_date() -> Optional[datetime]:
+                    result = None
+                    refresh_raw = g.kvstore.get_value(get_last_refresh_kvstore_key())
+                    if is_string_not_empty(refresh_raw):
+                        try:
+                            result = parse_date_str(refresh_raw)
+                        except ValueError:
+                            logger.debug(f"Last refresh date is invalid for user_id: {user_id}")
+                    return result
+
                 def save_last_refresh_date():
-                    refresh_save = UserRepositoriesCacheLastRefreshCreate(
-                        user_id=user_id, last_refresh=datetime.utcnow()
-                    )
-                    g.backend.user_repositories_cache_last_refresh.create(refresh_save)
+                    refresh_save = str(datetime.utcnow())
+                    g.kvstore.set_value(get_last_refresh_kvstore_key(), refresh_save)
 
                 collected_repositories: List[RepositoryCreate] = []
 
-                refresh = g.backend.user_repositories_cache_last_refresh.get_last_refresh_for_user(user_id)
-                if refresh:
-
+                refresh = get_last_refresh_date()
+                if type(refresh) is datetime:
                     def get_repos_cache() -> List[RepositoryCreate]:
                         collected_repositories_cache: List[
                             UserRepositoryCacheInDB
@@ -140,11 +151,11 @@ def list_available_repositories_for_credential(
                         ]
 
                     # If the last refresh date older than 1 day -> get new repos since last refresh date
-                    if (g.current_time() - timedelta(days=1)) > refresh.last_refresh:
+                    if (g.current_time() - timedelta(days=1)) > refresh:
                         new_repos: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
                             token=token,
                             update_token=get_update_token_callback(g, credential),
-                            last_refresh=refresh.last_refresh,
+                            last_refresh=refresh,
                             provider_user_id=userinfo.sub if userinfo else None,
                             user_organization_name_list=user_organization_name_list,
                         )
