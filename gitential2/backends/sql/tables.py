@@ -284,7 +284,7 @@ user_repositories_cache_table = sa.Table(
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("extra", sa.JSON, nullable=True),
-    sa.PrimaryKeyConstraint("user_id", "repo_provider_id", "clone_url"),
+    sa.PrimaryKeyConstraint("user_id", "repo_provider_id", "integration_type"),
 )
 
 user_repositories_cache_last_refresh_table = sa.Table(

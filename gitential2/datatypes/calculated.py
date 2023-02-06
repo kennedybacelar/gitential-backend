@@ -185,7 +185,7 @@ class CalculatedPatch(CoreModel, ExportableModel):
         )
 
     def export_names(self) -> Tuple[str, str]:
-        return ("calculated_patch", "calculated_patches")
+        return "calculated_patch", "calculated_patches"
 
     def export_fields(self) -> List[str]:
         return [

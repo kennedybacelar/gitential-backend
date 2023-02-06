@@ -139,7 +139,7 @@ from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCre
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
     UserRepositoryCacheUpdate,
-    UserRepositoryCacheInDB,
+    UserRepositoryCacheInDB, UserRepositoryCacheId,
 )
 from ...datatypes.user_repositories_cache_last_refresh import (
     UserRepositoriesCacheLastRefreshCreate,
@@ -615,8 +615,15 @@ class SQLAutoExportRepository(
 
 class SQLUserRepositoryCacheRepository(
     UserRepositoriesCacheRepository,
-    SQLRepository[int, UserRepositoryCacheCreate, UserRepositoryCacheUpdate, UserRepositoryCacheInDB],
+    SQLRepository[UserRepositoryCacheId, UserRepositoryCacheCreate, UserRepositoryCacheUpdate, UserRepositoryCacheInDB],
 ):
+    def identity(self, id_: UserRepositoryCacheId):
+        return and_(
+            self.table.c.user_id == id_.user_id,
+            self.table.c.repo_provider_id == id_.repo_provider_id,
+            self.table.c.integration_type == id_.integration_type,
+        )
+
     def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoryCacheInDB]:
         query = self.table.select().where(self.table.c.user_id == user_id)
         rows = self._execute_query(query, callback_fn=fetchall_)
@@ -628,23 +635,11 @@ class SQLUserRepositoryCacheRepository(
     def insert_repositories_cache_for_user(
         self, repos: List[UserRepositoryCacheCreate]
     ) -> List[UserRepositoryCacheInDB]:
-        query = self.table.insert(repos).returning(
-            self.table.c.id,
-            self.table.c.user_id,
-            self.table.c.clone_url,
-            self.table.c.protocol,
-            self.table.c.name,
-            self.table.c.namespace,
-            self.table.c.private,
-            self.table.c.integration_type,
-            self.table.c.integration_name,
-            self.table.c.credential_id,
-            self.table.c.created_at,
-            self.table.c.updated_at,
-            self.table.c.extra,
-        )
-        rows = self._execute_query(query, callback_fn=fetchall_)
-        return [UserRepositoryCacheInDB(**row) for row in rows]
+        results: List[UserRepositoryCacheInDB] = []
+        for repo in repos:
+            repo_saved_or_updated = self.create_or_update(repo)
+            results.append(repo_saved_or_updated)
+        return results
 
 
 class SQLUserRepositoriesCacheLastRefreshRepository(
