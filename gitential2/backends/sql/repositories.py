@@ -52,7 +52,6 @@ from gitential2.backends.base.repositories import (
     ThumbnailRepository,
     AutoExportRepository,
     UserRepositoriesCacheRepository,
-    UserRepositoriesCacheLastRefreshRepository,
 )
 from gitential2.datatypes import (
     UserCreate,
@@ -139,12 +138,8 @@ from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCre
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
     UserRepositoryCacheUpdate,
-    UserRepositoryCacheInDB, UserRepositoryCacheId,
-)
-from ...datatypes.user_repositories_cache_last_refresh import (
-    UserRepositoriesCacheLastRefreshCreate,
-    UserRepositoriesCacheLastRefreshUpdate,
-    UserRepositoriesCacheLastRefreshInDB,
+    UserRepositoryCacheInDB,
+    UserRepositoryCacheId,
 )
 from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
@@ -640,21 +635,6 @@ class SQLUserRepositoryCacheRepository(
             repo_saved_or_updated = self.create_or_update(repo)
             results.append(repo_saved_or_updated)
         return results
-
-
-class SQLUserRepositoriesCacheLastRefreshRepository(
-    UserRepositoriesCacheLastRefreshRepository,
-    SQLRepository[
-        int,
-        UserRepositoriesCacheLastRefreshCreate,
-        UserRepositoriesCacheLastRefreshUpdate,
-        UserRepositoriesCacheLastRefreshInDB,
-    ],
-):
-    def get_last_refresh_for_user(self, user_id: int) -> Optional[UserRepositoriesCacheLastRefreshInDB]:
-        query = self.table.select().where(self.table.c.user_id == user_id)
-        row = self._execute_query(query, callback_fn=fetchone_)
-        return UserRepositoriesCacheLastRefreshInDB(**row) if row else None
 
 
 class SQLProjectRepository(

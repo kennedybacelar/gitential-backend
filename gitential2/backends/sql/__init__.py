@@ -110,7 +110,6 @@ from .repositories import (
     SQLThumbnailRepository,
     SQLDeployCommitRepository,
     SQLAutoExportRepository,
-    SQLUserRepositoriesCacheLastRefreshRepository,
     SQLUserRepositoryCacheRepository,
 )
 from .repositories_its import (
@@ -143,7 +142,6 @@ from .tables import (
     WorkspaceTableNames,
     MaterializedViewNames,
     auto_export_table,
-    user_repositories_cache_last_refresh_table,
     user_repositories_cache_table,
 )
 from ..base import GitentialBackend
@@ -152,7 +150,6 @@ from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB
 from ...datatypes.user_repositories_cache import UserRepositoryCacheInDB
-from ...datatypes.user_repositories_cache_last_refresh import UserRepositoriesCacheLastRefreshInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
 from ...utils import get_schema_name
 
@@ -221,12 +218,6 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             table=user_repositories_cache_table,
             engine=self._engine,
             in_db_cls=UserRepositoryCacheInDB,
-        )
-
-        self._user_repositories_cache_last_refresh = SQLUserRepositoriesCacheLastRefreshRepository(
-            table=user_repositories_cache_last_refresh_table,
-            engine=self._engine,
-            in_db_cls=UserRepositoriesCacheLastRefreshInDB,
         )
 
         self._workspace_tables, _ = get_workspace_metadata(schema=None)

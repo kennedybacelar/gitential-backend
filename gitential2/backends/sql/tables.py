@@ -287,19 +287,6 @@ user_repositories_cache_table = sa.Table(
     sa.PrimaryKeyConstraint("user_id", "repo_provider_id", "integration_type"),
 )
 
-user_repositories_cache_last_refresh_table = sa.Table(
-    "user_repositories_cache_last_refresh",
-    metadata,
-    sa.Column("id", sa.Integer, primary_key=True),
-    sa.Column(
-        "user_id",
-        sa.Integer,
-        sa.ForeignKey("users.id"),
-        nullable=False,
-    ),
-    sa.Column("last_refresh", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
-)
-
 
 # pylint: disable=unused-variable,too-many-locals
 def get_workspace_metadata(schema: Optional[str] = None):

@@ -1,9 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor
-from dateutil.parser import parse as parse_date_str
 from datetime import datetime, timedelta
 from functools import partial
 from typing import List, Optional
 
+from dateutil.parser import parse as parse_date_str
 from structlog import get_logger
 
 from gitential2.datatypes.credentials import CredentialInDB
@@ -18,7 +18,6 @@ from .credentials import (
     get_update_token_callback,
 )
 from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB, UserRepositoryCacheCreate
-from ..datatypes.user_repositories_cache_last_refresh import UserRepositoriesCacheLastRefreshCreate
 
 logger = get_logger(__name__)
 
@@ -93,10 +92,19 @@ def list_available_repositories_for_credential(
                 )
 
                 def save_repos_to_cache(repo_list: List[RepositoryCreate]):
+                    def get_repo_provider_id(repo: RepositoryCreate) -> Optional[str]:
+                        result = None
+                        if isinstance(repo.extra, dict):
+                            if "id" in repo.extra:
+                                result = str(repo.extra["id"])
+                            elif "uuid" in repo.extra:
+                                result = repo.extra["uuid"]
+                        return result
+
                     repos_to_cache: List[UserRepositoryCacheCreate] = [
                         UserRepositoryCacheCreate(
                             user_id=user_id,
-                            repo_provider_id=repo.extra["id"] if "id" in repo.extra else repo.extra["uuid"],
+                            repo_provider_id=get_repo_provider_id(repo),
                             clone_url=repo.clone_url,
                             protocol=repo.protocol,
                             name=repo.name,
@@ -131,7 +139,8 @@ def list_available_repositories_for_credential(
                 collected_repositories: List[RepositoryCreate] = []
 
                 refresh = get_last_refresh_date()
-                if type(refresh) is datetime:
+                if isinstance(refresh, datetime):
+
                     def get_repos_cache() -> List[RepositoryCreate]:
                         collected_repositories_cache: List[
                             UserRepositoryCacheInDB

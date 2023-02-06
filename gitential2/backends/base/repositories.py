@@ -84,11 +84,6 @@ from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheUpdate,
     UserRepositoryCacheInDB,
 )
-from ...datatypes.user_repositories_cache_last_refresh import (
-    UserRepositoriesCacheLastRefreshCreate,
-    UserRepositoriesCacheLastRefreshUpdate,
-    UserRepositoriesCacheLastRefreshInDB,
-)
 
 
 class AccessLogRepository(ABC):
@@ -256,19 +251,6 @@ class UserRepositoriesCacheRepository(
     def insert_repositories_cache_for_user(
         self, repos: List[UserRepositoryCacheCreate]
     ) -> List[UserRepositoryCacheInDB]:
-        pass
-
-
-class UserRepositoriesCacheLastRefreshRepository(
-    BaseRepository[
-        int,
-        UserRepositoriesCacheLastRefreshCreate,
-        UserRepositoriesCacheLastRefreshUpdate,
-        UserRepositoriesCacheLastRefreshInDB,
-    ]
-):
-    @abstractmethod
-    def get_last_refresh_for_user(self, user_id: int) -> Optional[UserRepositoriesCacheLastRefreshInDB]:
         pass
 
 

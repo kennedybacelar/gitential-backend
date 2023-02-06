@@ -47,7 +47,6 @@ from .repositories import (
     DeployCommitRepository,
     AutoExportRepository,
     UserRepositoriesCacheRepository,
-    UserRepositoriesCacheLastRefreshRepository,
 )
 from .repositories_its import (
     ITSIssueRepository,
@@ -134,11 +133,6 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def user_repositories_cache(self) -> UserRepositoriesCacheRepository:
-        pass
-
-    @property
-    @abstractmethod
-    def user_repositories_cache_last_refresh(self) -> UserRepositoriesCacheLastRefreshRepository:
         pass
 
     @property
