@@ -72,7 +72,7 @@ def list_available_repositories_for_credential(
     user_organization_name_list: Optional[List[str]],
     credential: CredentialInDB,
 ) -> List[RepositoryCreate]:
-    results = []
+    results: List[RepositoryCreate] = []
 
     if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
         try:
@@ -91,74 +91,8 @@ def list_available_repositories_for_credential(
                     else None
                 )
 
-                def save_repos_to_cache(repo_list: List[RepositoryCreate]):
-                    def get_repo_provider_id(repo: RepositoryCreate) -> Optional[str]:
-                        result = None
-                        if isinstance(repo.extra, dict):
-                            if "id" in repo.extra:
-                                result = str(repo.extra["id"])
-                            elif "uuid" in repo.extra:
-                                result = repo.extra["uuid"]
-                        return result
-
-                    repos_to_cache: List[UserRepositoryCacheCreate] = [
-                        UserRepositoryCacheCreate(
-                            user_id=user_id,
-                            repo_provider_id=get_repo_provider_id(repo),
-                            clone_url=repo.clone_url,
-                            protocol=repo.protocol,
-                            name=repo.name,
-                            namespace=repo.namespace,
-                            private=repo.private,
-                            integration_type=repo.integration_type,
-                            integration_name=repo.integration_name,
-                            credential_id=repo.credential_id,
-                            extra=repo.extra,
-                        )
-                        for repo in repo_list
-                    ]
-                    g.backend.user_repositories_cache.insert_repositories_cache_for_user(repos_to_cache)
-
-                def get_last_refresh_kvstore_key():
-                    return f"repository_cache_for_user_last_refresh_datetime:{user_id}"
-
-                def get_last_refresh_date() -> Optional[datetime]:
-                    result = None
-                    refresh_raw = g.kvstore.get_value(get_last_refresh_kvstore_key())
-                    if is_string_not_empty(refresh_raw):
-                        try:
-                            result = parse_date_str(refresh_raw)
-                        except ValueError:
-                            logger.debug(f"Last refresh date is invalid for user_id: {user_id}")
-                    return result
-
-                def save_last_refresh_date():
-                    refresh_save = str(datetime.utcnow())
-                    g.kvstore.set_value(get_last_refresh_kvstore_key(), refresh_save)
-
-                collected_repositories: List[RepositoryCreate] = []
-
-                refresh = get_last_refresh_date()
+                refresh = _get_repos_last_refresh_date(g=g, user_id=user_id)
                 if isinstance(refresh, datetime):
-
-                    def get_repos_cache() -> List[RepositoryCreate]:
-                        collected_repositories_cache: List[
-                            UserRepositoryCacheInDB
-                        ] = g.backend.user_repositories_cache.get_all_repositories_for_user(user_id)
-                        return [
-                            RepositoryCreate(
-                                clone_url=repo.clone_url,
-                                protocol=repo.protocol,
-                                name=repo.name,
-                                namespace=repo.namespace,
-                                private=repo.private,
-                                integration_type=repo.integration_type,
-                                integration_name=repo.integration_name,
-                                extra=repo.extra,
-                            )
-                            for repo in collected_repositories_cache
-                        ]
-
                     # If the last refresh date older than 1 day -> get new repos since last refresh date
                     if (g.current_time() - timedelta(days=1)) > refresh:
                         new_repos: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
@@ -168,28 +102,26 @@ def list_available_repositories_for_credential(
                             provider_user_id=userinfo.sub if userinfo else None,
                             user_organization_name_list=user_organization_name_list,
                         )
-                        save_repos_to_cache(new_repos)
-                        save_last_refresh_date()
+                        _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=new_repos)
+                        _save_repos_last_refresh_date(g=g, user_id=user_id)
 
-                    collected_repositories = get_repos_cache()
+                    results = _get_repos_cache(g=g, user_id=user_id)
                 else:
                     # no last refresh date found -> list all available repositories
-                    collected_repositories = integration.list_available_private_repositories(
+                    results = integration.list_available_private_repositories(
                         token=token,
                         update_token=get_update_token_callback(g, credential),
                         provider_user_id=userinfo.sub if userinfo else None,
                         user_organization_name_list=user_organization_name_list,
                     )
-                    save_repos_to_cache(collected_repositories)
-                    save_last_refresh_date()
+                    _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=results)
+                    _save_repos_last_refresh_date(g=g, user_id=user_id)
 
                 logger.debug(
                     "collected_private_repositories",
                     integration_name=credential_.integration_name,
-                    number_of_collected_private_repositories=len(collected_repositories),
+                    number_of_collected_private_repositories=len(results),
                 )
-
-                results = collected_repositories
             else:
                 logger.error(
                     "Cannot get fresh credential",
@@ -300,3 +232,71 @@ def delete_repositories(g: GitentialContext, workspace_id: int, repository_ids: 
         g.backend.repositories.delete(workspace_id, repo_id)
 
     return True
+
+
+def _save_repos_to_repos_cache(g: GitentialContext, user_id: int, repo_list: List[RepositoryCreate]):
+    def get_repo_provider_id(repo: RepositoryCreate) -> Optional[str]:
+        result = None
+        if isinstance(repo.extra, dict):
+            if "id" in repo.extra:
+                result = str(repo.extra["id"])
+            elif "uuid" in repo.extra:
+                result = repo.extra["uuid"]
+        return result
+
+    repos_to_cache: List[UserRepositoryCacheCreate] = [
+        UserRepositoryCacheCreate(
+            user_id=user_id,
+            repo_provider_id=get_repo_provider_id(repo),
+            clone_url=repo.clone_url,
+            protocol=repo.protocol,
+            name=repo.name,
+            namespace=repo.namespace,
+            private=repo.private,
+            integration_type=repo.integration_type,
+            integration_name=repo.integration_name,
+            credential_id=repo.credential_id,
+            extra=repo.extra,
+        )
+        for repo in repo_list
+    ]
+    g.backend.user_repositories_cache.insert_repositories_cache_for_user(repos_to_cache)
+
+
+def _get_repos_last_refresh_kvstore_key(user_id: int):
+    return f"repository_cache_for_user_last_refresh_datetime:{user_id}"
+
+
+def _get_repos_last_refresh_date(g: GitentialContext, user_id: int) -> Optional[datetime]:
+    result = None
+    refresh_raw = g.kvstore.get_value(_get_repos_last_refresh_kvstore_key(user_id))
+    if is_string_not_empty(refresh_raw):
+        try:
+            result = parse_date_str(refresh_raw)
+        except ValueError:
+            logger.debug(f"Last refresh date is invalid for user_id: {user_id}")
+    return result
+
+
+def _save_repos_last_refresh_date(g: GitentialContext, user_id: int):
+    refresh_save = str(datetime.utcnow())
+    g.kvstore.set_value(_get_repos_last_refresh_kvstore_key(user_id), refresh_save)
+
+
+def _get_repos_cache(g: GitentialContext, user_id: int) -> List[RepositoryCreate]:
+    collected_repositories_cache: List[
+        UserRepositoryCacheInDB
+    ] = g.backend.user_repositories_cache.get_all_repositories_for_user(user_id)
+    return [
+        RepositoryCreate(
+            clone_url=repo.clone_url,
+            protocol=repo.protocol,
+            name=repo.name,
+            namespace=repo.namespace,
+            private=repo.private,
+            integration_type=repo.integration_type,
+            integration_name=repo.integration_name,
+            extra=repo.extra,
+        )
+        for repo in collected_repositories_cache
+    ]
