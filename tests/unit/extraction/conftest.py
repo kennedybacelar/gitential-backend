@@ -11,7 +11,7 @@ from gitential2.extraction.repository import clone_repository
 def test_repositories():
     repositories = [
         ("flask", 1, "https://github.com/pallets/flask.git", GitProtocol.https),
-        ("hostname", 2, "https://github.com/laco/hostname.git", GitProtocol.https),
+        ("unicode-string-converter", 2, "https://github.com/benbal87/unicode-string-converter", GitProtocol.https),
     ]
     ret = {}
     for name, repo_id, clone_url, protocol in repositories:
