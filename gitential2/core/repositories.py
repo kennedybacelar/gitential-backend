@@ -91,7 +91,9 @@ def list_available_repositories_for_credential(
                     else None
                 )
 
-                refresh = _get_repos_last_refresh_date(g=g, user_id=user_id)
+                refresh = _get_repos_last_refresh_date(
+                    g=g, user_id=user_id, integration_type=credential.integration_type
+                )
                 if isinstance(refresh, datetime):
                     # If the last refresh date older than 1 day -> get new repos since last refresh date
                     if (g.current_time() - timedelta(days=1)) > refresh:
@@ -100,10 +102,21 @@ def list_available_repositories_for_credential(
                             update_token=get_update_token_callback(g, credential),
                             last_refresh=refresh,
                             provider_user_id=userinfo.sub if userinfo else None,
-                            user_organization_name_list=user_organization_name_list,
+                            user_organization_names=user_organization_name_list,
                         )
+
                         _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=new_repos)
-                        _save_repos_last_refresh_date(g=g, user_id=user_id)
+                        _save_repos_last_refresh_date(
+                            g=g, user_id=user_id, integration_type=credential.integration_type
+                        )
+
+                        logger.debug(
+                            "Saved new repositories to cache.",
+                            integration_type=credential.integration_type,
+                            new_repos=[getattr(r, "clone_url", None) for r in new_repos]
+                            if is_list_not_empty(new_repos)
+                            else [],
+                        )
 
                     results = _get_repos_cache(g=g, user_id=user_id)
                 else:
@@ -115,7 +128,7 @@ def list_available_repositories_for_credential(
                         user_organization_name_list=user_organization_name_list,
                     )
                     _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=results)
-                    _save_repos_last_refresh_date(g=g, user_id=user_id)
+                    _save_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
 
                 logger.debug(
                     "collected_private_repositories",
@@ -263,13 +276,13 @@ def _save_repos_to_repos_cache(g: GitentialContext, user_id: int, repo_list: Lis
     g.backend.user_repositories_cache.insert_repositories_cache_for_user(repos_to_cache)
 
 
-def _get_repos_last_refresh_kvstore_key(user_id: int):
-    return f"repository_cache_for_user_last_refresh_datetime:{user_id}"
+def _get_repos_last_refresh_kvstore_key(user_id: int, integration_type: str):
+    return f"repository_cache_for_user_last_refresh_datetime--{integration_type}--{user_id}"
 
 
-def _get_repos_last_refresh_date(g: GitentialContext, user_id: int) -> Optional[datetime]:
+def _get_repos_last_refresh_date(g: GitentialContext, user_id: int, integration_type: str) -> Optional[datetime]:
     result = None
-    refresh_raw = g.kvstore.get_value(_get_repos_last_refresh_kvstore_key(user_id))
+    refresh_raw = g.kvstore.get_value(_get_repos_last_refresh_kvstore_key(user_id, integration_type))
     if is_string_not_empty(refresh_raw):
         try:
             result = parse_date_str(refresh_raw).replace(tzinfo=timezone.utc)
@@ -278,9 +291,9 @@ def _get_repos_last_refresh_date(g: GitentialContext, user_id: int) -> Optional[
     return result
 
 
-def _save_repos_last_refresh_date(g: GitentialContext, user_id: int):
+def _save_repos_last_refresh_date(g: GitentialContext, user_id: int, integration_type: str):
     refresh_save = str(datetime.utcnow())
-    g.kvstore.set_value(_get_repos_last_refresh_kvstore_key(user_id), refresh_save)
+    g.kvstore.set_value(_get_repos_last_refresh_kvstore_key(user_id, integration_type), refresh_save)
 
 
 def _get_repos_cache(g: GitentialContext, user_id: int) -> List[RepositoryCreate]:

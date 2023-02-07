@@ -138,7 +138,7 @@ def is_list_not_empty(arg: Optional[List] = None) -> TypeGuard[list]:
 
 
 def is_string_not_empty(arg: Optional[Any] = None) -> TypeGuard[str]:
-    return arg is not None and isinstance(arg, str) and len(arg) > 0
+    return isinstance(arg, list) and len(arg) > 0
 
 
 def get_filtered_dict(
