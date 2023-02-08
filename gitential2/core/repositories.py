@@ -282,8 +282,10 @@ def _get_repos_last_refresh_kvstore_key(user_id: int, integration_type: str):
 
 def _get_repos_last_refresh_date(g: GitentialContext, user_id: int, integration_type: str) -> Optional[datetime]:
     result = None
-    refresh_raw = g.kvstore.get_value(_get_repos_last_refresh_kvstore_key(user_id, integration_type))
-    if is_string_not_empty(refresh_raw):
+    redis_key = _get_repos_last_refresh_kvstore_key(user_id, integration_type)
+    refresh_raw = g.kvstore.get_value(redis_key)
+    is_refresh_raw_valid = is_string_not_empty(refresh_raw)
+    if is_refresh_raw_valid:
         try:
             result = parse_date_str(refresh_raw).replace(tzinfo=timezone.utc)
         except ValueError:
@@ -293,7 +295,8 @@ def _get_repos_last_refresh_date(g: GitentialContext, user_id: int, integration_
 
 def _save_repos_last_refresh_date(g: GitentialContext, user_id: int, integration_type: str):
     refresh_save = str(datetime.utcnow())
-    g.kvstore.set_value(_get_repos_last_refresh_kvstore_key(user_id, integration_type), refresh_save)
+    redis_key = _get_repos_last_refresh_kvstore_key(user_id, integration_type)
+    g.kvstore.set_value(redis_key, refresh_save)
 
 
 def _get_repos_cache(g: GitentialContext, user_id: int) -> List[RepositoryCreate]:
