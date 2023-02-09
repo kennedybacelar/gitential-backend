@@ -318,7 +318,9 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
 
     with TemporaryDirectory() as workdir:
         try:
-            local_repo = _refresh_repository_commits_clone_phase(g, workspace_id, repository, workdir, _update_state)
+            local_repo = _refresh_repository_commits_clone_phase(
+                g, workspace_id, repository, workdir, _update_state, force
+            )
             if local_repo:
                 _refresh_repository_commits_extract_phase(g, workspace_id, repository, local_repo, _update_state, force)
                 _refresh_repository_commits_persist_phase(g, workspace_id, repository_id, _update_state)
@@ -372,6 +374,7 @@ def _refresh_repository_commits_clone_phase(
     repository: RepositoryInDB,
     workdir: TemporaryDirectory,
     _update_state: Callable,
+    force: bool,
 ) -> Optional[LocalGitRepository]:
     logger.info(
         "Cloning repository",
@@ -402,7 +405,7 @@ def _refresh_repository_commits_clone_phase(
             commits_phase=RefreshCommitsPhase.cloning,
         )
 
-        if repository.integration_type == "github":
+        if repository.integration_type == "github" and not force:
             integration = g.integrations.get(repository.integration_name)
             token = credential.to_token_dict(g.fernet)
             update_token = get_update_token_callback(g, credential)
