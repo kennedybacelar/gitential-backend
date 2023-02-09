@@ -83,6 +83,7 @@ from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
     UserRepositoryCacheUpdate,
     UserRepositoryCacheInDB,
+    UserRepositoryCacheId,
 )
 
 
@@ -237,7 +238,7 @@ class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdat
 
 
 class UserRepositoriesCacheRepository(
-    BaseRepository[int, UserRepositoryCacheCreate, UserRepositoryCacheUpdate, UserRepositoryCacheInDB]
+    BaseRepository[UserRepositoryCacheId, UserRepositoryCacheCreate, UserRepositoryCacheUpdate, UserRepositoryCacheInDB]
 ):
     @abstractmethod
     def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoryCacheInDB]:
