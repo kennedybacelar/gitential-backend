@@ -80,7 +80,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             return rate_limit.get("resources", {}).get("core", None)
         return None
 
-    def _get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[dict]:
+    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[dict]:
         api_base_url = self.oauth_register()["api_base_url"]
         client = self.get_oauth2_client(token=token, update_token=update_token)
         response = client.get(f"{api_base_url}repos/{repository.namespace}/{repository.name}")

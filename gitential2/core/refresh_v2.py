@@ -410,9 +410,9 @@ def _refresh_repository_commits_clone_phase(
             token = credential.to_token_dict(g.fernet)
             update_token = get_update_token_callback(g, credential)
 
-            if hasattr(integration, "_get_raw_single_repo_data"):
+            if hasattr(integration, "get_raw_single_repo_data") and integration is not None:
 
-                raw_single_repo_data = integration._get_raw_single_repo_data(
+                raw_single_repo_data = integration.get_raw_single_repo_data(
                     repository=repository, token=token, update_token=update_token
                 )
                 current_state = get_repo_refresh_status(g, workspace_id, repository.id)
@@ -446,13 +446,13 @@ def has_remote_repository_been_updated_after_last_project_refresh(
         repo_last_successful_refresh = current_state.commits_last_successful_run
 
         last_push_at_remote_repository = datetime.strptime(
-            last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"
+            last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
         ).astimezone(timezone.utc)
 
         if last_push_at_remote_repository and repo_last_successful_refresh:
             return repo_last_successful_refresh < last_push_at_remote_repository
         return False
-    except Exception as error:
+    except Exception as error:  # pylint: disable=broad-except
         logger.exception(
             "Unexpected error with has_remote_repository_been_updated_after_last_project_refresh.",
             workspace_id=current_state.workspace_id,
