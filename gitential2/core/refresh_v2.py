@@ -428,16 +428,26 @@ def _refresh_repository_commits_clone_phase(
 def has_remote_repository_been_updated_after_last_project_refresh(
     raw_single_repo_data: dict, current_state: RepositoryRefreshStatus
 ) -> bool:
-    last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
-    repo_last_successful_refresh = current_state.commits_last_successful_run
+    try:
+        last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
+        repo_last_successful_refresh = current_state.commits_last_successful_run
 
-    last_push_at_remote_repository = datetime.strptime(last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ").astimezone(
-        timezone.utc
-    )
+        last_push_at_remote_repository = datetime.strptime(
+            last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"
+        ).astimezone(timezone.utc)
 
-    if last_push_at_remote_repository and repo_last_successful_refresh:
-        return repo_last_successful_refresh < last_push_at_remote_repository
-    return False
+        if last_push_at_remote_repository and repo_last_successful_refresh:
+            return repo_last_successful_refresh < last_push_at_remote_repository
+        return False
+    except Exception as error:
+        logger.exception(
+            "Unexpected error with has_remote_repository_been_updated_after_last_project_refresh.",
+            workspace_id=current_state.workspace_id,
+            repository_id=current_state.repository_id,
+            repository_name=current_state.repository_name,
+            error=error,
+        )
+        return False
 
 
 def _refresh_repository_commits_extract_phase(
