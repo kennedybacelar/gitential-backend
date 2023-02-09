@@ -460,7 +460,7 @@ def has_remote_repository_been_updated_after_last_project_refresh(
             repository_name=current_state.repository_name,
             error=error,
         )
-        return False
+        return True
 
 
 def _refresh_repository_commits_extract_phase(
