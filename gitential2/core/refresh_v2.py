@@ -418,7 +418,7 @@ def _refresh_repository_commits_clone_phase(
 
             if not has_remote_repository_been_updated_after_last_project_refresh(raw_single_repo_data, current_state):
                 logger.info(
-                    "Remote repository has not been updated after last successful refresh - skipping clone.",
+                    "Remote repository has not been updated after last successful refresh - skipping clone phase.",
                     workspace_id=workspace_id,
                     repository_id=repository.id,
                 )
