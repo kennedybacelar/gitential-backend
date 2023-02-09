@@ -402,6 +402,17 @@ def _refresh_repository_commits_clone_phase(
             commits_phase=RefreshCommitsPhase.cloning,
         )
 
+        if repository.integration_type == "github":
+            integration = g.integrations.get(repository.integration_name)
+            token = credential.to_token_dict(g.fernet)
+            update_token = get_update_token_callback(g, credential)
+
+            raw_single_repo_data = integration._get_raw_single_repo_data(
+                repository=repository, token=token, update_token=update_token
+            )
+
+            current_state = get_repo_refresh_status(g, workspace_id, repository.id)
+
         local_repo = clone_repository(
             repository,
             destination_path=workdir.path,
