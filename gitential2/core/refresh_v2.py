@@ -1,5 +1,5 @@
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import Callable, Optional
 from sqlalchemy import exc
@@ -430,6 +430,10 @@ def has_remote_repository_been_updated_after_last_project_refresh(
 ) -> bool:
     last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
     repo_last_successful_refresh = current_state.commits_last_successful_run
+
+    last_push_at_remote_repository = datetime.strptime(last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ").astimezone(
+        timezone.utc
+    )
 
     if last_push_at_remote_repository and repo_last_successful_refresh:
         return repo_last_successful_refresh < last_push_at_remote_repository
