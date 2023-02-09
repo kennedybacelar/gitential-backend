@@ -421,7 +421,7 @@ def _refresh_repository_commits_clone_phase(
                     raw_single_repo_data, current_state
                 ):
                     logger.info(
-                        "Remote repository has not been updated after last successful refresh - skipping clone phase.",
+                        "Remote repository has not been updated after last successful refresh - Skipping commits refresh.",
                         workspace_id=workspace_id,
                         repository_id=repository.id,
                     )
@@ -451,7 +451,7 @@ def has_remote_repository_been_updated_after_last_project_refresh(
 
         if last_push_at_remote_repository and repo_last_successful_refresh:
             return repo_last_successful_refresh < last_push_at_remote_repository
-        return False
+        return True
     except Exception as error:  # pylint: disable=broad-except
         logger.exception(
             "Unexpected error with has_remote_repository_been_updated_after_last_project_refresh.",
