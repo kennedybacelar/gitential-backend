@@ -417,6 +417,7 @@ def _refresh_repository_commits_clone_phase(
             current_state = get_repo_refresh_status(g, workspace_id, repository.id)
 
             if not has_remote_repository_been_updated_after_last_project_refresh(raw_single_repo_data, current_state):
+                logger.info("Remote repository has not been updated after last successful refresh")
                 return None
 
         local_repo = clone_repository(
