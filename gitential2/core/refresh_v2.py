@@ -410,18 +410,23 @@ def _refresh_repository_commits_clone_phase(
             token = credential.to_token_dict(g.fernet)
             update_token = get_update_token_callback(g, credential)
 
-            raw_single_repo_data = integration._get_raw_single_repo_data(
-                repository=repository, token=token, update_token=update_token
-            )
+            if hasattr(integration, "_get_raw_single_repo_data"):
 
-            current_state = get_repo_refresh_status(g, workspace_id, repository.id)
-
-            if not has_remote_repository_been_updated_after_last_project_refresh(raw_single_repo_data, current_state):
-                logger.info(
-                    "Remote repository has not been updated after last successful refresh - skipping clone phase.",
-                    workspace_id=workspace_id,
-                    repository_id=repository.id,
+                raw_single_repo_data = integration._get_raw_single_repo_data(
+                    repository=repository, token=token, update_token=update_token
                 )
+                current_state = get_repo_refresh_status(g, workspace_id, repository.id)
+
+                if not has_remote_repository_been_updated_after_last_project_refresh(
+                    raw_single_repo_data, current_state
+                ):
+                    logger.info(
+                        "Remote repository has not been updated after last successful refresh - skipping clone phase.",
+                        workspace_id=workspace_id,
+                        repository_id=repository.id,
+                    )
+                    return None
+            else:
                 return None
 
         local_repo = clone_repository(
