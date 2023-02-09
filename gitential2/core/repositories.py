@@ -284,8 +284,7 @@ def _get_repos_last_refresh_date(g: GitentialContext, user_id: int, integration_
     result = None
     redis_key = _get_repos_last_refresh_kvstore_key(user_id, integration_type)
     refresh_raw = g.kvstore.get_value(redis_key)
-    is_refresh_raw_valid = is_string_not_empty(refresh_raw)
-    if is_refresh_raw_valid:
+    if is_string_not_empty(refresh_raw):
         try:
             result = parse_date_str(refresh_raw).replace(tzinfo=timezone.utc)
         except ValueError:
