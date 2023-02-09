@@ -1,5 +1,5 @@
 import traceback
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import partial
 from typing import Callable, Optional
 from sqlalchemy import exc
@@ -7,7 +7,7 @@ from sqlalchemy import exc
 from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
-from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase, ITSProjectRefreshPhase
+from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase, ITSProjectRefreshPhase, RepositoryRefreshStatus
 from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
 from gitential2.datatypes.extraction import LocalGitRepository
 
@@ -420,6 +420,13 @@ def _refresh_repository_commits_clone_phase(
         )
         return local_repo
     return None
+
+
+def has_remote_repository_been_updated_after_last_project_refresh(
+    raw_single_repo_data: dict, current_state: RepositoryRefreshStatus
+) -> bool:
+    pushed_at_remote_repository = raw_single_repo_data.get("pushed_at") or datetime.utcnow()
+    repo_last_successful_refresh = current_state.commits_last_successful_run
 
 
 def _refresh_repository_commits_extract_phase(
