@@ -52,6 +52,7 @@ from gitential2.backends.base.repositories import (
     ThumbnailRepository,
     AutoExportRepository,
     UserRepositoriesCacheRepository,
+    UserITSProjectsCacheRepository,
 )
 from gitential2.datatypes import (
     UserCreate,
@@ -134,6 +135,8 @@ from ..base import (
 )
 from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
+from ...datatypes.its_projects_cache import UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, \
+    UserITSProjectCacheInDB
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
@@ -635,6 +638,22 @@ class SQLUserRepositoryCacheRepository(
             repo_saved_or_updated = self.create_or_update(repo)
             results.append(repo_saved_or_updated)
         return results
+
+
+class SQLUserITSProjectsCacheRepository(
+    UserITSProjectsCacheRepository,
+    SQLRepository[UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, UserITSProjectCacheInDB]
+):
+    def get_all_its_project_for_user(self, user_id: int) -> List[UserITSProjectCacheInDB]:
+        pass
+
+    def insert_its_project_cache_for_user(self, repo: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
+        pass
+
+    def insert_its_projects_cache_for_user(
+            self, repos: List[UserITSProjectCacheCreate]
+    ) -> List[UserITSProjectCacheInDB]:
+        pass
 
 
 class SQLProjectRepository(

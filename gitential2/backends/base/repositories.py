@@ -78,6 +78,8 @@ from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, Workspac
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
 from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
+from ...datatypes.its_projects_cache import UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, \
+    UserITSProjectCacheInDB
 from ...datatypes.thumbnails import ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
@@ -252,6 +254,24 @@ class UserRepositoriesCacheRepository(
     def insert_repositories_cache_for_user(
         self, repos: List[UserRepositoryCacheCreate]
     ) -> List[UserRepositoryCacheInDB]:
+        pass
+
+
+class UserITSProjectsCacheRepository(
+    BaseRepository[UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, UserITSProjectCacheInDB]
+):
+    @abstractmethod
+    def get_all_its_project_for_user(self, user_id: int) -> List[UserITSProjectCacheInDB]:
+        pass
+
+    @abstractmethod
+    def insert_its_project_cache_for_user(self, repo: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
+        pass
+
+    @abstractmethod
+    def insert_its_projects_cache_for_user(
+        self, repos: List[UserITSProjectCacheCreate]
+    ) -> List[UserITSProjectCacheInDB]:
         pass
 
 

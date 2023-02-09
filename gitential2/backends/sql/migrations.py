@@ -126,6 +126,16 @@ def workspace_schema_migrations(schema_name: str) -> MigrationList:
                 "END $$;",
             ],
         ),
+        MigrationRevision(
+            revision_id="006",
+            steps=[
+                f"ALTER TABLE {schema_name}.its_projects ALTER COLUMN integration_type SET NOT NULL;",
+                f"ALTER TABLE {schema_name}.its_projects ALTER COLUMN integration_type TYPE varchar(128);",
+                f"ALTER TABLE {schema_name}.its_projects ALTER COLUMN integration_name SET NOT NULL;",
+                f"ALTER TABLE {schema_name}.its_projects ALTER COLUMN integration_name TYPE varchar(128);",
+                f"ALTER TABLE {schema_name}.its_projects ALTER COLUMN integration_id SET NOT NULL;",
+            ],
+        ),
     ]
 
 

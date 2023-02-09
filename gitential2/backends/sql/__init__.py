@@ -111,6 +111,7 @@ from .repositories import (
     SQLDeployCommitRepository,
     SQLAutoExportRepository,
     SQLUserRepositoryCacheRepository,
+    SQLUserITSProjectsCacheRepository,
 )
 from .repositories_its import (
     SQLITSIssueRepository,
@@ -143,11 +144,13 @@ from .tables import (
     MaterializedViewNames,
     auto_export_table,
     user_repositories_cache_table,
+    user_its_projects_cache_table,
 )
 from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
+from ...datatypes.its_projects_cache import UserITSProjectCacheInDB
 from ...datatypes.thumbnails import ThumbnailInDB
 from ...datatypes.user_repositories_cache import UserRepositoryCacheInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
@@ -218,6 +221,12 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             table=user_repositories_cache_table,
             engine=self._engine,
             in_db_cls=UserRepositoryCacheInDB,
+        )
+
+        self._user_its_projects_cache = SQLUserITSProjectsCacheRepository(
+            table=user_its_projects_cache_table,
+            engine=self._engine,
+            in_db_cls=UserITSProjectCacheInDB,
         )
 
         self._workspace_tables, _ = get_workspace_metadata(schema=None)
