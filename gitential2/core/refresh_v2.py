@@ -413,6 +413,9 @@ def _refresh_repository_commits_clone_phase(
 
             current_state = get_repo_refresh_status(g, workspace_id, repository.id)
 
+            if not has_remote_repository_been_updated_after_last_project_refresh(raw_single_repo_data, current_state):
+                return None
+
         local_repo = clone_repository(
             repository,
             destination_path=workdir.path,
@@ -425,8 +428,12 @@ def _refresh_repository_commits_clone_phase(
 def has_remote_repository_been_updated_after_last_project_refresh(
     raw_single_repo_data: dict, current_state: RepositoryRefreshStatus
 ) -> bool:
-    pushed_at_remote_repository = raw_single_repo_data.get("pushed_at") or datetime.utcnow()
+    last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
     repo_last_successful_refresh = current_state.commits_last_successful_run
+
+    if last_push_at_remote_repository and repo_last_successful_refresh:
+        return repo_last_successful_refresh < last_push_at_remote_repository
+    return False
 
 
 def _refresh_repository_commits_extract_phase(
