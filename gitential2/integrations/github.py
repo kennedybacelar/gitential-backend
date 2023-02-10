@@ -80,6 +80,17 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             return rate_limit.get("resources", {}).get("core", None)
         return None
 
+    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[dict]:
+        api_base_url = self.oauth_register()["api_base_url"]
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        response = client.get(f"{api_base_url}repos/{repository.namespace}/{repository.name}")
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            log_api_error(response)
+            return None
+
     def _collect_raw_pull_requests(
         self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
     ) -> list:
