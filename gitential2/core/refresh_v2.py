@@ -1,5 +1,5 @@
 import traceback
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import Callable, Optional
 from sqlalchemy import exc
@@ -7,7 +7,7 @@ from sqlalchemy import exc
 from structlog import get_logger
 from gitential2.datatypes.authors import AuthorAlias
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
-from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase, ITSProjectRefreshPhase
+from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase, ITSProjectRefreshPhase, RepositoryRefreshStatus
 from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
 from gitential2.datatypes.extraction import LocalGitRepository
 
@@ -318,7 +318,9 @@ def refresh_repository_commits(g: GitentialContext, workspace_id: int, repositor
 
     with TemporaryDirectory() as workdir:
         try:
-            local_repo = _refresh_repository_commits_clone_phase(g, workspace_id, repository, workdir, _update_state)
+            local_repo = _refresh_repository_commits_clone_phase(
+                g, workspace_id, repository, workdir, _update_state, force
+            )
             if local_repo:
                 _refresh_repository_commits_extract_phase(g, workspace_id, repository, local_repo, _update_state, force)
                 _refresh_repository_commits_persist_phase(g, workspace_id, repository_id, _update_state)
@@ -372,6 +374,7 @@ def _refresh_repository_commits_clone_phase(
     repository: RepositoryInDB,
     workdir: TemporaryDirectory,
     _update_state: Callable,
+    force: bool,
 ) -> Optional[LocalGitRepository]:
     logger.info(
         "Cloning repository",
@@ -402,6 +405,30 @@ def _refresh_repository_commits_clone_phase(
             commits_phase=RefreshCommitsPhase.cloning,
         )
 
+        if repository.integration_type == "github" and not force:
+            integration = g.integrations.get(repository.integration_name)
+            token = credential.to_token_dict(g.fernet)
+            update_token = get_update_token_callback(g, credential)
+
+            if hasattr(integration, "get_raw_single_repo_data") and integration is not None:
+
+                raw_single_repo_data = integration.get_raw_single_repo_data(
+                    repository=repository, token=token, update_token=update_token
+                )
+                current_state = get_repo_refresh_status(g, workspace_id, repository.id)
+
+                if not has_remote_repository_been_updated_after_last_project_refresh(
+                    raw_single_repo_data, current_state
+                ):
+                    logger.info(
+                        "Remote repository has not been updated after last successful refresh - Skipping commits refresh.",
+                        workspace_id=workspace_id,
+                        repository_id=repository.id,
+                    )
+                    return None
+            else:
+                return None
+
         local_repo = clone_repository(
             repository,
             destination_path=workdir.path,
@@ -409,6 +436,31 @@ def _refresh_repository_commits_clone_phase(
         )
         return local_repo
     return None
+
+
+def has_remote_repository_been_updated_after_last_project_refresh(
+    raw_single_repo_data: dict, current_state: RepositoryRefreshStatus
+) -> bool:
+    try:
+        last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
+        repo_last_successful_refresh = current_state.commits_last_successful_run
+
+        last_push_at_remote_repository = datetime.strptime(
+            last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
+        ).astimezone(timezone.utc)
+
+        if last_push_at_remote_repository and repo_last_successful_refresh:
+            return repo_last_successful_refresh < last_push_at_remote_repository
+        return True
+    except Exception as error:  # pylint: disable=broad-except
+        logger.exception(
+            "Unexpected error with has_remote_repository_been_updated_after_last_project_refresh.",
+            workspace_id=current_state.workspace_id,
+            repository_id=current_state.repository_id,
+            repository_name=current_state.repository_name,
+            error=error,
+        )
+        return True
 
 
 def _refresh_repository_commits_extract_phase(
