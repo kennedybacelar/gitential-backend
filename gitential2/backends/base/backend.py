@@ -46,6 +46,7 @@ from .repositories import (
     ThumbnailRepository,
     DeployCommitRepository,
     AutoExportRepository,
+    UserRepositoriesCacheRepository,
 )
 from .repositories_its import (
     ITSIssueRepository,
@@ -122,6 +123,16 @@ class GitentialBackend(ABC):
     @property
     @abstractmethod
     def workspace_members(self) -> WorkspaceMemberRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def auto_export(self) -> AutoExportRepository:
+        pass
+
+    @property
+    @abstractmethod
+    def user_repositories_cache(self) -> UserRepositoriesCacheRepository:
         pass
 
     @property
@@ -364,9 +375,4 @@ class GitentialBackend(ABC):
 
     @abstractmethod
     def get_ibis_table(self, workspace_id: int, source_name: str) -> TableExpr:
-        pass
-
-    @property
-    @abstractmethod
-    def auto_export(self) -> AutoExportRepository:
         pass

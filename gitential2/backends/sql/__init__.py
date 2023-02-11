@@ -110,6 +110,7 @@ from .repositories import (
     SQLThumbnailRepository,
     SQLDeployCommitRepository,
     SQLAutoExportRepository,
+    SQLUserRepositoryCacheRepository,
 )
 from .repositories_its import (
     SQLITSIssueRepository,
@@ -141,12 +142,14 @@ from .tables import (
     WorkspaceTableNames,
     MaterializedViewNames,
     auto_export_table,
+    user_repositories_cache_table,
 )
 from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB
+from ...datatypes.user_repositories_cache import UserRepositoryCacheInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
 from ...utils import get_schema_name
 
@@ -201,6 +204,20 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
         self._workspace_members = SQLWorkspaceMemberRepository(
             table=workspace_members_table, engine=self._engine, in_db_cls=WorkspaceMemberInDB
+        )
+
+        self._email_log = SQLEmailLogRepository(table=email_log_table, engine=self._engine, in_db_cls=EmailLogInDB)
+
+        self._auto_export = SQLAutoExportRepository(
+            table=auto_export_table,
+            engine=self._engine,
+            in_db_cls=AutoExportInDB,
+        )
+
+        self._user_repositories_cache = SQLUserRepositoryCacheRepository(
+            table=user_repositories_cache_table,
+            engine=self._engine,
+            in_db_cls=UserRepositoryCacheInDB,
         )
 
         self._workspace_tables, _ = get_workspace_metadata(schema=None)
@@ -341,7 +358,6 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             metadata=self._workspace_tables,
             in_db_cls=PullRequestLabel,
         )
-        self._email_log = SQLEmailLogRepository(table=email_log_table, engine=self._engine, in_db_cls=EmailLogInDB)
 
         self._its_issues = SQLITSIssueRepository(
             table=self._workspace_tables.tables["its_issues"],
@@ -411,12 +427,6 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             engine=self._engine,
             metadata=self._workspace_tables,
             in_db_cls=DeployCommit,
-        )
-
-        self._auto_export = SQLAutoExportRepository(
-            table=auto_export_table,
-            engine=self._engine,
-            in_db_cls=AutoExportInDB,
         )
 
     def _execute_query(self, query):

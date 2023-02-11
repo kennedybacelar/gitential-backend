@@ -51,6 +51,7 @@ from gitential2.backends.base.repositories import (
     ChartRepository,
     ThumbnailRepository,
     AutoExportRepository,
+    UserRepositoriesCacheRepository,
 )
 from gitential2.datatypes import (
     UserCreate,
@@ -134,6 +135,12 @@ from ..base import (
 from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
+from ...datatypes.user_repositories_cache import (
+    UserRepositoryCacheCreate,
+    UserRepositoryCacheUpdate,
+    UserRepositoryCacheInDB,
+    UserRepositoryCacheId,
+)
 from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
 # pylint: disable=unnecessary-lambda-assignment
@@ -581,6 +588,53 @@ class SQLWorkspaceMemberRepository(
     def delete_rows_for_workspace(self, workspace_id: int) -> int:
         query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
         return self._execute_query(query, callback_fn=rowcount_)
+
+
+class SQLAutoExportRepository(
+    AutoExportRepository, SQLRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]
+):
+    def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
+        """
+        @desc: Checks if a schedule already exists, to prevent creating multiple schedules for the same workspace
+        """
+        query = self.table.select().where(
+            and_(self.table.c.workspace_id == workspace_id, self.table.c.cron_schedule_time == cron_schedule_time)
+        )
+        row = self._execute_query(query, callback_fn=fetchone_)
+        return bool(row)
+
+    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
+        query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
+
+class SQLUserRepositoryCacheRepository(
+    UserRepositoriesCacheRepository,
+    SQLRepository[UserRepositoryCacheId, UserRepositoryCacheCreate, UserRepositoryCacheUpdate, UserRepositoryCacheInDB],
+):
+    def identity(self, id_: UserRepositoryCacheId):
+        return and_(
+            self.table.c.user_id == id_.user_id,
+            self.table.c.repo_provider_id == id_.repo_provider_id,
+            self.table.c.integration_type == id_.integration_type,
+        )
+
+    def get_all_repositories_for_user(self, user_id: int) -> List[UserRepositoryCacheInDB]:
+        query = self.table.select().where(self.table.c.user_id == user_id)
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [UserRepositoryCacheInDB(**row) for row in rows]
+
+    def insert_repository_cache_for_user(self, repo: UserRepositoryCacheCreate) -> UserRepositoryCacheInDB:
+        return self.create(repo)
+
+    def insert_repositories_cache_for_user(
+        self, repos: List[UserRepositoryCacheCreate]
+    ) -> List[UserRepositoryCacheInDB]:
+        results: List[UserRepositoryCacheInDB] = []
+        for repo in repos:
+            repo_saved_or_updated = self.create_or_update(repo)
+            results.append(repo_saved_or_updated)
+        return results
 
 
 class SQLProjectRepository(
@@ -1357,21 +1411,3 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         self._execute_query(query)
         # return [EmailLogInDB(**row) for row in rows]
         return self.get_or_error(user_id)
-
-
-class SQLAutoExportRepository(
-    AutoExportRepository, SQLRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]
-):
-    def schedule_exists(self, workspace_id: int, cron_schedule_time: int) -> bool:
-        """
-        @desc: Checks if a schedule already exists, to prevent creating multiple schedules for the same workspace
-        """
-        query = self.table.select().where(
-            and_(self.table.c.workspace_id == workspace_id, self.table.c.cron_schedule_time == cron_schedule_time)
-        )
-        row = self._execute_query(query, callback_fn=fetchone_)
-        return bool(row)
-
-    def delete_rows_for_workspace(self, workspace_id: int) -> bool:
-        query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
-        return self._execute_query(query, callback_fn=rowcount_)

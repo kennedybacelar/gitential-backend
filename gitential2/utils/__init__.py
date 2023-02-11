@@ -2,7 +2,7 @@ import re
 from copy import deepcopy
 from datetime import datetime, timedelta
 from json import dumps
-from typing import Optional, List, Dict, TypeGuard, Union
+from typing import Optional, List, Dict, TypeGuard, Union, Any
 from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 
 from gitential2.exceptions import SettingsException
@@ -133,12 +133,12 @@ def get_schema_name(workspace_id: int):
     return f"ws_{workspace_id}" if workspace_id else None
 
 
-def is_list_not_empty(arg: Optional[List] = None) -> TypeGuard[list]:
-    return arg is not None and len(arg) > 0
+def is_list_not_empty(arg: Optional[Any] = None) -> TypeGuard[list]:
+    return isinstance(arg, list) and len(arg) > 0
 
 
-def is_string_not_empty(arg: Optional[str] = None) -> TypeGuard[str]:
-    return arg is not None and isinstance(arg, str) and len(arg) > 0
+def is_string_not_empty(arg: Optional[Any] = None) -> TypeGuard[str]:
+    return isinstance(arg, str) and len(arg) > 0
 
 
 def get_filtered_dict(

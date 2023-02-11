@@ -1,8 +1,7 @@
 # pylint: skip-file
 from gitential2.datatypes.repositories import RepositoryCreate
-from typing import List, Optional, Union
-from uuid import UUID
-from fastapi import APIRouter, Depends, Header
+from typing import List, Optional
+from fastapi import APIRouter, Depends
 
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.context import GitentialContext
@@ -30,7 +29,7 @@ def available_repos(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return list_available_repositories(g, workspace_id, user_organization_name_list)
+    return list_available_repositories(g, workspace_id, current_user.id, user_organization_name_list)
 
 
 @router.get("/workspaces/{workspace_id}/search-public-repos")
