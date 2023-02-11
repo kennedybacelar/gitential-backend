@@ -449,6 +449,14 @@ def has_remote_repository_been_updated_after_last_project_refresh(
             last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
         ).astimezone(timezone.utc)
 
+        logger.info(
+            workspace_id=current_state.workspace_id,
+            repository_id=current_state.repository_id,
+            repository_name=current_state.repository_name,
+            repo_last_successful_refresh=repo_last_successful_refresh,
+            last_push_at_remote_repository=last_push_at_remote_repository,
+        )
+
         if last_push_at_remote_repository and repo_last_successful_refresh:
             return repo_last_successful_refresh < last_push_at_remote_repository
         return True
