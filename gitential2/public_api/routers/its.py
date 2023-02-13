@@ -17,7 +17,7 @@ def available_its_projects(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return list_available_its_projects(g, workspace_id)
+    return list_available_its_projects(g=g, workspace_id=workspace_id, user_id=current_user.id)
 
 
 @router.get("/workspaces/{workspace_id}/projects/{project_id}/its-projects")

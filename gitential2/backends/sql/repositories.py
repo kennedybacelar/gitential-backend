@@ -135,8 +135,12 @@ from ..base import (
 )
 from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
-from ...datatypes.its_projects_cache import UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, \
-    UserITSProjectCacheInDB
+from ...datatypes.its_projects_cache import (
+    UserITSProjectCacheId,
+    UserITSProjectCacheCreate,
+    UserITSProjectCacheUpdate,
+    UserITSProjectCacheInDB,
+)
 from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
@@ -642,18 +646,31 @@ class SQLUserRepositoryCacheRepository(
 
 class SQLUserITSProjectsCacheRepository(
     UserITSProjectsCacheRepository,
-    SQLRepository[UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, UserITSProjectCacheInDB]
+    SQLRepository[UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, UserITSProjectCacheInDB],
 ):
-    def get_all_its_project_for_user(self, user_id: int) -> List[UserITSProjectCacheInDB]:
-        pass
+    def identity(self, id_: UserITSProjectCacheId):
+        return and_(
+            self.table.c.user_id == id_.user_id,
+            self.table.c.integration_id == id_.integration_id,
+            self.table.c.integration_type == id_.integration_type,
+        )
 
-    def insert_its_project_cache_for_user(self, repo: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
-        pass
+    def get_all_its_project_for_user(self, user_id: int) -> List[UserITSProjectCacheInDB]:
+        query = self.table.select().where(self.table.c.user_id == user_id)
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [UserITSProjectCacheInDB(**row) for row in rows]
+
+    def insert_its_project_cache_for_user(self, itsp: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
+        return self.create(itsp)
 
     def insert_its_projects_cache_for_user(
-            self, repos: List[UserITSProjectCacheCreate]
+        self, its_projects: List[UserITSProjectCacheCreate]
     ) -> List[UserITSProjectCacheInDB]:
-        pass
+        results: List[UserITSProjectCacheInDB] = []
+        for itsp in its_projects:
+            itsp_saved_or_updated = self.create_or_update(itsp)
+            results.append(itsp_saved_or_updated)
+        return results
 
 
 class SQLProjectRepository(
