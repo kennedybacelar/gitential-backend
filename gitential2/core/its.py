@@ -22,7 +22,7 @@ from .credentials import (
     list_credentials_for_workspace,
     get_update_token_callback,
 )
-from ..datatypes.its_projects_cache import UserITSProjectCacheCreate, UserITSProjectCacheInDB
+from ..datatypes.user_its_projects_cache import UserITSProjectCacheCreate, UserITSProjectCacheInDB, UserITSProjectGroup
 
 logger = get_logger(__name__)
 
@@ -347,6 +347,27 @@ def collect_and_save_data_for_issue(
             "Issue data saved",
             issue_id=issue_data.issue.id,
         )
+
+
+def list_available_its_project_groups(
+    g: GitentialContext, workspace_id: int, user_id: int
+) -> List[UserITSProjectGroup]:
+    cache_itsp_groups = g.backend.user_its_projects_cache.get_its_project_groups(user_id)
+    itsp_groups = g.backend.its_projects.get_its_project_groups(workspace_id=workspace_id)
+
+    def is_itsp_group_in_cache(user_itsp_group: UserITSProjectGroup):
+        return any(
+            gc.integration_type == user_itsp_group.integration_type
+            and gc.namespace == user_itsp_group.namespace
+            and gc.credential_id == user_itsp_group.credential_id
+            for gc in cache_itsp_groups
+        )
+
+    for group in itsp_groups:
+        if not is_itsp_group_in_cache(group):
+            cache_itsp_groups.append(group)
+
+    return cache_itsp_groups
 
 
 def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_data: ITSIssueAllData):

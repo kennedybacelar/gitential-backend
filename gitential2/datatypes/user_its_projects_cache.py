@@ -4,6 +4,12 @@ from gitential2.datatypes.export import ExportableModel
 from .common import DateTimeModelMixin, ExtraFieldMixin, CoreModel
 
 
+class UserITSProjectGroup(CoreModel):
+    integration_type: str = ""
+    namespace: str = ""
+    credential_id: Optional[int] = None
+
+
 class UserITSProjectCacheId(CoreModel):
     user_id: int
     integration_id: str
@@ -17,9 +23,9 @@ class UserITSProjectCacheBase(ExtraFieldMixin, CoreModel):
     private: bool = False
     api_url: str = ""
     key: Optional[str] = None
-    integration_type: str
-    integration_name: str
-    integration_id: str
+    integration_type: str = ""
+    integration_name: str = ""
+    integration_id: str = ""
     credential_id: Optional[int] = None
 
     @property

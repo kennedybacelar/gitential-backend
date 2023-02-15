@@ -135,13 +135,14 @@ from ..base import (
 )
 from ...datatypes.charts import ChartInDB, ChartUpdate, ChartCreate
 from ...datatypes.dashboards import DashboardCreate, DashboardUpdate, DashboardInDB
-from ...datatypes.its_projects_cache import (
+from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
+from ...datatypes.user_its_projects_cache import (
     UserITSProjectCacheId,
     UserITSProjectCacheCreate,
     UserITSProjectCacheUpdate,
     UserITSProjectCacheInDB,
+    UserITSProjectGroup,
 )
-from ...datatypes.thumbnails import ThumbnailInDB, ThumbnailUpdate, ThumbnailCreate
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
     UserRepositoryCacheUpdate,
@@ -689,6 +690,22 @@ class SQLUserITSProjectsCacheRepository(
             results.append(itsp_saved_or_updated)
         return results
 
+    def get_its_project_groups(self, user_id: int) -> List[UserITSProjectGroup]:
+        query = (
+            self.table.select()
+            .distinct(self.table.c.integration_type, self.table.c.namespace, self.table.c.credential_id)
+            .where(self.table.c.user_id == user_id)
+        )
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [
+            UserITSProjectGroup(
+                integration_type=row["integration_type"],
+                namespace=row["namespace"],
+                credential_id=row["credential_id"],
+            )
+            for row in rows
+        ]
+
 
 class SQLProjectRepository(
     ProjectRepository, SQLWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]
@@ -764,6 +781,20 @@ class SQLITSProjectRepository(
     def delete_its_projects_by_id(self, workspace_id: int, its_project_ids: List[int]):
         query = self.table.delete().where(self.table.c.id.in_(its_project_ids))
         return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+
+    def get_its_project_groups(self, workspace_id: int) -> List[UserITSProjectGroup]:
+        query = self.table.select().distinct(
+            self.table.c.integration_type, self.table.c.namespace, self.table.c.credential_id
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [
+            UserITSProjectGroup(
+                integration_type=row["integration_type"],
+                namespace=row["namespace"],
+                credential_id=row["credential_id"],
+            )
+            for row in rows
+        ]
 
 
 class SQLProjectRepositoryRepository(

@@ -78,13 +78,14 @@ from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, Workspac
 from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
 from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
-from ...datatypes.its_projects_cache import (
+from ...datatypes.thumbnails import ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB
+from ...datatypes.user_its_projects_cache import (
     UserITSProjectCacheId,
     UserITSProjectCacheCreate,
     UserITSProjectCacheUpdate,
     UserITSProjectCacheInDB,
+    UserITSProjectGroup,
 )
-from ...datatypes.thumbnails import ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
     UserRepositoryCacheUpdate,
@@ -283,6 +284,10 @@ class UserITSProjectsCacheRepository(
     ) -> List[UserITSProjectCacheInDB]:
         pass
 
+    @abstractmethod
+    def get_its_project_groups(self, user_id: int) -> List[UserITSProjectGroup]:
+        pass
+
 
 class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]):
     @abstractmethod
@@ -349,6 +354,10 @@ class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, 
 
     @abstractmethod
     def delete_its_projects_by_id(self, workspace_id: int, its_project_ids: List[int]):
+        pass
+
+    @abstractmethod
+    def get_its_project_groups(self, workspace_id: int) -> List[UserITSProjectGroup]:
         pass
 
 
