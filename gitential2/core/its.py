@@ -1,9 +1,9 @@
 import traceback
 from datetime import datetime, timezone, timedelta
-from dateutil.parser import parse as parse_date_str
 from functools import partial
 from typing import List, Union, Optional
 
+from dateutil.parser import parse as parse_date_str
 from structlog import get_logger
 from structlog.threadlocal import tmp_bind
 
@@ -56,9 +56,10 @@ def list_available_its_projects(g: GitentialContext, workspace_id: int, user_id:
                     )
 
                     refresh = _get_itsp_last_refresh_date(g, user_id, credential_.integration_type)
-                    is_datetime = isinstance(refresh, datetime)
-                    is_cache_expired = (g.current_time() - timedelta(days=1)) > refresh
-                    if (is_datetime and is_cache_expired) or not is_datetime:
+
+                    # if there is no saved last refresh time or if it is expired,
+                    # we need to get the list again
+                    if not isinstance(refresh, datetime) or refresh < (g.current_time() - timedelta(days=1)):
                         new_its_projects = _list_available_its_projects(g, integration, token, credential, userinfo)
                         _save_its_projects_to_cache(g, user_id, new_its_projects)
                         _save_its_projects_last_refresh_date(g, user_id, credential_.integration_type)

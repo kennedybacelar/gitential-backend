@@ -1,12 +1,10 @@
 # pylint: skip-file
-from gitential2.datatypes.repositories import RepositoryCreate
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends
 
-from gitential2.datatypes.permissions import Entity, Action
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
-
 from gitential2.core.repositories import (
     list_available_repositories,
     search_public_repositories,
@@ -15,10 +13,23 @@ from gitential2.core.repositories import (
     create_repositories,
     delete_repositories,
     list_project_repositories,
+    list_available_repo_groups,
 )
+from gitential2.datatypes.permissions import Entity, Action
+from gitential2.datatypes.repositories import RepositoryCreate
 from ..dependencies import current_user, gitential_context
 
 router = APIRouter(tags=["repositories"])
+
+
+@router.post("/workspaces/{workspace_id}/available-repo-groups")
+def available_repo_groups(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return list_available_repo_groups(g=g, workspace_id=workspace_id, user_id=current_user.id)
 
 
 @router.post("/workspaces/{workspace_id}/available-repos")

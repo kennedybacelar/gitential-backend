@@ -147,6 +147,7 @@ from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheUpdate,
     UserRepositoryCacheInDB,
     UserRepositoryCacheId,
+    UserRepositoryGroup,
 )
 from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
@@ -643,6 +644,22 @@ class SQLUserRepositoryCacheRepository(
             results.append(repo_saved_or_updated)
         return results
 
+    def get_repo_groups(self, user_id: int) -> List[UserRepositoryGroup]:
+        query = (
+            self.table.select()
+            .distinct(self.table.c.integration_type, self.table.c.namespace, self.table.c.credential_id)
+            .where(self.table.c.user_id == user_id)
+        )
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        return [
+            UserRepositoryGroup(
+                integration_type=row["integration_type"],
+                namespace=row["namespace"],
+                credential_id=row["credential_id"],
+            )
+            for row in rows
+        ]
+
 
 class SQLUserITSProjectsCacheRepository(
     UserITSProjectsCacheRepository,
@@ -715,6 +732,20 @@ class SQLRepositoryRepository(
     def delete_repos_by_id(self, workspace_id: int, repo_ids: List[int]):
         query = self.table.delete().where(self.table.c.id.in_(repo_ids))
         return self._execute_query(query, workspace_id=workspace_id, callback_fn=rowcount_)
+
+    def get_repo_groups(self, workspace_id: int) -> List[UserRepositoryGroup]:
+        query = self.table.select().distinct(
+            self.table.c.integration_type, self.table.c.namespace, self.table.c.credential_id
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [
+            UserRepositoryGroup(
+                integration_type=row["integration_type"],
+                namespace=row["namespace"],
+                credential_id=row["credential_id"],
+            )
+            for row in rows
+        ]
 
 
 class SQLITSProjectRepository(

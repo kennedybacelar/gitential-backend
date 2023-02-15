@@ -17,7 +17,7 @@ from .credentials import (
     list_credentials_for_workspace,
     get_update_token_callback,
 )
-from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB, UserRepositoryCacheCreate
+from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB, UserRepositoryCacheCreate, UserRepositoryGroup
 
 logger = get_logger(__name__)
 
@@ -245,6 +245,25 @@ def delete_repositories(g: GitentialContext, workspace_id: int, repository_ids: 
         g.backend.repositories.delete(workspace_id, repo_id)
 
     return True
+
+
+def list_available_repo_groups(g: GitentialContext, workspace_id: int, user_id: int) -> List[UserRepositoryGroup]:
+    repo_groups_from_cache = g.backend.user_repositories_cache.get_repo_groups(user_id=user_id)
+    repo_groups = g.backend.repositories.get_repo_groups(workspace_id=workspace_id)
+
+    def is_repo_group_in_cache(user_repo_group: UserRepositoryGroup):
+        return any(
+            gc.integration_type == user_repo_group.integration_type
+            and gc.namespace == user_repo_group.namespace
+            and gc.credential_id == user_repo_group.credential_id
+            for gc in repo_groups_from_cache
+        )
+
+    for group in repo_groups:
+        if not is_repo_group_in_cache(group):
+            repo_groups_from_cache.append(group)
+
+    return repo_groups_from_cache
 
 
 def _save_repos_to_repos_cache(g: GitentialContext, user_id: int, repo_list: List[RepositoryCreate]):

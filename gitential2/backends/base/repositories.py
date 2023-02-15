@@ -90,6 +90,7 @@ from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheUpdate,
     UserRepositoryCacheInDB,
     UserRepositoryCacheId,
+    UserRepositoryGroup,
 )
 
 
@@ -260,6 +261,10 @@ class UserRepositoriesCacheRepository(
     ) -> List[UserRepositoryCacheInDB]:
         pass
 
+    @abstractmethod
+    def get_repo_groups(self, user_id: int) -> List[UserRepositoryGroup]:
+        pass
+
 
 class UserITSProjectsCacheRepository(
     BaseRepository[UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, UserITSProjectCacheInDB]
@@ -317,6 +322,10 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
 
     @abstractmethod
     def delete_repos_by_id(self, workspace_id: int, repo_ids: List[int]):
+        pass
+
+    @abstractmethod
+    def get_repo_groups(self, workspace_id: int) -> List[UserRepositoryGroup]:
         pass
 
 
