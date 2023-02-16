@@ -1,7 +1,7 @@
 # pylint: skip-file
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
@@ -18,11 +18,13 @@ from gitential2.core.repositories import (
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.repositories import RepositoryCreate
 from ..dependencies import current_user, gitential_context
+from ...core.repositories_new import list_available_repositories_paginated
+from ...datatypes.user_repositories_cache import UserRepositoryGroup
 
 router = APIRouter(tags=["repositories"])
 
 
-@router.post("/workspaces/{workspace_id}/available-repo-groups")
+@router.post("/workspaces/{workspace_id}/available-repo-groups", response_model=List[UserRepositoryGroup])
 def available_repo_groups(
     workspace_id: int,
     current_user=Depends(current_user),
@@ -41,6 +43,34 @@ def available_repos(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return list_available_repositories(g, workspace_id, current_user.id, user_organization_name_list)
+
+
+@router.post("/workspaces/{workspace_id}/available-repos-paginated")
+def available_repos_paginated(
+    workspace_id: int,
+    limit: Optional[int] = Query(100, alias="limit"),
+    offset: Optional[int] = Query(0, alias="offset"),
+    user_organization_name_list: Optional[List[str]] = None,
+    integration_type: Optional[str] = Query(None, alias="integration_type"),
+    namespace: Optional[str] = Query(None, alias="namespace"),
+    credential_id: Optional[int] = Query(None, alias="credential_id"),
+    search: Optional[str] = Query(None, alias="search"),
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return list_available_repositories_paginated(
+        g=g,
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+        limit=limit,
+        offset=offset,
+        user_organization_name_list=user_organization_name_list,
+        integration_type=integration_type,
+        namespace=namespace,
+        credential_id=credential_id,
+        search=search,
+    )
 
 
 @router.get("/workspaces/{workspace_id}/search-public-repos")
