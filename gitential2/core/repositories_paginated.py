@@ -120,7 +120,7 @@ def __get_repos(
         else []
     )
 
-    total_count = rows[0]["count"] if is_list_not_empty(rows) else 0
+    total_count = rows[0]["total_count"] if is_list_not_empty(rows) else 0
 
     return total_count, repositories
 
@@ -159,11 +159,11 @@ def __get_query_of_get_repositories(
     get_repo_uuid = "CAST(r.extra::json -> 'uuid' AS TEXT)"
     get_repo_id = "CAST(r.extra::json -> 'id' AS TEXT)"
     repo_provider_id = f"COALESCE({get_repo_uuid}, {get_repo_id})"
-    repo_provider_id_trimmed = f"TRIM(BOTH '\"' FROM {repo_provider_id}) AS repo_provider_id, "
+    repo_provider_id_trimmed = f"TRIM(BOTH '\"' FROM {repo_provider_id})"
 
     query = (
-        "("
-        "    SELECT "
+        "WITH repo_selection AS "
+        "    (SELECT "
         "        clone_url, "
         "        repo_provider_id, "
         "        protocol, "
@@ -178,7 +178,7 @@ def __get_query_of_get_repositories(
         "    UNION "
         "    SELECT "
         "        clone_url, "
-        f"       {repo_provider_id_trimmed}"
+        f"       {repo_provider_id_trimmed} AS repo_provider_id, "
         "        protocol, "
         "        name, "
         "        namespace, "
@@ -187,11 +187,13 @@ def __get_query_of_get_repositories(
         "        integration_name, "
         "        credential_id "
         f"    FROM ws_{workspace_id}.repositories r "
-        f"       WHERE {filters}"
-        ") "
-        f"ORDER BY {order_by_option} {order_by_direction}"
-        f"LIMIT {limit} "
-        f"OFFSET {offset};"
+        f"       WHERE {filters})"
+        "SELECT * FROM ("
+        "    TABLE repo_selection"
+        f"   ORDER BY {order_by_option} {order_by_direction}"
+        f"   LIMIT {limit} "
+        f"   OFFSET {offset};"
+        "RIGHT JOIN (SELECT COUNT(*) FROM repo_selection) c(total_count) ON TRUE;"
     )
 
     return query
