@@ -5,6 +5,18 @@ from gitential2.datatypes.repositories import GitProtocol
 from .common import DateTimeModelMixin, ExtraFieldMixin, CoreModel
 
 
+class UserRepositoryPublic(CoreModel):
+    clone_url: str
+    repo_provider_id: str
+    protocol: GitProtocol
+    name: str = ""
+    namespace: str = ""
+    private: bool = False
+    integration_type: Optional[str] = None
+    integration_name: Optional[str] = None
+    credential_id: Optional[int] = None
+
+
 class UserRepositoryGroup(CoreModel):
     integration_type: Optional[str] = None
     namespace: Optional[str] = None

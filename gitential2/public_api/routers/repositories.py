@@ -18,7 +18,7 @@ from gitential2.core.repositories import (
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.repositories import RepositoryCreate
 from ..dependencies import current_user, gitential_context
-from ...core.repositories_new import list_available_repositories_paginated, OrderByOptions, OrderByDirections
+from ...core.repositories_paginated import list_available_repositories_paginated, OrderByOptions, OrderByDirections
 from ...datatypes.user_repositories_cache import UserRepositoryGroup
 
 router = APIRouter(tags=["repositories"])
