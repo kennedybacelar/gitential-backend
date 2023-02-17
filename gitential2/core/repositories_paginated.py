@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import partial
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 from dateutil.parser import parse as parse_date_str
 from sqlalchemy import exc
@@ -18,7 +18,7 @@ from .credentials import (
     list_credentials_for_workspace,
     get_update_token_callback,
 )
-from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB, UserRepositoryCacheCreate
+from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB, UserRepositoryCacheCreate, UserRepositoryPublic
 
 logger = get_logger(__name__)
 
@@ -50,7 +50,7 @@ def list_available_repositories_paginated(
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
-) -> List[RepositoryCreate]:
+) -> Tuple[int, List[UserRepositoryPublic]]:
     _refresh_repos_cache(g, workspace_id, user_id, user_organization_name_list)
     return __get_repos(
         g,
@@ -79,7 +79,7 @@ def __get_repos(
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
-):
+) -> Tuple[int, List[UserRepositoryPublic]]:
     query: str = __get_query_of_get_repositories(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -95,13 +95,34 @@ def __get_repos(
 
     try:
         logger.info("Executing query to get list of repositories paginated result.", query=query)
-        results = g.backend.execute_query(query)
+        rows = g.backend.execute_query(query)
     except exc.SQLAlchemyError as se:
         raise SettingsException(
             "Exception while trying to run query to get list of repositories paginated result!"
         ) from se
 
-    return results
+    repositories = (
+        [
+            UserRepositoryPublic(
+                clone_url=row["clone_url"],
+                repo_provider_id=row["repo_provider_id"],
+                protocol=row["protocol"],
+                name=row["name"],
+                namespace=row["namespace"],
+                private=row["private"],
+                integration_type=row["integration_type"],
+                integration_name=row["integration_name"],
+                credential_id=row["credential_id"],
+            )
+            for row in rows
+        ]
+        if is_list_not_empty(rows)
+        else []
+    )
+
+    total_count = rows[0]["count"] if is_list_not_empty(rows) else 0
+
+    return total_count, repositories
 
 
 def __get_query_of_get_repositories(
