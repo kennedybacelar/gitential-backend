@@ -18,7 +18,7 @@ from gitential2.core.repositories import (
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.repositories import RepositoryCreate
 from ..dependencies import current_user, gitential_context
-from ...core.repositories_new import list_available_repositories_paginated
+from ...core.repositories_new import list_available_repositories_paginated, OrderByOptions, OrderByDirections
 from ...datatypes.user_repositories_cache import UserRepositoryGroup
 
 router = APIRouter(tags=["repositories"])
@@ -45,16 +45,18 @@ def available_repos(
     return list_available_repositories(g, workspace_id, current_user.id, user_organization_name_list)
 
 
-@router.post("/workspaces/{workspace_id}/available-repos-paginated")
+@router.get("/workspaces/{workspace_id}/available-repos-paginated")
 def available_repos_paginated(
     workspace_id: int,
+    user_organization_name_list: Optional[List[str]] = Query(None, alias="userOrganizationNameList"),
     limit: Optional[int] = Query(100, alias="limit"),
     offset: Optional[int] = Query(0, alias="offset"),
-    user_organization_name_list: Optional[List[str]] = None,
-    integration_type: Optional[str] = Query(None, alias="integration_type"),
+    order_by_option: Optional[OrderByOptions] = Query(OrderByOptions.name, alias="sortingOption"),
+    order_by_direction: Optional[OrderByDirections] = Query(OrderByDirections.asc, alias="sortingDirection"),
+    integration_type: Optional[str] = Query(None, alias="integrationType"),
     namespace: Optional[str] = Query(None, alias="namespace"),
-    credential_id: Optional[int] = Query(None, alias="credential_id"),
-    search: Optional[str] = Query(None, alias="search"),
+    credential_id: Optional[int] = Query(None, alias="credentialId"),
+    search_pattern: Optional[str] = Query(None, alias="searchPattern"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
@@ -63,13 +65,15 @@ def available_repos_paginated(
         g=g,
         workspace_id=workspace_id,
         user_id=current_user.id,
+        user_organization_name_list=user_organization_name_list,
         limit=limit,
         offset=offset,
-        user_organization_name_list=user_organization_name_list,
+        order_by_option=order_by_option,
+        order_by_direction=order_by_direction,
         integration_type=integration_type,
         namespace=namespace,
         credential_id=credential_id,
-        search=search,
+        search_pattern=search_pattern,
     )
 
 

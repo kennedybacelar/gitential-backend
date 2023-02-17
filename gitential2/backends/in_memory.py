@@ -445,6 +445,9 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     #             )
     #     return ret
 
+    def execute_query(self, query):
+        pass
+
     def initialize(self):
         pass
 

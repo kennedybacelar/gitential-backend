@@ -438,7 +438,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             in_db_cls=DeployCommit,
         )
 
-    def _execute_query(self, query):
+    def execute_query(self, query):
         with self._engine.connect() as connection:
             result = connection.execute(query)
             return result

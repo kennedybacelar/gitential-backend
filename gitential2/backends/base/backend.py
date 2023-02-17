@@ -302,6 +302,10 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
+    def execute_query(self, query):
+        pass
+
+    @abstractmethod
     def initialize(self):
         pass
 

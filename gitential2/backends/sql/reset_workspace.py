@@ -44,7 +44,7 @@ def reset_workspace(engine: Engine, workspace_id: int):
             trans.commit()
         except exc.SQLAlchemyError as se:
             trans.rollback()
-            raise SettingsException("Exception in database migration!") from se
+            raise SettingsException("Exception while trying to run reset workspace query!") from se
     else:
         logger.exception(
             "Can not execute query for reset database!", query=reset_workspace_query, workspace_id=workspace_id
