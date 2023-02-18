@@ -140,7 +140,7 @@ def __get_query_of_get_repositories(
     def get_filter(column_name: str, filter_value: Union[str, int, None]):
         return f"{column_name} = '{filter_value}'" if filter_value else None
 
-    limit = limit if 0 < limit < 50 else 15
+    limit = limit if limit and 0 < limit < 50 else 15
     offset = offset if -1 < limit else 0
 
     name_filter = f"name ILIKE '{search_pattern}'" if is_string_not_empty(search_pattern) else None

@@ -1,7 +1,7 @@
 # pylint: skip-file
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
@@ -141,3 +141,14 @@ def project_repos(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return list_project_repositories(g, workspace_id, project_id=project_id)
+
+
+def _paginated_response(response: Response, result: Tuple[int, list], limit: int = 100, offset: int = 0):
+    total, items = result
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Current-Limit"] = str(limit)
+    response.headers["X-Current-Offset"] = str(offset)
+    response.headers["Access-Control-Expose-Headers"] = ", ".join(
+        ["X-Total-Count", "X-Current-Limit", "X-Current-Offset"]
+    )
+    return items
