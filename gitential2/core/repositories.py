@@ -46,7 +46,7 @@ class OrderByDirections(str, Enum):
 
 DEFAULT_REPOS_LIMIT: int = 15
 DEFAULT_REPOS_OFFSET: int = 0
-MAX_REPOS_LIMIT: int = 50
+MAX_REPOS_LIMIT: int = 100
 DEFAULT_REPOS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
 DEFAULT_REPOS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
 
@@ -161,7 +161,7 @@ def _get_user_repositories_by_query(
 
     try:
         logger.info("Executing query to get list of repositories paginated result.", query=query)
-        rows = g.backend.execute_query(query)
+        rows = g.backend.execute_query(query).all()
     except exc.SQLAlchemyError as se:
         raise SettingsException(
             "Exception while trying to run query to get list of repositories paginated result!"
@@ -203,21 +203,25 @@ def _get_query_of_get_repositories(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> str:
-    def get_filter(column_name: str, filter_value: Union[str, int, None]):
+    def get_filter(column_name: str, filter_value: Union[str, int, None]) -> Union[str, None]:
         return f"{column_name} = '{filter_value}'" if filter_value else None
 
-    name_filter = f"name ILIKE '{search_pattern}'" if is_string_not_empty(search_pattern) else None
-    integration_type_filter = get_filter("integration_type", integration_type)
-    namespace_filter = get_filter("namespace", namespace)
-    credential_id_filter = get_filter("credential_id", credential_id)
-
-    filters: str = " AND ".join(
-        [
-            f
-            for f in [name_filter, integration_type_filter, namespace_filter, credential_id_filter]
-            if is_string_not_empty(f)
-        ]
-    )
+    def get_filters(is_user_id: bool):
+        name_filter: Optional[str] = (
+            f"name ILIKE '{search_pattern.replace('%', '%%')}'" if is_string_not_empty(search_pattern) else None
+        )
+        integration_type_filter: Optional[str] = get_filter("integration_type", integration_type)
+        namespace_filter: Optional[str] = get_filter("namespace", namespace)
+        credential_id_filter: Optional[str] = get_filter("credential_id", credential_id)
+        user_id_filter: Optional[str] = f"user_id = {user_id}" if is_user_id else None
+        filters: str = " AND ".join(
+            [
+                f
+                for f in [name_filter, integration_type_filter, namespace_filter, credential_id_filter, user_id_filter]
+                if is_string_not_empty(f)
+            ]
+        )
+        return f"WHERE {filters}" if is_string_not_empty(filters) else ""
 
     get_repo_uuid = "CAST(r.extra::json -> 'uuid' AS TEXT)"
     get_repo_id = "CAST(r.extra::json -> 'id' AS TEXT)"
@@ -227,36 +231,38 @@ def _get_query_of_get_repositories(
     # noinspection SqlResolve
     query = (
         "WITH repo_selection AS "
-        "    (SELECT "
-        "        clone_url, "
-        "        repo_provider_id, "
-        "        protocol, "
-        "        name, "
-        "        namespace, "
-        "        private, "
-        "        integration_type, "
-        "        integration_name, "
-        "        credential_id "
-        "    FROM public.user_repositories_cache "
-        f"       WHERE {filters} AND user_id = {user_id}"
-        "    UNION "
-        "    SELECT "
-        "        clone_url, "
-        f"       {repo_provider_id_trimmed} AS repo_provider_id, "
-        "        protocol, "
-        "        name, "
-        "        namespace, "
-        "        private, "
-        "        integration_type, "
-        "        integration_name, "
-        "        credential_id "
-        f"    FROM ws_{workspace_id}.repositories r "
-        f"       WHERE {filters})"
+        "    ("
+        "        SELECT "
+        "            clone_url, "
+        "            repo_provider_id, "
+        "            protocol, "
+        "            name, "
+        "            namespace, "
+        "            private, "
+        "            integration_type, "
+        "            integration_name, "
+        "            credential_id "
+        "        FROM public.user_repositories_cache "
+        f"           {get_filters(True)} "
+        "        UNION "
+        "        SELECT "
+        "            clone_url, "
+        f"           {repo_provider_id_trimmed} AS repo_provider_id, "
+        "            protocol, "
+        "            name, "
+        "            namespace, "
+        "            private, "
+        "            integration_type, "
+        "            integration_name, "
+        "            credential_id "
+        f"        FROM ws_{workspace_id}.repositories r "
+        f"           {get_filters(False)} "
+        "    )"
         "SELECT * FROM ("
-        "    TABLE repo_selection"
-        f"   ORDER BY {order_by_option} {order_by_direction}"
+        "    TABLE repo_selection "
+        f"   ORDER BY {order_by_option} {order_by_direction} "
         f"   LIMIT {limit} "
-        f"   OFFSET {offset};"
+        f"   OFFSET {offset}) sub "
         "RIGHT JOIN (SELECT COUNT(*) FROM repo_selection) c(total_count) ON TRUE;"
     )
 
