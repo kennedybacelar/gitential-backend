@@ -56,6 +56,8 @@ def available_repos(
 def available_repos_paginated(
     response: Response,
     workspace_id: int,
+    refresh_cache: Optional[bool] = Query(False, alias="refreshCache"),
+    force_refresh_cache: Optional[bool] = Query(False, alias="forceRefreshCache"),
     user_organization_name_list: Optional[List[str]] = Query(None, alias="userOrganizationNameList"),
     limit: Optional[int] = Query(DEFAULT_REPOS_LIMIT, alias="limit"),
     offset: Optional[int] = Query(DEFAULT_REPOS_OFFSET, alias="offset"),
@@ -74,6 +76,8 @@ def available_repos_paginated(
         g=g,
         workspace_id=workspace_id,
         user_id=current_user.id,
+        refresh_cache=refresh_cache,
+        force_refresh_cache=force_refresh_cache,
         user_organization_name_list=user_organization_name_list,
         limit=limit,
         offset=offset,

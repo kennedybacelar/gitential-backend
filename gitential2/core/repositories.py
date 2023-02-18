@@ -92,7 +92,7 @@ def get_available_repositories_for_user_credentials(
     user_id: int,
     user_organization_name_list: Optional[List[str]],
 ) -> List[RepositoryCreate]:
-    _refresh_repos_cache(g, workspace_id, user_id, user_organization_name_list)
+    _refresh_repos_cache(g, workspace_id, user_id, False, False, user_organization_name_list)
     repos_from_cache = _get_repos_cache(g, user_id)
     return repos_from_cache
 
@@ -101,6 +101,8 @@ def get_all_user_repositories_paginated(
     g: GitentialContext,
     workspace_id: int,
     user_id: int,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
     user_organization_name_list: Optional[List[str]] = None,
     limit: Optional[int] = DEFAULT_REPOS_LIMIT,
     offset: Optional[int] = DEFAULT_REPOS_OFFSET,
@@ -111,7 +113,14 @@ def get_all_user_repositories_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[UserRepositoryPublic]]:
-    _refresh_repos_cache(g, workspace_id, user_id, user_organization_name_list)
+    _refresh_repos_cache(
+        g=g,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        user_organization_name_list=user_organization_name_list,
+        refresh_cache=refresh_cache or False,
+        force_refresh_cache=force_refresh_cache or False,
+    )
 
     limit = limit if limit and 0 < limit < MAX_REPOS_LIMIT else DEFAULT_REPOS_LIMIT
     offset = offset if offset and -1 < offset else DEFAULT_REPOS_OFFSET
@@ -273,11 +282,19 @@ def _refresh_repos_cache(
     g: GitentialContext,
     workspace_id: int,
     user_id: int,
+    refresh_cache: bool,
+    force_refresh_cache: bool,
     user_organization_name_list: Optional[List[str]],
 ):
     credentials_for_workspace: List[CredentialInDB] = list_credentials_for_workspace(g, workspace_id)
     repos_for_credential = partial(
-        _refresh_repos_cache_for_credential, g, workspace_id, user_id, user_organization_name_list
+        _refresh_repos_cache_for_credential,
+        g,
+        workspace_id,
+        user_id,
+        refresh_cache,
+        force_refresh_cache,
+        user_organization_name_list,
     )
     with ThreadPoolExecutor() as executor:
         executor.map(repos_for_credential, credentials_for_workspace)
@@ -287,6 +304,8 @@ def _refresh_repos_cache_for_credential(
     g: GitentialContext,
     workspace_id: int,
     user_id: int,
+    refresh_cache: bool,
+    force_refresh_cache: bool,
     user_organization_name_list: Optional[List[str]],
     credential: CredentialInDB,
 ):
@@ -307,12 +326,16 @@ def _refresh_repos_cache_for_credential(
                     else None
                 )
 
-                refresh = _get_repos_last_refresh_date(
-                    g=g, user_id=user_id, integration_type=credential.integration_type
+                refresh = (
+                    _get_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
+                    if not refresh_cache and not force_refresh_cache
+                    else None
                 )
-                if isinstance(refresh, datetime):
+                if (isinstance(refresh, datetime) or refresh_cache) and not force_refresh_cache:
                     # If the last refresh date older than 1 day -> get new repos since last refresh date
-                    if (g.current_time() - timedelta(days=1)) > refresh:
+                    if refresh_cache or (
+                        isinstance(refresh, datetime) and (g.current_time() - timedelta(days=1)) > refresh
+                    ):
                         repos_newly_created: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
                             token=token,
                             update_token=get_update_token_callback(g, credential),
