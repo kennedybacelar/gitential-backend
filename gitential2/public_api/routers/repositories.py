@@ -1,12 +1,12 @@
 # pylint: skip-file
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
 
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
 from gitential2.core.repositories import (
-    list_available_repositories,
+    get_all_user_repositories,
     search_public_repositories,
     get_repository,
     list_repositories,
@@ -14,19 +14,17 @@ from gitential2.core.repositories import (
     delete_repositories,
     list_project_repositories,
     list_available_repo_groups,
-)
-from gitential2.datatypes.permissions import Entity, Action
-from gitential2.datatypes.repositories import RepositoryCreate
-from ..dependencies import current_user, gitential_context
-from ...core.repositories_paginated import (
-    list_available_repositories_paginated,
-    OrderByOptions,
-    OrderByDirections,
+    get_all_user_repositories_paginated,
     DEFAULT_REPOS_LIMIT,
     DEFAULT_REPOS_OFFSET,
     DEFAULT_REPOS_ORDER_BY_OPTION,
     DEFAULT_REPOS_ORDER_BY_DIRECTION,
+    OrderByDirections,
+    OrderByOptions,
 )
+from gitential2.datatypes.permissions import Entity, Action
+from gitential2.datatypes.repositories import RepositoryCreate
+from ..dependencies import current_user, gitential_context
 from ...datatypes.user_repositories_cache import UserRepositoryGroup
 from ...utils.router_utils import get_paginated_response
 
@@ -51,7 +49,7 @@ def available_repos(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return list_available_repositories(g, workspace_id, current_user.id, user_organization_name_list)
+    return get_all_user_repositories(g, workspace_id, current_user.id, user_organization_name_list)
 
 
 @router.get("/workspaces/{workspace_id}/available-repos-paginated")
@@ -72,7 +70,7 @@ def available_repos_paginated(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
 
-    total_count, limit, offset, repositories = list_available_repositories_paginated(
+    total_count, limit, offset, repositories = get_all_user_repositories_paginated(
         g=g,
         workspace_id=workspace_id,
         user_id=current_user.id,
