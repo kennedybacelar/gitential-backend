@@ -150,8 +150,8 @@ from ..base import GitentialBackend
 from ..base.mixins import WithRepositoriesMixin
 from ...datatypes.charts import ChartInDB
 from ...datatypes.dashboards import DashboardInDB
-from ...datatypes.user_its_projects_cache import UserITSProjectCacheInDB
 from ...datatypes.thumbnails import ThumbnailInDB
+from ...datatypes.user_its_projects_cache import UserITSProjectCacheInDB
 from ...datatypes.user_repositories_cache import UserRepositoryCacheInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
 from ...utils import get_schema_name

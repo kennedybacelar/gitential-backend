@@ -21,6 +21,7 @@ from gitential2.core.repositories import (
     DEFAULT_REPOS_ORDER_BY_DIRECTION,
     OrderByDirections,
     OrderByOptions,
+    refresh_cache_of_repositories_for_user_or_users,
 )
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.repositories import RepositoryCreate
@@ -50,6 +51,18 @@ def available_repos(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return get_all_user_repositories(g, workspace_id, current_user.id, user_organization_name_list)
+
+
+@router.post("/workspaces/{workspace_id}/refresh-repos-cache")
+def refresh_repos_cache(
+    workspace_id: int,
+    is_every_user: Optional[bool] = Query(False, alias="isEveryUser"),
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.user, Action.update, workspace_id=workspace_id)
+    refresh_cache_of_repositories_for_user_or_users(g=g, user_id=None if is_every_user else current_user.id)
+    return True
 
 
 @router.get("/workspaces/{workspace_id}/available-repos-paginated")

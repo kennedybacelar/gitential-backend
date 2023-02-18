@@ -146,7 +146,11 @@ class ExtractionSettings(BaseModel):
 
 
 class RefreshSettings(BaseModel):
-    hourly_maintenance_enabled: bool = True
+    scheduled_maintenance_enabled: bool = True
+    scheduled_maintenance_days_of_week: str = "5"  # https://docs.celeryq.dev/en/stable/reference/celery.schedules.html
+    scheduled_maintenance_hour_of_day: int = 23
+    scheduled_repo_cache_refresh_enabled: bool = False
+    scheduled_repo_cache_refresh_hour_of_day: str = "*/3"
     interval_minutes: int = 60 * 24
 
 
@@ -182,6 +186,8 @@ class FeaturesSettings(BaseModel):
     enable_resellers: bool = False
     access_approval: AccessApprovalSettings = AccessApprovalSettings()
     enable_scheduled_data_cleanup: bool = False
+    scheduled_data_cleanup_days_of_week: str = "5"
+    scheduled_data_cleanup_hour_of_day: int = 23
 
 
 class ResellerSettings(BaseModel):

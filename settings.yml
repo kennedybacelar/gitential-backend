@@ -6,6 +6,12 @@ extraction:
   executor: process_pool
 #  repo_analysis_limit_in_days: 90
 #  its_project_analysis_limit_in_days: 90
+refresh:
+  scheduled_maintenance_enabled: true
+  scheduled_maintenance_days_of_week: "5" # https://docs.celeryq.dev/en/stable/reference/celery.schedules.html
+  scheduled_maintenance_hour_of_day: 23
+  scheduled_repo_cache_refresh_enabled: false
+  scheduled_repo_cache_refresh_hour_of_day: "*/3"
 auto_export:
   start_auto_export: false
 web:
@@ -46,6 +52,8 @@ features:
   enable_resellers: true
   enable_its_analytics: true
   enable_scheduled_data_cleanup: false
+  scheduled_data_cleanup_days_of_week: "5" # https://docs.celeryq.dev/en/stable/reference/celery.schedules.html
+  scheduled_data_cleanup_hour_of_day: 23
 resellers:
   - reseller_id: appsumo
     short_name: AppSumo

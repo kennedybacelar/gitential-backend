@@ -18,6 +18,7 @@ from .credentials import (
     get_fresh_credential,
     list_credentials_for_workspace,
     get_update_token_callback,
+    list_credentials_for_user,
 )
 from ..datatypes.user_repositories_cache import (
     UserRepositoryCacheInDB,
@@ -92,7 +93,7 @@ def get_available_repositories_for_user_credentials(
     user_id: int,
     user_organization_name_list: Optional[List[str]],
 ) -> List[RepositoryCreate]:
-    _refresh_repos_cache(g, workspace_id, user_id, False, False, user_organization_name_list)
+    refresh_repos_cache_for_user(g, user_id, workspace_id, False, False, user_organization_name_list)
     repos_from_cache = _get_repos_cache(g, user_id)
     return repos_from_cache
 
@@ -113,7 +114,7 @@ def get_all_user_repositories_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[UserRepositoryPublic]]:
-    _refresh_repos_cache(
+    refresh_repos_cache_for_user(
         g=g,
         workspace_id=workspace_id,
         user_id=user_id,
@@ -278,31 +279,58 @@ def _get_query_of_get_repositories(
     return query
 
 
-def _refresh_repos_cache(
+def refresh_cache_of_repositories_for_user_or_users(g: GitentialContext, user_id: Optional[int] = None):
+    if user_id:
+        user_ids: List[int] = [u.id for u in g.backend.users.all()]
+        user_ids_success: List[int] = []
+        for uid in user_ids:
+            result = refresh_repos_cache_for_user(g=g, user_id=uid, refresh_cache=True)
+            if result:
+                user_ids_success.append(uid)
+        logger.info("refresh_repo_cache_for_every_user ended", user_ids_success=user_ids_success)
+    else:
+        refresh_repos_cache_for_user(g=g, user_id=user_id, refresh_cache=True)  # type: ignore
+
+
+def refresh_repos_cache_for_user(
     g: GitentialContext,
-    workspace_id: int,
     user_id: int,
-    refresh_cache: bool,
-    force_refresh_cache: bool,
-    user_organization_name_list: Optional[List[str]],
-):
-    credentials_for_workspace: List[CredentialInDB] = list_credentials_for_workspace(g, workspace_id)
+    workspace_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
+    user_organization_name_list: Optional[List[str]] = None,
+) -> bool:
+    logger.info(
+        "Starting to refresh repos cache for user.",
+        user_id=user_id,
+        refresh_cache=refresh_cache,
+        force_refresh_cache=force_refresh_cache,
+        user_organization_name_list=user_organization_name_list,
+    )
+
+    # Just needed because of the mypy check.
+    refresh_cache_c = refresh_cache or False
+    force_refresh_cache_c = force_refresh_cache or False
+
+    credentials_for_user: List[CredentialInDB] = (
+        list_credentials_for_workspace(g, workspace_id) if workspace_id else list_credentials_for_user(g, user_id)
+    )
     repos_for_credential = partial(
         _refresh_repos_cache_for_credential,
         g,
-        workspace_id,
         user_id,
-        refresh_cache,
-        force_refresh_cache,
+        refresh_cache_c,
+        force_refresh_cache_c,
         user_organization_name_list,
     )
     with ThreadPoolExecutor() as executor:
-        executor.map(repos_for_credential, credentials_for_workspace)
+        executor.map(repos_for_credential, credentials_for_user)
+
+    return True
 
 
 def _refresh_repos_cache_for_credential(
     g: GitentialContext,
-    workspace_id: int,
     user_id: int,
     refresh_cache: bool,
     force_refresh_cache: bool,
@@ -383,7 +411,7 @@ def _refresh_repos_cache_for_credential(
                 "Error during collecting repositories",
                 integration_name=credential.integration_name,
                 credential_id=credential.id,
-                workspace_id=workspace_id,
+                user_id=user_id,
             )
 
 
