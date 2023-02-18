@@ -40,6 +40,8 @@ class OrderByDirections(str, Enum):
 DEFAULT_REPOS_LIMIT: int = 15
 DEFAULT_REPOS_OFFSET: int = 0
 MAX_REPOS_LIMIT: int = 50
+DEFAULT_REPOS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
+DEFAULT_REPOS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
 
 
 def list_available_repositories_paginated(
@@ -49,8 +51,8 @@ def list_available_repositories_paginated(
     user_organization_name_list: Optional[List[str]] = None,
     limit: Optional[int] = DEFAULT_REPOS_LIMIT,
     offset: Optional[int] = DEFAULT_REPOS_OFFSET,
-    order_by_option: Optional[OrderByOptions] = OrderByOptions.name,
-    order_by_direction: Optional[OrderByDirections] = OrderByDirections.asc,
+    order_by_option: Optional[OrderByOptions] = DEFAULT_REPOS_ORDER_BY_OPTION,
+    order_by_direction: Optional[OrderByDirections] = DEFAULT_REPOS_ORDER_BY_DIRECTION,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,

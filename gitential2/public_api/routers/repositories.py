@@ -18,7 +18,15 @@ from gitential2.core.repositories import (
 from gitential2.datatypes.permissions import Entity, Action
 from gitential2.datatypes.repositories import RepositoryCreate
 from ..dependencies import current_user, gitential_context
-from ...core.repositories_paginated import list_available_repositories_paginated, OrderByOptions, OrderByDirections
+from ...core.repositories_paginated import (
+    list_available_repositories_paginated,
+    OrderByOptions,
+    OrderByDirections,
+    DEFAULT_REPOS_LIMIT,
+    DEFAULT_REPOS_OFFSET,
+    DEFAULT_REPOS_ORDER_BY_OPTION,
+    DEFAULT_REPOS_ORDER_BY_DIRECTION,
+)
 from ...datatypes.user_repositories_cache import UserRepositoryGroup
 from ...utils.router_utils import get_paginated_response
 
@@ -51,10 +59,10 @@ def available_repos_paginated(
     response: Response,
     workspace_id: int,
     user_organization_name_list: Optional[List[str]] = Query(None, alias="userOrganizationNameList"),
-    limit: Optional[int] = Query(15, alias="limit"),
-    offset: Optional[int] = Query(0, alias="offset"),
-    order_by_option: Optional[OrderByOptions] = Query(OrderByOptions.name, alias="sortingOption"),
-    order_by_direction: Optional[OrderByDirections] = Query(OrderByDirections.asc, alias="sortingDirection"),
+    limit: Optional[int] = Query(DEFAULT_REPOS_LIMIT, alias="limit"),
+    offset: Optional[int] = Query(DEFAULT_REPOS_OFFSET, alias="offset"),
+    order_by_option: Optional[OrderByOptions] = Query(DEFAULT_REPOS_ORDER_BY_OPTION, alias="sortingOption"),
+    order_by_direction: Optional[OrderByDirections] = Query(DEFAULT_REPOS_ORDER_BY_DIRECTION, alias="sortingDirection"),
     integration_type: Optional[str] = Query(None, alias="integrationType"),
     namespace: Optional[str] = Query(None, alias="namespace"),
     credential_id: Optional[int] = Query(None, alias="credentialId"),
