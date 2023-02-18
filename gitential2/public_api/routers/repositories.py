@@ -20,6 +20,7 @@ from gitential2.datatypes.repositories import RepositoryCreate
 from ..dependencies import current_user, gitential_context
 from ...core.repositories_paginated import list_available_repositories_paginated, OrderByOptions, OrderByDirections
 from ...datatypes.user_repositories_cache import UserRepositoryGroup
+from ...utils.router_utils import get_paginated_response
 
 router = APIRouter(tags=["repositories"])
 
@@ -47,9 +48,10 @@ def available_repos(
 
 @router.get("/workspaces/{workspace_id}/available-repos-paginated")
 def available_repos_paginated(
+    response: Response,
     workspace_id: int,
     user_organization_name_list: Optional[List[str]] = Query(None, alias="userOrganizationNameList"),
-    limit: Optional[int] = Query(100, alias="limit"),
+    limit: Optional[int] = Query(15, alias="limit"),
     offset: Optional[int] = Query(0, alias="offset"),
     order_by_option: Optional[OrderByOptions] = Query(OrderByOptions.name, alias="sortingOption"),
     order_by_direction: Optional[OrderByDirections] = Query(OrderByDirections.asc, alias="sortingDirection"),
@@ -61,7 +63,8 @@ def available_repos_paginated(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return list_available_repositories_paginated(
+
+    total_count, limit, offset, repositories = list_available_repositories_paginated(
         g=g,
         workspace_id=workspace_id,
         user_id=current_user.id,
@@ -74,6 +77,14 @@ def available_repos_paginated(
         namespace=namespace,
         credential_id=credential_id,
         search_pattern=search_pattern,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=repositories,
+        total_count=total_count,
+        limit=limit,
+        offset=offset,
     )
 
 
@@ -141,14 +152,3 @@ def project_repos(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return list_project_repositories(g, workspace_id, project_id=project_id)
-
-
-def _paginated_response(response: Response, result: Tuple[int, list], limit: int = 100, offset: int = 0):
-    total, items = result
-    response.headers["X-Total-Count"] = str(total)
-    response.headers["X-Current-Limit"] = str(limit)
-    response.headers["X-Current-Offset"] = str(offset)
-    response.headers["Access-Control-Expose-Headers"] = ", ".join(
-        ["X-Total-Count", "X-Current-Limit", "X-Current-Offset"]
-    )
-    return items

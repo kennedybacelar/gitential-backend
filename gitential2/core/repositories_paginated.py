@@ -37,50 +37,61 @@ class OrderByDirections(str, Enum):
     desc = "DESC"
 
 
+DEFAULT_REPOS_LIMIT: int = 15
+DEFAULT_REPOS_OFFSET: int = 0
+MAX_REPOS_LIMIT: int = 50
+
+
 def list_available_repositories_paginated(
     g: GitentialContext,
     workspace_id: int,
     user_id: int,
     user_organization_name_list: Optional[List[str]] = None,
-    limit: Optional[int] = 15,
-    offset: Optional[int] = 0,
+    limit: Optional[int] = DEFAULT_REPOS_LIMIT,
+    offset: Optional[int] = DEFAULT_REPOS_OFFSET,
     order_by_option: Optional[OrderByOptions] = OrderByOptions.name,
     order_by_direction: Optional[OrderByDirections] = OrderByDirections.asc,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
-) -> Tuple[int, List[UserRepositoryPublic]]:
+) -> Tuple[int, int, int, List[UserRepositoryPublic]]:
     _refresh_repos_cache(g, workspace_id, user_id, user_organization_name_list)
-    return __get_repos(
-        g,
-        workspace_id,
-        user_id,
-        limit,
-        offset,
-        order_by_option,
-        order_by_direction,
-        integration_type,
-        namespace,
-        credential_id,
-        search_pattern,
+
+    limit = limit if limit and 0 < limit < MAX_REPOS_LIMIT else DEFAULT_REPOS_LIMIT
+    offset = offset if offset and -1 < offset else DEFAULT_REPOS_OFFSET
+
+    total_count, repositories = _get_repos(
+        g=g,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        order_by_option=order_by_option or OrderByOptions.name,
+        order_by_direction=order_by_direction or OrderByDirections.asc,
+        integration_type=integration_type,
+        namespace=namespace,
+        credential_id=credential_id,
+        search_pattern=search_pattern,
     )
 
+    return total_count, limit, offset, repositories
 
-def __get_repos(
+
+def _get_repos(
     g: GitentialContext,
     workspace_id: int,
     user_id: int,
-    limit: Optional[int] = 15,
-    offset: Optional[int] = 0,
-    order_by_option: Optional[OrderByOptions] = OrderByOptions.name,
-    order_by_direction: Optional[OrderByDirections] = OrderByDirections.asc,
+    limit: int,
+    offset: int,
+    order_by_option: OrderByOptions,
+    order_by_direction: OrderByDirections,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, List[UserRepositoryPublic]]:
-    query: str = __get_query_of_get_repositories(
+    query: str = _get_query_of_get_repositories(
         workspace_id=workspace_id,
         user_id=user_id,
         limit=limit,
@@ -125,13 +136,13 @@ def __get_repos(
     return total_count, repositories
 
 
-def __get_query_of_get_repositories(
+def _get_query_of_get_repositories(
     workspace_id: int,
     user_id: int,
-    limit: Optional[int] = 15,
-    offset: Optional[int] = 0,
-    order_by_option: Optional[OrderByOptions] = OrderByOptions.name,
-    order_by_direction: Optional[OrderByDirections] = OrderByDirections.asc,
+    limit: int,
+    offset: int,
+    order_by_option: OrderByOptions,
+    order_by_direction: OrderByDirections,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
@@ -139,9 +150,6 @@ def __get_query_of_get_repositories(
 ) -> str:
     def get_filter(column_name: str, filter_value: Union[str, int, None]):
         return f"{column_name} = '{filter_value}'" if filter_value else None
-
-    limit = limit if limit and 0 < limit < 50 else 15
-    offset = offset if -1 < limit else 0
 
     name_filter = f"name ILIKE '{search_pattern}'" if is_string_not_empty(search_pattern) else None
     integration_type_filter = get_filter("integration_type", integration_type)
