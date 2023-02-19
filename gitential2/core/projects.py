@@ -1,5 +1,8 @@
 from typing import List, Optional
+
 from structlog import get_logger
+
+from gitential2.core.legacy import get_devs_assigned_to_active_repos
 from gitential2.datatypes.projects import (
     ProjectInDB,
     ProjectCreate,
@@ -9,10 +12,8 @@ from gitential2.datatypes.projects import (
 )
 from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate  # , RepositoryStatus
 from gitential2.datatypes.sprints import Sprint
-
-from gitential2.core.legacy import get_devs_assigned_to_active_repos
-from .refresh_v2 import refresh_project
 from .context import GitentialContext
+from .refresh_v2 import refresh_project
 from ..datatypes.its_projects import ITSProjectUpdate, ITSProjectCreate, ITSProjectInDB
 
 logger = get_logger(__name__)

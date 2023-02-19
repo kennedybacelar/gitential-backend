@@ -79,11 +79,19 @@ from .repositories_base import BaseRepository, BaseWorkspaceScopedRepository
 from ...datatypes.charts import ChartCreate, ChartUpdate, ChartInDB
 from ...datatypes.dashboards import DashboardInDB, DashboardCreate, DashboardUpdate
 from ...datatypes.thumbnails import ThumbnailCreate, ThumbnailUpdate, ThumbnailInDB
+from ...datatypes.user_its_projects_cache import (
+    UserITSProjectCacheId,
+    UserITSProjectCacheCreate,
+    UserITSProjectCacheUpdate,
+    UserITSProjectCacheInDB,
+    UserITSProjectGroup,
+)
 from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheCreate,
     UserRepositoryCacheUpdate,
     UserRepositoryCacheInDB,
     UserRepositoryCacheId,
+    UserRepositoryGroup,
 )
 
 
@@ -254,6 +262,32 @@ class UserRepositoriesCacheRepository(
     ) -> List[UserRepositoryCacheInDB]:
         pass
 
+    @abstractmethod
+    def get_repo_groups(self, user_id: int) -> List[UserRepositoryGroup]:
+        pass
+
+
+class UserITSProjectsCacheRepository(
+    BaseRepository[UserITSProjectCacheId, UserITSProjectCacheCreate, UserITSProjectCacheUpdate, UserITSProjectCacheInDB]
+):
+    @abstractmethod
+    def get_all_its_project_for_user(self, user_id: int) -> List[UserITSProjectCacheInDB]:
+        pass
+
+    @abstractmethod
+    def insert_its_project_cache_for_user(self, itsp: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
+        pass
+
+    @abstractmethod
+    def insert_its_projects_cache_for_user(
+        self, its_projects: List[UserITSProjectCacheCreate]
+    ) -> List[UserITSProjectCacheInDB]:
+        pass
+
+    @abstractmethod
+    def get_its_project_groups(self, user_id: int) -> List[UserITSProjectGroup]:
+        pass
+
 
 class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, ProjectUpdate, ProjectInDB]):
     @abstractmethod
@@ -295,6 +329,10 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
     def delete_repos_by_id(self, workspace_id: int, repo_ids: List[int]):
         pass
 
+    @abstractmethod
+    def get_repo_groups(self, workspace_id: int) -> List[UserRepositoryGroup]:
+        pass
+
 
 class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]):
     @abstractmethod
@@ -316,6 +354,10 @@ class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, 
 
     @abstractmethod
     def delete_its_projects_by_id(self, workspace_id: int, its_project_ids: List[int]):
+        pass
+
+    @abstractmethod
+    def get_its_project_groups(self, workspace_id: int) -> List[UserITSProjectGroup]:
         pass
 
 

@@ -288,6 +288,26 @@ user_repositories_cache_table = sa.Table(
 )
 
 
+user_its_projects_cache_table = sa.Table(
+    "user_its_projects_cache",
+    metadata,
+    sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
+    sa.Column("api_url", sa.String(256), nullable=False, unique=True),
+    sa.Column("name", sa.String(128)),
+    sa.Column("namespace", sa.String(128)),
+    sa.Column("private", sa.Boolean, nullable=False, default=True),
+    sa.Column("key", sa.String(128), nullable=True),
+    sa.Column("integration_type", sa.String(128), nullable=False),
+    sa.Column("integration_name", sa.String(128), nullable=False),
+    sa.Column("integration_id", sa.String(128), nullable=False),
+    sa.Column("credential_id", sa.Integer, nullable=True),
+    sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
+    sa.Column("extra", sa.JSON, nullable=True),
+    sa.PrimaryKeyConstraint("user_id", "integration_id", "integration_type"),
+)
+
+
 # pylint: disable=unused-variable,too-many-locals
 def get_workspace_metadata(schema: Optional[str] = None):
     metadata = sa.MetaData(schema=schema)
@@ -332,9 +352,9 @@ def get_workspace_metadata(schema: Optional[str] = None):
         sa.Column("namespace", sa.String(128)),
         sa.Column("private", sa.Boolean, nullable=False, default=True),
         sa.Column("key", sa.String(128), nullable=True),
-        sa.Column("integration_type", sa.String(64), nullable=True),
-        sa.Column("integration_name", sa.String(64), nullable=True),
-        sa.Column("integration_id", sa.String(128), nullable=True),
+        sa.Column("integration_type", sa.String(128), nullable=False),
+        sa.Column("integration_name", sa.String(128), nullable=False),
+        sa.Column("integration_id", sa.String(128), nullable=False),
         sa.Column("credential_id", sa.Integer, nullable=True),
         sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
         sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),

@@ -1,16 +1,15 @@
-from typing import List, Optional, Tuple
 from datetime import datetime
-from structlog import get_logger
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
+from structlog import get_logger
 
-from gitential2.datatypes.permissions import Entity, Action
-from gitential2.core.context import GitentialContext
 from gitential2.core.commits_and_prs import get_commits, get_patches_for_commit, get_pull_requests
-
+from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
-
+from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import gitential_context, current_user
+from ...utils.router_utils import get_paginated_response
 
 logger = get_logger(__name__)
 
@@ -57,21 +56,25 @@ def commits_repo_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return _paginated_response(
-        response,
-        get_commits(
-            g,
-            workspace_id=workspace_id,
-            repo_ids=[repo_id],
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            author_ids=developer_ids,
-            is_merge=is_merge,
-            keywords=keywords,
-            limit=limit,
-            offset=offset,
-        ),
+
+    total_count, commits = get_commits(
+        g,
+        workspace_id=workspace_id,
+        repo_ids=[repo_id],
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
+        author_ids=developer_ids,
+        is_merge=is_merge,
+        keywords=keywords,
+        limit=limit,
+        offset=offset,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=commits,
+        total_count=total_count,
         limit=limit,
         offset=offset,
     )
@@ -91,18 +94,22 @@ def commits_workspace_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return _paginated_response(
-        response,
-        get_commits(
-            g,
-            workspace_id=workspace_id,
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            is_merge=is_merge,
-            limit=limit,
-            offset=offset,
-        ),
+
+    total_count, commits = get_commits(
+        g,
+        workspace_id=workspace_id,
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
+        is_merge=is_merge,
+        limit=limit,
+        offset=offset,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=commits,
+        total_count=total_count,
         limit=limit,
         offset=offset,
     )
@@ -126,23 +133,26 @@ def commits_project_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    print(keywords)
-    return _paginated_response(
-        response,
-        get_commits(
-            g,
-            workspace_id=workspace_id,
-            project_id=project_id,
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            author_ids=developer_ids,
-            is_merge=is_merge,
-            keywords=keywords,
-            limit=limit,
-            offset=offset,
-            repo_ids=repo_ids,
-        ),
+
+    total_count, commits = get_commits(
+        g,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
+        author_ids=developer_ids,
+        is_merge=is_merge,
+        keywords=keywords,
+        limit=limit,
+        offset=offset,
+        repo_ids=repo_ids,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=commits,
+        total_count=total_count,
         limit=limit,
         offset=offset,
     )
@@ -163,19 +173,23 @@ def commits_team_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return _paginated_response(
-        response,
-        get_commits(
-            g,
-            workspace_id=workspace_id,
-            team_id=team_id,
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            is_merge=is_merge,
-            limit=limit,
-            offset=offset,
-        ),
+
+    total_count, commits = get_commits(
+        g,
+        workspace_id=workspace_id,
+        team_id=team_id,
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
+        is_merge=is_merge,
+        limit=limit,
+        offset=offset,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=commits,
+        total_count=total_count,
         limit=limit,
         offset=offset,
     )
@@ -195,18 +209,22 @@ def prs_repo_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return _paginated_response(
-        response,
-        get_pull_requests(
-            g,
-            workspace_id=workspace_id,
-            repo_ids=[repo_id],
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            limit=limit,
-            offset=offset,
-        ),
+
+    total_count, pull_requests = get_pull_requests(
+        g,
+        workspace_id=workspace_id,
+        repo_ids=[repo_id],
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
+        limit=limit,
+        offset=offset,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=pull_requests,
+        total_count=total_count,
         limit=limit,
         offset=offset,
     )
@@ -227,19 +245,23 @@ def prs_project_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return _paginated_response(
-        response,
-        get_pull_requests(
-            g,
-            workspace_id=workspace_id,
-            project_id=project_id,
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            limit=limit,
-            offset=offset,
-            repo_ids=repo_ids,
-        ),
+
+    total_count, pull_requests = get_pull_requests(
+        g,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
+        limit=limit,
+        offset=offset,
+        repo_ids=repo_ids,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=pull_requests,
+        total_count=total_count,
         limit=limit,
         offset=offset,
     )
@@ -259,18 +281,22 @@ def prs_team_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return _paginated_response(
-        response,
-        get_pull_requests(
-            g,
-            workspace_id=workspace_id,
-            team_id=team_id,
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            limit=limit,
-            offset=offset,
-        ),
+
+    total_count, pull_requests = get_pull_requests(
+        g,
+        workspace_id=workspace_id,
+        team_id=team_id,
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
+        limit=limit,
+        offset=offset,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=pull_requests,
+        total_count=total_count,
         limit=limit,
         offset=offset,
     )
@@ -289,28 +315,21 @@ def prs_workspace_level(
     offset: int = 0,
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return _paginated_response(
-        response,
-        get_pull_requests(
-            g,
-            workspace_id=workspace_id,
-            from_=_convert_to_datetime(from_),
-            to_=_convert_to_datetime(to_, eod=True),
-            developer_id=developer_id,
-            limit=limit,
-            offset=offset,
-        ),
+
+    total_count, pull_requests = get_pull_requests(
+        g,
+        workspace_id=workspace_id,
+        from_=_convert_to_datetime(from_),
+        to_=_convert_to_datetime(to_, eod=True),
+        developer_id=developer_id,
         limit=limit,
         offset=offset,
     )
 
-
-def _paginated_response(response: Response, result: Tuple[int, list], limit: int = 100, offset: int = 0):
-    total, items = result
-    response.headers["X-Total-Count"] = str(total)
-    response.headers["X-Current-Limit"] = str(limit)
-    response.headers["X-Current-Offset"] = str(offset)
-    response.headers["Access-Control-Expose-Headers"] = ", ".join(
-        ["X-Total-Count", "X-Current-Limit", "X-Current-Offset"]
+    return get_paginated_response(
+        response=response,
+        items=pull_requests,
+        total_count=total_count,
+        limit=limit,
+        offset=offset,
     )
-    return items

@@ -10,9 +10,9 @@ class ITSProjectBase(ExtraFieldMixin, CoreModel):
     private: bool = False
     api_url: str = ""
     key: Optional[str] = None
-    integration_type: Optional[str] = None
-    integration_name: Optional[str] = None
-    integration_id: Optional[str] = None
+    integration_type: str
+    integration_name: str
+    integration_id: str
     credential_id: Optional[int] = None
 
 
@@ -43,4 +43,4 @@ class ITSProjectInDB(IDModelMixin, DateTimeModelMixin, ITSProjectBase, Exportabl
         ]
 
     def export_names(self) -> Tuple[str, str]:
-        return ("its_project", "its_projects")
+        return "its_project", "its_projects"

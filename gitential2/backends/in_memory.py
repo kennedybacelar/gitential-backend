@@ -1,14 +1,16 @@
 import datetime as dt
-
+from collections import defaultdict
 from threading import Lock
 from typing import Iterable, Optional, Callable, List, cast, Dict, Tuple, Union, Set
-from collections import defaultdict
+
 import pandas as pd
 from ibis.expr.types import TableExpr
-from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 
-from gitential2.settings import GitentialSettings
-from gitential2.extraction.output import DataCollector, OutputHandler
+from gitential2.backends.base.repositories import (
+    AccessLogRepository,
+    PersonalAccessTokenRepository,
+    WorkspaceAPIKeyRepository,
+)
 from gitential2.datatypes import (
     CoreModel,
     UserCreate,
@@ -25,27 +27,24 @@ from gitential2.datatypes import (
     CredentialInDB,
     AccessLog,
 )
-from gitential2.backends.base.repositories import (
-    AccessLogRepository,
-    PersonalAccessTokenRepository,
-    WorkspaceAPIKeyRepository,
-)
-
-from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
-from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
-from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
-from gitential2.datatypes.project_repositories import (
-    ProjectRepositoryCreate,
-    ProjectRepositoryUpdate,
-    ProjectRepositoryInDB,
-)
-from gitential2.datatypes.stats import IbisTables
+from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.email_log import (
     EmailLogCreate,
     EmailLogUpdate,
     EmailLogInDB,
 )
+from gitential2.datatypes.project_repositories import (
+    ProjectRepositoryCreate,
+    ProjectRepositoryUpdate,
+    ProjectRepositoryInDB,
+)
+from gitential2.datatypes.projects import ProjectCreate, ProjectUpdate, ProjectInDB
+from gitential2.datatypes.repositories import RepositoryCreate, RepositoryUpdate, RepositoryInDB
 from gitential2.datatypes.sprints import Sprint
+from gitential2.datatypes.stats import IbisTables
+from gitential2.datatypes.workspacemember import WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberInDB
+from gitential2.extraction.output import DataCollector, OutputHandler
+from gitential2.settings import GitentialSettings
 from .base import (
     BaseRepository,
     BaseWorkspaceScopedRepository,
@@ -359,6 +358,9 @@ class InMemRepositoryRepository(
     def delete_repos_by_id(self, workspace_id: int, repo_ids: List[int]):
         pass
 
+    def get_repo_groups(self, workspace_id: int):
+        pass
+
 
 class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
     def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:
@@ -442,6 +444,9 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     #                 )
     #             )
     #     return ret
+
+    def execute_query(self, query):
+        pass
 
     def initialize(self):
         pass

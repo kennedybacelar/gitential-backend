@@ -20,6 +20,7 @@ from gitential2.exceptions import LockError
 from gitential2.logging import initialize_logging
 from gitential2.settings import GitentialSettings, load_settings
 from .context import GitentialContext
+from .repositories import refresh_cache_of_repositories_for_user_or_users
 
 logger = get_logger(__name__)
 
@@ -64,17 +65,30 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
 
     beat_scheduled_conf = {}
 
-    # TEMPORARY DISABLED
+    # Temporarily disabled
     # beat_scheduled_conf["send_scheduled_emails"] = {
     #     "task": "gitential2.core.tasks.send_scheduled_emails",
     #     "schedule": crontab(minute=0, hour=12),
     #     "args": (settings),
     # }
 
-    if settings.refresh.hourly_maintenance_enabled:
-        beat_scheduled_conf["hourly_maintenance"] = {
-            "task": "gitential2.core.tasks.hourly_maintenance",
-            "schedule": crontab(day_of_week="1,3,5", hour=23),
+    # You can find more info about the celery crontab schedules here:
+    # https://docs.celeryq.dev/en/stable/reference/celery.schedules.html
+
+    if settings.refresh.scheduled_maintenance_enabled:
+        m_day_of_week = settings.refresh.scheduled_maintenance_days_of_week
+        m_hour_of_day = settings.refresh.scheduled_maintenance_hour_of_day
+        beat_scheduled_conf["scheduled_maintenance"] = {
+            "task": "gitential2.core.tasks.scheduled_maintenance",
+            "schedule": crontab(day_of_week=m_day_of_week, hour=m_hour_of_day),
+            "args": (),
+        }
+
+    if settings.refresh.scheduled_repo_cache_refresh_enabled:
+        r_hour_of_day = settings.refresh.scheduled_repo_cache_refresh_hour_of_day
+        beat_scheduled_conf["scheduled_repo_cache_refresh"] = {
+            "task": "gitential2.core.tasks.scheduled_repo_cache_refresh",
+            "schedule": crontab(hour=r_hour_of_day),
             "args": (),
         }
 
@@ -93,12 +107,14 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
             "args": (),
         }
 
-    # if settings.features.enable_scheduled_data_cleanup:
-    #     beat_scheduled_conf["scheduled_data_cleanup"] = {
-    #         "task": "gitential2.core.tasks.scheduled_data_cleanup",
-    #         "schedule": crontab(day_of_week="0", hour=23),
-    #         "args": (),
-    #     }
+    if settings.features.enable_scheduled_data_cleanup:
+        c_day_of_week = settings.features.scheduled_data_cleanup_days_of_week
+        c_hour_of_day = settings.features.scheduled_data_cleanup_hour_of_day
+        beat_scheduled_conf["scheduled_data_cleanup"] = {
+            "task": "gitential2.core.tasks.scheduled_data_cleanup",
+            "schedule": crontab(day_of_week=c_day_of_week, hour=c_hour_of_day),
+            "args": (),
+        }
 
     celery_app.conf.beat_schedule = beat_scheduled_conf
     return celery_app
@@ -188,7 +204,7 @@ __all__ = ["schedule_task", "core_task", "configure_celery", "ping", "send_sched
 
 
 @celery_app.task
-def hourly_maintenance(settings: Optional[GitentialSettings] = None):
+def scheduled_maintenance(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.core.context import init_context_from_settings
     from gitential2.core.maintenance import maintenance
@@ -244,3 +260,13 @@ def scheduled_data_cleanup(settings: Optional[GitentialSettings] = None):
     perform_data_cleanup(g=g, workspace_ids=[w.id for w in workspaces])
 
     logger.info("Finished data cleaning in every workspace.")
+
+
+@celery_app.task
+def scheduled_repo_cache_refresh(settings: Optional[GitentialSettings] = None):
+    # pylint: disable=import-outside-toplevel,cyclic-import
+    from gitential2.core.context import init_context_from_settings
+
+    settings = settings or load_settings()
+    g = init_context_from_settings(settings)
+    refresh_cache_of_repositories_for_user_or_users(g=g)

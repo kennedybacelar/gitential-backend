@@ -1,24 +1,45 @@
 # pylint: skip-file
-from gitential2.datatypes.repositories import RepositoryCreate
 from typing import List, Optional
-from fastapi import APIRouter, Depends
 
-from gitential2.datatypes.permissions import Entity, Action
+from fastapi import APIRouter, Depends, Query, Response
+
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
-
 from gitential2.core.repositories import (
-    list_available_repositories,
+    get_available_repositories_for_workspace,
     search_public_repositories,
     get_repository,
     list_repositories,
     create_repositories,
     delete_repositories,
     list_project_repositories,
+    list_available_repo_groups,
+    get_available_repositories_paginated,
+    DEFAULT_REPOS_LIMIT,
+    DEFAULT_REPOS_OFFSET,
+    DEFAULT_REPOS_ORDER_BY_OPTION,
+    DEFAULT_REPOS_ORDER_BY_DIRECTION,
+    OrderByDirections,
+    OrderByOptions,
+    refresh_cache_of_repositories_for_user_or_users,
 )
+from gitential2.datatypes.permissions import Entity, Action
+from gitential2.datatypes.repositories import RepositoryCreate
 from ..dependencies import current_user, gitential_context
+from ...datatypes.user_repositories_cache import UserRepositoryGroup
+from ...utils.router_utils import get_paginated_response
 
 router = APIRouter(tags=["repositories"])
+
+
+@router.post("/workspaces/{workspace_id}/available-repo-groups", response_model=List[UserRepositoryGroup])
+def available_repo_groups(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+    return list_available_repo_groups(g=g, workspace_id=workspace_id, user_id=current_user.id)
 
 
 @router.post("/workspaces/{workspace_id}/available-repos")
@@ -29,7 +50,65 @@ def available_repos(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return list_available_repositories(g, workspace_id, current_user.id, user_organization_name_list)
+    return get_available_repositories_for_workspace(
+        g=g, workspace_id=workspace_id, user_organization_name_list=user_organization_name_list
+    )
+
+
+@router.post("/workspaces/{workspace_id}/refresh-repos-cache")
+def refresh_repos_cache(
+    workspace_id: int,
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.user, Action.update, workspace_id=workspace_id)
+    refresh_cache_of_repositories_for_user_or_users(g=g, workspace_id=workspace_id)
+    return True
+
+
+@router.get("/workspaces/{workspace_id}/available-repos-paginated")
+def available_repos_paginated(
+    response: Response,
+    workspace_id: int,
+    refresh_cache: Optional[bool] = Query(False, alias="refreshCache"),
+    force_refresh_cache: Optional[bool] = Query(False, alias="forceRefreshCache"),
+    user_organization_name_list: Optional[List[str]] = Query(None, alias="userOrganizationNameList"),
+    limit: Optional[int] = Query(DEFAULT_REPOS_LIMIT, alias="limit"),
+    offset: Optional[int] = Query(DEFAULT_REPOS_OFFSET, alias="offset"),
+    order_by_option: Optional[OrderByOptions] = Query(DEFAULT_REPOS_ORDER_BY_OPTION, alias="sortingOption"),
+    order_by_direction: Optional[OrderByDirections] = Query(DEFAULT_REPOS_ORDER_BY_DIRECTION, alias="sortingDirection"),
+    integration_type: Optional[str] = Query(None, alias="integrationType"),
+    namespace: Optional[str] = Query(None, alias="namespace"),
+    credential_id: Optional[int] = Query(None, alias="credentialId"),
+    search_pattern: Optional[str] = Query(None, alias="searchPattern"),
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
+
+    total_count, limit, offset, repositories = get_available_repositories_paginated(
+        g=g,
+        workspace_id=workspace_id,
+        refresh_cache=refresh_cache,
+        force_refresh_cache=force_refresh_cache,
+        user_organization_name_list=user_organization_name_list,
+        limit=limit,
+        offset=offset,
+        order_by_option=order_by_option,
+        order_by_direction=order_by_direction,
+        integration_type=integration_type,
+        namespace=namespace,
+        credential_id=credential_id,
+        search_pattern=search_pattern,
+    )
+
+    return get_paginated_response(
+        response=response,
+        items=repositories,
+        total_count=total_count,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/workspaces/{workspace_id}/search-public-repos")

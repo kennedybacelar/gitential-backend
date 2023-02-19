@@ -52,6 +52,7 @@ all_tables_info = {
     },
 }
 
+
 # pylint: disable=too-complex
 def perform_data_cleanup(
     g: GitentialContext,

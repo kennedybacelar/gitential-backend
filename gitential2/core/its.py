@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 from functools import partial
 from typing import List, Union, Optional
 
+from dateutil.parser import parse as parse_date_str
 from structlog import get_logger
 from structlog.threadlocal import tmp_bind
 
@@ -15,12 +16,13 @@ from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase, ITSProjectRefreshStatus
 from gitential2.datatypes.userinfos import UserInfoInDB
 from gitential2.settings import IntegrationType
-from gitential2.utils import find_first
+from gitential2.utils import find_first, is_string_not_empty
 from .credentials import (
     get_fresh_credential,
     list_credentials_for_workspace,
     get_update_token_callback,
 )
+from ..datatypes.user_its_projects_cache import UserITSProjectCacheCreate, UserITSProjectCacheInDB, UserITSProjectGroup
 
 logger = get_logger(__name__)
 
@@ -33,7 +35,7 @@ def _merge_its_project_lists(first: List[ITSProjectCreate], second: List[ITSProj
     return first + new_repos
 
 
-def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[ITSProjectCreate]:
+def list_available_its_projects(g: GitentialContext, workspace_id: int, user_id: int) -> List[ITSProjectCreate]:
     results: List[ITSProjectCreate] = []
     for credential_ in list_credentials_for_workspace(g, workspace_id):
         if credential_.integration_type in ISSUE_SOURCES and credential_.integration_name in g.integrations:
@@ -53,12 +55,17 @@ def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[
                         else None
                     )
 
-                    collected_repositories = integration.list_available_its_projects(
-                        token=token,
-                        update_token=get_update_token_callback(g, credential),
-                        provider_user_id=userinfo.sub if userinfo else None,
-                    )
-                    results = _merge_its_project_lists(collected_repositories, results)
+                    refresh = _get_itsp_last_refresh_date(g, user_id, credential_.integration_type)
+
+                    # if there is no saved last refresh time or if it is expired,
+                    # we need to get the list again
+                    if not isinstance(refresh, datetime) or refresh < (g.current_time() - timedelta(days=1)):
+                        new_its_projects = _list_available_its_projects(g, integration, token, credential, userinfo)
+                        _save_its_projects_to_cache(g, user_id, new_its_projects)
+                        _save_its_projects_last_refresh_date(g, user_id, credential_.integration_type)
+
+                    cache = _get_its_projects_cache(g, user_id)
+                    results = _merge_its_project_lists(cache, results)
                 else:
                     logger.error(
                         "Cannot get fresh credential",
@@ -342,6 +349,27 @@ def collect_and_save_data_for_issue(
         )
 
 
+def list_available_its_project_groups(
+    g: GitentialContext, workspace_id: int, user_id: int
+) -> List[UserITSProjectGroup]:
+    cache_itsp_groups = g.backend.user_its_projects_cache.get_its_project_groups(user_id)
+    itsp_groups = g.backend.its_projects.get_its_project_groups(workspace_id=workspace_id)
+
+    def is_itsp_group_in_cache(user_itsp_group: UserITSProjectGroup):
+        return any(
+            gc.integration_type == user_itsp_group.integration_type
+            and gc.namespace == user_itsp_group.namespace
+            and gc.credential_id == user_itsp_group.credential_id
+            for gc in cache_itsp_groups
+        )
+
+    for group in itsp_groups:
+        if not is_itsp_group_in_cache(group):
+            cache_itsp_groups.append(group)
+
+    return cache_itsp_groups
+
+
 def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_data: ITSIssueAllData):
     output = g.backend.output_handler(workspace_id)
     output.write(ExtractedKind.ITS_ISSUE, issue_data.issue)
@@ -359,3 +387,78 @@ def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_dat
         output.write(ExtractedKind.ITS_ISSUE_SPRINT, issue_sprint)
     for worklog in issue_data.worklogs:
         output.write(ExtractedKind.ITS_ISSUE_WORKLOG, worklog)
+
+
+def _get_itsp_last_refresh_kvstore_key(user_id: int, integration_type: str):
+    return f"itsp_cache_for_user_last_refresh_datetime--{integration_type}--{user_id}"
+
+
+def _get_itsp_last_refresh_date(g: GitentialContext, user_id: int, integration_type: str) -> Optional[datetime]:
+    result = None
+    redis_key = _get_itsp_last_refresh_kvstore_key(user_id, integration_type)
+    refresh_raw = g.kvstore.get_value(redis_key)
+    if is_string_not_empty(refresh_raw):
+        try:
+            result = parse_date_str(refresh_raw).replace(tzinfo=timezone.utc)
+        except ValueError:
+            logger.debug(f"Last refresh date is invalid for user_id: {user_id}")
+    return result
+
+
+def _save_itsp_last_refresh_date(g: GitentialContext, user_id: int, integration_type: str):
+    refresh_save = str(datetime.utcnow())
+    redis_key = _get_itsp_last_refresh_kvstore_key(user_id, integration_type)
+    g.kvstore.set_value(redis_key, refresh_save)
+
+
+def _list_available_its_projects(g, integration, token, credential, userinfo):
+    return integration.list_available_its_projects(
+        token=token,
+        update_token=get_update_token_callback(g, credential),
+        provider_user_id=userinfo.sub if userinfo else None,
+    )
+
+
+def _save_its_projects_to_cache(g: GitentialContext, user_id: int, its_projects: List[ITSProjectCreate]):
+    save_to_cache: List[UserITSProjectCacheCreate] = [
+        UserITSProjectCacheCreate(
+            user_id=user_id,
+            name=itsp.name,
+            namespace=itsp.namespace,
+            private=itsp.private,
+            api_url=itsp.api_url,
+            key=itsp.key,
+            integration_type=itsp.integration_type,
+            integration_name=itsp.integration_name,
+            integration_id=itsp.integration_id,
+            credential_id=itsp.credential_id,
+            extra=itsp.extra,
+        )
+        for itsp in its_projects
+    ]
+    g.backend.user_its_projects_cache.insert_its_projects_cache_for_user(save_to_cache)
+
+
+def _save_its_projects_last_refresh_date(g: GitentialContext, user_id: int, integration_type: str):
+    refresh_save = str(datetime.utcnow())
+    redis_key = _get_itsp_last_refresh_kvstore_key(user_id, integration_type)
+    g.kvstore.set_value(redis_key, refresh_save)
+
+
+def _get_its_projects_cache(g: GitentialContext, user_id: int) -> List[ITSProjectCreate]:
+    cache: List[UserITSProjectCacheInDB] = g.backend.user_its_projects_cache.get_all_its_project_for_user(user_id)
+    return [
+        ITSProjectCreate(
+            name=itsp.name,
+            namespace=itsp.namespace,
+            private=itsp.private,
+            api_url=itsp.api_url,
+            key=itsp.key,
+            integration_type=itsp.integration_type,
+            integration_name=itsp.integration_name,
+            integration_id=itsp.integration_id,
+            credential_id=itsp.credential_id,
+            extra=itsp.extra,
+        )
+        for itsp in cache
+    ]

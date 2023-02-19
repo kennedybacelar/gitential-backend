@@ -1,9 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from functools import partial
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 from dateutil.parser import parse as parse_date_str
+from sqlalchemy import exc
 from structlog import get_logger
 
 from gitential2.datatypes.credentials import CredentialInDB
@@ -16,18 +18,51 @@ from .credentials import (
     get_fresh_credential,
     list_credentials_for_workspace,
     get_update_token_callback,
+    list_credentials_for_user,
 )
-from ..datatypes.user_repositories_cache import UserRepositoryCacheInDB, UserRepositoryCacheCreate
+from ..datatypes.user_repositories_cache import (
+    UserRepositoryCacheInDB,
+    UserRepositoryCacheCreate,
+    UserRepositoryGroup,
+)
+from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
+
+
+class OrderByOptions(str, Enum):
+    name = "name"
+    namespace = "namespace"
+    protocol = "protocol"
+    clone_url = "clone_url"
+    integration_type = "integration_type"
+    integration_name = "integration_name"
+
+
+class OrderByDirections(str, Enum):
+    asc = "ASC"
+    desc = "DESC"
+
+
+DEFAULT_REPOS_LIMIT: int = 15
+# TODO: For the new react front-end both the MAX_REPOS_LIMIT
+#  has to be limited to a much smaller number, like 100.
+MAX_REPOS_LIMIT: int = 20000
+DEFAULT_REPOS_OFFSET: int = 0
+DEFAULT_REPOS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
+DEFAULT_REPOS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
+
+
+def _get_workspace_creator_user_id(g: GitentialContext, workspace_id: int):
+    return g.backend.workspaces.get_or_error(workspace_id).created_by
 
 
 def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -> Optional[RepositoryInDB]:
     return g.backend.repositories.get(workspace_id, repository_id)
 
 
-def list_available_repositories(
-    g: GitentialContext, workspace_id: int, user_id: int, user_organization_name_list: Optional[List[str]]
+def get_available_repositories_for_workspace(
+    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]]
 ) -> List[RepositoryCreate]:
     def _merge_repo_lists(first: List[RepositoryCreate], second: List[RepositoryCreate]):
         existing_clone_urls = [r.clone_url for r in first]
@@ -37,18 +72,10 @@ def list_available_repositories(
     # Get all already used repositories
     results: List[RepositoryCreate] = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
 
-    available_repos_for_credential = partial(
-        list_available_repositories_for_credential, g, workspace_id, user_id, user_organization_name_list
+    collected_results = _get_available_repositories_for_workspace_credentials(
+        g, workspace_id, user_organization_name_list
     )
-    with ThreadPoolExecutor() as executor:
-        collected_results = executor.map(
-            available_repos_for_credential, list_credentials_for_workspace(g, workspace_id)
-        )
-
-    for collected_repositories in collected_results:
-        results = _merge_repo_lists(collected_repositories, results)
-
-    results = _merge_repo_lists(list_ssh_repositories(g, workspace_id), results)
+    results = _merge_repo_lists(collected_results, results)
 
     logger.debug(
         "list_of_all_user_repositories",
@@ -65,15 +92,306 @@ def list_available_repositories(
     return results
 
 
-def list_available_repositories_for_credential(
+def _get_available_repositories_for_workspace_credentials(
+    g: GitentialContext,
+    workspace_id: int,
+    user_organization_name_list: Optional[List[str]],
+) -> List[RepositoryCreate]:
+    _refresh_repos_cache_for_user(
+        g=g, workspace_id=workspace_id, user_organization_name_list=user_organization_name_list
+    )
+    user_id: int = _get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    repos_from_cache = _get_repos_cache(g, user_id)
+    return repos_from_cache
+
+
+def get_available_repositories_paginated(
+    g: GitentialContext,
+    workspace_id: int,
+    custom_user_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
+    user_organization_name_list: Optional[List[str]] = None,
+    limit: Optional[int] = DEFAULT_REPOS_LIMIT,
+    offset: Optional[int] = DEFAULT_REPOS_OFFSET,
+    order_by_option: Optional[OrderByOptions] = DEFAULT_REPOS_ORDER_BY_OPTION,
+    order_by_direction: Optional[OrderByDirections] = DEFAULT_REPOS_ORDER_BY_DIRECTION,
+    integration_type: Optional[str] = None,
+    namespace: Optional[str] = None,
+    credential_id: Optional[int] = None,
+    search_pattern: Optional[str] = None,
+) -> Tuple[int, int, int, List[RepositoryCreate]]:
+    user_id = custom_user_id if custom_user_id else _get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+
+    _refresh_repos_cache_for_user(
+        g=g,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        user_organization_name_list=user_organization_name_list,
+        refresh_cache=refresh_cache or False,
+        force_refresh_cache=force_refresh_cache or False,
+    )
+
+    limit = (
+        limit
+        if (limit and 0 < limit < MAX_REPOS_LIMIT)
+        else DEFAULT_REPOS_LIMIT
+        if (limit and 0 > limit)
+        else MAX_REPOS_LIMIT
+    )
+    offset = offset if offset and -1 < offset else DEFAULT_REPOS_OFFSET
+
+    total_count, repositories = _get_user_repositories_by_query(
+        g=g,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        order_by_option=order_by_option or OrderByOptions.name,
+        order_by_direction=order_by_direction or OrderByDirections.asc,
+        integration_type=integration_type,
+        namespace=namespace,
+        credential_id=credential_id,
+        search_pattern=search_pattern,
+    )
+
+    return total_count, limit, offset, repositories
+
+
+def _get_user_repositories_by_query(
     g: GitentialContext,
     workspace_id: int,
     user_id: int,
+    limit: int,
+    offset: int,
+    order_by_option: OrderByOptions,
+    order_by_direction: OrderByDirections,
+    integration_type: Optional[str] = None,
+    namespace: Optional[str] = None,
+    credential_id: Optional[int] = None,
+    search_pattern: Optional[str] = None,
+) -> Tuple[int, List[RepositoryCreate]]:
+    query: str = _get_query_of_get_repositories(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        order_by_option=order_by_option,
+        order_by_direction=order_by_direction,
+        integration_type=integration_type,
+        namespace=namespace,
+        credential_id=credential_id,
+        search_pattern=search_pattern,
+    )
+
+    try:
+        logger.info("Executing query to get list of repositories paginated result.", query=query)
+        rows = g.backend.execute_query(query).all()
+    except exc.SQLAlchemyError as se:
+        raise SettingsException(
+            "Exception while trying to run query to get list of repositories paginated result!"
+        ) from se
+
+    def get_extra_with_min_info(row):
+        result = {}
+        if row["integration_type"] in ["github", "gitlab"]:
+            result["id"] = int(row["repo_provider_id"])
+        elif row["integration_type"] == "bitbucket":
+            result["uuid"] = row["repo_provider_id"]
+        elif row["integration_type"] == "vsts":
+            result["id"] = row["repo_provider_id"]
+        return result
+
+    repositories = (
+        [
+            RepositoryCreate(
+                clone_url=row["clone_url"],
+                protocol=row["protocol"],
+                name=row["name"],
+                namespace=row["namespace"],
+                private=row["private"],
+                integration_type=row["integration_type"],
+                integration_name=row["integration_name"],
+                credential_id=row["credential_id"],
+                extra=get_extra_with_min_info(row),
+            )
+            for row in rows
+        ]
+        if is_list_not_empty(rows)
+        else []
+    )
+
+    total_count = rows[0]["total_count"] if is_list_not_empty(rows) else 0
+
+    return total_count, repositories
+
+
+def _get_query_of_get_repositories(
+    workspace_id: int,
+    user_id: int,
+    limit: int,
+    offset: int,
+    order_by_option: OrderByOptions,
+    order_by_direction: OrderByDirections,
+    integration_type: Optional[str] = None,
+    namespace: Optional[str] = None,
+    credential_id: Optional[int] = None,
+    search_pattern: Optional[str] = None,
+) -> str:
+    def get_filter(column_name: str, filter_value: Union[str, int, None]) -> Union[str, None]:
+        return f"{column_name} = '{filter_value}'" if filter_value else None
+
+    def get_filters(is_user_id: bool):
+        name_filter: Optional[str] = (
+            f"name ILIKE '{search_pattern.replace('%', '%%')}'" if is_string_not_empty(search_pattern) else None
+        )
+        integration_type_filter: Optional[str] = get_filter("integration_type", integration_type)
+        namespace_filter: Optional[str] = get_filter("namespace", namespace)
+        credential_id_filter: Optional[str] = get_filter("credential_id", credential_id)
+        user_id_filter: Optional[str] = f"user_id = {user_id}" if is_user_id else None
+        filters: str = " AND ".join(
+            [
+                f
+                for f in [name_filter, integration_type_filter, namespace_filter, credential_id_filter, user_id_filter]
+                if is_string_not_empty(f)
+            ]
+        )
+        return f"WHERE {filters}" if is_string_not_empty(filters) else ""
+
+    get_repo_uuid = "CAST(r.extra::json -> 'uuid' AS TEXT)"
+    get_repo_id = "CAST(r.extra::json -> 'id' AS TEXT)"
+    repo_provider_id = f"COALESCE({get_repo_uuid}, {get_repo_id})"
+    repo_provider_id_trimmed = f"TRIM(BOTH '\"' FROM {repo_provider_id})"
+
+    # noinspection SqlResolve
+    query = (
+        "WITH repo_selection AS "
+        "    ("
+        "        SELECT "
+        "            clone_url, "
+        "            repo_provider_id, "
+        "            protocol, "
+        "            name, "
+        "            namespace, "
+        "            private, "
+        "            integration_type, "
+        "            integration_name, "
+        "            credential_id "
+        "        FROM public.user_repositories_cache "
+        f"           {get_filters(True)} "
+        "        UNION "
+        "        SELECT "
+        "            clone_url, "
+        f"           {repo_provider_id_trimmed} AS repo_provider_id, "
+        "            protocol, "
+        "            name, "
+        "            namespace, "
+        "            private, "
+        "            integration_type, "
+        "            integration_name, "
+        "            credential_id "
+        f"        FROM ws_{workspace_id}.repositories r "
+        f"           {get_filters(False)} "
+        "    )"
+        "SELECT * FROM ("
+        "    TABLE repo_selection "
+        f"   ORDER BY {order_by_option} {order_by_direction} "
+        f"   LIMIT {limit} "
+        f"   OFFSET {offset}) sub "
+        "RIGHT JOIN (SELECT COUNT(*) FROM repo_selection) c(total_count) ON TRUE;"
+    )
+
+    return query
+
+
+def refresh_cache_of_repositories_for_user_or_users(
+    g: GitentialContext, user_id: Optional[int] = None, workspace_id: Optional[int] = None
+):
+    """
+    If workspace id is provided, we get the user id from the workspace creator.
+    Otherwise, we use the optionally provided user id.
+    If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
+    """
+
+    user_id_corrected = _get_workspace_creator_user_id(g=g, workspace_id=workspace_id) if workspace_id else user_id
+    if user_id_corrected:
+        _refresh_repos_cache_for_user(g=g, user_id=user_id_corrected, refresh_cache=True)
+    else:
+        user_ids: List[int] = [u.id for u in g.backend.users.all()]
+        user_ids_success: List[int] = []
+        for uid in user_ids:
+            result = _refresh_repos_cache_for_user(g=g, user_id=uid, refresh_cache=True)
+            if result:
+                user_ids_success.append(uid)
+        logger.info("Refresh repo cache for every user ended", user_ids_success=user_ids_success)
+
+
+def _refresh_repos_cache_for_user(
+    g: GitentialContext,
+    workspace_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
+    user_organization_name_list: Optional[List[str]] = None,
+) -> bool:
+    """
+    Repositories cache can be refreshed either by providing user_id or workspace_id.
+    If the workspace id is provided, we get the user_id by requesting the creator id of the workspace,
+    otherwise, we will use the user_id.
+    If none of the above is provided an exception will be raised.
+    """
+
+    if not user_id and not workspace_id:
+        raise SettingsException(
+            "Error while trying to refresh repository cache for user! "
+            "In order to refresh repos cache for user, either one of the following "
+            "has to be a valid id: 'workspace_id', 'user_id'"
+        )
+
+    logger.info(
+        "Starting to refresh repos cache for user.",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        refresh_cache=refresh_cache,
+        force_refresh_cache=force_refresh_cache,
+        user_organization_name_list=user_organization_name_list,
+    )
+
+    # Just needed because of the mypy check.
+    refresh_cache_c = refresh_cache or False
+    force_refresh_cache_c = force_refresh_cache or False
+
+    credentials_for_user: List[CredentialInDB] = (
+        list_credentials_for_user(g, user_id)
+        if user_id
+        else list_credentials_for_workspace(g, workspace_id)
+        # This check only needed because of pylint. Otherwise, we raise an exception if there was no
+        # workspace_id or user_id provided.
+        if workspace_id
+        else []
+    )
+    repos_for_credential = partial(
+        _refresh_repos_cache_for_credential,
+        g,
+        user_id,
+        refresh_cache_c,
+        force_refresh_cache_c,
+        user_organization_name_list,
+    )
+    with ThreadPoolExecutor() as executor:
+        executor.map(repos_for_credential, credentials_for_user)
+
+    return True
+
+
+def _refresh_repos_cache_for_credential(
+    g: GitentialContext,
+    user_id: int,
+    refresh_cache: bool,
+    force_refresh_cache: bool,
     user_organization_name_list: Optional[List[str]],
     credential: CredentialInDB,
-) -> List[RepositoryCreate]:
-    results: List[RepositoryCreate] = []
-
+):
     if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
         try:
             credential_ = get_fresh_credential(g, credential_id=credential.id)
@@ -91,21 +409,24 @@ def list_available_repositories_for_credential(
                     else None
                 )
 
-                refresh = _get_repos_last_refresh_date(
-                    g=g, user_id=user_id, integration_type=credential.integration_type
+                refresh = (
+                    _get_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
+                    if not refresh_cache and not force_refresh_cache
+                    else None
                 )
-                if isinstance(refresh, datetime):
+                if (isinstance(refresh, datetime) or refresh_cache) and not force_refresh_cache:
                     # If the last refresh date older than 1 day -> get new repos since last refresh date
-                    if (g.current_time() - timedelta(days=1)) > refresh:
-                        new_repos: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
+                    if refresh_cache or (
+                        isinstance(refresh, datetime) and (g.current_time() - timedelta(days=1)) > refresh
+                    ):
+                        repos_newly_created: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
                             token=token,
                             update_token=get_update_token_callback(g, credential),
                             last_refresh=refresh,
                             provider_user_id=userinfo.sub if userinfo else None,
                             user_organization_names=user_organization_name_list,
                         )
-
-                        _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=new_repos)
+                        _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=repos_newly_created)
                         _save_repos_last_refresh_date(
                             g=g, user_id=user_id, integration_type=credential.integration_type
                         )
@@ -113,28 +434,26 @@ def list_available_repositories_for_credential(
                         logger.debug(
                             "Saved new repositories to cache.",
                             integration_type=credential.integration_type,
-                            new_repos=[getattr(r, "clone_url", None) for r in new_repos]
-                            if is_list_not_empty(new_repos)
+                            new_repos=[getattr(r, "clone_url", None) for r in repos_newly_created]
+                            if is_list_not_empty(repos_newly_created)
                             else [],
                         )
-
-                    results = _get_repos_cache(g=g, user_id=user_id)
                 else:
                     # no last refresh date found -> list all available repositories
-                    results = integration.list_available_private_repositories(
+                    repos_all = integration.list_available_private_repositories(
                         token=token,
                         update_token=get_update_token_callback(g, credential),
                         provider_user_id=userinfo.sub if userinfo else None,
                         user_organization_name_list=user_organization_name_list,
                     )
-                    _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=results)
+                    _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=repos_all)
                     _save_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
+                    logger.debug(
+                        "collected_private_repositories",
+                        integration_name=credential_.integration_name,
+                        number_of_collected_private_repositories=len(repos_all),
+                    )
 
-                logger.debug(
-                    "collected_private_repositories",
-                    integration_name=credential_.integration_name,
-                    number_of_collected_private_repositories=len(results),
-                )
             else:
                 logger.error(
                     "Cannot get fresh credential",
@@ -147,9 +466,8 @@ def list_available_repositories_for_credential(
                 "Error during collecting repositories",
                 integration_name=credential.integration_name,
                 credential_id=credential.id,
-                workspace_id=workspace_id,
+                user_id=user_id,
             )
-    return results
 
 
 def list_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryInDB]:
@@ -159,8 +477,9 @@ def list_repositories(g: GitentialContext, workspace_id: int) -> List[Repository
     repos = {}
 
     # HACK: Needed for ssh repositories
+    # For some strange reason the ssh repos are not connected to a project in the project repositories table.
     for repo in g.backend.repositories.all(workspace_id=workspace_id):
-        if repo.protocol == GitProtocol.ssh:
+        if repo.credential_id is not None and repo.protocol == GitProtocol.ssh:
             repos[repo.id] = repo
 
     for project_id in project_ids:
@@ -172,15 +491,6 @@ def list_repositories(g: GitentialContext, workspace_id: int) -> List[Repository
                 if repository:
                     repos[repo_id] = repository
     return list(repos.values())
-
-
-def list_ssh_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryCreate]:
-    all_repositories = list_repositories(g, workspace_id)
-    return [
-        RepositoryCreate(**repo.dict())
-        for repo in all_repositories
-        if repo.credential_id is not None and repo.protocol == GitProtocol.ssh
-    ]
 
 
 def list_project_repositories(g: GitentialContext, workspace_id: int, project_id: int) -> List[RepositoryInDB]:
@@ -245,6 +555,25 @@ def delete_repositories(g: GitentialContext, workspace_id: int, repository_ids: 
         g.backend.repositories.delete(workspace_id, repo_id)
 
     return True
+
+
+def list_available_repo_groups(g: GitentialContext, workspace_id: int, user_id: int) -> List[UserRepositoryGroup]:
+    repo_groups_from_cache = g.backend.user_repositories_cache.get_repo_groups(user_id=user_id)
+    repo_groups = g.backend.repositories.get_repo_groups(workspace_id=workspace_id)
+
+    def is_repo_group_in_cache(user_repo_group: UserRepositoryGroup):
+        return any(
+            gc.integration_type == user_repo_group.integration_type
+            and gc.namespace == user_repo_group.namespace
+            and gc.credential_id == user_repo_group.credential_id
+            for gc in repo_groups_from_cache
+        )
+
+    for group in repo_groups:
+        if not is_repo_group_in_cache(group):
+            repo_groups_from_cache.append(group)
+
+    return repo_groups_from_cache
 
 
 def _save_repos_to_repos_cache(g: GitentialContext, user_id: int, repo_list: List[RepositoryCreate]):
