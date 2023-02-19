@@ -5,7 +5,11 @@ import typer
 from structlog import get_logger
 
 from gitential2.core.credentials import acquire_credential
-from gitential2.core.repositories import list_project_repositories, list_repositories, get_all_user_repositories
+from gitential2.core.repositories import (
+    list_project_repositories,
+    list_repositories,
+    get_available_repositories_for_workspace,
+)
 from gitential2.extraction.repository import clone_repository
 from .common import get_context, print_results, OutputFormat
 
@@ -16,7 +20,6 @@ logger = get_logger(__name__)
 @app.command("list")
 def list_repositories_(
     workspace_id: int,
-    user_id: int,
     project_id: Optional[int] = None,
     available: bool = False,
     format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
@@ -26,7 +29,7 @@ def list_repositories_(
     g = get_context()
     results: list = []
     if available:
-        results = get_all_user_repositories(g, workspace_id, user_id, organizations_name_list)
+        results = get_available_repositories_for_workspace(g, workspace_id, organizations_name_list)
     elif project_id:
         results = list_project_repositories(g, workspace_id, project_id)
     else:

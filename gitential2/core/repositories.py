@@ -52,12 +52,16 @@ DEFAULT_REPOS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
 DEFAULT_REPOS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
 
 
+def _get_workspace_creator_user_id(g: GitentialContext, workspace_id: int):
+    return g.backend.workspaces.get_or_error(workspace_id).created_by
+
+
 def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -> Optional[RepositoryInDB]:
     return g.backend.repositories.get(workspace_id, repository_id)
 
 
-def get_all_user_repositories(
-    g: GitentialContext, workspace_id: int, user_id: int, user_organization_name_list: Optional[List[str]]
+def get_available_repositories_for_workspace(
+    g: GitentialContext, workspace_id: int, user_organization_name_list: Optional[List[str]]
 ) -> List[RepositoryCreate]:
     def _merge_repo_lists(first: List[RepositoryCreate], second: List[RepositoryCreate]):
         existing_clone_urls = [r.clone_url for r in first]
@@ -67,8 +71,8 @@ def get_all_user_repositories(
     # Get all already used repositories
     results: List[RepositoryCreate] = [RepositoryCreate(**r.dict()) for r in list_repositories(g, workspace_id)]
 
-    collected_results = get_available_repositories_for_user_credentials(
-        g, workspace_id, user_id, user_organization_name_list
+    collected_results = _get_available_repositories_for_workspace_credentials(
+        g, workspace_id, user_organization_name_list
     )
     results = _merge_repo_lists(collected_results, results)
 
@@ -87,21 +91,23 @@ def get_all_user_repositories(
     return results
 
 
-def get_available_repositories_for_user_credentials(
+def _get_available_repositories_for_workspace_credentials(
     g: GitentialContext,
     workspace_id: int,
-    user_id: int,
     user_organization_name_list: Optional[List[str]],
 ) -> List[RepositoryCreate]:
-    refresh_repos_cache_for_user(g, user_id, workspace_id, False, False, user_organization_name_list)
+    _refresh_repos_cache_for_user(
+        g=g, workspace_id=workspace_id, user_organization_name_list=user_organization_name_list
+    )
+    user_id: int = _get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
     repos_from_cache = _get_repos_cache(g, user_id)
     return repos_from_cache
 
 
-def get_all_user_repositories_paginated(
+def get_available_repositories_paginated(
     g: GitentialContext,
     workspace_id: int,
-    user_id: int,
+    custom_user_id: Optional[int] = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
     user_organization_name_list: Optional[List[str]] = None,
@@ -114,7 +120,9 @@ def get_all_user_repositories_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[UserRepositoryPublic]]:
-    refresh_repos_cache_for_user(
+    user_id = custom_user_id if custom_user_id else _get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+
+    _refresh_repos_cache_for_user(
         g=g,
         workspace_id=workspace_id,
         user_id=user_id,
@@ -279,30 +287,54 @@ def _get_query_of_get_repositories(
     return query
 
 
-def refresh_cache_of_repositories_for_user_or_users(g: GitentialContext, user_id: Optional[int] = None):
-    if user_id:
+def refresh_cache_of_repositories_for_user_or_users(
+    g: GitentialContext, user_id: Optional[int] = None, workspace_id: Optional[int] = None
+):
+    """
+    If workspace id is provided, we get the user id from the workspace creator.
+    Otherwise, we use the optionally provided user id.
+    If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
+    """
+
+    user_id_corrected = _get_workspace_creator_user_id(g=g, workspace_id=workspace_id) if workspace_id else user_id
+    if user_id_corrected:
+        _refresh_repos_cache_for_user(g=g, user_id=user_id_corrected, refresh_cache=True)
+    else:
         user_ids: List[int] = [u.id for u in g.backend.users.all()]
         user_ids_success: List[int] = []
         for uid in user_ids:
-            result = refresh_repos_cache_for_user(g=g, user_id=uid, refresh_cache=True)
+            result = _refresh_repos_cache_for_user(g=g, user_id=uid, refresh_cache=True)
             if result:
                 user_ids_success.append(uid)
-        logger.info("refresh_repo_cache_for_every_user ended", user_ids_success=user_ids_success)
-    else:
-        refresh_repos_cache_for_user(g=g, user_id=user_id, refresh_cache=True)  # type: ignore
+        logger.info("Refresh repo cache for every user ended", user_ids_success=user_ids_success)
 
 
-def refresh_repos_cache_for_user(
+def _refresh_repos_cache_for_user(
     g: GitentialContext,
-    user_id: int,
     workspace_id: Optional[int] = None,
+    user_id: Optional[int] = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
     user_organization_name_list: Optional[List[str]] = None,
 ) -> bool:
+    """
+    Repositories cache can be refreshed either by providing user_id or workspace_id.
+    If the workspace id is provided, we get the user_id by requesting the creator id of the workspace,
+    otherwise, we will use the user_id.
+    If none of the above is provided an exception will be raised.
+    """
+
+    if not user_id and not workspace_id:
+        raise SettingsException(
+            "Error while trying to refresh repository cache for user! "
+            "In order to refresh repos cache for user, either one of the following "
+            "has to be a valid id: 'workspace_id', 'user_id'"
+        )
+
     logger.info(
         "Starting to refresh repos cache for user.",
         user_id=user_id,
+        workspace_id=workspace_id,
         refresh_cache=refresh_cache,
         force_refresh_cache=force_refresh_cache,
         user_organization_name_list=user_organization_name_list,
@@ -313,7 +345,13 @@ def refresh_repos_cache_for_user(
     force_refresh_cache_c = force_refresh_cache or False
 
     credentials_for_user: List[CredentialInDB] = (
-        list_credentials_for_workspace(g, workspace_id) if workspace_id else list_credentials_for_user(g, user_id)
+        list_credentials_for_user(g, user_id)
+        if user_id
+        else list_credentials_for_workspace(g, workspace_id)
+        # This check only needed because of pylint. Otherwise, we raise an exception if there was no
+        # workspace_id or user_id provided.
+        if workspace_id
+        else []
     )
     repos_for_credential = partial(
         _refresh_repos_cache_for_credential,

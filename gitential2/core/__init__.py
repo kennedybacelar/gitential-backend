@@ -26,7 +26,7 @@ from .projects import (
 )
 from .repositories import (
     get_repository,
-    get_all_user_repositories,
+    get_available_repositories_for_workspace,
     list_repositories,
     list_project_repositories,
     search_public_repositories,

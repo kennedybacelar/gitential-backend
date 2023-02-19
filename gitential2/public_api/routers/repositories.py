@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from gitential2.core.context import GitentialContext
 from gitential2.core.permissions import check_permission
 from gitential2.core.repositories import (
-    get_all_user_repositories,
+    get_available_repositories_for_workspace,
     search_public_repositories,
     get_repository,
     list_repositories,
@@ -14,7 +14,7 @@ from gitential2.core.repositories import (
     delete_repositories,
     list_project_repositories,
     list_available_repo_groups,
-    get_all_user_repositories_paginated,
+    get_available_repositories_paginated,
     DEFAULT_REPOS_LIMIT,
     DEFAULT_REPOS_OFFSET,
     DEFAULT_REPOS_ORDER_BY_OPTION,
@@ -50,18 +50,19 @@ def available_repos(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return get_all_user_repositories(g, workspace_id, current_user.id, user_organization_name_list)
+    return get_available_repositories_for_workspace(
+        g=g, workspace_id=workspace_id, user_organization_name_list=user_organization_name_list
+    )
 
 
 @router.post("/workspaces/{workspace_id}/refresh-repos-cache")
 def refresh_repos_cache(
     workspace_id: int,
-    is_every_user: Optional[bool] = Query(False, alias="isEveryUser"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.user, Action.update, workspace_id=workspace_id)
-    refresh_cache_of_repositories_for_user_or_users(g=g, user_id=None if is_every_user else current_user.id)
+    refresh_cache_of_repositories_for_user_or_users(g=g, workspace_id=workspace_id)
     return True
 
 
@@ -85,10 +86,9 @@ def available_repos_paginated(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
 
-    total_count, limit, offset, repositories = get_all_user_repositories_paginated(
+    total_count, limit, offset, repositories = get_available_repositories_paginated(
         g=g,
         workspace_id=workspace_id,
-        user_id=current_user.id,
         refresh_cache=refresh_cache,
         force_refresh_cache=force_refresh_cache,
         user_organization_name_list=user_organization_name_list,
