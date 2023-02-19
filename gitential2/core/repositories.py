@@ -24,7 +24,6 @@ from ..datatypes.user_repositories_cache import (
     UserRepositoryCacheInDB,
     UserRepositoryCacheCreate,
     UserRepositoryGroup,
-    UserRepositoryPublic,
 )
 from ..exceptions import SettingsException
 
@@ -121,7 +120,7 @@ def get_available_repositories_paginated(
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
-) -> Tuple[int, int, int, List[UserRepositoryPublic]]:
+) -> Tuple[int, int, int, List[RepositoryCreate]]:
     user_id = custom_user_id if custom_user_id else _get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
 
     _refresh_repos_cache_for_user(
@@ -133,7 +132,13 @@ def get_available_repositories_paginated(
         force_refresh_cache=force_refresh_cache or False,
     )
 
-    limit = limit if limit and 0 < limit < MAX_REPOS_LIMIT else DEFAULT_REPOS_LIMIT if 0 > limit else MAX_REPOS_LIMIT
+    limit = (
+        limit
+        if (limit and 0 < limit < MAX_REPOS_LIMIT)
+        else DEFAULT_REPOS_LIMIT
+        if (limit and 0 > limit)
+        else MAX_REPOS_LIMIT
+    )
     offset = offset if offset and -1 < offset else DEFAULT_REPOS_OFFSET
 
     total_count, repositories = _get_user_repositories_by_query(
@@ -165,7 +170,7 @@ def _get_user_repositories_by_query(
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
-) -> Tuple[int, List[UserRepositoryPublic]]:
+) -> Tuple[int, List[RepositoryCreate]]:
     query: str = _get_query_of_get_repositories(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -187,11 +192,20 @@ def _get_user_repositories_by_query(
             "Exception while trying to run query to get list of repositories paginated result!"
         ) from se
 
+    def get_extra_with_min_info(row):
+        result = {}
+        if row["integration_type"] in ["github", "gitlab"]:
+            result["id"] = int(row["repo_provider_id"])
+        elif row["integration_type"] == "bitbucket":
+            result["uuid"] = row["repo_provider_id"]
+        elif row["integration_type"] == "vsts":
+            result["id"] = row["repo_provider_id"]
+        return result
+
     repositories = (
         [
-            UserRepositoryPublic(
+            RepositoryCreate(
                 clone_url=row["clone_url"],
-                repo_provider_id=row["repo_provider_id"],
                 protocol=row["protocol"],
                 name=row["name"],
                 namespace=row["namespace"],
@@ -199,6 +213,7 @@ def _get_user_repositories_by_query(
                 integration_type=row["integration_type"],
                 integration_name=row["integration_name"],
                 credential_id=row["credential_id"],
+                extra=get_extra_with_min_info(row),
             )
             for row in rows
         ]
