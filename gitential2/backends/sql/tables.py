@@ -273,7 +273,7 @@ user_repositories_cache_table = sa.Table(
     metadata,
     sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
     sa.Column("repo_provider_id", sa.String(256), nullable=False, unique=False),
-    sa.Column("clone_url", sa.String(256), nullable=False, unique=True),
+    sa.Column("clone_url", sa.String(256), nullable=False, unique=False),
     sa.Column("protocol", sa.Enum(GitProtocol), default=GitProtocol.https),
     sa.Column("name", sa.String(128)),
     sa.Column("namespace", sa.String(128)),
