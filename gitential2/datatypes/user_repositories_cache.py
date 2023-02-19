@@ -7,7 +7,7 @@ from .common import DateTimeModelMixin, ExtraFieldMixin, CoreModel
 
 class UserRepositoryPublic(CoreModel):
     clone_url: str
-    repo_provider_id: str
+    repo_provider_id: Optional[str] = None  # because of ssh repositories
     protocol: GitProtocol
     name: str = ""
     namespace: str = ""

@@ -46,8 +46,10 @@ class OrderByDirections(str, Enum):
 
 
 DEFAULT_REPOS_LIMIT: int = 15
+# TODO: For the new react front-end both the MAX_REPOS_LIMIT
+#  has to be limited to a much smaller number, like 100.
+MAX_REPOS_LIMIT: int = 20000
 DEFAULT_REPOS_OFFSET: int = 0
-MAX_REPOS_LIMIT: int = 100
 DEFAULT_REPOS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
 DEFAULT_REPOS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
 
@@ -131,7 +133,7 @@ def get_available_repositories_paginated(
         force_refresh_cache=force_refresh_cache or False,
     )
 
-    limit = limit if limit and 0 < limit < MAX_REPOS_LIMIT else DEFAULT_REPOS_LIMIT
+    limit = limit if limit and 0 < limit < MAX_REPOS_LIMIT else DEFAULT_REPOS_LIMIT if 0 > limit else MAX_REPOS_LIMIT
     offset = offset if offset and -1 < offset else DEFAULT_REPOS_OFFSET
 
     total_count, repositories = _get_user_repositories_by_query(
