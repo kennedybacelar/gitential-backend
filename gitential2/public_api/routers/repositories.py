@@ -58,11 +58,15 @@ def available_repos(
 @router.post("/workspaces/{workspace_id}/refresh-repos-cache")
 def refresh_repos_cache(
     workspace_id: int,
+    refresh_cache: Optional[bool] = Query(False, alias="refreshCache"),
+    force_refresh_cache: Optional[bool] = Query(False, alias="forceRefreshCache"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.user, Action.update, workspace_id=workspace_id)
-    refresh_cache_of_repositories_for_user_or_users(g=g, workspace_id=workspace_id)
+    refresh_cache_of_repositories_for_user_or_users(
+        g=g, workspace_id=workspace_id, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+    )
     return True
 
 

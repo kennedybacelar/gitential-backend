@@ -269,4 +269,4 @@ def scheduled_repo_cache_refresh(settings: Optional[GitentialSettings] = None):
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
-    refresh_cache_of_repositories_for_user_or_users(g=g)
+    refresh_cache_of_repositories_for_user_or_users(g=g, force_refresh_cache=True)

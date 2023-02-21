@@ -263,6 +263,10 @@ class UserRepositoriesCacheRepository(
         pass
 
     @abstractmethod
+    def delete_cache_for_user(self, user_id: int) -> int:
+        pass
+
+    @abstractmethod
     def get_repo_groups(self, user_id: int) -> List[UserRepositoryGroup]:
         pass
 

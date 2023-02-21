@@ -305,7 +305,11 @@ def _get_query_of_get_repositories(
 
 
 def refresh_cache_of_repositories_for_user_or_users(
-    g: GitentialContext, user_id: Optional[int] = None, workspace_id: Optional[int] = None
+    g: GitentialContext,
+    user_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
 ):
     """
     If workspace id is provided, we get the user id from the workspace creator.
@@ -315,12 +319,16 @@ def refresh_cache_of_repositories_for_user_or_users(
 
     user_id_corrected = _get_workspace_creator_user_id(g=g, workspace_id=workspace_id) if workspace_id else user_id
     if user_id_corrected:
-        _refresh_repos_cache_for_user(g=g, user_id=user_id_corrected, refresh_cache=True)
+        _refresh_repos_cache_for_user(
+            g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+        )
     else:
         user_ids: List[int] = [u.id for u in g.backend.users.all()]
         user_ids_success: List[int] = []
         for uid in user_ids:
-            result = _refresh_repos_cache_for_user(g=g, user_id=uid, refresh_cache=True)
+            result = _refresh_repos_cache_for_user(
+                g=g, user_id=uid, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+            )
             if result:
                 user_ids_success.append(uid)
         logger.info("Refresh repo cache for every user ended", user_ids_success=user_ids_success)
@@ -414,31 +422,36 @@ def _refresh_repos_cache_for_credential(
                     if not refresh_cache and not force_refresh_cache
                     else None
                 )
-                if (isinstance(refresh, datetime) or refresh_cache) and not force_refresh_cache:
-                    # If the last refresh date older than 1 day -> get new repos since last refresh date
-                    if refresh_cache or (
-                        isinstance(refresh, datetime) and (g.current_time() - timedelta(days=1)) > refresh
-                    ):
-                        repos_newly_created: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
-                            token=token,
-                            update_token=get_update_token_callback(g, credential),
-                            last_refresh=refresh,
-                            provider_user_id=userinfo.sub if userinfo else None,
-                            user_organization_names=user_organization_name_list,
-                        )
-                        _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=repos_newly_created)
-                        _save_repos_last_refresh_date(
-                            g=g, user_id=user_id, integration_type=credential.integration_type
+                if (
+                    refresh_cache
+                    or (isinstance(refresh, datetime) and (g.current_time() - timedelta(days=1)) > refresh)
+                ) and not force_refresh_cache:
+                    repos_newly_created: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(
+                        token=token,
+                        update_token=get_update_token_callback(g, credential),
+                        last_refresh=refresh,
+                        provider_user_id=userinfo.sub if userinfo else None,
+                        user_organization_names=user_organization_name_list,
+                    )
+                    _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=repos_newly_created)
+                    _save_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
+
+                    logger.debug(
+                        "Saved new repositories to cache.",
+                        integration_type=credential.integration_type,
+                        new_repos=[getattr(r, "clone_url", None) for r in repos_newly_created]
+                        if is_list_not_empty(repos_newly_created)
+                        else [],
+                    )
+                else:
+                    if force_refresh_cache:
+                        delete_count: int = g.backend.user_repositories_cache.delete_cache_for_user(user_id=user_id)
+                        logger.info(
+                            "force_refresh_cache was set. Cache for user deleted.",
+                            number_of_deleted_rows=delete_count,
+                            user_id=user_id,
                         )
 
-                        logger.debug(
-                            "Saved new repositories to cache.",
-                            integration_type=credential.integration_type,
-                            new_repos=[getattr(r, "clone_url", None) for r in repos_newly_created]
-                            if is_list_not_empty(repos_newly_created)
-                            else [],
-                        )
-                else:
                     # no last refresh date found -> list all available repositories
                     repos_all = integration.list_available_private_repositories(
                         token=token,
@@ -449,7 +462,7 @@ def _refresh_repos_cache_for_credential(
                     _save_repos_to_repos_cache(g=g, user_id=user_id, repo_list=repos_all)
                     _save_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
                     logger.debug(
-                        "collected_private_repositories",
+                        "Available private repositories for user is saved to repos cache.",
                         integration_name=credential_.integration_name,
                         number_of_collected_private_repositories=len(repos_all),
                     )
