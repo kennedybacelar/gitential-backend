@@ -12,11 +12,12 @@ from gitential2.core.its import (
     DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION,
     DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION,
     get_available_its_projects_paginated,
+    ITSProjectCacheOrderByOptions,
+    ITSProjectOrderByDirections,
 )
 from gitential2.core.permissions import check_permission
 from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import current_user, gitential_context
-from ...core.repositories import OrderByOptions, OrderByDirections
 from ...utils.router_utils import get_paginated_response
 
 router = APIRouter(tags=["its"])
@@ -43,15 +44,17 @@ def available_its_projects(
 
 
 @router.get("/workspaces/{workspace_id}/available-its-projects-paginated")
-def available_its_projects(
+def available_its_projects_paginated(
     response: Response,
     workspace_id: int,
     refresh_cache: Optional[bool] = Query(False, alias="refreshCache"),
     force_refresh_cache: Optional[bool] = Query(False, alias="forceRefreshCache"),
     limit: Optional[int] = Query(DEFAULT_ITS_PROJECTS_LIMIT, alias="limit"),
     offset: Optional[int] = Query(DEFAULT_ITS_PROJECTS_OFFSET, alias="offset"),
-    order_by_option: Optional[OrderByOptions] = Query(DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION, alias="sortingOption"),
-    order_by_direction: Optional[OrderByDirections] = Query(
+    order_by_option: Optional[ITSProjectCacheOrderByOptions] = Query(
+        DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION, alias="sortingOption"
+    ),
+    order_by_direction: Optional[ITSProjectOrderByDirections] = Query(
         DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION, alias="sortingDirection"
     ),
     integration_type: Optional[str] = Query(None, alias="integrationType"),

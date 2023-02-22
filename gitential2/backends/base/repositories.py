@@ -279,7 +279,18 @@ class UserITSProjectsCacheRepository(
         pass
 
     @abstractmethod
-    def get_its_projects_cache_paginated(self) -> List[UserITSProjectCacheInDB]:
+    def get_its_projects_cache_paginated(
+        self,
+        user_id: int,
+        limit: int,
+        offset: int,
+        order_by_option: str,
+        order_by_direction_is_asc: bool,
+        integration_type: Optional[str] = None,
+        namespace: Optional[str] = None,
+        credential_id: Optional[int] = None,
+        search_pattern: Optional[str] = None,
+    ) -> List[UserITSProjectCacheInDB]:
         pass
 
     @abstractmethod

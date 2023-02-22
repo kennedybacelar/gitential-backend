@@ -1,6 +1,7 @@
 import traceback
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
+from enum import Enum
 from functools import partial
 from typing import List, Union, Optional, Tuple
 
@@ -25,12 +26,28 @@ from .credentials import (
     get_workspace_creator_user_id,
     list_credentials_for_user,
 )
-from .repositories import OrderByOptions, OrderByDirections
 from ..datatypes import CredentialInDB
 from ..datatypes.user_its_projects_cache import UserITSProjectCacheCreate, UserITSProjectCacheInDB, UserITSProjectGroup
 from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
+
+
+class ITSProjectCacheOrderByOptions(str, Enum):
+    api_url = "api_url"
+    name = "name"
+    namespace = "namespace"
+    key = "key"
+    integration_type = "integration_type"
+    integration_name = "integration_name"
+    integration_id = "integration_id"
+    credential_id = "credential_id"
+
+
+class ITSProjectOrderByDirections(str, Enum):
+    asc = "ASC"
+    desc = "DESC"
+
 
 ISSUE_SOURCES = [IntegrationType.jira, IntegrationType.vsts]
 SKIP_REFRESH_MSG = "Skipping ITS Project refresh"
@@ -38,8 +55,8 @@ DEFAULT_ITS_PROJECTS_LIMIT: int = 15
 # TODO: For the new react front-end the MAX_ITS_PROJECTS_LIMIT has to be limited to a much smaller number, like 100.
 MAX_ITS_PROJECTS_LIMIT: int = 20000
 DEFAULT_ITS_PROJECTS_OFFSET: int = 0
-DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
-DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
+DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION: ITSProjectCacheOrderByOptions = ITSProjectCacheOrderByOptions.name
+DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION: ITSProjectOrderByDirections = ITSProjectOrderByDirections.asc
 
 
 def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[ITSProjectCreate]:
@@ -57,8 +74,8 @@ def get_available_its_projects_paginated(
     force_refresh_cache: Optional[bool] = False,
     limit: Optional[int] = DEFAULT_ITS_PROJECTS_LIMIT,
     offset: Optional[int] = DEFAULT_ITS_PROJECTS_OFFSET,
-    order_by_option: Optional[OrderByOptions] = DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION,
-    order_by_direction: Optional[OrderByDirections] = DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION,
+    order_by_option: Optional[ITSProjectCacheOrderByOptions] = DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION,
+    order_by_direction: Optional[ITSProjectOrderByDirections] = DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
@@ -83,7 +100,7 @@ def get_available_its_projects_paginated(
     )
     offset = offset if offset and -1 < offset else DEFAULT_ITS_PROJECTS_OFFSET
 
-    pass
+    return 1, 1, 1, []
 
 
 def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id: int) -> List[ITSProjectInDB]:
@@ -228,31 +245,36 @@ def _refresh_its_projects_cache_for_credential(
     user_id: int,
     refresh_cache: bool,
     force_refresh_cache: bool,
-    credential_current: CredentialInDB,
+    credential: CredentialInDB,
 ):
-    if credential_current.integration_type in ISSUE_SOURCES and credential_current.integration_name in g.integrations:
+    if credential.integration_type in ISSUE_SOURCES and credential.integration_name in g.integrations:
         try:
-            credential = get_fresh_credential(g, credential_id=credential_current.id)
-            if credential:
-                integration = g.integrations[credential.integration_name]
-                token = credential.to_token_dict(fernet=g.fernet)
+            credential_fresh: Optional[CredentialInDB] = get_fresh_credential(g, credential_id=credential.id)
+            if credential_fresh:
+                integration = g.integrations[credential_fresh.integration_name]
+                token = credential_fresh.to_token_dict(fernet=g.fernet)
 
                 userinfo: UserInfoInDB = (
                     find_first(
                         lambda ui: ui.integration_name
-                        == credential.integration_name,  # pylint: disable=cell-var-from-loop
-                        g.backend.user_infos.get_for_user(credential.owner_id),
+                        == credential_fresh.integration_name,  # pylint: disable=cell-var-from-loop
+                        g.backend.user_infos.get_for_user(credential_fresh.owner_id),
                     )
-                    if credential.owner_id
+                    if credential_fresh.owner_id
                     else None
                 )
 
-                refresh = _get_itsp_last_refresh_date(g, user_id, credential.integration_type)
+                refresh = _get_itsp_last_refresh_date(
+                    g, user_id, credential_fresh.integration_type or credential.integration_type
+                )
 
                 # if there is no saved last refresh time or if it is expired,
                 # we need to get the list again
-                if refresh_cache or force_refresh_cache or not isinstance(refresh, datetime) or (
-                    isinstance(refresh, datetime) and (g.current_time() - timedelta(days=1)) > refresh
+                if (
+                    refresh_cache
+                    or force_refresh_cache
+                    or not isinstance(refresh, datetime)
+                    or (isinstance(refresh, datetime) and (g.current_time() - timedelta(days=1)) > refresh)
                 ):
                     if force_refresh_cache:
                         delete_count: int = g.backend.user_its_projects_cache.delete_cache_for_user(user_id=user_id)
@@ -264,11 +286,13 @@ def _refresh_its_projects_cache_for_credential(
 
                     new_its_projects = integration.list_available_its_projects(
                         token=token,
-                        update_token=get_update_token_callback(g, credential),
+                        update_token=get_update_token_callback(g, credential_fresh),
                         provider_user_id=userinfo.sub if userinfo else None,
                     )
                     _save_its_projects_to_cache(g, user_id, new_its_projects)
-                    _save_its_projects_last_refresh_date(g, user_id, credential.integration_type)
+                    _save_its_projects_last_refresh_date(
+                        g, user_id, credential_fresh.integration_type or credential.integration_type
+                    )
             else:
                 logger.error(
                     "Cannot get fresh credential!",
@@ -279,8 +303,8 @@ def _refresh_its_projects_cache_for_credential(
         except Exception:  # pylint: disable=broad-except
             logger.exception(
                 "Error during collecting ITS projects",
-                integration_name=credential_current.integration_name,
-                credential_id=credential_current.id,
+                integration_name=credential.integration_name,
+                credential_id=credential.id,
             )
 
 

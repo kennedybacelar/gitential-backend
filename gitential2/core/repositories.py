@@ -31,7 +31,7 @@ from ..exceptions import SettingsException
 logger = get_logger(__name__)
 
 
-class OrderByOptions(str, Enum):
+class RepoCacheOrderByOptions(str, Enum):
     name = "name"
     namespace = "namespace"
     protocol = "protocol"
@@ -40,7 +40,7 @@ class OrderByOptions(str, Enum):
     integration_name = "integration_name"
 
 
-class OrderByDirections(str, Enum):
+class RepoCacheOrderByDirections(str, Enum):
     asc = "ASC"
     desc = "DESC"
 
@@ -49,8 +49,8 @@ DEFAULT_REPOS_LIMIT: int = 15
 # TODO: For the new react front-end the MAX_REPOS_LIMIT has to be limited to a much smaller number, like 100.
 MAX_REPOS_LIMIT: int = 20000
 DEFAULT_REPOS_OFFSET: int = 0
-DEFAULT_REPOS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
-DEFAULT_REPOS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
+DEFAULT_REPOS_ORDER_BY_OPTION: RepoCacheOrderByOptions = RepoCacheOrderByOptions.name
+DEFAULT_REPOS_ORDER_BY_DIRECTION: RepoCacheOrderByDirections = RepoCacheOrderByDirections.asc
 
 
 def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -> Optional[RepositoryInDB]:
@@ -110,8 +110,8 @@ def get_available_repositories_paginated(
     user_organization_name_list: Optional[List[str]] = None,
     limit: Optional[int] = DEFAULT_REPOS_LIMIT,
     offset: Optional[int] = DEFAULT_REPOS_OFFSET,
-    order_by_option: Optional[OrderByOptions] = DEFAULT_REPOS_ORDER_BY_OPTION,
-    order_by_direction: Optional[OrderByDirections] = DEFAULT_REPOS_ORDER_BY_DIRECTION,
+    order_by_option: Optional[RepoCacheOrderByOptions] = DEFAULT_REPOS_ORDER_BY_OPTION,
+    order_by_direction: Optional[RepoCacheOrderByDirections] = DEFAULT_REPOS_ORDER_BY_DIRECTION,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
@@ -143,8 +143,8 @@ def get_available_repositories_paginated(
         user_id=user_id,
         limit=limit,
         offset=offset,
-        order_by_option=order_by_option or OrderByOptions.name,
-        order_by_direction=order_by_direction or OrderByDirections.asc,
+        order_by_option=order_by_option or RepoCacheOrderByOptions.name,
+        order_by_direction=order_by_direction or RepoCacheOrderByDirections.asc,
         integration_type=integration_type,
         namespace=namespace,
         credential_id=credential_id,
@@ -160,8 +160,8 @@ def _get_user_repositories_by_query(
     user_id: int,
     limit: int,
     offset: int,
-    order_by_option: OrderByOptions,
-    order_by_direction: OrderByDirections,
+    order_by_option: RepoCacheOrderByOptions,
+    order_by_direction: RepoCacheOrderByDirections,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
@@ -227,8 +227,8 @@ def _get_query_of_get_repositories(
     user_id: int,
     limit: int,
     offset: int,
-    order_by_option: OrderByOptions,
-    order_by_direction: OrderByDirections,
+    order_by_option: RepoCacheOrderByOptions,
+    order_by_direction: RepoCacheOrderByDirections,
     integration_type: Optional[str] = None,
     namespace: Optional[str] = None,
     credential_id: Optional[int] = None,
@@ -398,11 +398,11 @@ def _refresh_repos_cache_for_credential(
 ):
     if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
         try:
-            credential_ = get_fresh_credential(g, credential_id=credential.id)
-            if credential_:
-                # with acquire_credential(g, credential_id=credential_.id) as credential:
-                integration = g.integrations[credential_.integration_name]
-                token = credential_.to_token_dict(fernet=g.fernet)
+            credential_fresh = get_fresh_credential(g, credential_id=credential.id)
+            if credential_fresh:
+                # with acquire_credential(g, credential_id=credential_fresh.id) as credential:
+                integration = g.integrations[credential_fresh.integration_name]
+                token = credential_fresh.to_token_dict(fernet=g.fernet)
                 userinfo: UserInfoInDB = (
                     find_first(
                         lambda ui: ui.integration_name
@@ -459,7 +459,7 @@ def _refresh_repos_cache_for_credential(
                     _save_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
                     logger.debug(
                         "Available private repositories for user is saved to repos cache.",
-                        integration_name=credential_.integration_name,
+                        integration_name=credential_fresh.integration_name,
                         number_of_collected_private_repositories=len(repos_all),
                     )
 

@@ -19,8 +19,8 @@ from gitential2.core.repositories import (
     DEFAULT_REPOS_OFFSET,
     DEFAULT_REPOS_ORDER_BY_OPTION,
     DEFAULT_REPOS_ORDER_BY_DIRECTION,
-    OrderByDirections,
-    OrderByOptions,
+    RepoCacheOrderByDirections,
+    RepoCacheOrderByOptions,
     refresh_cache_of_repositories_for_user_or_users,
 )
 from gitential2.datatypes.permissions import Entity, Action
@@ -79,8 +79,10 @@ def available_repos_paginated(
     user_organization_name_list: Optional[List[str]] = Query(None, alias="userOrganizationNameList"),
     limit: Optional[int] = Query(DEFAULT_REPOS_LIMIT, alias="limit"),
     offset: Optional[int] = Query(DEFAULT_REPOS_OFFSET, alias="offset"),
-    order_by_option: Optional[OrderByOptions] = Query(DEFAULT_REPOS_ORDER_BY_OPTION, alias="sortingOption"),
-    order_by_direction: Optional[OrderByDirections] = Query(DEFAULT_REPOS_ORDER_BY_DIRECTION, alias="sortingDirection"),
+    order_by_option: Optional[RepoCacheOrderByOptions] = Query(DEFAULT_REPOS_ORDER_BY_OPTION, alias="sortingOption"),
+    order_by_direction: Optional[RepoCacheOrderByDirections] = Query(
+        DEFAULT_REPOS_ORDER_BY_DIRECTION, alias="sortingDirection"
+    ),
     integration_type: Optional[str] = Query(None, alias="integrationType"),
     namespace: Optional[str] = Query(None, alias="namespace"),
     credential_id: Optional[int] = Query(None, alias="credentialId"),

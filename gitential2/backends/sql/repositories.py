@@ -3,7 +3,7 @@
 import datetime as dt
 import typing
 from collections import defaultdict
-from typing import Iterable, Optional, Callable, List, Dict, Union, cast, Set
+from typing import Iterable, Optional, Callable, List, Dict, Union, cast, Set, Tuple
 
 import pandas as pd
 import sqlalchemy as sa
@@ -681,6 +681,21 @@ class SQLUserITSProjectsCacheRepository(
         query = self.table.select().where(self.table.c.user_id == user_id)
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [UserITSProjectCacheInDB(**row) for row in rows]
+
+    def get_its_projects_cache_paginated(
+        self,
+        user_id: int,
+        limit: int,
+        offset: int,
+        order_by_option: str,
+        order_by_direction_is_asc: bool,
+        integration_type: Optional[str] = None,
+        namespace: Optional[str] = None,
+        credential_id: Optional[int] = None,
+        search_pattern: Optional[str] = None,
+    ) -> Tuple[int, List[UserITSProjectCacheInDB]]:
+        pass
+
 
     def insert_its_project_cache_for_user(self, itsp: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
         return self.create(itsp)
