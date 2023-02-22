@@ -694,8 +694,70 @@ class SQLUserITSProjectsCacheRepository(
         credential_id: Optional[int] = None,
         search_pattern: Optional[str] = None,
     ) -> Tuple[int, List[UserITSProjectCacheInDB]]:
-        pass
+        def get_filters():
+            def get_filter(column_name: str, filter_value: Union[str, int, None]) -> Union[str, None]:
+                return f"{column_name} = '{filter_value}'" if filter_value else None
 
+            user_id_filter: str = f"user_id = {user_id}"
+            name_filter: Optional[str] = (
+                f"name ILIKE '{search_pattern.replace('%', '%%')}'" if is_string_not_empty(search_pattern) else None
+            )
+            integration_type_filter: Optional[str] = get_filter("integration_type", integration_type)
+            namespace_filter: Optional[str] = get_filter("namespace", namespace)
+            credential_id_filter: Optional[str] = get_filter("credential_id", credential_id)
+            filters: str = " AND ".join(
+                [
+                    f
+                    for f in [
+                        user_id_filter,
+                        name_filter,
+                        integration_type_filter,
+                        namespace_filter,
+                        credential_id_filter,
+                    ]
+                    if is_string_not_empty(f)
+                ]
+            )
+            return f"WHERE {filters}" if is_string_not_empty(filters) else ""
+
+        query = (
+            "WITH selection AS "
+            "    ("
+            "        SELECT * "
+            "        FROM public.user_its_projects_cache "
+            f"           {get_filters()} "
+            "    )"
+            "SELECT * FROM ("
+            "    TABLE selection "
+            f"   ORDER BY {order_by_option} {'ASC' if order_by_direction_is_asc else 'DESC'} "
+            f"   LIMIT {limit} "
+            f"   OFFSET {offset}) sub "
+            "RIGHT JOIN (SELECT COUNT(*) FROM selection) c(total_count) ON TRUE;"
+        )
+
+        rows = self._execute_query(query, callback_fn=fetchall_).all()
+        total_count = rows[0]["total_count"] if is_list_not_empty(rows) else 0
+
+        its_projects_cache = [
+            UserITSProjectCacheInDB(
+                user_id=row["user_id"],
+                name=row["name"],
+                namespace=row["namespace"],
+                private=row["private"],
+                api_url=row["api_url"],
+                key=row["key"],
+                integration_type=row["integration_type"],
+                integration_name=row["integration_name"],
+                integration_id=row["integration_id"],
+                credential_id=row["credential_id"],
+                extra=row["extra"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in rows
+        ]
+
+        return total_count, its_projects_cache
 
     def insert_its_project_cache_for_user(self, itsp: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
         return self.create(itsp)
