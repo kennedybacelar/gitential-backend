@@ -199,14 +199,18 @@ def list_valid_credentials_for_user(g: GitentialContext, user_id: int) -> List[C
     return results
 
 
+def get_workspace_creator_user_id(g: GitentialContext, workspace_id: int):
+    return g.backend.workspaces.get_or_error(workspace_id).created_by
+
+
 def list_credentials_for_workspace(g: GitentialContext, workspace_id: int):
-    workspace = g.backend.workspaces.get_or_error(workspace_id)
-    return list_credentials_for_user(g, user_id=workspace.created_by)
+    user_id = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    return list_credentials_for_user(g, user_id=user_id)
 
 
 def list_valid_credentials_for_workspace(g: GitentialContext, workspace_id: int):
-    workspace = g.backend.workspaces.get_or_error(workspace_id)
-    return list_valid_credentials_for_user(g, user_id=workspace.created_by)
+    user_id = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    return list_valid_credentials_for_user(g, user_id=user_id)
 
 
 def create_credential(g: GitentialContext, credential_create: CredentialCreate, owner_id: int) -> CredentialInDB:

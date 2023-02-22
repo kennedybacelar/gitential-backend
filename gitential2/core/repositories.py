@@ -19,6 +19,7 @@ from .credentials import (
     list_credentials_for_workspace,
     get_update_token_callback,
     list_credentials_for_user,
+    get_workspace_creator_user_id,
 )
 from ..datatypes.user_repositories_cache import (
     UserRepositoryCacheInDB,
@@ -45,16 +46,11 @@ class OrderByDirections(str, Enum):
 
 
 DEFAULT_REPOS_LIMIT: int = 15
-# TODO: For the new react front-end both the MAX_REPOS_LIMIT
-#  has to be limited to a much smaller number, like 100.
+# TODO: For the new react front-end the MAX_REPOS_LIMIT has to be limited to a much smaller number, like 100.
 MAX_REPOS_LIMIT: int = 20000
 DEFAULT_REPOS_OFFSET: int = 0
 DEFAULT_REPOS_ORDER_BY_OPTION: OrderByOptions = OrderByOptions.name
 DEFAULT_REPOS_ORDER_BY_DIRECTION: OrderByDirections = OrderByDirections.asc
-
-
-def _get_workspace_creator_user_id(g: GitentialContext, workspace_id: int):
-    return g.backend.workspaces.get_or_error(workspace_id).created_by
 
 
 def get_repository(g: GitentialContext, workspace_id: int, repository_id: int) -> Optional[RepositoryInDB]:
@@ -100,7 +96,7 @@ def _get_available_repositories_for_workspace_credentials(
     _refresh_repos_cache_for_user(
         g=g, workspace_id=workspace_id, user_organization_name_list=user_organization_name_list
     )
-    user_id: int = _get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
     repos_from_cache = _get_repos_cache(g, user_id)
     return repos_from_cache
 
@@ -121,7 +117,7 @@ def get_available_repositories_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[RepositoryCreate]]:
-    user_id = custom_user_id if custom_user_id else _get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    user_id = custom_user_id if custom_user_id else get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
 
     _refresh_repos_cache_for_user(
         g=g,
@@ -317,7 +313,7 @@ def refresh_cache_of_repositories_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = _get_workspace_creator_user_id(g=g, workspace_id=workspace_id) if workspace_id else user_id
+    user_id_corrected = get_workspace_creator_user_id(g=g, workspace_id=workspace_id) if workspace_id else user_id
     if user_id_corrected:
         _refresh_repos_cache_for_user(
             g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
@@ -447,7 +443,7 @@ def _refresh_repos_cache_for_credential(
                     if force_refresh_cache:
                         delete_count: int = g.backend.user_repositories_cache.delete_cache_for_user(user_id=user_id)
                         logger.info(
-                            "force_refresh_cache was set. Cache for user deleted.",
+                            "force_refresh_cache was set. Repos cache for user deleted.",
                             number_of_deleted_rows=delete_count,
                             user_id=user_id,
                         )

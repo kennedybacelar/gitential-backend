@@ -279,6 +279,10 @@ class UserITSProjectsCacheRepository(
         pass
 
     @abstractmethod
+    def get_its_projects_cache_paginated(self) -> List[UserITSProjectCacheInDB]:
+        pass
+
+    @abstractmethod
     def insert_its_project_cache_for_user(self, itsp: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
         pass
 
@@ -286,6 +290,10 @@ class UserITSProjectsCacheRepository(
     def insert_its_projects_cache_for_user(
         self, its_projects: List[UserITSProjectCacheCreate]
     ) -> List[UserITSProjectCacheInDB]:
+        pass
+
+    @abstractmethod
+    def delete_cache_for_user(self, user_id: int) -> int:
         pass
 
     @abstractmethod

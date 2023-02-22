@@ -694,6 +694,10 @@ class SQLUserITSProjectsCacheRepository(
             results.append(itsp_saved_or_updated)
         return results
 
+    def delete_cache_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
     def get_its_project_groups(self, user_id: int) -> List[UserITSProjectGroup]:
         query = (
             self.table.select()
