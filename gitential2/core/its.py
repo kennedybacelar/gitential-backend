@@ -100,7 +100,19 @@ def get_available_its_projects_paginated(
     )
     offset = offset if offset and -1 < offset else DEFAULT_ITS_PROJECTS_OFFSET
 
-    return 1, 1, 1, []
+    total_count, its_projects = g.backend.user_its_projects_cache.get_its_projects_cache_paginated(
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        order_by_option=order_by_option,
+        order_by_direction_is_asc=order_by_direction == ITSProjectOrderByDirections.asc,
+        integration_type=integration_type,
+        namespace=namespace,
+        credential_id=credential_id,
+        search_pattern=search_pattern,
+    )
+
+    return total_count, limit, offset, its_projects
 
 
 def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id: int) -> List[ITSProjectInDB]:

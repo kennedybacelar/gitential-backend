@@ -150,7 +150,7 @@ from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheId,
     UserRepositoryGroup,
 )
-from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
+from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty, is_dict_not_empty
 
 # pylint: disable=unnecessary-lambda-assignment
 fetchone_ = lambda result: result.fetchone()
@@ -693,7 +693,7 @@ class SQLUserITSProjectsCacheRepository(
         namespace: Optional[str] = None,
         credential_id: Optional[int] = None,
         search_pattern: Optional[str] = None,
-    ) -> Tuple[int, List[UserITSProjectCacheInDB]]:
+    ) -> Tuple[int, List[ITSProjectCreate]]:
         def get_filters():
             def get_filter(column_name: str, filter_value: Union[str, int, None]) -> Union[str, None]:
                 return f"{column_name} = '{filter_value}'" if filter_value else None
@@ -722,11 +722,9 @@ class SQLUserITSProjectsCacheRepository(
 
         query = (
             "WITH selection AS "
-            "    ("
-            "        SELECT * "
-            "        FROM public.user_its_projects_cache "
-            f"           {get_filters()} "
-            "    )"
+            "    (SELECT * "
+            "    FROM public.user_its_projects_cache "
+            f"       {get_filters()}) "
             "SELECT * FROM ("
             "    TABLE selection "
             f"   ORDER BY {order_by_option} {'ASC' if order_by_direction_is_asc else 'DESC'} "
@@ -738,9 +736,18 @@ class SQLUserITSProjectsCacheRepository(
         rows = self._execute_query(query, callback_fn=fetchall_).all()
         total_count = rows[0]["total_count"] if is_list_not_empty(rows) else 0
 
+        def get_min_extra_data(row) -> dict:
+            result = {}
+            extra: dict = row["extra"] if is_dict_not_empty(row["extra"]) else {}
+            if extra:
+                if row["integration_type"] == "jira":
+                    result["process_id"] = extra["process_id"]
+                elif row["integration_type"] == "vsts":
+                    result["uuid"] = extra["uuid"]
+            return result
+
         its_projects_cache = [
-            UserITSProjectCacheInDB(
-                user_id=row["user_id"],
+            ITSProjectCreate(
                 name=row["name"],
                 namespace=row["namespace"],
                 private=row["private"],
@@ -750,9 +757,7 @@ class SQLUserITSProjectsCacheRepository(
                 integration_name=row["integration_name"],
                 integration_id=row["integration_id"],
                 credential_id=row["credential_id"],
-                extra=row["extra"],
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
+                extra=get_min_extra_data(row)
             )
             for row in rows
         ]

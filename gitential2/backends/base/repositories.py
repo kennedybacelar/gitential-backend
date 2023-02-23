@@ -290,7 +290,7 @@ class UserITSProjectsCacheRepository(
         namespace: Optional[str] = None,
         credential_id: Optional[int] = None,
         search_pattern: Optional[str] = None,
-    ) -> List[UserITSProjectCacheInDB]:
+    ) -> List[ITSProjectCreate]:
         pass
 
     @abstractmethod

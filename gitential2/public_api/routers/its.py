@@ -66,7 +66,7 @@ def available_its_projects_paginated(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
 
-    total_count, limit, offset, repositories = get_available_its_projects_paginated(
+    total_count, limit, offset, its_projects = get_available_its_projects_paginated(
         g=g,
         workspace_id=workspace_id,
         refresh_cache=refresh_cache,
@@ -83,7 +83,7 @@ def available_its_projects_paginated(
 
     return get_paginated_response(
         response=response,
-        items=repositories,
+        items=its_projects,
         total_count=total_count,
         limit=limit,
         offset=offset,

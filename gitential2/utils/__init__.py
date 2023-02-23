@@ -141,6 +141,10 @@ def is_string_not_empty(arg: Optional[Any] = None) -> TypeGuard[str]:
     return isinstance(arg, str) and len(arg) > 0
 
 
+def is_dict_not_empty(arg: Optional[Any] = None) -> TypeGuard[dict]:
+    return isinstance(arg, dict) and len(arg) > 0
+
+
 def get_filtered_dict(
     dict_obj: Dict,
     callback=None,
