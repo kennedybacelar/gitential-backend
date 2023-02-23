@@ -757,7 +757,7 @@ class SQLUserITSProjectsCacheRepository(
                 integration_name=row["integration_name"],
                 integration_id=row["integration_id"],
                 credential_id=row["credential_id"],
-                extra=get_min_extra_data(row)
+                extra=get_min_extra_data(row),
             )
             for row in rows
         ]

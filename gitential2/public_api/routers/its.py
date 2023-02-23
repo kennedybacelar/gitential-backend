@@ -14,6 +14,7 @@ from gitential2.core.its import (
     get_available_its_projects_paginated,
     ITSProjectCacheOrderByOptions,
     ITSProjectOrderByDirections,
+    refresh_cache_of_its_projects_for_user_or_users,
 )
 from gitential2.core.permissions import check_permission
 from gitential2.datatypes.permissions import Entity, Action
@@ -41,6 +42,21 @@ def available_its_projects(
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return list_available_its_projects(g=g, workspace_id=workspace_id)
+
+
+@router.post("/workspaces/{workspace_id}/refresh-its-projects-cache")
+def refresh_its_projects_cache(
+    workspace_id: int,
+    refresh_cache: Optional[bool] = Query(False, alias="refreshCache"),
+    force_refresh_cache: Optional[bool] = Query(False, alias="forceRefreshCache"),
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.user, Action.update, workspace_id=workspace_id)
+    refresh_cache_of_its_projects_for_user_or_users(
+        g=g, workspace_id=workspace_id, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+    )
+    return True
 
 
 @router.get("/workspaces/{workspace_id}/available-its-projects-paginated")

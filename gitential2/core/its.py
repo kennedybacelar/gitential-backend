@@ -104,7 +104,7 @@ def get_available_its_projects_paginated(
         user_id=user_id,
         limit=limit,
         offset=offset,
-        order_by_option=order_by_option,
+        order_by_option=order_by_option.value if order_by_option else ITSProjectCacheOrderByOptions.name.value,
         order_by_direction_is_asc=order_by_direction == ITSProjectOrderByDirections.asc,
         integration_type=integration_type,
         namespace=namespace,
@@ -194,6 +194,36 @@ def refresh_its_project(
                 error_msg=traceback.format_exc(limit=1),
             )
             log.exception("Failed to refresh ITS Project")
+
+
+def refresh_cache_of_its_projects_for_user_or_users(
+    g: GitentialContext,
+    user_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
+):
+    """
+    If workspace id is provided, we get the user id from the workspace creator.
+    Otherwise, we use the optionally provided user id.
+    If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
+    """
+
+    user_id_corrected = get_workspace_creator_user_id(g=g, workspace_id=workspace_id) if workspace_id else user_id
+    if user_id_corrected:
+        _refresh_its_projects_cache_for_user(
+            g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+        )
+    else:
+        user_ids: List[int] = [u.id for u in g.backend.users.all()]
+        user_ids_success: List[int] = []
+        for uid in user_ids:
+            result = _refresh_its_projects_cache_for_user(
+                g=g, user_id=uid, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+            )
+            if result:
+                user_ids_success.append(uid)
+        logger.info("Refresh repo cache for every user ended", user_ids_success=user_ids_success)
 
 
 def _refresh_its_projects_cache_for_user(
@@ -286,7 +316,11 @@ def _refresh_its_projects_cache_for_credential(
                     refresh_cache
                     or force_refresh_cache
                     or not isinstance(refresh, datetime)
-                    or (isinstance(refresh, datetime) and (g.current_time() - timedelta(days=1)) > refresh)
+                    or (
+                        isinstance(refresh, datetime)
+                        and (g.current_time() - timedelta(days=g.settings.cache.its_projects_cache_life_hours))
+                        > refresh
+                    )
                 ):
                     if force_refresh_cache:
                         delete_count: int = g.backend.user_its_projects_cache.delete_cache_for_user(user_id=user_id)

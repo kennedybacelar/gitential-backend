@@ -6,12 +6,17 @@ extraction:
   executor: process_pool
 #  repo_analysis_limit_in_days: 90
 #  its_project_analysis_limit_in_days: 90
+cache:
+  repo_cache_life_hours: 6
+  scheduled_repo_cache_refresh_enabled: false
+  scheduled_repo_cache_refresh_hour_of_day: "*/3"
+  its_projects_cache_life_hours: 6
+  scheduled_its_projects_cache_refresh_enabled: false
+  scheduled_its_projects_cache_refresh_hour_of_day: "*/3"
 refresh:
   scheduled_maintenance_enabled: true
   scheduled_maintenance_days_of_week: "5" # https://docs.celeryq.dev/en/stable/reference/celery.schedules.html
   scheduled_maintenance_hour_of_day: 23
-  scheduled_repo_cache_refresh_enabled: false
-  scheduled_repo_cache_refresh_hour_of_day: "*/3"
 auto_export:
   start_auto_export: false
 web:
