@@ -904,6 +904,24 @@ class SQLITSProjectRepository(
             for row in rows
         ]
 
+    def get_its_projects_groups_with_cache(self, workspace_id: int, user_id: int) -> List[UserITSProjectGroup]:
+        schema_name: str = self._schema_name(workspace_id=workspace_id)
+        query = (
+            "WITH its_project_selection AS "
+            "    (SELECT integration_type, namespace, credential_id, api_url "
+            "    FROM public.user_its_projects_cache "
+            f"    WHERE user_id = {user_id} "
+            "    UNION "
+            "    SELECT integration_type, namespace, credential_id, api_url "
+            f"   FROM {schema_name}.its_projects) "
+            "SELECT integration_type, namespace, credential_id, COUNT(*) AS total_count "
+            "FROM its_project_selection "
+            "GROUP BY integration_type, namespace, credential_id "
+            "ORDER BY integration_type, namespace;"
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [UserITSProjectGroup(**row) for row in rows]
+
 
 class SQLProjectRepositoryRepository(
     ProjectRepositoryRepository,

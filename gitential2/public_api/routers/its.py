@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, Query, Response
 
@@ -6,7 +6,7 @@ from gitential2.core.context import GitentialContext
 from gitential2.core.its import (
     list_available_its_projects,
     list_project_its_projects,
-    list_available_its_project_groups,
+    get_available_its_project_groups,
     DEFAULT_ITS_PROJECTS_LIMIT,
     DEFAULT_ITS_PROJECTS_OFFSET,
     DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION,
@@ -19,19 +19,20 @@ from gitential2.core.its import (
 from gitential2.core.permissions import check_permission
 from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import current_user, gitential_context
+from ...datatypes.user_its_projects_cache import UserITSProjectGroup
 from ...utils.router_utils import get_paginated_response
 
 router = APIRouter(tags=["its"])
 
 
-@router.post("/workspaces/{workspace_id}/available-its-project-groups")
+@router.get("/workspaces/{workspace_id}/available-its-project-groups", response_model=List[UserITSProjectGroup])
 def available_its_project_groups(
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return list_available_its_project_groups(g=g, workspace_id=workspace_id, user_id=current_user.id)
+    return get_available_its_project_groups(g=g, workspace_id=workspace_id)
 
 
 @router.get("/workspaces/{workspace_id}/available-its-projects")

@@ -535,25 +535,9 @@ def collect_and_save_data_for_issue(
         )
 
 
-def list_available_its_project_groups(
-    g: GitentialContext, workspace_id: int, user_id: int
-) -> List[UserITSProjectGroup]:
-    cache_itsp_groups = g.backend.user_its_projects_cache.get_its_project_groups(user_id)
-    itsp_groups = g.backend.its_projects.get_its_project_groups(workspace_id=workspace_id)
-
-    def is_itsp_group_in_cache(user_itsp_group: UserITSProjectGroup):
-        return any(
-            gc.integration_type == user_itsp_group.integration_type
-            and gc.namespace == user_itsp_group.namespace
-            and gc.credential_id == user_itsp_group.credential_id
-            for gc in cache_itsp_groups
-        )
-
-    for group in itsp_groups:
-        if not is_itsp_group_in_cache(group):
-            cache_itsp_groups.append(group)
-
-    return cache_itsp_groups
+def get_available_its_project_groups(g: GitentialContext, workspace_id: int) -> List[UserITSProjectGroup]:
+    user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    return g.backend.its_projects.get_its_projects_groups_with_cache(workspace_id=workspace_id, user_id=user_id)
 
 
 def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_data: ITSIssueAllData):

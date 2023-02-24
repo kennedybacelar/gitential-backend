@@ -32,7 +32,7 @@ from ...utils.router_utils import get_paginated_response
 router = APIRouter(tags=["repositories"])
 
 
-@router.post("/workspaces/{workspace_id}/available-repo-groups", response_model=List[UserRepositoryGroup])
+@router.get("/workspaces/{workspace_id}/available-repo-groups", response_model=List[UserRepositoryGroup])
 def available_repo_groups(
     workspace_id: int,
     current_user=Depends(current_user),

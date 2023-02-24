@@ -8,6 +8,7 @@ class UserITSProjectGroup(CoreModel):
     integration_type: str = ""
     namespace: str = ""
     credential_id: Optional[int] = None
+    total_count: int = 0
 
 
 class UserITSProjectCacheId(CoreModel):
