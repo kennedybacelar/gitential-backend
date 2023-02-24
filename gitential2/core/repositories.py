@@ -569,23 +569,9 @@ def delete_repositories(g: GitentialContext, workspace_id: int, repository_ids: 
     return True
 
 
-def list_available_repo_groups(g: GitentialContext, workspace_id: int, user_id: int) -> List[UserRepositoryGroup]:
-    repo_groups_from_cache = g.backend.user_repositories_cache.get_repo_groups(user_id=user_id)
-    repo_groups = g.backend.repositories.get_repo_groups(workspace_id=workspace_id)
-
-    def is_repo_group_in_cache(user_repo_group: UserRepositoryGroup):
-        return any(
-            gc.integration_type == user_repo_group.integration_type
-            and gc.namespace == user_repo_group.namespace
-            and gc.credential_id == user_repo_group.credential_id
-            for gc in repo_groups_from_cache
-        )
-
-    for group in repo_groups:
-        if not is_repo_group_in_cache(group):
-            repo_groups_from_cache.append(group)
-
-    return repo_groups_from_cache
+def get_available_repo_groups(g: GitentialContext, workspace_id: int) -> List[UserRepositoryGroup]:
+    user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    return g.backend.repositories.get_repo_groups_with_repo_cache(workspace_id=workspace_id, user_id=user_id)
 
 
 def _save_repos_to_repos_cache(g: GitentialContext, user_id: int, repo_list: List[RepositoryCreate]):

@@ -356,6 +356,10 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
     def get_repo_groups(self, workspace_id: int) -> List[UserRepositoryGroup]:
         pass
 
+    @abstractmethod
+    def get_repo_groups_with_repo_cache(self, workspace_id: int, user_id: int) -> List[UserRepositoryGroup]:
+        pass
+
 
 class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]):
     @abstractmethod

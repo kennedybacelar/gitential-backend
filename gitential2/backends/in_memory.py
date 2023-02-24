@@ -361,6 +361,9 @@ class InMemRepositoryRepository(
     def get_repo_groups(self, workspace_id: int):
         pass
 
+    def get_repo_groups_with_repo_cache(self, workspace_id: int, user_id: int):
+        pass
+
 
 class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogCreate, EmailLogUpdate, EmailLogInDB]):
     def email_log_status_update(self, user_id: int, template_name: str, status: str) -> Optional[EmailLogInDB]:

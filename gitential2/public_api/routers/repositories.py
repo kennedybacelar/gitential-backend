@@ -13,7 +13,7 @@ from gitential2.core.repositories import (
     create_repositories,
     delete_repositories,
     list_project_repositories,
-    list_available_repo_groups,
+    get_available_repo_groups,
     get_available_repositories_paginated,
     DEFAULT_REPOS_LIMIT,
     DEFAULT_REPOS_OFFSET,
@@ -39,7 +39,7 @@ def available_repo_groups(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
-    return list_available_repo_groups(g=g, workspace_id=workspace_id, user_id=current_user.id)
+    return get_available_repo_groups(g=g, workspace_id=workspace_id)
 
 
 @router.post("/workspaces/{workspace_id}/available-repos")

@@ -854,6 +854,24 @@ class SQLRepositoryRepository(
             for row in rows
         ]
 
+    def get_repo_groups_with_repo_cache(self, workspace_id: int, user_id: int) -> List[UserRepositoryGroup]:
+        schema_name: str = self._schema_name(workspace_id=workspace_id)
+        query = (
+            "WITH repo_selection AS "
+            "    (SELECT integration_type, namespace, credential_id, clone_url "
+            "    FROM public.user_repositories_cache "
+            f"    WHERE user_id = {user_id} "
+            "    UNION "
+            "    SELECT integration_type, namespace, credential_id, clone_url "
+            f"   FROM {schema_name}.repositories) "
+            "SELECT integration_type, namespace, credential_id, COUNT(*) AS total_count "
+            "FROM repo_selection "
+            "GROUP BY integration_type, namespace, credential_id "
+            "ORDER BY integration_type, namespace;"
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [UserRepositoryGroup(**row) for row in rows]
+
 
 class SQLITSProjectRepository(
     ITSProjectRepository, SQLWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]
