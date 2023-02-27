@@ -278,7 +278,8 @@ def scheduled_repo_cache_refresh(settings: Optional[GitentialSettings] = None):
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
-    refresh_cache_of_repositories_for_user_or_users(g=g, force_refresh_cache=True)
+    is_force: bool = settings.cache.scheduled_repo_cache_refresh_is_force_refresh
+    refresh_cache_of_repositories_for_user_or_users(g=g, refresh_cache=not is_force, force_refresh_cache=is_force)
 
 
 @celery_app.task
@@ -288,4 +289,5 @@ def scheduled_its_project_cache_refresh(settings: Optional[GitentialSettings] = 
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
-    refresh_cache_of_its_projects_for_user_or_users(g=g, force_refresh_cache=True)
+    is_force: bool = settings.cache.scheduled_its_projects_cache_refresh_is_force_refresh
+    refresh_cache_of_its_projects_for_user_or_users(g=g, refresh_cache=not is_force, force_refresh_cache=is_force)

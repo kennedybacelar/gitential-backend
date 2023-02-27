@@ -149,9 +149,11 @@ class CacheSettings(BaseModel):
     repo_cache_life_hours: int = 6
     scheduled_repo_cache_refresh_enabled: bool = False
     scheduled_repo_cache_refresh_hour_of_day: str = "*/3"
+    scheduled_repo_cache_refresh_is_force_refresh: bool = True
     its_projects_cache_life_hours: int = 6
     scheduled_its_projects_cache_refresh_enabled: bool = False
     scheduled_its_projects_cache_refresh_hour_of_day: str = "*/3"
+    scheduled_its_projects_cache_refresh_is_force_refresh: bool = True
 
 
 class RefreshSettings(BaseModel):
