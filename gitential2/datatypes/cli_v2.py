@@ -13,3 +13,9 @@ class CleanupType(Enum):
     pull_requests = "pull_requests"
     its_projects = "its_projects"
     redis = "redis"
+
+
+class CacheRefreshType(Enum):
+    everything = "everything"
+    repos = "repos"
+    its_projects = "its_projects"
