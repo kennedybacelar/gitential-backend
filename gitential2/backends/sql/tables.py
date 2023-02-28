@@ -292,7 +292,7 @@ user_its_projects_cache_table = sa.Table(
     "user_its_projects_cache",
     metadata,
     sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
-    sa.Column("api_url", sa.String(256), nullable=False, unique=True),
+    sa.Column("api_url", sa.String(256), nullable=False, unique=False),
     sa.Column("name", sa.String(128)),
     sa.Column("namespace", sa.String(128)),
     sa.Column("private", sa.Boolean, nullable=False, default=True),
