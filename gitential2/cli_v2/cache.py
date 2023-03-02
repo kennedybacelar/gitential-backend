@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 def refresh_cache(
     workspace_id: Optional[int] = None,
     user_id: Optional[int] = None,
-    force: bool = False,
+    force_refresh: bool = False,
     refresh_type: CacheRefreshType = typer.Option("everything", "--type", "-t"),
 ):
     """
@@ -38,12 +38,12 @@ def refresh_cache(
 
     if refresh_type in [CacheRefreshType.everything, CacheRefreshType.repos]:
         refresh_cache_of_repositories_for_user_or_users(
-            g=g, force_refresh_cache=force, user_id=user_id, workspace_id=workspace_id
+            g=g, refresh_cache=True, force_refresh_cache=force_refresh, user_id=user_id, workspace_id=workspace_id
         )
 
     if refresh_type in [CacheRefreshType.everything, CacheRefreshType.its_projects]:
         refresh_cache_of_its_projects_for_user_or_users(
-            g=g, force_refresh_cache=force, user_id=user_id, workspace_id=workspace_id
+            g=g, refresh_cache=True, force_refresh_cache=force_refresh, user_id=user_id, workspace_id=workspace_id
         )
 
 
