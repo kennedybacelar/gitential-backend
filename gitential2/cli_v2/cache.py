@@ -86,7 +86,7 @@ def reset_cache(
 def reset_cache_for_user(g: GitentialContext, reset_type: CacheRefreshType, user_id: int):
     integration_types: List[str] = list({i.integration_type for i in g.integrations.values()})
 
-    if reset_type in [CacheRefreshType.everything, CacheRefreshType.its_projects]:
+    if reset_type in [CacheRefreshType.everything, CacheRefreshType.repos]:
         delete_count_r: int = g.backend.user_repositories_cache.delete_cache_for_user(user_id=user_id)
         for integration_type in integration_types:
             g.kvstore.delete_value(

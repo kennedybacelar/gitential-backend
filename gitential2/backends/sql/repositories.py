@@ -150,7 +150,7 @@ from ...datatypes.user_repositories_cache import (
     UserRepositoryCacheId,
     UserRepositoryGroup,
 )
-from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty, is_dict_not_empty
+from ...utils import get_schema_name, is_string_not_empty, is_list_not_empty
 
 # pylint: disable=unnecessary-lambda-assignment
 fetchone_ = lambda result: result.fetchone()
@@ -721,30 +721,20 @@ class SQLUserITSProjectsCacheRepository(
             return f"WHERE {filters}" if is_string_not_empty(filters) else ""
 
         query = (
-            "WITH selection AS "
+            "WITH its_project_selection AS "
             "    (SELECT * "
             "    FROM public.user_its_projects_cache "
             f"       {get_filters()}) "
             "SELECT * FROM ("
-            "    TABLE selection "
+            "    TABLE its_project_selection "
             f"   ORDER BY {order_by_option} {'ASC' if order_by_direction_is_asc else 'DESC'} "
             f"   LIMIT {limit} "
             f"   OFFSET {offset}) sub "
-            "RIGHT JOIN (SELECT COUNT(*) FROM selection) c(total_count) ON TRUE;"
+            "RIGHT JOIN (SELECT COUNT(*) FROM its_project_selection) c(total_count) ON TRUE;"
         )
 
-        rows = self._execute_query(query, callback_fn=fetchall_).all()
+        rows = self._execute_query(query, callback_fn=fetchall_)
         total_count = rows[0]["total_count"] if is_list_not_empty(rows) else 0
-
-        def get_min_extra_data(row) -> dict:
-            result = {}
-            extra: dict = row["extra"] if is_dict_not_empty(row["extra"]) else {}
-            if extra:
-                if row["integration_type"] == "jira":
-                    result["process_id"] = extra["process_id"]
-                elif row["integration_type"] == "vsts":
-                    result["uuid"] = extra["uuid"]
-            return result
 
         its_projects_cache = [
             ITSProjectCreate(
@@ -757,7 +747,6 @@ class SQLUserITSProjectsCacheRepository(
                 integration_name=row["integration_name"],
                 integration_id=row["integration_id"],
                 credential_id=row["credential_id"],
-                extra=get_min_extra_data(row),
             )
             for row in rows
         ]

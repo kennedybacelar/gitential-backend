@@ -18,7 +18,7 @@ from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase, ITSProjectRefreshStatus
 from gitential2.datatypes.userinfos import UserInfoInDB
 from gitential2.settings import IntegrationType
-from gitential2.utils import find_first, is_string_not_empty
+from gitential2.utils import find_first, is_string_not_empty, get_user_id_or_raise_exception
 from .credentials import (
     get_fresh_credential,
     list_credentials_for_workspace,
@@ -28,7 +28,6 @@ from .credentials import (
 )
 from ..datatypes import CredentialInDB
 from ..datatypes.user_its_projects_cache import UserITSProjectCacheCreate, UserITSProjectCacheInDB, UserITSProjectGroup
-from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
 
@@ -209,7 +208,9 @@ def refresh_cache_of_its_projects_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = get_workspace_creator_user_id(g=g, workspace_id=workspace_id) if workspace_id else user_id
+    user_id_corrected = get_user_id_or_raise_exception(
+        g=g, cache_type="ITS projects", user_id=user_id, workspace_id=workspace_id
+    )
     if user_id_corrected:
         _refresh_its_projects_cache_for_user(
             g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
@@ -240,16 +241,13 @@ def _refresh_its_projects_cache_for_user(
     If none of the above is provided an exception will be raised.
     """
 
-    if not user_id and not workspace_id:
-        raise SettingsException(
-            "Error while trying to refresh ITS projects cache for user! "
-            "In order to refresh ITS projects cache for user, either one of the following "
-            "has to be a valid id: 'workspace_id', 'user_id'"
-        )
+    user_id_corrected = get_user_id_or_raise_exception(
+        g=g, cache_type="ITS projects", user_id=user_id, workspace_id=workspace_id
+    )
 
     logger.info(
         "Starting to refresh ITS projects cache for user.",
-        user_id=user_id,
+        user_id=user_id_corrected,
         workspace_id=workspace_id,
         refresh_cache=refresh_cache,
         force_refresh_cache=force_refresh_cache,
@@ -272,7 +270,7 @@ def _refresh_its_projects_cache_for_user(
     its_projects_for_credential = partial(
         _refresh_its_projects_cache_for_credential,
         g,
-        user_id,
+        user_id_corrected,
         refresh_cache_c,
         force_refresh_cache_c,
     )
