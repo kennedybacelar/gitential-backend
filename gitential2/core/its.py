@@ -208,9 +208,16 @@ def refresh_cache_of_its_projects_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = get_user_id_or_raise_exception(
-        g=g, cache_type="ITS projects", user_id=user_id, workspace_id=workspace_id
-    )
+    user_id_corrected = None
+    if user_id:
+        user = g.backend.users.get(user_id)
+        if user:
+            user_id_corrected = user.id
+    if workspace_id:
+        workspace = g.backend.workspaces.get(workspace_id)
+        if workspace:
+            user_id_corrected = workspace.created_by
+
     if user_id_corrected:
         _refresh_its_projects_cache_for_user(
             g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
