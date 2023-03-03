@@ -303,7 +303,7 @@ class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, Projec
         pass
 
     @abstractmethod
-    def get_project_ids_and_names(self, workspace_id: int, project_ids: Optional[List[int]] = None) -> List[IdAndName]:
+    def get_projects_ids_and_names(self, workspace_id: int, project_ids: Optional[List[int]] = None) -> List[IdAndName]:
         pass
 
 
@@ -736,6 +736,10 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
     @abstractmethod
     def get_teams_by_team_ids(self, workspace_id: int, team_ids: List[int]):
+        pass
+
+    @abstractmethod
+    def get_teams_ids_and_names(self, workspace_id: int, team_ids: List[int] = None) -> List[IdAndName]:
         pass
 
 
