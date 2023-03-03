@@ -22,7 +22,7 @@ from gitential2.datatypes import (
 )
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB, AuthorNamesAndEmails
+from gitential2.datatypes.authors import AuthorCreate, AuthorUpdate, AuthorInDB, AuthorNamesAndEmails, IdAndTitle
 from gitential2.datatypes.auto_export import AutoExportCreate, AutoExportInDB, AutoExportUpdate
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.datatypes.deploys import Deploy, DeployCommit
@@ -300,6 +300,10 @@ class ProjectRepository(BaseWorkspaceScopedRepository[int, ProjectCreate, Projec
 
     @abstractmethod
     def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:
+        pass
+
+    @abstractmethod
+    def get_project_ids_and_names(self, workspace_id: int, project_ids: Optional[List[int]] = None) -> List[IdAndTitle]:
         pass
 
 
