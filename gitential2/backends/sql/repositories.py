@@ -961,6 +961,14 @@ class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCr
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [TeamInDB(**row) for row in rows]
 
+    def get_teams_ids_and_names(self, workspace_id: int, team_ids: List[int] = None) -> List[IdAndName]:
+        if team_ids:
+            query = select([self.table.c.id, self.table.c.name]).where(self.table.c.id.in_(team_ids))
+        else:
+            query = select([self.table.c.id, self.table.c.name])
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [IdAndName(**row) for row in rows]
+
 
 class SQLTeamMemberRepository(
     TeamMemberRepository, SQLWorkspaceScopedRepository[int, TeamMemberCreate, TeamMemberUpdate, TeamMemberInDB]
