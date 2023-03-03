@@ -28,6 +28,8 @@ from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
 from gitential2.utils import is_list_not_empty
 
+from sqlalchemy import distinct, func, select, and_
+
 
 def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorPublicExtended]:
     return __get_extended_authors_list(
@@ -40,15 +42,58 @@ def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) 
 def list_authors_extended(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> AuthorsPublicExtendedSearchResult:
-    data_query_result: List[int] = __get_author_ids_list_with_filters_applied(
-        g=g, workspace_id=workspace_id, author_filters=author_filters
+
+    engine = g.backend.authors.engine
+
+    authors_table = g.backend.authors.table
+    calculated_commits_table = g.backend.calculated_commits.table
+    team_members_table = g.backend.team_members.table
+    teams_table = g.backend.teams.table
+    project_repositories_table = g.backend.project_repositories.table
+    projects_table = g.backend.projects.table
+
+    param_min_date = "2022-01-01"
+    param_max_date = "2023-01-01"
+    param_teams = []
+    param_projects = []
+    param_authors = []
+
+    query = (
+        select(
+            authors_table.c.name.label("author_name"),
+            func.array_agg(distinct(teams_table.c.id)).label("teams"),
+            func.array_agg(distinct(projects_table.c.id)).label("projects"),
+        )
+        .select_from(
+            authors_table.join(calculated_commits_table, authors_table.c.id == calculated_commits_table.c.aid)
+            .outerjoin(team_members_table, authors_table.c.id == team_members_table.c.author_id)
+            .outerjoin(teams_table, team_members_table.c.team_id == teams_table.c.id)
+            .join(
+                project_repositories_table, calculated_commits_table.c.repo_id == project_repositories_table.c.repo_id
+            )
+            .outerjoin(projects_table, project_repositories_table.c.project_id == projects_table.c.id)
+        )
+        .where(
+            and_(
+                calculated_commits_table.c.date.between(
+                    func.coalesce(param_min_date, calculated_commits_table.c.date),
+                    func.coalesce(param_max_date, calculated_commits_table.c.date),
+                ),
+                teams_table.c.id.in_(param_teams) if param_teams else True,
+                projects_table.c.id.in_(param_projects) if param_projects else True,
+                authors_table.c.id.in_(param_authors) if param_authors else True,
+            )
+        )
+        .group_by(authors_table.c.id)
     )
 
-    authors: List[AuthorPublicExtended] = __get_extended_authors_list(
-        g=g,
-        workspace_id=workspace_id,
-        author_ids_from_other_query=data_query_result,
-    )
+    with engine.connect().execution_options(
+        autocommit=True,
+        schema_translate_map={None: f"ws_{workspace_id}"},
+    ) as conn:
+        authors = conn.execute(query).fetchall()
+
+    print(authors)
 
     __sort_authors(
         authors=authors,
