@@ -71,6 +71,11 @@ class AuthorPublic(AuthorInDB):
     pass
 
 
+class IdAndName(BaseModel):
+    id: int
+    name: str
+
+
 class IdAndTitle(BaseModel):
     id: int
     title: str
