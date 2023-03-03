@@ -739,7 +739,7 @@ class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, 
         pass
 
     @abstractmethod
-    def get_teams_ids_and_names(self, workspace_id: int, team_ids: List[int] = None) -> List[IdAndName]:
+    def get_teams_ids_and_names(self, workspace_id: int, team_ids: Optional[List[int]] = None) -> List[IdAndName]:
         pass
 
 

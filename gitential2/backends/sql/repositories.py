@@ -725,7 +725,7 @@ class SQLProjectRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [ProjectInDB(**row) for row in rows]
 
-    def get_project_ids_and_names(self, workspace_id: int, project_ids: Optional[List[int]] = None) -> List[IdAndName]:
+    def get_projects_ids_and_names(self, workspace_id: int, project_ids: Optional[List[int]] = None) -> List[IdAndName]:
         if project_ids:
             query = select([self.table.c.id, self.table.c.name]).where(self.table.c.id.in_(project_ids))
         else:
