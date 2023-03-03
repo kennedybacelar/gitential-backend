@@ -60,7 +60,10 @@ def list_authors_extended(
 
     query = (
         select(
-            authors_table.c.name.label("author_name"),
+            authors_table.c.active,
+            authors_table.c.name,
+            authors_table.c.email,
+            authors_table.c.aliases,
             func.array_agg(distinct(teams_table.c.id)).label("teams"),
             func.array_agg(distinct(projects_table.c.id)).label("projects"),
         )
@@ -93,7 +96,11 @@ def list_authors_extended(
     ) as conn:
         authors = conn.execute(query).fetchall()
 
-    print(authors)
+    authors_extended = []
+    import pprint
+
+    pprint.pprint(authors)
+    exit()
 
     __sort_authors(
         authors=authors,
