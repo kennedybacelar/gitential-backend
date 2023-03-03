@@ -749,6 +749,7 @@ class SQLUserITSProjectsCacheRepository(
                 credential_id=row["credential_id"],
             )
             for row in rows
+            if "api_url" in row and row["api_url"]
         ]
 
         return total_count, its_projects_cache

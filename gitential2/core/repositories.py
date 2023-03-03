@@ -221,6 +221,7 @@ def _get_user_repositories_by_query(
                 extra=get_extra_with_min_info(row),
             )
             for row in rows
+            if "clone_url" in row and row["clone_url"]
         ]
         if is_list_not_empty(rows)
         else []
@@ -457,7 +458,7 @@ def _refresh_repos_cache_for_credential(
                         if is_list_not_empty(repos_newly_created)
                         else [],
                     )
-                else:
+                elif force_refresh_cache or not isinstance(refresh, datetime):
                     if force_refresh_cache:
                         delete_count: int = g.backend.user_repositories_cache.delete_cache_for_user(user_id=user_id)
                         logger.info(
