@@ -60,12 +60,13 @@ def list_authors_extended(
 
     query = (
         select(
+            authors_table.c.id,
             authors_table.c.active,
             authors_table.c.name,
             authors_table.c.email,
             authors_table.c.aliases,
-            func.array_agg(distinct(teams_table.c.id)).label("teams"),
-            func.array_agg(distinct(projects_table.c.id)).label("projects"),
+            func.array_agg(distinct(teams_table.c.id)).label("teams_ids"),
+            func.array_agg(distinct(projects_table.c.id)).label("projects_ids"),
         )
         .select_from(
             authors_table.join(calculated_commits_table, authors_table.c.id == calculated_commits_table.c.aid)
@@ -96,10 +97,24 @@ def list_authors_extended(
     ) as conn:
         authors = conn.execute(query).fetchall()
 
-    authors_extended = []
     import pprint
 
-    pprint.pprint(authors)
+    for author in authors:
+        author_ext = AuthorPublicExtended(
+            id=author.id,
+            name=author.name,
+            active=author.active,
+            aliases=author.aliases,
+            teams=g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids),
+            projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
+        )
+        pprint.pprint(author_ext)
+        exit()
+
+    authors_extended = [AuthorPublicExtended(author) for author in authors]
+    import pprint
+
+    pprint.pprint(authors_extended)
     exit()
 
     __sort_authors(

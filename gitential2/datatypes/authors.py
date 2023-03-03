@@ -82,8 +82,10 @@ class IdAndTitle(BaseModel):
 
 
 class AuthorPublicExtended(AuthorInDB):
-    teams: Optional[List[IdAndTitle]]
-    projects: Optional[List[IdAndTitle]]
+    # teams: Optional[List[IdAndTitle]]
+    # projects: Optional[List[IdAndTitle]]
+    teams: Optional[List[IdAndName]]
+    projects: Optional[List[IdAndName]]
 
 
 class AuthorsPublicExtendedSearchResult(BaseModel):
