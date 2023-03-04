@@ -129,6 +129,7 @@ def list_authors_extended(
 
     import pprint
 
+    authors_ret = []
     for author in authors:
         author_ext = AuthorPublicExtended(
             id=author.id,
@@ -138,30 +139,29 @@ def list_authors_extended(
             teams=g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids),
             projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
         )
-        pprint.pprint(author_ext)
+        authors_ret.append(author_ext)
 
     # authors_extended = [AuthorPublicExtended(author) for author in authors]
     import pprint
 
-    # pprint.pprint(authors_extended)
-    exit()
-
+    """
     __sort_authors(
-        authors=authors,
-        sorting_details=getattr(
-            author_filters, "sorting_details", AuthorsSorting(type=AuthorsSortingType.name, is_desc=False)
-        ),
+    authors=authors,
+    sorting_details=getattr(
+        author_filters, "sorting_details", AuthorsSorting(type=AuthorsSortingType.name, is_desc=False)
+    ),
     )
+    """
 
     limit: int = getattr(author_filters, "limit", 5)
     offset: int = getattr(author_filters, "offset", 0)
     authors = authors[offset:][:limit]
 
     return AuthorsPublicExtendedSearchResult(
-        total=len(data_query_result),
+        total=len(authors_ret),
         limit=limit,
         offset=offset,
-        authors_list=authors,
+        authors_list=authors_ret,
     )
 
 
