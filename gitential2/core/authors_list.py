@@ -60,6 +60,30 @@ def list_authors_extended(
     param_offset = 0
     param_limit = 5
 
+    subquery = (
+        select(func.count())
+        .select_from(
+            authors_table.join(calculated_commits_table, authors_table.c.id == calculated_commits_table.c.aid)
+            .outerjoin(team_members_table, authors_table.c.id == team_members_table.c.author_id)
+            .outerjoin(teams_table, team_members_table.c.team_id == teams_table.c.id)
+            .join(
+                project_repositories_table, calculated_commits_table.c.repo_id == project_repositories_table.c.repo_id
+            )
+            .outerjoin(projects_table, project_repositories_table.c.project_id == projects_table.c.id)
+        )
+        .where(
+            and_(
+                calculated_commits_table.c.date.between(
+                    func.coalesce(param_min_date, calculated_commits_table.c.date),
+                    func.coalesce(param_max_date, calculated_commits_table.c.date),
+                ),
+                teams_table.c.id.in_(param_teams) if param_teams else True,
+                projects_table.c.id.in_(param_projects) if param_projects else True,
+                authors_table.c.id.in_(param_authors) if param_authors else True,
+            )
+        )
+    )
+
     query = (
         select(
             authors_table.c.id,
@@ -69,6 +93,7 @@ def list_authors_extended(
             authors_table.c.aliases,
             func.array_agg(distinct(teams_table.c.id)).label("teams_ids"),
             func.array_agg(distinct(projects_table.c.id)).label("projects_ids"),
+            subquery.scalar_subquery().label("total_count"),
         )
         .select_from(
             authors_table.join(calculated_commits_table, authors_table.c.id == calculated_commits_table.c.aid)
@@ -104,8 +129,6 @@ def list_authors_extended(
 
     import pprint
 
-    pprint.pprint(authors)
-
     for author in authors:
         author_ext = AuthorPublicExtended(
             id=author.id,
@@ -116,12 +139,11 @@ def list_authors_extended(
             projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
         )
         pprint.pprint(author_ext)
-        exit()
 
-    authors_extended = [AuthorPublicExtended(author) for author in authors]
+    # authors_extended = [AuthorPublicExtended(author) for author in authors]
     import pprint
 
-    pprint.pprint(authors_extended)
+    # pprint.pprint(authors_extended)
     exit()
 
     __sort_authors(
