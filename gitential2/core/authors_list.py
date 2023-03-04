@@ -43,6 +43,8 @@ def list_authors_extended(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> AuthorsPublicExtendedSearchResult:
 
+    # Missing getting parameters from the query to make it dynamic
+
     engine = g.backend.authors.engine
 
     authors_table = g.backend.authors.table
@@ -52,7 +54,7 @@ def list_authors_extended(
     project_repositories_table = g.backend.project_repositories.table
     projects_table = g.backend.projects.table
 
-    param_min_date = "2021-01-01"
+    param_min_date = "2010-01-01"
     param_max_date = "2023-01-01"
     param_teams = []
     param_projects = []
@@ -129,6 +131,7 @@ def list_authors_extended(
 
     import pprint
 
+    total_row_count = authors[0][-1]
     authors_ret = []
     for author in authors:
         author_ext = AuthorPublicExtended(
@@ -153,14 +156,14 @@ def list_authors_extended(
     )
     """
 
-    limit: int = getattr(author_filters, "limit", 5)
-    offset: int = getattr(author_filters, "offset", 0)
-    authors = authors[offset:][:limit]
+    # limit: int = getattr(author_filters, "limit", 5)
+    # offset: int = getattr(author_filters, "offset", 0)
+    # authors = authors[offset:][:limit]
 
     return AuthorsPublicExtendedSearchResult(
-        total=len(authors_ret),
-        limit=limit,
-        offset=offset,
+        total=total_row_count,
+        limit=param_limit,
+        offset=param_offset,
         authors_list=authors_ret,
     )
 
