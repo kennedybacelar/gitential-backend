@@ -28,7 +28,7 @@ from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
 from gitential2.utils import is_list_not_empty
 
-from sqlalchemy import distinct, func, select, and_
+from sqlalchemy import distinct, func, select, and_, asc
 
 
 def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorPublicExtended]:
@@ -52,11 +52,13 @@ def list_authors_extended(
     project_repositories_table = g.backend.project_repositories.table
     projects_table = g.backend.projects.table
 
-    param_min_date = "2022-01-01"
+    param_min_date = "2021-01-01"
     param_max_date = "2023-01-01"
     param_teams = []
     param_projects = []
     param_authors = []
+    param_offset = 0
+    param_limit = 5
 
     query = (
         select(
@@ -89,6 +91,9 @@ def list_authors_extended(
             )
         )
         .group_by(authors_table.c.id)
+        .order_by(asc(authors_table.c.name))
+        .offset(param_offset)
+        .limit(param_limit)
     )
 
     with engine.connect().execution_options(
@@ -98,6 +103,8 @@ def list_authors_extended(
         authors = conn.execute(query).fetchall()
 
     import pprint
+
+    pprint.pprint(authors)
 
     for author in authors:
         author_ext = AuthorPublicExtended(
