@@ -1,6 +1,7 @@
 from collections import defaultdict
 from itertools import chain
 from typing import List, Dict, Optional, Any, OrderedDict, cast
+from enum import Enum
 
 from gitential2.core import GitentialContext
 from gitential2.core.data_queries import process_data_query
@@ -43,7 +44,8 @@ def list_authors_extended(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> AuthorsPublicExtendedSearchResult:
 
-    # Missing getting parameters from the query to make it dynamic
+    if not author_filters:
+        author_filters = AuthorFilters()
 
     engine = g.backend.authors.engine
 
@@ -54,16 +56,11 @@ def list_authors_extended(
     project_repositories_table = g.backend.project_repositories.table
     projects_table = g.backend.projects.table
 
-    param_min_date = "2022-01-01"
-    param_max_date = "2023-01-01"
-    param_teams = []
-    param_projects = []
-    param_authors = []
-    param_offset = 0
-    param_limit = 5
+    param_min_date = author_filters.date_range.start if author_filters.date_range else None
+    param_max_date = author_filters.date_range.end if author_filters.date_range else None
 
     subquery = (
-        select(func.count())
+        select(func.count(distinct(authors_table.c.id)))
         .select_from(
             authors_table.join(calculated_commits_table, authors_table.c.id == calculated_commits_table.c.aid)
             .outerjoin(team_members_table, authors_table.c.id == team_members_table.c.author_id)
@@ -79,9 +76,9 @@ def list_authors_extended(
                     func.coalesce(param_min_date, calculated_commits_table.c.date),
                     func.coalesce(param_max_date, calculated_commits_table.c.date),
                 ),
-                teams_table.c.id.in_(param_teams) if param_teams else True,
-                projects_table.c.id.in_(param_projects) if param_projects else True,
-                authors_table.c.id.in_(param_authors) if param_authors else True,
+                teams_table.c.id.in_(author_filters.team_ids) if author_filters.team_ids else True,
+                projects_table.c.id.in_(author_filters.project_ids) if author_filters.project_ids else True,
+                authors_table.c.id.in_(author_filters.developer_ids) if author_filters.developer_ids else True,
             )
         )
     )
@@ -112,15 +109,15 @@ def list_authors_extended(
                     func.coalesce(param_min_date, calculated_commits_table.c.date),
                     func.coalesce(param_max_date, calculated_commits_table.c.date),
                 ),
-                teams_table.c.id.in_(param_teams) if param_teams else True,
-                projects_table.c.id.in_(param_projects) if param_projects else True,
-                authors_table.c.id.in_(param_authors) if param_authors else True,
+                teams_table.c.id.in_(author_filters.team_ids) if author_filters.team_ids else True,
+                projects_table.c.id.in_(author_filters.project_ids) if author_filters.project_ids else True,
+                authors_table.c.id.in_(author_filters.developer_ids) if author_filters.developer_ids else True,
             )
         )
         .group_by(authors_table.c.id)
         .order_by(asc(authors_table.c.name))
-        .offset(param_offset)
-        .limit(param_limit)
+        .offset(author_filters.offset)
+        .limit(author_filters.limit)
     )
 
     with engine.connect().execution_options(
@@ -129,45 +126,25 @@ def list_authors_extended(
     ) as conn:
         authors = conn.execute(query).fetchall()
 
-    import pprint
-
-    total_row_count = authors[0][-1]
     authors_ret = []
-    for author in authors:
-        author_ext = AuthorPublicExtended(
-            id=author.id,
-            name=author.name,
-            active=author.active,
-            aliases=author.aliases,
-            teams=g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids),
-            projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
-        )
-        authors_ret.append(author_ext)
+    total_row_count = authors[0][-1] if authors else 0
 
-    # authors_extended = [AuthorPublicExtended(author) for author in authors]
-    t_ids = g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids)
-
-    # pprint.pprint(t_ids)
-    pprint.pprint(authors_ret)
-    # exit()
-
-    """
-    __sort_authors(
-    authors=authors,
-    sorting_details=getattr(
-        author_filters, "sorting_details", AuthorsSorting(type=AuthorsSortingType.name, is_desc=False)
-    ),
-    )
-    """
-
-    # limit: int = getattr(author_filters, "limit", 5)
-    # offset: int = getattr(author_filters, "offset", 0)
-    # authors = authors[offset:][:limit]
+    if authors:
+        for author in authors:
+            author_ext = AuthorPublicExtended(
+                id=author.id,
+                name=author.name,
+                active=author.active,
+                aliases=author.aliases,
+                teams=g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids),
+                projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
+            )
+            authors_ret.append(author_ext)
 
     return AuthorsPublicExtendedSearchResult(
         total=total_row_count,
-        limit=param_limit,
-        offset=param_offset,
+        limit=author_filters.limit,
+        offset=author_filters.offset,
         authors_list=authors_ret,
     )
 
