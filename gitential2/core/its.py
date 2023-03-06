@@ -1,7 +1,9 @@
 import traceback
+from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
+from enum import Enum
 from functools import partial
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 
 from dateutil.parser import parse as parse_date_str
 from structlog import get_logger
@@ -16,72 +18,100 @@ from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase, ITSProjectRefreshStatus
 from gitential2.datatypes.userinfos import UserInfoInDB
 from gitential2.settings import IntegrationType
-from gitential2.utils import find_first, is_string_not_empty
+from gitential2.utils import find_first, is_string_not_empty, get_user_id_or_raise_exception
 from .credentials import (
     get_fresh_credential,
     list_credentials_for_workspace,
     get_update_token_callback,
+    get_workspace_creator_user_id,
+    list_credentials_for_user,
 )
+from ..datatypes import CredentialInDB
 from ..datatypes.user_its_projects_cache import UserITSProjectCacheCreate, UserITSProjectCacheInDB, UserITSProjectGroup
 
 logger = get_logger(__name__)
 
+
+class ITSProjectCacheOrderByOptions(str, Enum):
+    api_url = "api_url"
+    name = "name"
+    namespace = "namespace"
+    key = "key"
+    integration_type = "integration_type"
+    integration_name = "integration_name"
+    integration_id = "integration_id"
+    credential_id = "credential_id"
+
+
+class ITSProjectOrderByDirections(str, Enum):
+    asc = "ASC"
+    desc = "DESC"
+
+
 ISSUE_SOURCES = [IntegrationType.jira, IntegrationType.vsts]
+SKIP_REFRESH_MSG = "Skipping ITS Project refresh"
+DEFAULT_ITS_PROJECTS_LIMIT: int = 15
+# TODO: For the new react front-end the MAX_ITS_PROJECTS_LIMIT has to be limited to a much smaller number, like 100.
+MAX_ITS_PROJECTS_LIMIT: int = 20000
+DEFAULT_ITS_PROJECTS_OFFSET: int = 0
+DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION: ITSProjectCacheOrderByOptions = ITSProjectCacheOrderByOptions.name
+DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION: ITSProjectOrderByDirections = ITSProjectOrderByDirections.asc
 
 
-def _merge_its_project_lists(first: List[ITSProjectCreate], second: List[ITSProjectCreate]) -> List[ITSProjectCreate]:
-    existing_api_urls = [r.api_url for r in first]
-    new_repos = [r for r in second if r.api_url not in existing_api_urls]
-    return first + new_repos
+def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[ITSProjectCreate]:
+    _refresh_its_projects_cache_for_user(g=g, workspace_id=workspace_id)
+    user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    its_projects_from_cache = _get_its_projects_cache(g, user_id)
+    return its_projects_from_cache
 
 
-def list_available_its_projects(g: GitentialContext, workspace_id: int, user_id: int) -> List[ITSProjectCreate]:
-    results: List[ITSProjectCreate] = []
-    for credential_ in list_credentials_for_workspace(g, workspace_id):
-        if credential_.integration_type in ISSUE_SOURCES and credential_.integration_name in g.integrations:
-            try:
-                credential = get_fresh_credential(g, credential_id=credential_.id)
-                if credential:
-                    integration = g.integrations[credential.integration_name]
-                    token = credential.to_token_dict(fernet=g.fernet)
+def get_available_its_projects_paginated(
+    g: GitentialContext,
+    workspace_id: int,
+    custom_user_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
+    limit: Optional[int] = DEFAULT_ITS_PROJECTS_LIMIT,
+    offset: Optional[int] = DEFAULT_ITS_PROJECTS_OFFSET,
+    order_by_option: Optional[ITSProjectCacheOrderByOptions] = DEFAULT_ITS_PROJECTS_ORDER_BY_OPTION,
+    order_by_direction: Optional[ITSProjectOrderByDirections] = DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION,
+    integration_type: Optional[str] = None,
+    namespace: Optional[str] = None,
+    credential_id: Optional[int] = None,
+    search_pattern: Optional[str] = None,
+) -> Tuple[int, int, int, List[ITSProjectCreate]]:
+    user_id = custom_user_id if custom_user_id else get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
 
-                    userinfo: UserInfoInDB = (
-                        find_first(
-                            lambda ui: ui.integration_name
-                            == credential.integration_name,  # pylint: disable=cell-var-from-loop
-                            g.backend.user_infos.get_for_user(credential.owner_id),
-                        )
-                        if credential.owner_id
-                        else None
-                    )
+    _refresh_its_projects_cache_for_user(
+        g=g,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        refresh_cache=refresh_cache or False,
+        force_refresh_cache=force_refresh_cache or False,
+    )
 
-                    refresh = _get_itsp_last_refresh_date(g, user_id, credential_.integration_type)
+    limit = (
+        limit
+        if (limit and 0 < limit < MAX_ITS_PROJECTS_LIMIT)
+        else DEFAULT_ITS_PROJECTS_LIMIT
+        if (limit and 0 > limit)
+        else MAX_ITS_PROJECTS_LIMIT
+    )
+    offset = offset if offset and -1 < offset else DEFAULT_ITS_PROJECTS_OFFSET
 
-                    # if there is no saved last refresh time or if it is expired,
-                    # we need to get the list again
-                    if not isinstance(refresh, datetime) or refresh < (g.current_time() - timedelta(days=1)):
-                        new_its_projects = _list_available_its_projects(g, integration, token, credential, userinfo)
-                        _save_its_projects_to_cache(g, user_id, new_its_projects)
-                        _save_its_projects_last_refresh_date(g, user_id, credential_.integration_type)
+    total_count, its_projects = g.backend.user_its_projects_cache.get_its_projects_cache_paginated(
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        order_by_option=order_by_option.value if order_by_option else ITSProjectCacheOrderByOptions.name.value,
+        order_by_direction_is_asc=order_by_direction == ITSProjectOrderByDirections.asc,
+        integration_type=integration_type,
+        namespace=namespace,
+        credential_id=credential_id,
+        search_pattern=search_pattern,
+    )
 
-                    cache = _get_its_projects_cache(g, user_id)
-                    results = _merge_its_project_lists(cache, results)
-                else:
-                    logger.error(
-                        "Cannot get fresh credential",
-                        credential_id=credential_.id,
-                        owner_id=credential_.owner_id,
-                        integration_name=credential_.integration_name,
-                    )
-            except Exception:  # pylint: disable=broad-except
-                logger.exception(
-                    "Error during collecting its projects",
-                    integration_name=credential_.integration_name,
-                    credential_id=credential_.id,
-                    workspace_id=workspace_id,
-                )
-
-    return results
+    return total_count, limit, offset, its_projects
 
 
 def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id: int) -> List[ITSProjectInDB]:
@@ -93,9 +123,6 @@ def list_project_its_projects(g: GitentialContext, workspace_id: int, project_id
         if itsp:
             ret.append(itsp)
     return ret
-
-
-SKIP_REFRESH_MSG = "Skipping ITS Project refresh"
 
 
 def refresh_its_project(
@@ -166,6 +193,170 @@ def refresh_its_project(
                 error_msg=traceback.format_exc(limit=1),
             )
             log.exception("Failed to refresh ITS Project")
+
+
+def refresh_cache_of_its_projects_for_user_or_users(
+    g: GitentialContext,
+    user_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
+):
+    """
+    If workspace id is provided, we get the user id from the workspace creator.
+    Otherwise, we use the optionally provided user id.
+    If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
+    """
+
+    user_id_corrected = None
+    if user_id:
+        user = g.backend.users.get(user_id)
+        if user:
+            user_id_corrected = user.id
+    if workspace_id:
+        workspace = g.backend.workspaces.get(workspace_id)
+        if workspace:
+            user_id_corrected = workspace.created_by
+
+    if user_id_corrected:
+        _refresh_its_projects_cache_for_user(
+            g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+        )
+    else:
+        user_ids: List[int] = [u.id for u in g.backend.users.all()]
+        user_ids_success: List[int] = []
+        for uid in user_ids:
+            result = _refresh_its_projects_cache_for_user(
+                g=g, user_id=uid, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+            )
+            if result:
+                user_ids_success.append(uid)
+        logger.info("Refresh repo cache for every user ended", user_ids_success=user_ids_success)
+
+
+def _refresh_its_projects_cache_for_user(
+    g: GitentialContext,
+    workspace_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    refresh_cache: Optional[bool] = False,
+    force_refresh_cache: Optional[bool] = False,
+):
+    """
+    Repositories cache can be refreshed either by providing user_id or workspace_id.
+    If the workspace id is provided, we get the user_id by requesting the creator id of the workspace,
+    otherwise, we will use the user_id.
+    If none of the above is provided an exception will be raised.
+    """
+
+    user_id_corrected = get_user_id_or_raise_exception(
+        g=g, cache_type="ITS projects", user_id=user_id, workspace_id=workspace_id
+    )
+
+    logger.info(
+        "Starting to refresh ITS projects cache for user.",
+        user_id=user_id_corrected,
+        workspace_id=workspace_id,
+        refresh_cache=refresh_cache,
+        force_refresh_cache=force_refresh_cache,
+    )
+
+    # Just needed because of the mypy check.
+    refresh_cache_c = refresh_cache or False
+    force_refresh_cache_c = force_refresh_cache or False
+
+    credentials_for_user: List[CredentialInDB] = (
+        list_credentials_for_user(g=g, user_id=user_id)
+        if user_id
+        else list_credentials_for_workspace(g=g, workspace_id=workspace_id)
+        # This check only needed because of pylint. Otherwise, we raise an exception if there was no
+        # workspace_id or user_id provided.
+        if workspace_id
+        else []
+    )
+
+    its_projects_for_credential = partial(
+        _refresh_its_projects_cache_for_credential,
+        g,
+        user_id_corrected,
+        refresh_cache_c,
+        force_refresh_cache_c,
+    )
+    with ThreadPoolExecutor() as executor:
+        executor.map(its_projects_for_credential, credentials_for_user)
+
+    return True
+
+
+def _refresh_its_projects_cache_for_credential(
+    g: GitentialContext,
+    user_id: int,
+    refresh_cache: bool,
+    force_refresh_cache: bool,
+    credential: CredentialInDB,
+):
+    if credential.integration_type in ISSUE_SOURCES and credential.integration_name in g.integrations:
+        try:
+            credential_fresh: Optional[CredentialInDB] = get_fresh_credential(g, credential_id=credential.id)
+            if credential_fresh:
+                integration = g.integrations[credential_fresh.integration_name]
+                token = credential_fresh.to_token_dict(fernet=g.fernet)
+
+                userinfo: UserInfoInDB = (
+                    find_first(
+                        lambda ui: ui.integration_name
+                        == credential_fresh.integration_name,  # pylint: disable=cell-var-from-loop
+                        g.backend.user_infos.get_for_user(credential_fresh.owner_id),
+                    )
+                    if credential_fresh.owner_id
+                    else None
+                )
+
+                refresh = _get_itsp_last_refresh_date(
+                    g, user_id, credential_fresh.integration_type or credential.integration_type
+                )
+
+                # if there is no saved last refresh time or if it is expired,
+                # we need to get the list again
+                if (
+                    refresh_cache
+                    or force_refresh_cache
+                    or not isinstance(refresh, datetime)
+                    or (
+                        isinstance(refresh, datetime)
+                        and (g.current_time() - timedelta(days=g.settings.cache.its_projects_cache_life_hours))
+                        > refresh
+                    )
+                ):
+                    if force_refresh_cache:
+                        delete_count: int = g.backend.user_its_projects_cache.delete_cache_for_user(user_id=user_id)
+                        logger.info(
+                            "force_refresh_cache was set. ITS Projects cache for user deleted.",
+                            number_of_deleted_rows=delete_count,
+                            user_id=user_id,
+                        )
+
+                    new_its_projects = integration.list_available_its_projects(
+                        token=token,
+                        update_token=get_update_token_callback(g, credential_fresh),
+                        provider_user_id=userinfo.sub if userinfo else None,
+                    )
+                    _save_its_projects_to_cache(g, user_id, new_its_projects)
+                    _save_its_projects_last_refresh_date(
+                        g, user_id, credential_fresh.integration_type or credential.integration_type
+                    )
+            else:
+                logger.error(
+                    "Cannot get fresh credential!",
+                    credential_id=credential.id,
+                    owner_id=credential.owner_id,
+                    integration_name=credential.integration_name,
+                )
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                "Error during collecting ITS projects",
+                integration_name=credential.integration_name,
+                credential_id=credential.id,
+            )
 
 
 def update_itsp_status(
@@ -349,25 +540,9 @@ def collect_and_save_data_for_issue(
         )
 
 
-def list_available_its_project_groups(
-    g: GitentialContext, workspace_id: int, user_id: int
-) -> List[UserITSProjectGroup]:
-    cache_itsp_groups = g.backend.user_its_projects_cache.get_its_project_groups(user_id)
-    itsp_groups = g.backend.its_projects.get_its_project_groups(workspace_id=workspace_id)
-
-    def is_itsp_group_in_cache(user_itsp_group: UserITSProjectGroup):
-        return any(
-            gc.integration_type == user_itsp_group.integration_type
-            and gc.namespace == user_itsp_group.namespace
-            and gc.credential_id == user_itsp_group.credential_id
-            for gc in cache_itsp_groups
-        )
-
-    for group in itsp_groups:
-        if not is_itsp_group_in_cache(group):
-            cache_itsp_groups.append(group)
-
-    return cache_itsp_groups
+def get_available_its_project_groups(g: GitentialContext, workspace_id: int) -> List[UserITSProjectGroup]:
+    user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    return g.backend.its_projects.get_its_projects_groups_with_cache(workspace_id=workspace_id, user_id=user_id)
 
 
 def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_data: ITSIssueAllData):

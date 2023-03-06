@@ -145,12 +145,21 @@ class ExtractionSettings(BaseModel):
     its_project_analysis_limit_in_days: Optional[int] = None
 
 
+class CacheSettings(BaseModel):
+    repo_cache_life_hours: int = 6
+    scheduled_repo_cache_refresh_enabled: bool = False
+    scheduled_repo_cache_refresh_hour_of_day: str = "*/3"
+    scheduled_repo_cache_refresh_is_force_refresh: bool = True
+    its_projects_cache_life_hours: int = 6
+    scheduled_its_projects_cache_refresh_enabled: bool = False
+    scheduled_its_projects_cache_refresh_hour_of_day: str = "*/3"
+    scheduled_its_projects_cache_refresh_is_force_refresh: bool = True
+
+
 class RefreshSettings(BaseModel):
     scheduled_maintenance_enabled: bool = True
     scheduled_maintenance_days_of_week: str = "5"  # https://docs.celeryq.dev/en/stable/reference/celery.schedules.html
     scheduled_maintenance_hour_of_day: int = 23
-    scheduled_repo_cache_refresh_enabled: bool = False
-    scheduled_repo_cache_refresh_hour_of_day: str = "*/3"
     interval_minutes: int = 60 * 24
 
 
@@ -205,6 +214,7 @@ class GitentialSettings(BaseModel):
     notifications: NotificationSettings = NotificationSettings()
     web: WebSettings = WebSettings()
     extraction: ExtractionSettings = ExtractionSettings()
+    cache: CacheSettings = CacheSettings()
     refresh: RefreshSettings = RefreshSettings()
     auto_export: AutoExportSettings = AutoExportSettings()
     recaptcha: RecaptchaSettings = RecaptchaSettings()

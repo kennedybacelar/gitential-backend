@@ -3,7 +3,7 @@
 import datetime as dt
 import typing
 from collections import defaultdict
-from typing import Iterable, Optional, Callable, List, Dict, Union, cast, Set
+from typing import Iterable, Optional, Callable, List, Dict, Union, cast, Set, Tuple
 
 import pandas as pd
 import sqlalchemy as sa
@@ -645,6 +645,10 @@ class SQLUserRepositoryCacheRepository(
             results.append(repo_saved_or_updated)
         return results
 
+    def delete_cache_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
     def get_repo_groups(self, user_id: int) -> List[UserRepositoryGroup]:
         query = (
             self.table.select()
@@ -678,6 +682,78 @@ class SQLUserITSProjectsCacheRepository(
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [UserITSProjectCacheInDB(**row) for row in rows]
 
+    def get_its_projects_cache_paginated(
+        self,
+        user_id: int,
+        limit: int,
+        offset: int,
+        order_by_option: str,
+        order_by_direction_is_asc: bool,
+        integration_type: Optional[str] = None,
+        namespace: Optional[str] = None,
+        credential_id: Optional[int] = None,
+        search_pattern: Optional[str] = None,
+    ) -> Tuple[int, List[ITSProjectCreate]]:
+        def get_filters():
+            def get_filter(column_name: str, filter_value: Union[str, int, None]) -> Union[str, None]:
+                return f"{column_name} = '{filter_value}'" if filter_value else None
+
+            user_id_filter: str = f"user_id = {user_id}"
+            name_filter: Optional[str] = (
+                f"name ILIKE '{search_pattern.replace('%', '%%')}'" if is_string_not_empty(search_pattern) else None
+            )
+            integration_type_filter: Optional[str] = get_filter("integration_type", integration_type)
+            namespace_filter: Optional[str] = get_filter("namespace", namespace)
+            credential_id_filter: Optional[str] = get_filter("credential_id", credential_id)
+            filters: str = " AND ".join(
+                [
+                    f
+                    for f in [
+                        user_id_filter,
+                        name_filter,
+                        integration_type_filter,
+                        namespace_filter,
+                        credential_id_filter,
+                    ]
+                    if is_string_not_empty(f)
+                ]
+            )
+            return f"WHERE {filters}" if is_string_not_empty(filters) else ""
+
+        query = (
+            "WITH its_project_selection AS "
+            "    (SELECT * "
+            "    FROM public.user_its_projects_cache "
+            f"       {get_filters()}) "
+            "SELECT * FROM ("
+            "    TABLE its_project_selection "
+            f"   ORDER BY {order_by_option} {'ASC' if order_by_direction_is_asc else 'DESC'} "
+            f"   LIMIT {limit} "
+            f"   OFFSET {offset}) sub "
+            "RIGHT JOIN (SELECT COUNT(*) FROM its_project_selection) c(total_count) ON TRUE;"
+        )
+
+        rows = self._execute_query(query, callback_fn=fetchall_)
+        total_count = rows[0]["total_count"] if is_list_not_empty(rows) else 0
+
+        its_projects_cache = [
+            ITSProjectCreate(
+                name=row["name"],
+                namespace=row["namespace"],
+                private=row["private"],
+                api_url=row["api_url"],
+                key=row["key"],
+                integration_type=row["integration_type"],
+                integration_name=row["integration_name"],
+                integration_id=row["integration_id"],
+                credential_id=row["credential_id"],
+            )
+            for row in rows
+            if "api_url" in row and row["api_url"]
+        ]
+
+        return total_count, its_projects_cache
+
     def insert_its_project_cache_for_user(self, itsp: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
         return self.create(itsp)
 
@@ -689,6 +765,10 @@ class SQLUserITSProjectsCacheRepository(
             itsp_saved_or_updated = self.create_or_update(itsp)
             results.append(itsp_saved_or_updated)
         return results
+
+    def delete_cache_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
     def get_its_project_groups(self, user_id: int) -> List[UserITSProjectGroup]:
         query = (
@@ -764,6 +844,24 @@ class SQLRepositoryRepository(
             for row in rows
         ]
 
+    def get_repo_groups_with_repo_cache(self, workspace_id: int, user_id: int) -> List[UserRepositoryGroup]:
+        schema_name: str = self._schema_name(workspace_id=workspace_id)
+        query = (
+            "WITH repo_selection AS "
+            "    (SELECT integration_type, namespace, credential_id, clone_url "
+            "    FROM public.user_repositories_cache "
+            f"    WHERE user_id = {user_id} "
+            "    UNION "
+            "    SELECT integration_type, namespace, credential_id, clone_url "
+            f"   FROM {schema_name}.repositories) "
+            "SELECT integration_type, namespace, credential_id, COUNT(*) AS total_count "
+            "FROM repo_selection "
+            "GROUP BY integration_type, namespace, credential_id "
+            "ORDER BY integration_type, namespace;"
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [UserRepositoryGroup(**row) for row in rows]
+
 
 class SQLITSProjectRepository(
     ITSProjectRepository, SQLWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]
@@ -795,6 +893,24 @@ class SQLITSProjectRepository(
             )
             for row in rows
         ]
+
+    def get_its_projects_groups_with_cache(self, workspace_id: int, user_id: int) -> List[UserITSProjectGroup]:
+        schema_name: str = self._schema_name(workspace_id=workspace_id)
+        query = (
+            "WITH its_project_selection AS "
+            "    (SELECT integration_type, namespace, credential_id, api_url "
+            "    FROM public.user_its_projects_cache "
+            f"    WHERE user_id = {user_id} "
+            "    UNION "
+            "    SELECT integration_type, namespace, credential_id, api_url "
+            f"   FROM {schema_name}.its_projects) "
+            "SELECT integration_type, namespace, credential_id, COUNT(*) AS total_count "
+            "FROM its_project_selection "
+            "GROUP BY integration_type, namespace, credential_id "
+            "ORDER BY integration_type, namespace;"
+        )
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [UserITSProjectGroup(**row) for row in rows]
 
 
 class SQLProjectRepositoryRepository(

@@ -20,6 +20,7 @@ from gitential2.exceptions import LockError
 from gitential2.logging import initialize_logging
 from gitential2.settings import GitentialSettings, load_settings
 from .context import GitentialContext
+from .its import refresh_cache_of_its_projects_for_user_or_users
 from .repositories import refresh_cache_of_repositories_for_user_or_users
 
 logger = get_logger(__name__)
@@ -84,11 +85,19 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
             "args": (),
         }
 
-    if settings.refresh.scheduled_repo_cache_refresh_enabled:
-        r_hour_of_day = settings.refresh.scheduled_repo_cache_refresh_hour_of_day
+    if settings.cache.scheduled_repo_cache_refresh_enabled:
+        r_hour_of_day = settings.cache.scheduled_repo_cache_refresh_hour_of_day
         beat_scheduled_conf["scheduled_repo_cache_refresh"] = {
             "task": "gitential2.core.tasks.scheduled_repo_cache_refresh",
             "schedule": crontab(hour=r_hour_of_day),
+            "args": (),
+        }
+
+    if settings.cache.scheduled_its_projects_cache_refresh_enabled:
+        itsp_hour_of_day = settings.cache.scheduled_its_projects_cache_refresh_hour_of_day
+        beat_scheduled_conf["scheduled_its_project_cache_refresh"] = {
+            "task": "gitential2.core.tasks.scheduled_its_project_cache_refresh",
+            "schedule": crontab(hour=itsp_hour_of_day),
             "args": (),
         }
 
@@ -269,4 +278,16 @@ def scheduled_repo_cache_refresh(settings: Optional[GitentialSettings] = None):
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
-    refresh_cache_of_repositories_for_user_or_users(g=g)
+    is_force: bool = settings.cache.scheduled_repo_cache_refresh_is_force_refresh
+    refresh_cache_of_repositories_for_user_or_users(g=g, refresh_cache=not is_force, force_refresh_cache=is_force)
+
+
+@celery_app.task
+def scheduled_its_project_cache_refresh(settings: Optional[GitentialSettings] = None):
+    # pylint: disable=import-outside-toplevel,cyclic-import
+    from gitential2.core.context import init_context_from_settings
+
+    settings = settings or load_settings()
+    g = init_context_from_settings(settings)
+    is_force: bool = settings.cache.scheduled_its_projects_cache_refresh_is_force_refresh
+    refresh_cache_of_its_projects_for_user_or_users(g=g, refresh_cache=not is_force, force_refresh_cache=is_force)

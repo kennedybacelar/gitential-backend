@@ -42,6 +42,7 @@ from .users import app as users_app
 from .vsts import app as vsts_app
 from .auto_export import app as auto_export_app
 from .workspaces import app as workspaces_app
+from .cache import app as cache_app
 
 logger = get_logger(__name__)
 
@@ -68,6 +69,7 @@ app.add_typer(deploys_app, name="deploys")
 app.add_typer(authors_app, name="authors")
 app.add_typer(auto_export_app, name="auto-export")
 app.add_typer(workspaces_app, name="workspaces")
+app.add_typer(cache_app, name="cache")
 
 
 @app.command("public-api")

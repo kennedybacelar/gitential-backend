@@ -23,6 +23,7 @@ class UserRepositoryGroup(CoreModel):
     integration_type: Optional[str] = None
     namespace: Optional[str] = None
     credential_id: Optional[int] = None
+    total_count: int = 0
 
 
 class UserRepositoryCacheId(CoreModel):

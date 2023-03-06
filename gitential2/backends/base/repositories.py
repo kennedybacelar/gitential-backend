@@ -263,6 +263,10 @@ class UserRepositoriesCacheRepository(
         pass
 
     @abstractmethod
+    def delete_cache_for_user(self, user_id: int) -> int:
+        pass
+
+    @abstractmethod
     def get_repo_groups(self, user_id: int) -> List[UserRepositoryGroup]:
         pass
 
@@ -275,6 +279,21 @@ class UserITSProjectsCacheRepository(
         pass
 
     @abstractmethod
+    def get_its_projects_cache_paginated(
+        self,
+        user_id: int,
+        limit: int,
+        offset: int,
+        order_by_option: str,
+        order_by_direction_is_asc: bool,
+        integration_type: Optional[str] = None,
+        namespace: Optional[str] = None,
+        credential_id: Optional[int] = None,
+        search_pattern: Optional[str] = None,
+    ) -> Tuple[int, List[ITSProjectCreate]]:
+        pass
+
+    @abstractmethod
     def insert_its_project_cache_for_user(self, itsp: UserITSProjectCacheCreate) -> UserITSProjectCacheInDB:
         pass
 
@@ -282,6 +301,10 @@ class UserITSProjectsCacheRepository(
     def insert_its_projects_cache_for_user(
         self, its_projects: List[UserITSProjectCacheCreate]
     ) -> List[UserITSProjectCacheInDB]:
+        pass
+
+    @abstractmethod
+    def delete_cache_for_user(self, user_id: int) -> int:
         pass
 
     @abstractmethod
@@ -333,6 +356,10 @@ class RepositoryRepository(BaseWorkspaceScopedRepository[int, RepositoryCreate, 
     def get_repo_groups(self, workspace_id: int) -> List[UserRepositoryGroup]:
         pass
 
+    @abstractmethod
+    def get_repo_groups_with_repo_cache(self, workspace_id: int, user_id: int) -> List[UserRepositoryGroup]:
+        pass
+
 
 class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, ITSProjectUpdate, ITSProjectInDB]):
     @abstractmethod
@@ -358,6 +385,10 @@ class ITSProjectRepository(BaseWorkspaceScopedRepository[int, ITSProjectCreate, 
 
     @abstractmethod
     def get_its_project_groups(self, workspace_id: int) -> List[UserITSProjectGroup]:
+        pass
+
+    @abstractmethod
+    def get_its_projects_groups_with_cache(self, workspace_id: int, user_id: int) -> List[UserITSProjectGroup]:
         pass
 
 
