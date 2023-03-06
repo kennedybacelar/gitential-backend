@@ -71,21 +71,14 @@ class AuthorPublic(AuthorInDB):
     pass
 
 
-class IdAndName(BaseModel):
-    id: int
-    name: str
-
-
 class IdAndTitle(BaseModel):
     id: int
     title: str
 
 
 class AuthorPublicExtended(AuthorInDB):
-    # teams: Optional[List[IdAndTitle]]
-    # projects: Optional[List[IdAndTitle]]
-    teams: Optional[List[IdAndName]]
-    projects: Optional[List[IdAndName]]
+    teams: Optional[List[IdAndTitle]]
+    projects: Optional[List[IdAndTitle]]
 
 
 class AuthorsPublicExtendedSearchResult(BaseModel):

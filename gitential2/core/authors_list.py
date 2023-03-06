@@ -54,7 +54,7 @@ def list_authors_extended(
     project_repositories_table = g.backend.project_repositories.table
     projects_table = g.backend.projects.table
 
-    param_min_date = "2010-01-01"
+    param_min_date = "2022-01-01"
     param_max_date = "2023-01-01"
     param_teams = []
     param_projects = []
@@ -145,7 +145,11 @@ def list_authors_extended(
         authors_ret.append(author_ext)
 
     # authors_extended = [AuthorPublicExtended(author) for author in authors]
-    import pprint
+    t_ids = g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids)
+
+    # pprint.pprint(t_ids)
+    pprint.pprint(authors_ret)
+    # exit()
 
     """
     __sort_authors(
