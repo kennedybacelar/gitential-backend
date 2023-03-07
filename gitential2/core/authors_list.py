@@ -2,6 +2,8 @@ from collections import defaultdict
 from itertools import chain
 from typing import List, Dict, Optional, Any, OrderedDict, cast
 from enum import Enum
+from sqlalchemy import distinct, func, select, and_, asc, desc
+from sqlalchemy.sql.schema import Table
 
 from gitential2.core import GitentialContext
 from gitential2.core.data_queries import process_data_query
@@ -29,15 +31,15 @@ from gitential2.datatypes.teammembers import TeamMemberInDB
 from gitential2.datatypes.teams import TeamInDB
 from gitential2.utils import is_list_not_empty
 
-from sqlalchemy import distinct, func, select, and_, asc
-
 
 def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorPublicExtended]:
-    return __get_extended_authors_list(
-        g=g,
-        workspace_id=workspace_id,
-        author_ids_from_other_query=[author_id],
-    )[0]
+    author_filters = AuthorFilters(developer_ids=[author_id])
+    author_extended = list_authors_extended(g, workspace_id, author_filters)
+
+    print(70 * "*")
+    print(author_extended)
+    print(70 * "*")
+    exit()
 
 
 def list_authors_extended(
@@ -58,6 +60,9 @@ def list_authors_extended(
 
     param_min_date = author_filters.date_range.start if author_filters.date_range else None
     param_max_date = author_filters.date_range.end if author_filters.date_range else None
+    sorting_direction, sorting_column = __getting_sorting_details(
+        author_filters.sorting_details, g.backend.authors.table
+    )
 
     subquery = (
         select(func.count(distinct(authors_table.c.id)))
@@ -92,6 +97,8 @@ def list_authors_extended(
             authors_table.c.aliases,
             func.array_agg(distinct(teams_table.c.id)).label("teams_ids"),
             func.array_agg(distinct(projects_table.c.id)).label("projects_ids"),
+            func.array_agg(distinct(teams_table.c.name)).label("team_names"),
+            func.array_agg(distinct(projects_table.c.name)).label("project_names"),
             subquery.scalar_subquery().label("total_count"),
         )
         .select_from(
@@ -112,10 +119,15 @@ def list_authors_extended(
                 teams_table.c.id.in_(author_filters.team_ids) if author_filters.team_ids else True,
                 projects_table.c.id.in_(author_filters.project_ids) if author_filters.project_ids else True,
                 authors_table.c.id.in_(author_filters.developer_ids) if author_filters.developer_ids else True,
+                authors_table.c.name.in_(author_filters.developer_names) if author_filters.developer_names else True,
+                authors_table.c.email.in_(author_filters.developer_emails) if author_filters.developer_emails else True,
+                project_repositories_table.c.repo_id.in_(author_filters.repository_ids)
+                if author_filters.repository_ids
+                else True,
             )
         )
         .group_by(authors_table.c.id)
-        .order_by(asc(authors_table.c.name))
+        .order_by(sorting_direction(sorting_column))
         .offset(author_filters.offset)
         .limit(author_filters.limit)
     )
@@ -131,7 +143,7 @@ def list_authors_extended(
 
     if authors:
         for author in authors:
-            author_ext = AuthorPublicExtended(
+            author_extended = AuthorPublicExtended(
                 id=author.id,
                 name=author.name,
                 active=author.active,
@@ -139,7 +151,7 @@ def list_authors_extended(
                 teams=g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids),
                 projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
             )
-            authors_ret.append(author_ext)
+            authors_ret.append(author_extended)
 
     return AuthorsPublicExtendedSearchResult(
         total=total_row_count,
@@ -147,6 +159,21 @@ def list_authors_extended(
         offset=author_filters.offset,
         authors_list=authors_ret,
     )
+
+
+def __getting_sorting_details(author_sorting: AuthorsSorting, table: Table):
+
+    sorting_direction = desc if author_sorting.is_desc else asc
+
+    sorting_column = {
+        AuthorsSortingType.name: table.c.name,
+        AuthorsSortingType.email: table.c.email,
+        AuthorsSortingType.active: table.c.active,
+        AuthorsSortingType.projects: "project_names",
+        AuthorsSortingType.teams: "team_names",
+    }
+
+    return sorting_direction, sorting_column.get(author_sorting.type, table.c.name)
 
 
 def __get_author_ids_list_with_filters_applied(
