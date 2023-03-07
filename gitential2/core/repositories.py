@@ -198,7 +198,7 @@ def _get_user_repositories_by_query(
 
     def get_extra_with_min_info(row):
         result = {}
-        if "repo_provider_id" in row:
+        if "repo_provider_id" in row and row["repo_provider_id"]:
             if row["integration_type"] in ["github", "gitlab"]:
                 result["id"] = int(row["repo_provider_id"])
             elif row["integration_type"] == "bitbucket":
