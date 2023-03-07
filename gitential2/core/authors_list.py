@@ -29,17 +29,17 @@ def list_authors_extended(
 
     engine = __get_sqlalchemy_engine(g)
 
-    authors_table = g.backend.authors.table
-    calculated_commits_table = g.backend.calculated_commits.table
-    team_members_table = g.backend.team_members.table
-    teams_table = g.backend.teams.table
-    project_repositories_table = g.backend.project_repositories.table
-    projects_table = g.backend.projects.table
+    authors_table = g.backend.authors.table  # type: ignore[attr-defined]
+    calculated_commits_table = g.backend.calculated_commits.table  # type: ignore[attr-defined]
+    team_members_table = g.backend.team_members.table  # type: ignore[attr-defined]
+    teams_table = g.backend.teams.table  # type: ignore[attr-defined]
+    project_repositories_table = g.backend.project_repositories.table  # type: ignore[attr-defined]
+    projects_table = g.backend.projects.table  # type: ignore[attr-defined]
 
     param_min_date = author_filters.date_range.start if author_filters.date_range else None
     param_max_date = author_filters.date_range.end if author_filters.date_range else None
     sorting_direction, sorting_column = __getting_sorting_details(
-        author_filters.sorting_details, g.backend.authors.table
+        author_filters.sorting_details, g.backend.authors.table  # type: ignore[attr-defined]
     )
 
     subquery = (
@@ -77,7 +77,7 @@ def list_authors_extended(
             func.array_agg(distinct(projects_table.c.id)).label("projects_ids"),
             func.array_agg(distinct(teams_table.c.name)).label("team_names"),
             func.array_agg(distinct(projects_table.c.name)).label("project_names"),
-            subquery.scalar_subquery().label("total_count"),
+            subquery.scalar_subquery().label("total_count"),  # type: ignore[attr-defined]
         )
         .select_from(
             authors_table.join(calculated_commits_table, authors_table.c.id == calculated_commits_table.c.aid)
@@ -147,7 +147,7 @@ def __getting_sorting_details(author_sorting: Optional[AuthorsSorting], table: T
 
 
 def __get_sqlalchemy_engine(g: GitentialContext):
-    return g.backend.authors.engine
+    return g.backend.authors.engine  # type: ignore[attr-defined]
 
 
 def __transform_to_author_public_extended(
