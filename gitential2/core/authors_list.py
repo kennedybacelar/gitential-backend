@@ -1,35 +1,15 @@
-from collections import defaultdict
-from itertools import chain
-from typing import List, Dict, Optional, Any, OrderedDict, cast
-from enum import Enum
+from typing import Optional
 from sqlalchemy import distinct, func, select, and_, asc, desc
 from sqlalchemy.sql.schema import Table
 
 from gitential2.core import GitentialContext
-from gitential2.core.data_queries import process_data_query
-from gitential2.datatypes import (
-    ProjectInDB,
-    DQType,
-    DQSourceName,
-    DQFnColumnExpr,
-    DQSingleColumnExpr,
-    DQFunctionName,
-    DQFilterExpr,
-    DataQuery,
-    DQResult,
-)
 from gitential2.datatypes.authors import (
-    IdAndTitle,
     AuthorFilters,
-    AuthorInDB,
     AuthorsPublicExtendedSearchResult,
     AuthorPublicExtended,
     AuthorsSorting,
     AuthorsSortingType,
 )
-from gitential2.datatypes.teammembers import TeamMemberInDB
-from gitential2.datatypes.teams import TeamInDB
-from gitential2.utils import is_list_not_empty
 
 
 def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorPublicExtended]:
