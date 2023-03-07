@@ -129,10 +129,12 @@ def list_authors_extended(
     )
 
 
-def __getting_sorting_details(author_sorting: AuthorsSorting, table: Table):
+def __getting_sorting_details(author_sorting: Optional[AuthorsSorting], table: Table):
+
+    if not author_sorting:
+        author_sorting = AuthorsSorting(type=AuthorsSortingType.name, is_desc=False)
 
     sorting_direction = desc if author_sorting.is_desc else asc
-
     sorting_column = {
         AuthorsSortingType.name: table.c.name,
         AuthorsSortingType.email: table.c.email,

@@ -969,7 +969,7 @@ class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCr
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [TeamInDB(**row) for row in rows]
 
-    def get_teams_ids_and_names(self, workspace_id: int, team_ids: List[int] = None) -> List[IdAndTitle]:
+    def get_teams_ids_and_names(self, workspace_id: int, team_ids: Optional[List[int]] = None) -> List[IdAndTitle]:
         if team_ids:
             query = select([self.table.c.id, self.table.c.name.label("title")]).where(self.table.c.id.in_(team_ids))
         else:
