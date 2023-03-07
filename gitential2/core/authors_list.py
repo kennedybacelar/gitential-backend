@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import distinct, func, select, and_, asc, desc
 from sqlalchemy.sql.schema import Table
 
@@ -14,8 +14,10 @@ from gitential2.datatypes.authors import (
 
 def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorPublicExtended]:
     author_filters = AuthorFilters(developer_ids=[author_id])
-    author_extended = list_authors_extended(g, workspace_id, author_filters)
-    return author_extended[0] if author_extended else None
+    author_extended_public_extended = list_authors_extended(g, workspace_id, author_filters)
+    if author_extended_public_extended:
+        return author_extended_public_extended.authors_list[0] if author_extended_public_extended.authors_list else None
+    return None
 
 
 def list_authors_extended(
@@ -115,20 +117,10 @@ def list_authors_extended(
         authors = conn.execute(query).fetchall()
 
     authors_ret = []
-    total_row_count = authors[0][-1] if authors else 0
-
     if authors:
-        for author in authors:
-            author_extended = AuthorPublicExtended(
-                id=author.id,
-                name=author.name,
-                active=author.active,
-                aliases=author.aliases,
-                teams=g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids),
-                projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
-            )
-            authors_ret.append(author_extended)
+        authors_ret = __transform_to_author_public_extended(g, workspace_id, authors)
 
+    total_row_count = authors[0][-1] if authors else 0
     return AuthorsPublicExtendedSearchResult(
         total=total_row_count,
         limit=author_filters.limit,
@@ -154,3 +146,20 @@ def __getting_sorting_details(author_sorting: AuthorsSorting, table: Table):
 
 def __get_sqlalchemy_engine(g: GitentialContext):
     return g.backend.authors.engine
+
+
+def __transform_to_author_public_extended(
+    g: GitentialContext, workspace_id: int, authors: List
+) -> List[AuthorPublicExtended]:
+    authors_ret = []
+    for author in authors:
+        author_extended = AuthorPublicExtended(
+            id=author.id,
+            name=author.name,
+            active=author.active,
+            aliases=author.aliases,
+            teams=g.backend.teams.get_teams_ids_and_names(workspace_id, author.teams_ids),
+            projects=g.backend.projects.get_projects_ids_and_names(workspace_id, author.projects_ids),
+        )
+        authors_ret.append(author_extended)
+    return authors_ret
