@@ -326,7 +326,7 @@ def refresh_cache_of_repositories_for_user_or_users(
         g=g, cache_type="repositories", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
     )
 
-    if user_id_corrected:
+    if user_id_corrected and user_id != -1:
         _refresh_repos_cache_for_user(
             g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
         )
