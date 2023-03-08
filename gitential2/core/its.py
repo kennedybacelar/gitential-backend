@@ -289,7 +289,15 @@ def _refresh_its_projects_cache_for_credential(
     force_refresh_cache: bool,
     credential: CredentialInDB,
 ):
-    if credential.integration_type in ISSUE_SOURCES and credential.integration_name in g.integrations:
+    refresh_in_progress_key = (
+        f"its-projects-cache-refresh-in-progress--user--{user_id}--integration-type--{credential.integration_type}"
+    )
+    is_in_progress = g.kvstore.get_value(refresh_in_progress_key)
+    if (
+        credential.integration_type in ISSUE_SOURCES
+        and credential.integration_name in g.integrations
+        and not is_in_progress
+    ):
         try:
             credential_fresh: Optional[CredentialInDB] = get_fresh_credential(g, credential_id=credential.id)
             if credential_fresh:
@@ -342,7 +350,11 @@ def _refresh_its_projects_cache_for_credential(
                     _save_its_projects_last_refresh_date(
                         g, user_id, credential_fresh.integration_type or credential.integration_type
                     )
+                    g.kvstore.delete_value(refresh_in_progress_key)
+                else:
+                    g.kvstore.delete_value(refresh_in_progress_key)
             else:
+                g.kvstore.delete_value(refresh_in_progress_key)
                 logger.error(
                     "Cannot get fresh credential!",
                     credential_id=credential.id,
@@ -350,11 +362,18 @@ def _refresh_its_projects_cache_for_credential(
                     integration_name=credential.integration_name,
                 )
         except Exception:  # pylint: disable=broad-except
+            g.kvstore.delete_value(refresh_in_progress_key)
             logger.exception(
                 "Error during collecting ITS projects",
                 integration_name=credential.integration_name,
                 credential_id=credential.id,
             )
+    elif is_in_progress:
+        logger.info(
+            "ITS Projects cache refresh is currently in progress for user with integration type.",
+            user_id=user_id,
+            integration_type=credential.integration_type,
+        )
 
 
 def update_itsp_status(

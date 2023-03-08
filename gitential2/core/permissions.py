@@ -1,9 +1,10 @@
-from gitential2.datatypes.workspacemember import WorkspaceRole
-from gitential2.datatypes.users import UserInDB
 from gitential2.datatypes.permissions import Entity, Action
+from gitential2.datatypes.users import UserInDB
+from gitential2.datatypes.workspacemember import WorkspaceRole
 from gitential2.exceptions import PermissionException
 from .context import GitentialContext
 from .workspaces import get_accessible_workspaces
+from ..license import is_on_prem_installation
 
 
 def _return(has_permission: bool, raise_exc: bool = True):
@@ -13,13 +14,21 @@ def _return(has_permission: bool, raise_exc: bool = True):
 
 
 def check_permission(
-    g: GitentialContext, current_user: UserInDB, entity: Entity, action: Action, raise_exc=True, **kwargs
+    g: GitentialContext,
+    current_user: UserInDB,
+    entity: Entity,
+    action: Action,
+    raise_exc=True,
+    enable_when_on_prem=False,
+    **kwargs,
 ) -> bool:
     if not current_user:
         return _return(False, raise_exc)
     if not current_user.is_active:
         return _return(False, raise_exc)
     if current_user.is_admin:
+        return _return(True, raise_exc)
+    if enable_when_on_prem and is_on_prem_installation():
         return _return(True, raise_exc)
     if "workspace_id" in kwargs:
         acessible_workspaces = get_accessible_workspaces(g, current_user=current_user)
