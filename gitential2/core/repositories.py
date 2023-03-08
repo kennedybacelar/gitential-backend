@@ -129,7 +129,6 @@ def get_available_repositories_paginated(
 
     _refresh_repos_cache_for_user(
         g=g,
-        workspace_id=workspace_id,
         user_id=user_id,
         user_organization_name_list=user_organization_name_list,
         refresh_cache=refresh_cache or False,
@@ -323,17 +322,11 @@ def refresh_cache_of_repositories_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = None
-    if user_id:
-        user = g.backend.users.get(user_id)
-        if user:
-            user_id_corrected = user.id
-    if workspace_id:
-        workspace = g.backend.workspaces.get(workspace_id)
-        if workspace:
-            user_id_corrected = workspace.created_by
+    user_id_corrected = get_user_id_or_raise_exception(
+        g=g, cache_type="repositories", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
+    )
 
-    if user_id_corrected:
+    if user_id_corrected and user_id != -1:
         _refresh_repos_cache_for_user(
             g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
         )
@@ -412,7 +405,16 @@ def _refresh_repos_cache_for_credential(
     user_organization_name_list: Optional[List[str]],
     credential: CredentialInDB,
 ):
-    if credential.integration_type in REPOSITORY_SOURCES and credential.integration_name in g.integrations:
+    refresh_in_progress_key = (
+        f"repos-cache-refresh-in-progress--user--{user_id}--integration-type--{credential.integration_type}"
+    )
+    is_in_progress = g.kvstore.get_value(refresh_in_progress_key)
+    if (
+        credential.integration_type in REPOSITORY_SOURCES
+        and credential.integration_name in g.integrations
+        and not is_in_progress
+    ):
+        g.kvstore.set_value(refresh_in_progress_key, True)
         try:
             credential_fresh = get_fresh_credential(g, credential_id=credential.id)
             if credential_fresh:
@@ -458,9 +460,13 @@ def _refresh_repos_cache_for_credential(
                         if is_list_not_empty(repos_newly_created)
                         else [],
                     )
+                    g.kvstore.delete_value(refresh_in_progress_key)
                 elif force_refresh_cache or not isinstance(refresh, datetime):
                     if force_refresh_cache:
                         delete_count: int = g.backend.user_repositories_cache.delete_cache_for_user(user_id=user_id)
+                        g.kvstore.delete_value(
+                            name=f"repository_cache_for_user_last_refresh_datetime--{credential.integration_type}--{user_id}"
+                        )
                         logger.info(
                             "force_refresh_cache was set. Repos cache for user deleted.",
                             number_of_deleted_rows=delete_count,
@@ -481,8 +487,12 @@ def _refresh_repos_cache_for_credential(
                         integration_name=credential_fresh.integration_name,
                         number_of_collected_private_repositories=len(repos_all),
                     )
+                    g.kvstore.delete_value(refresh_in_progress_key)
+                else:
+                    g.kvstore.delete_value(refresh_in_progress_key)
 
             else:
+                g.kvstore.delete_value(refresh_in_progress_key)
                 logger.error(
                     "Cannot get fresh credential",
                     credential_id=credential.id,
@@ -490,12 +500,19 @@ def _refresh_repos_cache_for_credential(
                     integration_name=credential.integration_name,
                 )
         except Exception:  # pylint: disable=broad-except
+            g.kvstore.delete_value(refresh_in_progress_key)
             logger.exception(
                 "Error during collecting repositories",
                 integration_name=credential.integration_name,
                 credential_id=credential.id,
                 user_id=user_id,
             )
+    elif is_in_progress:
+        logger.info(
+            "Repository cache refresh is currently in progress for user with integration type.",
+            user_id=user_id,
+            integration_type=credential.integration_type,
+        )
 
 
 def list_repositories(g: GitentialContext, workspace_id: int) -> List[RepositoryInDB]:

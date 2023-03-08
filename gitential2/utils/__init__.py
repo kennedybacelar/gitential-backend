@@ -189,7 +189,11 @@ def is_timestamp_within_days(timestamp: Union[int, float], number_of_days_diff: 
 
 
 def get_user_id_or_raise_exception(
-    g, cache_type: str, user_id: Optional[int] = None, workspace_id: Optional[int] = None
+    g,
+    cache_type: str,
+    is_at_least_one_id_is_needed: bool = True,
+    user_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
 ) -> int:
     def get_error_msg(line: str):
         return (
@@ -198,7 +202,7 @@ def get_user_id_or_raise_exception(
             f"Provided arguments: user_id=[{user_id}], workspace_id=[{workspace_id}]"
         )
 
-    if not user_id and not workspace_id:
+    if not user_id and not workspace_id and is_at_least_one_id_is_needed:
         raise SettingsException(
             get_error_msg(
                 "In order to refresh ITS projects cache for user, either one of the following "

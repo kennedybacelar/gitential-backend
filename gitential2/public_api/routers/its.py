@@ -53,7 +53,14 @@ def refresh_its_projects_cache(
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
-    check_permission(g, current_user, Entity.user, Action.update, workspace_id=workspace_id)
+    check_permission(
+        g=g,
+        current_user=current_user,
+        entity=Entity.user,
+        action=Action.update,
+        enable_when_on_prem=True,
+        workspace_id=workspace_id,
+    )
     refresh_cache_of_its_projects_for_user_or_users(
         g=g, workspace_id=workspace_id, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
     )
