@@ -73,7 +73,13 @@ from gitential2.datatypes import (
 from gitential2.datatypes.access_approvals import AccessApprovalCreate, AccessApprovalInDB, AccessApprovalUpdate
 from gitential2.datatypes.access_log import AccessLog
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
-from gitential2.datatypes.authors import AuthorCreate, AuthorInDB, AuthorUpdate, AuthorNamesAndEmails
+from gitential2.datatypes.authors import (
+    AuthorCreate,
+    AuthorInDB,
+    AuthorUpdate,
+    AuthorNamesAndEmails,
+    IdAndTitle,
+)
 from gitential2.datatypes.auto_export import AutoExportUpdate
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedCommitId, CalculatedPatch, CalculatedPatchId
 from gitential2.datatypes.deploys import Deploy, DeployCommit
@@ -805,6 +811,16 @@ class SQLProjectRepository(
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [ProjectInDB(**row) for row in rows]
 
+    def get_projects_ids_and_names(
+        self, workspace_id: int, project_ids: Optional[List[int]] = None
+    ) -> List[IdAndTitle]:
+        if project_ids:
+            query = select([self.table.c.id, self.table.c.name.label("title")]).where(self.table.c.id.in_(project_ids))
+        else:
+            query = select([self.table.c.id, self.table.c.name.label("title")])
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [IdAndTitle(**row) for row in rows]
+
 
 class SQLRepositoryRepository(
     RepositoryRepository, SQLWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
@@ -1068,6 +1084,14 @@ class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCr
         query = self.table.select().where(self.table.c.id.in_(team_ids))
         rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
         return [TeamInDB(**row) for row in rows]
+
+    def get_teams_ids_and_names(self, workspace_id: int, team_ids: Optional[List[int]] = None) -> List[IdAndTitle]:
+        if team_ids:
+            query = select([self.table.c.id, self.table.c.name.label("title")]).where(self.table.c.id.in_(team_ids))
+        else:
+            query = select([self.table.c.id, self.table.c.name.label("title")])
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [IdAndTitle(**row) for row in rows]
 
 
 class SQLTeamMemberRepository(

@@ -332,6 +332,9 @@ class InMemProjectRepository(
     def get_projects_by_ids(self, workspace_id: int, project_ids: List[int]) -> List[ProjectInDB]:  # type: ignore[empty-body]
         pass
 
+    def get_projects_ids_and_names(self, workspace_id: int, project_ids: Optional[List[int]] = None):
+        pass
+
 
 class InMemRepositoryRepository(
     RepositoryRepository, InMemWorkspaceScopedRepository[int, RepositoryCreate, RepositoryUpdate, RepositoryInDB]
