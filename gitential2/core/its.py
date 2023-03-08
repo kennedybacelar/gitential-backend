@@ -324,6 +324,9 @@ def _refresh_its_projects_cache_for_credential(
                 ):
                     if force_refresh_cache:
                         delete_count: int = g.backend.user_its_projects_cache.delete_cache_for_user(user_id=user_id)
+                        g.kvstore.delete_value(
+                            name=f"itsp_cache_for_user_last_refresh_datetime--{credential.integration_type}--{user_id}"
+                        )
                         logger.info(
                             "force_refresh_cache was set. ITS Projects cache for user deleted.",
                             number_of_deleted_rows=delete_count,
