@@ -80,11 +80,12 @@ def get_available_its_projects_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[ITSProjectCreate]]:
-    user_id = custom_user_id if custom_user_id else get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
+    user_id = get_user_id_or_raise_exception(
+        g=g, cache_type="ITS Projects", user_id=custom_user_id, workspace_id=workspace_id
+    )
 
     _refresh_its_projects_cache_for_user(
         g=g,
-        workspace_id=workspace_id,
         user_id=user_id,
         refresh_cache=refresh_cache or False,
         force_refresh_cache=force_refresh_cache or False,
@@ -208,15 +209,9 @@ def refresh_cache_of_its_projects_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = None
-    if user_id:
-        user = g.backend.users.get(user_id)
-        if user:
-            user_id_corrected = user.id
-    if workspace_id:
-        workspace = g.backend.workspaces.get(workspace_id)
-        if workspace:
-            user_id_corrected = workspace.created_by
+    user_id_corrected = get_user_id_or_raise_exception(
+        g=g, cache_type="ITS Projects", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
+    )
 
     if user_id_corrected:
         _refresh_its_projects_cache_for_user(

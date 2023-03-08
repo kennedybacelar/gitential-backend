@@ -129,7 +129,6 @@ def get_available_repositories_paginated(
 
     _refresh_repos_cache_for_user(
         g=g,
-        workspace_id=workspace_id,
         user_id=user_id,
         user_organization_name_list=user_organization_name_list,
         refresh_cache=refresh_cache or False,
@@ -323,15 +322,9 @@ def refresh_cache_of_repositories_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = None
-    if user_id:
-        user = g.backend.users.get(user_id)
-        if user:
-            user_id_corrected = user.id
-    if workspace_id:
-        workspace = g.backend.workspaces.get(workspace_id)
-        if workspace:
-            user_id_corrected = workspace.created_by
+    user_id_corrected = get_user_id_or_raise_exception(
+        g=g, cache_type="repositories", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
+    )
 
     if user_id_corrected:
         _refresh_repos_cache_for_user(
