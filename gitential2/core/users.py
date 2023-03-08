@@ -83,7 +83,24 @@ def get_user(g: GitentialContext, user_id: int) -> Optional[UserInDB]:
 
 
 def update_user(g: GitentialContext, user_id: int, user_update: UserUpdate):
-    return g.backend.users.update(user_id, user_update)
+    user_from_db = g.backend.users.get_or_error(user_id)
+    # Only the email, first_name, last_name, company_name, position can be modified
+    user = UserUpdate(
+        login=user_from_db.login,
+        email=user_update.email,
+        is_admin=user_from_db.is_admin,
+        marketing_consent_accepted=user_from_db.marketing_consent_accepted,
+        first_name=user_update.first_name,
+        last_name=user_update.last_name,
+        company_name=user_update.company_name,
+        position=user_update.position,
+        development_team_size=user_from_db.development_team_size,
+        registration_ready=user_from_db.registration_ready,
+        login_ready=user_from_db.login_ready,
+        is_active=user_from_db.is_active,
+        stripe_customer_id=user_from_db.stripe_customer_id,
+    )
+    return g.backend.users.update(user_id, user)
 
 
 def delete_user(g: GitentialContext, user_id: int):
