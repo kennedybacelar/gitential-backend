@@ -111,7 +111,6 @@ def list_authors_extended(
     )
 
     with engine.connect().execution_options(
-        autocommit=True,
         schema_translate_map={None: f"ws_{workspace_id}"},
     ) as conn:
         authors = conn.execute(query).fetchall()
