@@ -195,37 +195,20 @@ def get_user_id_or_raise_exception(
     user_id: Optional[int] = None,
     workspace_id: Optional[int] = None,
 ) -> Union[int, Literal[-1]]:
-    def get_error_msg(line: str):
-        return (
-            f"Error while trying to refresh {cache_type} cache for user! "
-            f"{line}"
-            f"Provided arguments: user_id=[{user_id}], workspace_id=[{workspace_id}]"
-        )
 
-    if not (user_id or workspace_id) and is_at_least_one_id_is_needed:
-        raise SettingsException(
-            get_error_msg(
-                "In order to refresh ITS projects cache for user, either one of the following "
-                "has to be a valid id: 'workspace_id', 'user_id' "
-            )
-        )
-
-    result = -1
     if user_id:
         user = g.backend.users.get(user_id)
-        if user:
-            result = user.id
-        else:
-            raise SettingsException(
-                get_error_msg(f"Provided user_id is invalid. Can not find user with id=[{user_id}]")
-            )
+        if user_id and user:
+            return user_id
+        raise SettingsException(f"Provided user_id is invalid. Can not find user with id={user_id}")
     elif workspace_id:
         workspace = g.backend.workspaces.get(workspace_id)
-        if workspace:
-            result = workspace.created_by
-        else:
-            raise SettingsException(
-                get_error_msg(f"Provided workspace_id is invalid. Can not find workspace with id=[{workspace_id}]")
-            )
+        if workspace_id and workspace:
+            return workspace.created_by
+        raise SettingsException(f"Provided workspace_id is invalid. Can not find workspace with id={workspace_id}")
+    elif is_at_least_one_id_is_needed:
+        raise SettingsException(
+            "It is set in the parameters that either user_id or workspace_id is needed in order to perform this operation"
+        )
     else:
-        return result
+        return None
