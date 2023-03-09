@@ -2,7 +2,7 @@ import re
 from copy import deepcopy
 from datetime import datetime, timedelta
 from json import dumps
-from typing import Optional, List, Dict, TypeGuard, Union, Any
+from typing import Optional, List, Dict, TypeGuard, Union, Any, Literal
 from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 
 from gitential2.exceptions import SettingsException
@@ -194,7 +194,7 @@ def get_user_id_or_raise_exception(
     is_at_least_one_id_is_needed: bool = True,
     user_id: Optional[int] = None,
     workspace_id: Optional[int] = None,
-) -> Union[-1, int]:
+) -> Union[int, Literal[-1]]:
     def get_error_msg(line: str):
         return (
             f"Error while trying to refresh {cache_type} cache for user! "
