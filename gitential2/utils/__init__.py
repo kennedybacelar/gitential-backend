@@ -202,7 +202,7 @@ def get_user_id_or_raise_exception(
             f"Provided arguments: user_id=[{user_id}], workspace_id=[{workspace_id}]"
         )
 
-    if not user_id and not workspace_id and is_at_least_one_id_is_needed:
+    if not (user_id or workspace_id) and is_at_least_one_id_is_needed:
         raise SettingsException(
             get_error_msg(
                 "In order to refresh ITS projects cache for user, either one of the following "
@@ -219,7 +219,7 @@ def get_user_id_or_raise_exception(
             raise SettingsException(
                 get_error_msg(f"Provided user_id is invalid. Can not find user with id=[{user_id}]")
             )
-    if workspace_id:
+    elif workspace_id:
         workspace = g.backend.workspaces.get(workspace_id)
         if workspace:
             result = workspace.created_by
@@ -227,5 +227,5 @@ def get_user_id_or_raise_exception(
             raise SettingsException(
                 get_error_msg(f"Provided workspace_id is invalid. Can not find workspace with id=[{user_id}]")
             )
-
-    return result
+    else:
+        return result
