@@ -194,7 +194,7 @@ def get_user_id_or_raise_exception(
     is_at_least_one_id_is_needed: bool = True,
     user_id: Optional[int] = None,
     workspace_id: Optional[int] = None,
-) -> int:
+) -> Union[-1, int]:
     def get_error_msg(line: str):
         return (
             f"Error while trying to refresh {cache_type} cache for user! "
