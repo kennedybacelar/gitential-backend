@@ -225,7 +225,7 @@ def get_user_id_or_raise_exception(
             result = workspace.created_by
         else:
             raise SettingsException(
-                get_error_msg(f"Provided workspace_id is invalid. Can not find workspace with id=[{user_id}]")
+                get_error_msg(f"Provided workspace_id is invalid. Can not find workspace with id=[{workspace_id}]")
             )
     else:
         return result
