@@ -81,9 +81,13 @@ def get_available_its_projects_paginated(
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[ITSProjectCreate]]:
 
+    user_id_validated = get_user_id_or_raise_exception(
+        g=g, is_at_least_one_id_is_needed=True, user_id=custom_user_id, workspace_id=workspace_id
+    )
+
     refresh_cache_of_its_projects_for_user_or_users(
         g=g,
-        user_id=custom_user_id,
+        user_id=custom_user_id or user_id_validated,
         refresh_cache=refresh_cache or False,
         force_refresh_cache=force_refresh_cache or False,
     )
@@ -98,7 +102,7 @@ def get_available_its_projects_paginated(
     offset = offset if offset and -1 < offset else DEFAULT_ITS_PROJECTS_OFFSET
 
     total_count, its_projects = g.backend.user_its_projects_cache.get_its_projects_cache_paginated(
-        user_id=custom_user_id,
+        user_id=custom_user_id or user_id_validated,
         limit=limit,
         offset=offset,
         order_by_option=order_by_option.value if order_by_option else ITSProjectCacheOrderByOptions.name.value,
