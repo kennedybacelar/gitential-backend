@@ -80,7 +80,8 @@ def get_available_its_projects_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[ITSProjectCreate]]:
-
+    # Making is_at_least_one_id_is_needed True in order to make sure that
+    # The argument user_id for get_its_projects_cache_paginated is not None
     user_id_validated = get_user_id_or_raise_exception(
         g=g, is_at_least_one_id_is_needed=True, user_id=custom_user_id, workspace_id=workspace_id
     )
@@ -102,7 +103,7 @@ def get_available_its_projects_paginated(
     offset = offset if offset and -1 < offset else DEFAULT_ITS_PROJECTS_OFFSET
 
     total_count, its_projects = g.backend.user_its_projects_cache.get_its_projects_cache_paginated(
-        user_id=custom_user_id or user_id_validated,
+        user_id=custom_user_id or user_id_validated,  # type: ignore[arg-type]
         limit=limit,
         offset=offset,
         order_by_option=order_by_option.value if order_by_option else ITSProjectCacheOrderByOptions.name.value,

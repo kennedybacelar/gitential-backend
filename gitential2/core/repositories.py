@@ -123,11 +123,15 @@ def get_available_repositories_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[RepositoryCreate]]:
-    user_id = get_user_id_or_raise_exception(g=g, user_id=custom_user_id, workspace_id=workspace_id)
+    # Making is_at_least_one_id_is_needed True in order to make sure that
+    # The argument user_id for _get_user_repositories_by_query is not None
+    user_id_validated = get_user_id_or_raise_exception(
+        g=g, user_id=custom_user_id, workspace_id=workspace_id, is_at_least_one_id_is_needed=True
+    )
 
     refresh_cache_of_repositories_for_user_or_users(
         g=g,
-        user_id=user_id,
+        user_id=user_id_validated,
         user_organization_name_list=user_organization_name_list,
         refresh_cache=refresh_cache or False,
         force_refresh_cache=force_refresh_cache or False,
@@ -145,7 +149,7 @@ def get_available_repositories_paginated(
     total_count, repositories = _get_user_repositories_by_query(
         g=g,
         workspace_id=workspace_id,
-        user_id=user_id,
+        user_id=user_id_validated,  # type: ignore[arg-type]
         limit=limit,
         offset=offset,
         order_by_option=order_by_option or RepoCacheOrderByOptions.name,
@@ -351,8 +355,8 @@ def refresh_cache_of_repositories_for_user_or_users(
 
 def _refresh_repos_cache_for_user(
     g: GitentialContext,
+    user_id: int,
     workspace_id: Optional[int] = None,
-    user_id: int = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
     user_organization_name_list: Optional[List[str]] = None,
