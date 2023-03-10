@@ -194,7 +194,7 @@ def get_user_id_or_raise_exception(
     is_at_least_one_id_is_needed: bool = True,
     user_id: Optional[int] = None,
     workspace_id: Optional[int] = None,
-) -> Union[int, Literal[-1]]:
+) -> Optional[int]:
 
     if user_id:
         user = g.backend.users.get(user_id)

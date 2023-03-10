@@ -322,13 +322,13 @@ def refresh_cache_of_repositories_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = get_user_id_or_raise_exception(
+    user_id_validated = get_user_id_or_raise_exception(
         g=g, cache_type="repositories", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
     )
 
-    if user_id_corrected and user_id != -1:
+    if user_id_validated:
         _refresh_repos_cache_for_user(
-            g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+            g=g, user_id=user_id_validated, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
         )
     else:
         user_ids: List[int] = [u.id for u in g.backend.users.all()]
@@ -345,7 +345,7 @@ def refresh_cache_of_repositories_for_user_or_users(
 def _refresh_repos_cache_for_user(
     g: GitentialContext,
     workspace_id: Optional[int] = None,
-    user_id: Optional[int] = None,
+    user_id: int = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
     user_organization_name_list: Optional[List[str]] = None,
@@ -357,13 +357,9 @@ def _refresh_repos_cache_for_user(
     If none of the above is provided an exception will be raised.
     """
 
-    user_id_corrected = get_user_id_or_raise_exception(
-        g=g, cache_type="repositories", user_id=user_id, workspace_id=workspace_id
-    )
-
     logger.info(
         "Starting to refresh repos cache for user.",
-        user_id=user_id_corrected,
+        user_id=user_id,
         workspace_id=workspace_id,
         refresh_cache=refresh_cache,
         force_refresh_cache=force_refresh_cache,
@@ -386,7 +382,7 @@ def _refresh_repos_cache_for_user(
     repos_for_credential = partial(
         _refresh_repos_cache_for_credential,
         g,
-        user_id_corrected,
+        user_id,
         refresh_cache_c,
         force_refresh_cache_c,
         user_organization_name_list,
