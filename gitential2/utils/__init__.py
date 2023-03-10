@@ -197,12 +197,12 @@ def get_user_id_or_raise_exception(
 
     if user_id:
         user = g.backend.users.get(user_id)
-        if user_id and user:
+        if user:
             return user_id
         raise SettingsException(f"Provided user_id is invalid. Can not find user with id={user_id}")
     elif workspace_id:
         workspace = g.backend.workspaces.get(workspace_id)
-        if workspace_id and workspace:
+        if workspace:
             return workspace.created_by
         raise SettingsException(f"Provided workspace_id is invalid. Can not find workspace with id={workspace_id}")
     elif is_at_least_one_id_is_needed:
