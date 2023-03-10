@@ -123,9 +123,7 @@ def get_available_repositories_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[RepositoryCreate]]:
-    user_id = get_user_id_or_raise_exception(
-        g=g, cache_type="repositories", user_id=custom_user_id, workspace_id=workspace_id
-    )
+    user_id = get_user_id_or_raise_exception(g=g, user_id=custom_user_id, workspace_id=workspace_id)
 
     _refresh_repos_cache_for_user(
         g=g,
@@ -323,7 +321,7 @@ def refresh_cache_of_repositories_for_user_or_users(
     """
 
     user_id_validated = get_user_id_or_raise_exception(
-        g=g, cache_type="repositories", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
+        g=g, is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
     )
 
     if user_id_validated:

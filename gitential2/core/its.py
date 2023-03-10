@@ -207,7 +207,7 @@ def refresh_cache_of_its_projects_for_user_or_users(
     """
 
     user_id_validated = get_user_id_or_raise_exception(
-        g=g, cache_type="ITS Projects", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
+        g=g, is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
     )
 
     if user_id_validated:

@@ -190,7 +190,6 @@ def is_timestamp_within_days(timestamp: Union[int, float], number_of_days_diff: 
 
 def get_user_id_or_raise_exception(
     g,
-    cache_type: str,
     is_at_least_one_id_is_needed: bool = True,
     user_id: Optional[int] = None,
     workspace_id: Optional[int] = None,
