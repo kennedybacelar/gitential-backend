@@ -99,7 +99,7 @@ def _get_available_repositories_for_workspace_credentials(
     workspace_id: int,
     user_organization_name_list: Optional[List[str]],
 ) -> List[RepositoryCreate]:
-    _refresh_repos_cache_for_user(
+    refresh_cache_of_repositories_for_user_or_users(
         g=g, workspace_id=workspace_id, user_organization_name_list=user_organization_name_list
     )
     user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
@@ -125,7 +125,7 @@ def get_available_repositories_paginated(
 ) -> Tuple[int, int, int, List[RepositoryCreate]]:
     user_id = get_user_id_or_raise_exception(g=g, user_id=custom_user_id, workspace_id=workspace_id)
 
-    _refresh_repos_cache_for_user(
+    refresh_cache_of_repositories_for_user_or_users(
         g=g,
         user_id=user_id,
         user_organization_name_list=user_organization_name_list,
@@ -313,6 +313,7 @@ def refresh_cache_of_repositories_for_user_or_users(
     workspace_id: Optional[int] = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
+    user_organization_name_list: Optional[List[str]] = None,
 ):
     """
     If workspace id is provided, we get the user id from the workspace creator.
@@ -326,14 +327,22 @@ def refresh_cache_of_repositories_for_user_or_users(
 
     if user_id_validated:
         _refresh_repos_cache_for_user(
-            g=g, user_id=user_id_validated, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+            g=g,
+            user_id=user_id_validated,
+            refresh_cache=refresh_cache,
+            force_refresh_cache=force_refresh_cache,
+            user_organization_name_list=user_organization_name_list,
         )
     else:
         user_ids: List[int] = [u.id for u in g.backend.users.all()]
         user_ids_success: List[int] = []
         for uid in user_ids:
             result = _refresh_repos_cache_for_user(
-                g=g, user_id=uid, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+                g=g,
+                user_id=uid,
+                refresh_cache=refresh_cache,
+                force_refresh_cache=force_refresh_cache,
+                user_organization_name_list=user_organization_name_list,
             )
             if result:
                 user_ids_success.append(uid)
