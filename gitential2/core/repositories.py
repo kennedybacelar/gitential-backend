@@ -438,10 +438,8 @@ def _refresh_repos_cache_for_credential(
                     else None
                 )
 
-                refresh = (
-                    _get_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
-                    if not refresh_cache and not force_refresh_cache
-                    else None
+                refresh = _get_repos_last_refresh_date(
+                    g=g, user_id=user_id, integration_type=credential.integration_type
                 )
                 if (
                     (refresh_cache and isinstance(refresh, datetime))
