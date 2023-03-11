@@ -99,7 +99,7 @@ def _get_available_repositories_for_workspace_credentials(
     workspace_id: int,
     user_organization_name_list: Optional[List[str]],
 ) -> List[RepositoryCreate]:
-    _refresh_repos_cache_for_user(
+    refresh_cache_of_repositories_for_user_or_users(
         g=g, workspace_id=workspace_id, user_organization_name_list=user_organization_name_list
     )
     user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
@@ -123,13 +123,15 @@ def get_available_repositories_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[RepositoryCreate]]:
-    user_id = get_user_id_or_raise_exception(
-        g=g, cache_type="repositories", user_id=custom_user_id, workspace_id=workspace_id
+    # Making is_at_least_one_id_is_needed True in order to make sure that
+    # The argument user_id for _get_user_repositories_by_query is not None
+    user_id_validated = get_user_id_or_raise_exception(
+        g=g, user_id=custom_user_id, workspace_id=workspace_id, is_at_least_one_id_is_needed=True
     )
 
-    _refresh_repos_cache_for_user(
+    refresh_cache_of_repositories_for_user_or_users(
         g=g,
-        user_id=user_id,
+        user_id=user_id_validated,
         user_organization_name_list=user_organization_name_list,
         refresh_cache=refresh_cache or False,
         force_refresh_cache=force_refresh_cache or False,
@@ -147,7 +149,7 @@ def get_available_repositories_paginated(
     total_count, repositories = _get_user_repositories_by_query(
         g=g,
         workspace_id=workspace_id,
-        user_id=user_id,
+        user_id=user_id_validated,  # type: ignore[arg-type]
         limit=limit,
         offset=offset,
         order_by_option=order_by_option or RepoCacheOrderByOptions.name,
@@ -315,6 +317,7 @@ def refresh_cache_of_repositories_for_user_or_users(
     workspace_id: Optional[int] = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
+    user_organization_name_list: Optional[List[str]] = None,
 ):
     """
     If workspace id is provided, we get the user id from the workspace creator.
@@ -322,20 +325,28 @@ def refresh_cache_of_repositories_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = get_user_id_or_raise_exception(
-        g=g, cache_type="repositories", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
+    user_id_validated = get_user_id_or_raise_exception(
+        g=g, is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
     )
 
-    if user_id_corrected and user_id != -1:
+    if user_id_validated:
         _refresh_repos_cache_for_user(
-            g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+            g=g,
+            user_id=user_id_validated,
+            refresh_cache=refresh_cache,
+            force_refresh_cache=force_refresh_cache,
+            user_organization_name_list=user_organization_name_list,
         )
     else:
         user_ids: List[int] = [u.id for u in g.backend.users.all()]
         user_ids_success: List[int] = []
         for uid in user_ids:
             result = _refresh_repos_cache_for_user(
-                g=g, user_id=uid, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+                g=g,
+                user_id=uid,
+                refresh_cache=refresh_cache,
+                force_refresh_cache=force_refresh_cache,
+                user_organization_name_list=user_organization_name_list,
             )
             if result:
                 user_ids_success.append(uid)
@@ -344,8 +355,8 @@ def refresh_cache_of_repositories_for_user_or_users(
 
 def _refresh_repos_cache_for_user(
     g: GitentialContext,
+    user_id: int,
     workspace_id: Optional[int] = None,
-    user_id: Optional[int] = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
     user_organization_name_list: Optional[List[str]] = None,
@@ -357,13 +368,9 @@ def _refresh_repos_cache_for_user(
     If none of the above is provided an exception will be raised.
     """
 
-    user_id_corrected = get_user_id_or_raise_exception(
-        g=g, cache_type="repositories", user_id=user_id, workspace_id=workspace_id
-    )
-
     logger.info(
         "Starting to refresh repos cache for user.",
-        user_id=user_id_corrected,
+        user_id=user_id,
         workspace_id=workspace_id,
         refresh_cache=refresh_cache,
         force_refresh_cache=force_refresh_cache,
@@ -386,7 +393,7 @@ def _refresh_repos_cache_for_user(
     repos_for_credential = partial(
         _refresh_repos_cache_for_credential,
         g,
-        user_id_corrected,
+        user_id,
         refresh_cache_c,
         force_refresh_cache_c,
         user_organization_name_list,
@@ -431,10 +438,8 @@ def _refresh_repos_cache_for_credential(
                     else None
                 )
 
-                refresh = (
-                    _get_repos_last_refresh_date(g=g, user_id=user_id, integration_type=credential.integration_type)
-                    if not refresh_cache and not force_refresh_cache
-                    else None
+                refresh = _get_repos_last_refresh_date(
+                    g=g, user_id=user_id, integration_type=credential.integration_type
                 )
                 if (
                     (refresh_cache and isinstance(refresh, datetime))

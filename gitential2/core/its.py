@@ -59,7 +59,7 @@ DEFAULT_ITS_PROJECTS_ORDER_BY_DIRECTION: ITSProjectOrderByDirections = ITSProjec
 
 
 def list_available_its_projects(g: GitentialContext, workspace_id: int) -> List[ITSProjectCreate]:
-    _refresh_its_projects_cache_for_user(g=g, workspace_id=workspace_id)
+    refresh_cache_of_its_projects_for_user_or_users(g=g, workspace_id=workspace_id)
     user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
     its_projects_from_cache = _get_its_projects_cache(g, user_id)
     return its_projects_from_cache
@@ -80,13 +80,15 @@ def get_available_its_projects_paginated(
     credential_id: Optional[int] = None,
     search_pattern: Optional[str] = None,
 ) -> Tuple[int, int, int, List[ITSProjectCreate]]:
-    user_id = get_user_id_or_raise_exception(
-        g=g, cache_type="ITS Projects", user_id=custom_user_id, workspace_id=workspace_id
+    # Making is_at_least_one_id_is_needed True in order to make sure that
+    # The argument user_id for get_its_projects_cache_paginated is not None
+    user_id_validated = get_user_id_or_raise_exception(
+        g=g, is_at_least_one_id_is_needed=True, user_id=custom_user_id, workspace_id=workspace_id
     )
 
-    _refresh_its_projects_cache_for_user(
+    refresh_cache_of_its_projects_for_user_or_users(
         g=g,
-        user_id=user_id,
+        user_id=custom_user_id or user_id_validated,
         refresh_cache=refresh_cache or False,
         force_refresh_cache=force_refresh_cache or False,
     )
@@ -101,7 +103,7 @@ def get_available_its_projects_paginated(
     offset = offset if offset and -1 < offset else DEFAULT_ITS_PROJECTS_OFFSET
 
     total_count, its_projects = g.backend.user_its_projects_cache.get_its_projects_cache_paginated(
-        user_id=user_id,
+        user_id=custom_user_id or user_id_validated,  # type: ignore[arg-type]
         limit=limit,
         offset=offset,
         order_by_option=order_by_option.value if order_by_option else ITSProjectCacheOrderByOptions.name.value,
@@ -209,13 +211,13 @@ def refresh_cache_of_its_projects_for_user_or_users(
     If none of the above is provided, then we get all the user ids from the database and make the repo cache for them.
     """
 
-    user_id_corrected = get_user_id_or_raise_exception(
-        g=g, cache_type="ITS Projects", is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
+    user_id_validated = get_user_id_or_raise_exception(
+        g=g, is_at_least_one_id_is_needed=False, user_id=user_id, workspace_id=workspace_id
     )
 
-    if user_id_corrected:
+    if user_id_validated:
         _refresh_its_projects_cache_for_user(
-            g=g, user_id=user_id_corrected, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
+            g=g, user_id=user_id_validated, refresh_cache=refresh_cache, force_refresh_cache=force_refresh_cache
         )
     else:
         user_ids: List[int] = [u.id for u in g.backend.users.all()]
@@ -231,8 +233,8 @@ def refresh_cache_of_its_projects_for_user_or_users(
 
 def _refresh_its_projects_cache_for_user(
     g: GitentialContext,
+    user_id: int,
     workspace_id: Optional[int] = None,
-    user_id: Optional[int] = None,
     refresh_cache: Optional[bool] = False,
     force_refresh_cache: Optional[bool] = False,
 ):
@@ -243,13 +245,9 @@ def _refresh_its_projects_cache_for_user(
     If none of the above is provided an exception will be raised.
     """
 
-    user_id_corrected = get_user_id_or_raise_exception(
-        g=g, cache_type="ITS projects", user_id=user_id, workspace_id=workspace_id
-    )
-
     logger.info(
         "Starting to refresh ITS projects cache for user.",
-        user_id=user_id_corrected,
+        user_id=user_id,
         workspace_id=workspace_id,
         refresh_cache=refresh_cache,
         force_refresh_cache=force_refresh_cache,
@@ -272,7 +270,7 @@ def _refresh_its_projects_cache_for_user(
     its_projects_for_credential = partial(
         _refresh_its_projects_cache_for_credential,
         g,
-        user_id_corrected,
+        user_id,
         refresh_cache_c,
         force_refresh_cache_c,
     )

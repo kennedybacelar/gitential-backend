@@ -2,7 +2,7 @@ import re
 from copy import deepcopy
 from datetime import datetime, timedelta
 from json import dumps
-from typing import Optional, List, Dict, TypeGuard, Union, Any
+from typing import Optional, List, Dict, TypeGuard, Union, Any, Literal
 from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 
 from gitential2.exceptions import SettingsException
@@ -190,42 +190,23 @@ def is_timestamp_within_days(timestamp: Union[int, float], number_of_days_diff: 
 
 def get_user_id_or_raise_exception(
     g,
-    cache_type: str,
     is_at_least_one_id_is_needed: bool = True,
     user_id: Optional[int] = None,
     workspace_id: Optional[int] = None,
-) -> int:
-    def get_error_msg(line: str):
-        return (
-            f"Error while trying to refresh {cache_type} cache for user! "
-            f"{line}"
-            f"Provided arguments: user_id=[{user_id}], workspace_id=[{workspace_id}]"
-        )
+) -> Optional[int]:
 
-    if not user_id and not workspace_id and is_at_least_one_id_is_needed:
-        raise SettingsException(
-            get_error_msg(
-                "In order to refresh ITS projects cache for user, either one of the following "
-                "has to be a valid id: 'workspace_id', 'user_id' "
-            )
-        )
-
-    result = -1
     if user_id:
         user = g.backend.users.get(user_id)
         if user:
-            result = user.id
-        else:
-            raise SettingsException(
-                get_error_msg(f"Provided user_id is invalid. Can not find user with id=[{user_id}]")
-            )
+            return user_id
+        raise SettingsException(f"Provided user_id is invalid. Can not find user with id={user_id}")
     if workspace_id:
         workspace = g.backend.workspaces.get(workspace_id)
         if workspace:
-            result = workspace.created_by
-        else:
-            raise SettingsException(
-                get_error_msg(f"Provided workspace_id is invalid. Can not find workspace with id=[{user_id}]")
-            )
-
-    return result
+            return workspace.created_by
+        raise SettingsException(f"Provided workspace_id is invalid. Can not find workspace with id={workspace_id}")
+    if is_at_least_one_id_is_needed:
+        raise SettingsException(
+            "It is set in the parameters that either user_id or workspace_id is needed in order to perform this operation"
+        )
+    return None
