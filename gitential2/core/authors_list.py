@@ -62,6 +62,11 @@ def list_authors_extended(
                 teams_table.c.id.in_(author_filters.team_ids) if author_filters.team_ids else True,
                 projects_table.c.id.in_(author_filters.project_ids) if author_filters.project_ids else True,
                 authors_table.c.id.in_(author_filters.developer_ids) if author_filters.developer_ids else True,
+                authors_table.c.name.in_(author_filters.developer_names) if author_filters.developer_names else True,
+                authors_table.c.email.in_(author_filters.developer_emails) if author_filters.developer_emails else True,
+                project_repositories_table.c.repo_id.in_(author_filters.repository_ids)
+                if author_filters.repository_ids
+                else True,
             )
         )
     )
