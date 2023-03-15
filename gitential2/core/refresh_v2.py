@@ -405,20 +405,20 @@ def _refresh_repository_commits_clone_phase(
             commits_phase=RefreshCommitsPhase.cloning,
         )
 
-        if repository.integration_type == "github" and not force:
+        if repository.integration_type in ["github", "vsts"] and not force:
             integration = g.integrations.get(repository.integration_name)
             token = credential.to_token_dict(g.fernet)
             update_token = get_update_token_callback(g, credential)
 
-            if hasattr(integration, "get_raw_single_repo_data") and integration is not None:
+            if hasattr(integration, "last_push_at_repository") and integration is not None:
 
-                raw_single_repo_data = integration.get_raw_single_repo_data(
+                last_push_at_repository: Optional[datetime] = integration.last_push_at_repository(
                     repository=repository, token=token, update_token=update_token
                 )
                 current_state = get_repo_refresh_status(g, workspace_id, repository.id)
 
                 if not has_remote_repository_been_updated_after_last_project_refresh(
-                    raw_single_repo_data, current_state
+                    last_push_at_repository, current_state
                 ):
                     logger.info(
                         "Remote repository has not been updated after last successful refresh - Skipping commits refresh.",
@@ -439,15 +439,14 @@ def _refresh_repository_commits_clone_phase(
 
 
 def has_remote_repository_been_updated_after_last_project_refresh(
-    raw_single_repo_data: dict, current_state: RepositoryRefreshStatus
+    last_push_at_remote_repository: Optional[datetime], current_state: RepositoryRefreshStatus
 ) -> bool:
     try:
-        last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
+        if last_push_at_remote_repository:
+            last_push_at_remote_repository = datetime.strptime(
+                last_push_at_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
+            ).astimezone(timezone.utc)
         repo_last_successful_refresh = current_state.commits_last_successful_run
-
-        last_push_at_remote_repository = datetime.strptime(
-            last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
-        ).astimezone(timezone.utc)
 
         logger.info(
             workspace_id=current_state.workspace_id,
