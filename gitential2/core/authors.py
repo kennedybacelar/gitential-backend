@@ -17,6 +17,7 @@ from gitential2.utils import levenshtein_ratio, is_list_not_empty, is_email_vali
 from .context import GitentialContext
 from ..datatypes.teammembers import TeamMemberInDB
 from ..datatypes.teams import TeamInDB
+from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
 
@@ -304,6 +305,127 @@ def tokenize_alias(alias: AuthorAlias) -> List[str]:
     ret = _remove_common_words(_remove_duplicates(ret))
     # logger.debug("Tokenized alias", alias=alias, tokens=ret)
     return ret
+
+
+def __validate_alias_moving(
+    g: GitentialContext,
+    workspace_id: int,
+    source_author_id: int,
+    destination_author_id: int,
+    emails_to_move: List[str],
+    logins_to_move: List[str],
+) -> Tuple[AuthorInDB, AuthorInDB]:
+    source_author: AuthorInDB = g.backend.authors.get(workspace_id=workspace_id, id_=source_author_id)
+    destination_author: AuthorInDB = g.backend.authors.get(workspace_id=workspace_id, id_=destination_author_id)
+
+    base_error = "Author alias moving is not possible!"
+    if not source_author:
+        raise SettingsException(
+            f"{base_error} Not able to find source author by the provided " f"id: [{source_author_id}]"
+        )
+    if not destination_author:
+        raise SettingsException(
+            f"{base_error} Not able to find destination author by the provided " f"id: [{destination_author_id}]"
+        )
+    if not is_list_not_empty(emails_to_move) and not is_string_not_empty(logins_to_move):
+        raise SettingsException(f"{base_error} There are no provided emails or logins to move between the authors!")
+    if not is_string_not_empty(source_author.aliases):
+        raise SettingsException(f"{base_error} The source author has no emails or logins.")
+    if is_list_not_empty(emails_to_move):
+        if any(
+            [
+                all([getattr(alias, "email", None) != email_to_move for alias in source_author.aliases])
+                for email_to_move in emails_to_move
+            ]
+        ):
+            raise SettingsException(
+                f"{base_error} There are emails which should be moved but not present in the source author's aliases."
+            )
+        if any(
+            [
+                any([getattr(alias, "email", None) == email_to_move for alias in destination_author.aliases])
+                for email_to_move in emails_to_move
+            ]
+        ):
+            raise SettingsException(
+                f"{base_error} There are emails which should be moved but already present in the "
+                f"destination author's aliases."
+            )
+    if is_list_not_empty(logins_to_move):
+        if any(
+            [
+                all([getattr(alias, "login", None) != login_to_move for alias in source_author.aliases])
+                for login_to_move in logins_to_move
+            ]
+        ):
+            raise SettingsException(
+                f"{base_error} There are logins which should be moved but not present in the source author's aliases."
+            )
+        if any(
+            [
+                all([getattr(alias, "login", None) == login_to_move for alias in destination_author.aliases])
+                for login_to_move in logins_to_move
+            ]
+        ):
+            raise SettingsException(
+                f"{base_error} There are logins which should be moved but already present in the "
+                f"destination author's aliases."
+            )
+
+    return source_author, destination_author
+
+
+def move_author_email_or_login(
+    g: GitentialContext,
+    workspace_id: int,
+    source_author_id: int,
+    destination_author_id: int,
+    emails_to_move: List[str],
+    logins_to_move: List[str],
+) -> List[AuthorInDB]:
+    source_author, destination_author = __validate_alias_moving(
+        g, workspace_id, source_author_id, destination_author_id, emails_to_move, logins_to_move
+    )
+    if is_list_not_empty(emails_to_move):
+        for email in emails_to_move:
+
+            def get_new_alias(a: AuthorAlias):
+                new_alias = AuthorAlias(name=a.name, email=None if a.email == email else a.email, login=a.login)
+                return None if new_alias.is_empty() else new_alias
+
+            aliases_raw = [get_new_alias(a) for a in source_author.aliases]
+            new_aliases = [alias for alias in aliases_raw if alias]
+            source_author.aliases = new_aliases
+            destination_author.aliases.append(AuthorAlias(email=email))
+
+    if is_list_not_empty(logins_to_move):
+        for login in logins_to_move:
+
+            def get_new_alias(a: AuthorAlias):
+                new_alias = AuthorAlias(name=a.name, email=a.email, login=None if a.login == login else a.login)
+                return None if new_alias.is_empty() else new_alias
+
+            aliases_raw = [get_new_alias(a) for a in source_author.aliases]
+            new_aliases = [alias for alias in aliases_raw if alias]
+            source_author.aliases = new_aliases
+            destination_author.aliases.append(AuthorAlias(login=login))
+
+    source_author_update = AuthorUpdate(
+        active=source_author.active,
+        name=source_author.name,
+        email=source_author.email,
+        aliases=source_author.aliases,
+    )
+    destination_author_update = AuthorUpdate(
+        active=destination_author.active,
+        name=destination_author.name,
+        email=destination_author.email,
+        aliases=destination_author.aliases,
+    )
+    g.backend.authors.update(workspace_id=workspace_id, id_=source_author_id, obj=source_author_update)
+    g.backend.authors.update(workspace_id=workspace_id, id_=destination_author_id, obj=destination_author_update)
+
+    return [source_author, destination_author]
 
 
 def move_emails_and_logins_to_author(
