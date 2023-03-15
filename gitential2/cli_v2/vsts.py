@@ -356,14 +356,12 @@ def single_repo(
 ):
     """
     This function returns the raw data of a single repository hosted in Azure devops platform.
-    
+
     """
-    
+
     g = get_context()
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")
-    
-    g.backend.user_repositories_cache.
 
     repository = RepositoryInDB(
         id=1,

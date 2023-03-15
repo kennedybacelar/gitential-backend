@@ -305,20 +305,18 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
         organization, project = _get_organization_and_project_from_its_project(repository.namespace)
-
         get_repo_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repository.name}/commits?$top=1&api-version=6.0"
+        response = client.get(get_repo_url)
 
-        repo_data = client.get(get_repo_url)
-
-        if repo_data.status_code == 200:
-            return repo_data.json()
+        if response.status_code == 200:
+            return response.json()
         else:
-            log_api_error(repo_data)
+            log_api_error(response)
             return None
 
     def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
-        response_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
-        repo_data = response_repo_data.get("value")
+        raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
+        repo_data = raw_single_repo_data.get("value")
         if repo_data:
             last_pushed = repo_data[0].get("committer", {}).get("date")
             if last_pushed:
