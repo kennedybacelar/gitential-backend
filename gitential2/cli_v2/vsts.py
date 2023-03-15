@@ -376,7 +376,6 @@ def single_repo(
     if vsts_credential and vsts_credential.owner_id:
         for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
             if single_user.integration_type == IntegrationType.vsts:
-                userinfo: UserInfoInDB = single_user
                 break
 
     if vsts_credential and vsts_integration:
