@@ -443,9 +443,7 @@ def has_remote_repository_been_updated_after_last_project_refresh(
 ) -> bool:
     try:
         if last_push_at_remote_repository:
-            last_push_at_remote_repository = datetime.strptime(
-                last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
-            ).astimezone(timezone.utc)
+            last_push_at_remote_repository = last_push_at_remote_repository.astimezone(timezone.utc)
         repo_last_successful_refresh = current_state.commits_last_successful_run
 
         logger.info(
