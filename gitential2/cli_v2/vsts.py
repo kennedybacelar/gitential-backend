@@ -1,7 +1,6 @@
 from datetime import datetime
 from functools import partial
 from typing import Optional, cast
-import pprint
 
 import typer
 from structlog import get_logger
@@ -319,58 +318,60 @@ def list_all_linked_issues(
         print_results(linked_issues, format_=format_, fields=fields)
 
 
-@app.command("vstestando")
-def test(workspace_id: int):
-
-    g = get_context()
-    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
-    vsts_integration = g.integrations.get("vsts")
-
-    if vsts_credential and vsts_credential.owner_id:
-        for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
-            if single_user.integration_type == IntegrationType.vsts:
-                userinfo: UserInfoInDB = single_user
-                break
-
-    if vsts_credential and vsts_integration:
-        vsts_integration = cast(VSTSIntegration, vsts_integration)
-        token = vsts_credential.to_token_dict(g.fernet)
-        list_available_private_repositories = vsts_integration.list_available_private_repositories(
-            token,
-            update_token=get_update_token_callback(g, vsts_credential),
-            provider_user_id=userinfo.sub if userinfo else None,
-            user_organization_name_list=None,
-        )
-
-        for repo in list_available_private_repositories:
-            for key, value in dict(repo).items():
-                print(f"{key}: {value}")
-            print(40 * "*")
-
-
-@app.command("single-repo")
+@app.command("single-repo-raw-data")
 def single_repo(
     workspace_id: int,
-    namespace: str,
-    name: str,
+    namespace: Optional[str] = None,
+    name: Optional[str] = None,
+    repo_id: Optional[int] = None,
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
 ):
-    """
-    This function returns the raw data of a single repository hosted in Azure devops platform.
+    """This function returns the raw data for a single repository hosted on the Azure DevOps platform.
+    Please ensure that the user associated with the provided workspace has access to the desired repository.
 
+    If you wish to fetch raw data for a specific repository existing in the project instead of a random repository,
+    you can pass the parameter 'repo_id' when calling the CLI function.
+
+    Args:
+        workspace_id (int):
+        namespace (str): organization/project
+        name (str): repo_name
+
+    Example:
+        workspace_id (int): 1
+        namespace (str): Neo-3/repo_1
+        name (str): frontend_repo
     """
 
     g = get_context()
+
+    if name and namespace:
+        repository = RepositoryInDB(
+            id=1,
+            clone_url="foo",
+            protocol="https",
+            name=name,
+            namespace=namespace,
+            private=False,
+        )
+    elif repo_id:
+        repository = g.backend.repositories.get_or_error(workspace_id, repo_id)
+        if repository.integration_type != "vsts":
+            logger.exception("Given repository is not a VSTS repository", workspace_id=workspace_id, repo_id=repo_id)
+            return None
+    else:
+        logger.exception(
+            "Not enough parameters given for the function execution",
+            workspace_id=workspace_id,
+            namespace=namespace,
+            name=name,
+            repo_id=repo_id,
+        )
+        return None
+
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")
-
-    repository = RepositoryInDB(
-        id=1,
-        clone_url="foo",
-        protocol="https",
-        name="sentinel",
-        namespace="Neo-3/Vamo_de V_Tex",
-        private=False,
-    )
 
     if vsts_credential and vsts_credential.owner_id:
         for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
@@ -381,18 +382,10 @@ def single_repo(
     if vsts_credential and vsts_integration:
         vsts_integration = cast(VSTSIntegration, vsts_integration)
         token = vsts_credential.to_token_dict(g.fernet)
-        repo_data = vsts_integration.get_raw_single_repo_data(
+        raw_single_repo_data = vsts_integration.get_raw_single_repo_data(
             repository=repository,
             token=token,
             update_token=get_update_token_callback(g, vsts_credential),
         )
 
-        last_pushed = vsts_integration.last_push_at_repository(
-            repository=repository,
-            token=token,
-            update_token=get_update_token_callback(g, vsts_credential),
-        )
-
-    print(last_pushed)
-    print(type(last_pushed))
-    # pprint.pprint(single_repo_data)
+        print_results([raw_single_repo_data], format_=format_, fields=fields)
