@@ -333,6 +333,9 @@ def single_repo(
     If you wish to fetch raw data for a specific repository existing in the project instead of a random repository,
     you can pass the parameter 'repo_id' when calling the CLI function.
 
+    :raises SystemExit: if neither a valid combinatio of namespace + name nor a repo_id belonging to a vsts repository is passed,
+    then the function is terminated.
+
     Args:
         workspace_id (int):
         namespace (str): organization/project
