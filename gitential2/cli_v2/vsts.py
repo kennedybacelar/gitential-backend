@@ -319,7 +319,7 @@ def list_all_linked_issues(
 
 
 @app.command("single-repo-raw-data")
-def single_repo(
+def single_repo(  # pylint: disable=missing-raises-doc
     workspace_id: int,
     namespace: Optional[str] = None,
     name: Optional[str] = None,
@@ -333,8 +333,9 @@ def single_repo(
     If you wish to fetch raw data for a specific repository existing in the project instead of a random repository,
     you can pass the parameter 'repo_id' when calling the CLI function.
 
-    :raises SystemExit: if neither a valid combinatio of namespace + name nor a repo_id belonging to a vsts repository is passed,
-    then the function is terminated.
+    Raises:
+        SystemExit: if neither a valid combinatio of namespace + name nor a repo_id belonging to a vsts repository is passed,
+        then the function is terminated.
 
     Args:
         workspace_id (int):
@@ -362,7 +363,7 @@ def single_repo(
         repository = g.backend.repositories.get_or_error(workspace_id, repo_id)
         if repository.integration_type != "vsts":
             logger.exception("Given repository is not a VSTS repository", workspace_id=workspace_id, repo_id=repo_id)
-            raise typer.Exit(1)  # type: ignore[missing-raises-doc]
+            raise typer.Exit(1)
     else:
         logger.exception(
             "Not enough parameters given for the function execution",
@@ -371,7 +372,7 @@ def single_repo(
             name=name,
             repo_id=repo_id,
         )
-        raise typer.Exit(1)  # type: ignore[missing-raises-doc]
+        raise typer.Exit(1)
 
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")
