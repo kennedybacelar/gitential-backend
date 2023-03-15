@@ -299,6 +299,33 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             user_organization_name_list=user_organization_names,
         )
 
+    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[dict]:
+
+        client = self.get_oauth2_client(
+            token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
+        organization, project = _get_organization_and_project_from_its_project(repository.namespace)
+
+        get_repo_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repository.name}/commits?$top=1&api-version=6.0"
+
+        repo_data = client.get(get_repo_url)
+
+        if repo_data.status_code == 200:
+            return repo_data.json()
+        else:
+            log_api_error(repo_data)
+            return None
+
+    def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
+        response_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
+        repo_data = response_repo_data.get("value")
+        if repo_data:
+            last_pushed = repo_data[0].get("committer", {}).get("date")
+            if last_pushed:
+                last_pushed = datetime.strptime(last_pushed, "%Y-%m-%dT%H:%M:%SZ")
+                return last_pushed
+        return None
+
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
     ) -> List[RepositoryCreate]:
@@ -329,13 +356,14 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                 logger.debug("No private repositories found for VSTS integration.")
 
         return repos
+        # return response_json.get("value", [{}])
 
     def _repo_to_create_repo(self, repo_dict, account_dict):
         return RepositoryCreate(
             clone_url=repo_dict["webUrl"],
             protocol=GitProtocol.https,
             name=repo_dict["name"],
-            namespace=account_dict["accountName"],
+            namespace=f"{account_dict['accountName']}/{repo_dict['project']['name']}",
             private=repo_dict["project"]["visibility"] == "private",
             integration_type="vsts",
             integration_name=self.name,

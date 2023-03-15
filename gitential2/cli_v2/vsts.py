@@ -1,6 +1,7 @@
 from datetime import datetime
 from functools import partial
 from typing import Optional, cast
+import pprint
 
 import typer
 from structlog import get_logger
@@ -11,6 +12,7 @@ from gitential2.core.credentials import get_update_token_callback, get_fresh_cre
 from gitential2.datatypes.credentials import CredentialInDB
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
+from gitential2.datatypes.repositories import RepositoryInDB
 from gitential2.integrations.vsts import VSTSIntegration
 from gitential2.settings import IntegrationType
 from .common import get_context, print_results, OutputFormat
@@ -315,3 +317,84 @@ def list_all_linked_issues(
             token=token, its_project=its_project_mock, issue_id_or_key=issue_id_or_key
         )
         print_results(linked_issues, format_=format_, fields=fields)
+
+
+@app.command("vstestando")
+def test(workspace_id: int):
+
+    g = get_context()
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_credential.owner_id:
+        for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
+            if single_user.integration_type == IntegrationType.vsts:
+                userinfo: UserInfoInDB = single_user
+                break
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        list_available_private_repositories = vsts_integration.list_available_private_repositories(
+            token,
+            update_token=get_update_token_callback(g, vsts_credential),
+            provider_user_id=userinfo.sub if userinfo else None,
+            user_organization_name_list=None,
+        )
+
+        for repo in list_available_private_repositories:
+            for key, value in dict(repo).items():
+                print(f"{key}: {value}")
+            print(40 * "*")
+
+
+@app.command("single-repo")
+def single_repo(
+    workspace_id: int,
+    namespace: str,
+    name: str,
+):
+    """
+    This function returns the raw data of a single repository hosted in Azure devops platform.
+    
+    """
+    
+    g = get_context()
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+    
+    g.backend.user_repositories_cache.
+
+    repository = RepositoryInDB(
+        id=1,
+        clone_url="foo",
+        protocol="https",
+        name="sentinel",
+        namespace="Neo-3/Vamo_de V_Tex",
+        private=False,
+    )
+
+    if vsts_credential and vsts_credential.owner_id:
+        for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
+            if single_user.integration_type == IntegrationType.vsts:
+                userinfo: UserInfoInDB = single_user
+                break
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        repo_data = vsts_integration.get_raw_single_repo_data(
+            repository=repository,
+            token=token,
+            update_token=get_update_token_callback(g, vsts_credential),
+        )
+
+        last_pushed = vsts_integration.last_push_at_repository(
+            repository=repository,
+            token=token,
+            update_token=get_update_token_callback(g, vsts_credential),
+        )
+
+    print(last_pushed)
+    print(type(last_pushed))
+    # pprint.pprint(single_repo_data)
