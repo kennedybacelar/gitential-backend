@@ -362,7 +362,7 @@ def single_repo(
         repository = g.backend.repositories.get_or_error(workspace_id, repo_id)
         if repository.integration_type != "vsts":
             logger.exception("Given repository is not a VSTS repository", workspace_id=workspace_id, repo_id=repo_id)
-            raise typer.Exit(1)
+            raise typer.Exit(1)  # type: ignore[missing-raises-doc]
     else:
         logger.exception(
             "Not enough parameters given for the function execution",
@@ -371,7 +371,7 @@ def single_repo(
             name=name,
             repo_id=repo_id,
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1)  # type: ignore[missing-raises-doc]
 
     vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
     vsts_integration = g.integrations.get("vsts")

@@ -354,7 +354,6 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                 logger.debug("No private repositories found for VSTS integration.")
 
         return repos
-        # return response_json.get("value", [{}])
 
     def _repo_to_create_repo(self, repo_dict, account_dict):
         return RepositoryCreate(
