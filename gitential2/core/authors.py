@@ -143,6 +143,10 @@ def get_author(g: GitentialContext, workspace_id: int, author_id: int) -> Option
     return g.backend.authors.get(workspace_id, author_id)
 
 
+def get_authors_by_name_pattern(g: GitentialContext, workspace_id: int, author_name: str) -> List[AuthorInDB]:
+    return g.backend.authors.get_by_name_pattern(workspace_id=workspace_id, author_name=author_name)
+
+
 def fix_author_names(g: GitentialContext, workspace_id: int):
     with authors_change_lock(g, workspace_id):
         fixed_count = 0

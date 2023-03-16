@@ -1078,6 +1078,12 @@ class SQLAuthorRepository(AuthorRepository, SQLWorkspaceScopedRepository[int, Au
             result = [AuthorInDB(**row) for row in rows]
         return result
 
+    def get_by_name_pattern(self, workspace_id: int, author_name: str) -> List[AuthorInDB]:
+        author_name_pattern: str = f"%{author_name}%"
+        query = self.table.select().where(self.table.c.name.ilike(author_name_pattern))
+        rows = self._execute_query(query, workspace_id=workspace_id, callback_fn=fetchall_)
+        return [AuthorInDB(**row) for row in rows]
+
 
 class SQLTeamRepository(TeamRepository, SQLWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
     def get_teams_by_team_ids(self, workspace_id: int, team_ids: List[int]) -> List[TeamInDB]:

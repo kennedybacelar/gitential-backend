@@ -11,8 +11,8 @@ from gitential2.core.authors import (
     get_author,
     get_author_names_and_emails,
     authors_count,
-    move_emails_and_logins_to_author,
     move_author_email_or_login,
+    get_authors_by_name_pattern,
 )
 from gitential2.core.context import GitentialContext
 from gitential2.core.deduplication import deduplicate_authors
@@ -108,6 +108,17 @@ def get_author_(
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
     return get_author(g, workspace_id, author_id)
+
+
+@router.get("/workspaces/{workspace_id}/authors-search-by-name", response_model=List[AuthorPublic])
+def get_author_by_name_(
+    workspace_id: int,
+    author_name: str = Query(None, alias="authorName"),
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    return get_authors_by_name_pattern(g, workspace_id, author_name)
 
 
 @router.get("/workspaces/{workspace_id}/authors/{author_id}/extended", response_model=AuthorPublicExtended)
