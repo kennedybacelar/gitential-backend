@@ -307,6 +307,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         organization, project = _get_organization_and_project_from_its_project(repository.namespace)
         get_repo_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repository.name}/commits?$top=1&api-version=6.0"
         response = client.get(get_repo_url)
+        client.close()
 
         if response.status_code == 200:
             return response.json()
