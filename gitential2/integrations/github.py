@@ -83,6 +83,7 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         api_base_url = self.oauth_register()["api_base_url"]
         client = self.get_oauth2_client(token=token, update_token=update_token)
         response = client.get(f"{api_base_url}repos/{repository.namespace}/{repository.name}")
+        client.close()
 
         if response.status_code == 200:
             return response.json()
