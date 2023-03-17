@@ -9,11 +9,11 @@ from gitential2.integrations.common import get_time_of_last_element
 from gitential2.utils import is_timestamp_within_days
 
 
-def _get_organization_and_project_from_its_project(its_project_namespace: str) -> Tuple[str, str]:
-    if len(its_project_namespace.split("/")) == 2:
-        splitted = its_project_namespace.split("/")
-        return (splitted[0], splitted[1])
-    raise ValueError(f"Don't know how to parse vsts {its_project_namespace} namespace")
+def _get_organization_and_project_from_namespace(namespace: str) -> Tuple[str, str]:
+    if len(namespace.split("/")) == 2:
+        organization, project = namespace.split("/")
+        return (organization, project)
+    raise ValueError(f"Don't know how to parse vsts {namespace} namespace")
 
 
 def get_db_issue_id(issue_dict: dict, its_project: ITSProjectInDB) -> str:
@@ -51,12 +51,8 @@ def _parse_its_issue_change_type(field_name: str) -> ITSIssueChangeType:
 
 
 def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
-
-    if repository.extra and "project" in repository.extra:
-        repository_url = repository.extra["url"]
-        return _parse_azure_repository_url(repository_url)
-    else:
-        return _parse_clone_url(repository.clone_url)
+    organization, project = _get_organization_and_project_from_namespace(repository.namespace)
+    return organization, project, repository.name
 
 
 def _parse_azure_repository_url(url: str) -> Tuple[str, str, str]:

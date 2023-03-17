@@ -83,12 +83,23 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         api_base_url = self.oauth_register()["api_base_url"]
         client = self.get_oauth2_client(token=token, update_token=update_token)
         response = client.get(f"{api_base_url}repos/{repository.namespace}/{repository.name}")
+        client.close()
 
         if response.status_code == 200:
             return response.json()
         else:
             log_api_error(response)
             return None
+
+    def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
+        raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
+        last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
+        if last_push_at_remote_repository:
+            last_push_at_remote_repository = last_push_at_remote_repository = datetime.strptime(
+                last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
+            )
+            return last_push_at_remote_repository
+        return None
 
     def _collect_raw_pull_requests(
         self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None

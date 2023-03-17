@@ -11,6 +11,7 @@ from gitential2.core.credentials import get_update_token_callback, get_fresh_cre
 from gitential2.datatypes.credentials import CredentialInDB
 from gitential2.datatypes.its_projects import ITSProjectInDB
 from gitential2.datatypes.userinfos import UserInfoInDB
+from gitential2.datatypes.repositories import RepositoryInDB
 from gitential2.integrations.vsts import VSTSIntegration
 from gitential2.settings import IntegrationType
 from .common import get_context, print_results, OutputFormat
@@ -315,3 +316,79 @@ def list_all_linked_issues(
             token=token, its_project=its_project_mock, issue_id_or_key=issue_id_or_key
         )
         print_results(linked_issues, format_=format_, fields=fields)
+
+
+@app.command("single-repo-raw-data")
+def single_repo(  # pylint: disable=missing-raises-doc
+    workspace_id: int,
+    namespace: Optional[str] = None,
+    name: Optional[str] = None,
+    repo_id: Optional[int] = None,
+    format_: OutputFormat = typer.Option(OutputFormat.json, "--format"),
+    fields: Optional[str] = None,
+):
+    """This function returns the raw data for a single repository hosted on the Azure DevOps platform.
+    Please ensure that the user associated with the provided workspace has access to the desired repository.
+
+    If you wish to fetch raw data for a specific repository existing in the project instead of a random repository,
+    you can pass the parameter 'repo_id' when calling the CLI function.
+
+    Raises:
+        SystemExit: if neither a valid combinatio of namespace + name nor a repo_id belonging to a vsts repository is passed,
+        then the function is terminated.
+
+    Args:
+        workspace_id (int):
+        namespace (str): organization/project
+        name (str): repo_name
+
+    Example:
+        workspace_id (int): 1
+        namespace (str): Neo-3/repo_1
+        name (str): frontend_repo
+    """
+
+    g = get_context()
+
+    if name and namespace:
+        repository = RepositoryInDB(
+            id=1,
+            clone_url="foo",
+            protocol="https",
+            name=name,
+            namespace=namespace,
+            private=False,
+        )
+    elif repo_id:
+        repository = g.backend.repositories.get_or_error(workspace_id, repo_id)
+        if repository.integration_type != "vsts":
+            logger.exception("Given repository is not a VSTS repository", workspace_id=workspace_id, repo_id=repo_id)
+            raise typer.Exit(1)
+    else:
+        logger.exception(
+            "Not enough parameters given for the function execution",
+            workspace_id=workspace_id,
+            namespace=namespace,
+            name=name,
+            repo_id=repo_id,
+        )
+        raise typer.Exit(1)
+
+    vsts_credential: Optional[CredentialInDB] = _get_vsts_credential(g, workspace_id)
+    vsts_integration = g.integrations.get("vsts")
+
+    if vsts_credential and vsts_credential.owner_id:
+        for single_user in g.backend.user_infos.get_for_user(vsts_credential.owner_id):
+            if single_user.integration_type == IntegrationType.vsts:
+                break
+
+    if vsts_credential and vsts_integration:
+        vsts_integration = cast(VSTSIntegration, vsts_integration)
+        token = vsts_credential.to_token_dict(g.fernet)
+        raw_single_repo_data = vsts_integration.get_raw_single_repo_data(
+            repository=repository,
+            token=token,
+            update_token=get_update_token_callback(g, vsts_credential),
+        )
+
+        print_results([raw_single_repo_data], format_=format_, fields=fields)
