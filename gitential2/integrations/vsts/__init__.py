@@ -20,7 +20,7 @@ from gitential2.datatypes.its_projects import ITSProjectCreate, ITSProjectInDB
 from gitential2.datatypes.pull_requests import PullRequest, PullRequestComment, PullRequestCommit, PullRequestState
 from .common import (
     _get_project_organization_and_repository,
-    _get_organization_and_project_from_its_project,
+    _get_organization_and_project_from_namespace,
     _paginate_with_skip_top,
     to_author_alias,
     _parse_status_category,
@@ -304,7 +304,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         client = self.get_oauth2_client(
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
-        organization, project = _get_organization_and_project_from_its_project(repository.namespace)
+        organization, project = _get_organization_and_project_from_namespace(repository.namespace)
         get_repo_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repository.name}/commits?$top=1&api-version=6.0"
         response = client.get(get_repo_url)
         client.close()
@@ -468,7 +468,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
 
-        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, project = _get_organization_and_project_from_namespace(its_project.namespace)
         team = its_project.name
 
         fields = fields or [
@@ -530,7 +530,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         # wit is used as a short for workitems in this function
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, project = _get_organization_and_project_from_namespace(its_project.namespace)
 
         workitems_updates_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/updates?api-version=6.0"
 
@@ -589,7 +589,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     ) -> dict:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, project = _get_organization_and_project_from_namespace(its_project.namespace)
 
         single_work_item_details_url = (
             f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{issue_id_or_key}?api-version=6.0"
@@ -608,7 +608,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     ) -> List[ITSIssueComment]:
 
         client = self.get_oauth2_client(token=token, token_endpoint_auth_method=self._auth_client_secret_uri)
-        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, project = _get_organization_and_project_from_namespace(its_project.namespace)
 
         issue_comments_url = f"https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{issue_id_or_key}/comments?api-version=6.0-preview.3"
 
@@ -652,7 +652,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
 
     def get_work_item_type_id(self, token, its_project: ITSProjectInDB, wit_ref_name: Optional[str]) -> Optional[str]:
 
-        organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, _project = _get_organization_and_project_from_namespace(its_project.namespace)
         process_id = its_project.extra["process_id"]  # type: ignore[index]
 
         if not process_id:
@@ -674,7 +674,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         self, token, its_project: ITSProjectInDB, issue_state: Optional[str], wit_ref_name: Optional[str]
     ) -> dict:
 
-        organization, _project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, _project = _get_organization_and_project_from_namespace(its_project.namespace)
         if not its_project.extra:
             return {}
 
@@ -705,7 +705,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         if not work_item_type:
             return None
 
-        organization, project = _get_organization_and_project_from_its_project(its_project.namespace)
+        organization, project = _get_organization_and_project_from_namespace(its_project.namespace)
         single_work_item_type_url = (
             f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitemtypes/{work_item_type}?api-version=6.0"
         )
