@@ -2,6 +2,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Callable, List, Tuple
 from urllib.parse import parse_qs
 
+from dateutil.parser import parse as parse_date_str
 from authlib.integrations.requests_client import OAuth2Session
 from pydantic.datetime_parse import parse_datetime
 from structlog import get_logger
@@ -321,9 +322,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
         repo_data = raw_single_repo_data.get("value")
         if repo_data:
-            last_pushed = repo_data[0].get("committer", {}).get("date")
-            if last_pushed:
-                last_pushed = datetime.strptime(last_pushed, "%Y-%m-%dT%H:%M:%SZ")
+            last_pushed_raw = repo_data[0].get("committer", {}).get("date")
+            if last_pushed_raw:
+                last_pushed = parse_date_str(last_pushed_raw).replace(tzinfo=timezone.utc)
                 return last_pushed
         return None
 
