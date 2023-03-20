@@ -17,7 +17,6 @@ from gitential2.utils import levenshtein_ratio, is_list_not_empty, is_email_vali
 from .context import GitentialContext
 from ..datatypes.teammembers import TeamMemberInDB
 from ..datatypes.teams import TeamInDB
-from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
 
