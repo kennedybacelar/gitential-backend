@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, Optional, List, Tuple
 
 from authlib.integrations.requests_client import OAuth2Session
@@ -93,12 +93,10 @@ class GithubIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
 
     def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
         raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
-        last_push_at_remote_repository = raw_single_repo_data.get("pushed_at")
-        if last_push_at_remote_repository:
-            last_push_at_remote_repository = last_push_at_remote_repository = datetime.strptime(
-                last_push_at_remote_repository, "%Y-%m-%dT%H:%M:%SZ"  # type: ignore[arg-type]
-            )
-            return last_push_at_remote_repository
+        last_pushed_raw = raw_single_repo_data.get("pushed_at")
+        if last_pushed_raw:
+            last_push = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
+            return last_push
         return None
 
     def _collect_raw_pull_requests(
