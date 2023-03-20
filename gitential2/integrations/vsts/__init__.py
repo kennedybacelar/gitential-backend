@@ -100,7 +100,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     def _collect_raw_pull_requests(
         self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
     ) -> list:
-        organization, project, repo = _get_project_organization_and_repository(repository)
+        organization, project, repo = _get_project_organization_and_repository(
+            repository=repository, repo_field_identifier="id"
+        )
         pull_requests = _paginate_with_skip_top(
             client,
             f"https://dev.azure.com/{organization}/{project}/_apis/git/pullrequests?api-version=6.0&searchCriteria.repositoryId={repo}&searchCriteria.status=all",
