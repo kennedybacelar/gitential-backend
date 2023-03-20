@@ -57,7 +57,7 @@ def _get_project_organization_and_repository(
     if repo_field_identifier == "name":
         repo = repository.name
     elif repo_field_identifier == "id":
-        repo = repository.extra.get("id") if repository.extra else repository.name
+        repo = repository.extra.get("id", repository.name) if repository.extra else repository.name
     return organization, project, repo
 
 
