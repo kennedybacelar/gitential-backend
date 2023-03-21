@@ -765,6 +765,10 @@ class AuthorRepository(BaseWorkspaceScopedRepository[int, AuthorCreate, AuthorUp
     def get_authors_with_null_name_or_email(self, workspace_id: int):
         pass
 
+    @abstractmethod
+    def get_by_name_pattern(self, workspace_id: int, author_name: str) -> List[AuthorInDB]:
+        pass
+
 
 class TeamRepository(BaseWorkspaceScopedRepository[int, TeamCreate, TeamUpdate, TeamInDB]):
     @abstractmethod

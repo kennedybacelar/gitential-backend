@@ -11,6 +11,7 @@ from gitential2.core.authors import (
     get_author,
     get_author_names_and_emails,
     authors_count,
+    get_authors_by_name_pattern,
     move_emails_and_logins_to_author,
 )
 from gitential2.core.context import GitentialContext
@@ -27,7 +28,11 @@ from gitential2.datatypes.authors import (
 )
 from gitential2.datatypes.permissions import Entity, Action
 from ..dependencies import current_user, gitential_context
-from ...core.authors_list import list_authors_extended, get_author_extended
+from ...core.authors_list import (
+    list_extended_committer_authors,
+    get_extended_committer_author,
+    get_authors_extended_by_author_ids,
+)
 
 router = APIRouter(tags=["authors"])
 
@@ -64,15 +69,26 @@ def list_authors_(
     return list_authors(g=g, workspace_id=workspace_id, emails_and_logins=emails_and_logins)
 
 
-@router.post("/workspaces/{workspace_id}/authors-extended", response_model=AuthorsPublicExtendedSearchResult)
-def list_authors_extended_(
+@router.get("/workspaces/{workspace_id}/authors-extended")
+def get_authors_extended_by_author_ids_(
+    workspace_id: int,
+    developer_ids: List[int] = Query(None, alias="developer_ids"),
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    return get_authors_extended_by_author_ids(g=g, workspace_id=workspace_id, developer_ids=developer_ids)
+
+
+@router.post("/workspaces/{workspace_id}/authors-extended-committer", response_model=AuthorsPublicExtendedSearchResult)
+def list_extended_committer_authors_(
     workspace_id: int,
     author_filters: Optional[AuthorFilters] = None,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-    return list_authors_extended(g=g, workspace_id=workspace_id, author_filters=author_filters)
+    return list_extended_committer_authors(g=g, workspace_id=workspace_id, author_filters=author_filters)
 
 
 @router.post("/workspaces/{workspace_id}/authors", response_model=AuthorPublic)
@@ -109,7 +125,18 @@ def get_author_(
     return get_author(g, workspace_id, author_id)
 
 
-@router.get("/workspaces/{workspace_id}/authors/{author_id}/extended", response_model=AuthorPublicExtended)
+@router.get("/workspaces/{workspace_id}/authors-search-by-name", response_model=List[AuthorPublic])
+def get_author_by_name_(
+    workspace_id: int,
+    author_name: str = Query(None, alias="authorName"),
+    current_user=Depends(current_user),
+    g: GitentialContext = Depends(gitential_context),
+):
+    check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
+    return get_authors_by_name_pattern(g, workspace_id, author_name)
+
+
+@router.get("/workspaces/{workspace_id}/authors/{author_id}/extended-committer", response_model=AuthorPublicExtended)
 def get_author_extended_(
     workspace_id: int,
     author_id: int,
@@ -117,7 +144,7 @@ def get_author_extended_(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.read, workspace_id=workspace_id)
-    return get_author_extended(g, workspace_id, author_id)
+    return get_extended_committer_author(g, workspace_id, author_id)
 
 
 @router.delete("/workspaces/{workspace_id}/authors/{author_id}")
