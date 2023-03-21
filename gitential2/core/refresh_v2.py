@@ -405,7 +405,7 @@ def _refresh_repository_commits_clone_phase(
             commits_phase=RefreshCommitsPhase.cloning,
         )
 
-        if repository.integration_type in ["github", "vsts"] and not force:
+        if repository.integration_type in ["github", "vsts", "gitlab"] and not force:
             integration = g.integrations.get(repository.integration_name)
             token = credential.to_token_dict(g.fernet)
             update_token = get_update_token_callback(g, credential)
