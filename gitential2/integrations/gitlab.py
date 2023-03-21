@@ -110,6 +110,18 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             log_api_error(response)
             return []
 
+    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[dict]:
+        api_base_url = self.oauth_register()["api_base_url"]
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        response = client.get(f"{api_base_url}/projects/{repository.namespace}/{repository.name}")
+        client.close()
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            log_api_error(response)
+            return None
+
     def _project_to_repo_create(self, project):
         return RepositoryCreate(
             clone_url=project["http_url_to_repo"],
