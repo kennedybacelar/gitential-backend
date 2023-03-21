@@ -113,7 +113,10 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
     def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[dict]:
         api_base_url = self.oauth_register()["api_base_url"]
         client = self.get_oauth2_client(token=token, update_token=update_token)
-        response = client.get(f"{api_base_url}/projects/{repository.namespace}/{repository.name}")
+
+        # For some reason, for gitlab, the forward slash has to be encoded in this API call
+        # Otherwise we get 404 error
+        response = client.get(f"{api_base_url}/projects/{repository.namespace}%2F{repository.name}")
         client.close()
 
         if response.status_code == 200:
