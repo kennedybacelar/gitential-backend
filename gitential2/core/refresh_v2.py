@@ -412,6 +412,8 @@ def _refresh_repository_commits_clone_phase(
 
             if hasattr(integration, "last_push_at_repository") and integration is not None:
 
+                # This function must return a datetime object with timezone
+                # It should not be a naive datetime object
                 last_push_at_repository: Optional[datetime] = integration.last_push_at_repository(
                     repository=repository, token=token, update_token=update_token
                 )
