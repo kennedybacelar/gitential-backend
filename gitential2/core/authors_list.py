@@ -1,4 +1,5 @@
 from typing import Optional, List
+
 from sqlalchemy import distinct, func, select, and_, asc, desc
 from sqlalchemy.sql.schema import Table
 
@@ -10,17 +11,101 @@ from gitential2.datatypes.authors import (
     AuthorsSorting,
     AuthorsSortingType,
 )
+from gitential2.utils import is_list_not_empty
 
 
-def get_author_extended(g: GitentialContext, workspace_id: int, author_id: int) -> Optional[AuthorPublicExtended]:
+def get_extended_committer_author(
+    g: GitentialContext, workspace_id: int, author_id: int
+) -> Optional[AuthorPublicExtended]:
     author_filters = AuthorFilters(developer_ids=[author_id])
-    author_extended_public_extended = list_authors_extended(g, workspace_id, author_filters)
+    author_extended_public_extended = list_extended_committer_authors(g, workspace_id, author_filters)
     if author_extended_public_extended:
         return author_extended_public_extended.authors_list[0] if author_extended_public_extended.authors_list else None
     return None
 
 
-def list_authors_extended(
+def get_authors_extended_by_author_ids(
+    g: GitentialContext, workspace_id: int, developer_ids: List[int]
+) -> List[AuthorPublicExtended]:
+    authors_table = g.backend.authors.table  # type: ignore[attr-defined]
+    calculated_commits_table = g.backend.calculated_commits.table  # type: ignore[attr-defined]
+    team_members_table = g.backend.team_members.table  # type: ignore[attr-defined]
+    teams_table = g.backend.teams.table  # type: ignore[attr-defined]
+    project_repositories_table = g.backend.project_repositories.table  # type: ignore[attr-defined]
+    projects_table = g.backend.projects.table  # type: ignore[attr-defined]
+
+    get_author_teams_query = (
+        select(
+            authors_table.c.id,
+            func.array_agg(distinct(teams_table.c.id)).label("teams_ids"),
+            func.array_agg(distinct(teams_table.c.name)).label("team_names"),
+        )
+        .select_from(
+            authors_table.outerjoin(team_members_table, authors_table.c.id == team_members_table.c.author_id).outerjoin(
+                teams_table, team_members_table.c.team_id == teams_table.c.id
+            )
+        )
+        .where(authors_table.c.id.in_(developer_ids) if developer_ids else True)
+        .group_by(authors_table.c.id)
+        .order_by(authors_table.c.name)
+    )
+
+    get_author_projects_query = (
+        select(
+            authors_table.c.id,
+            func.array_agg(distinct(projects_table.c.id)).label("projects_ids"),
+            func.array_agg(distinct(projects_table.c.name)).label("project_names"),
+        )
+        .select_from(
+            authors_table.join(calculated_commits_table, authors_table.c.id == calculated_commits_table.c.aid)
+            .join(
+                project_repositories_table, calculated_commits_table.c.repo_id == project_repositories_table.c.repo_id
+            )
+            .outerjoin(projects_table, project_repositories_table.c.project_id == projects_table.c.id)
+        )
+        .where(authors_table.c.id.in_(developer_ids) if developer_ids else True)
+        .group_by(authors_table.c.id)
+        .order_by(authors_table.c.name)
+    )
+
+    engine = __get_sqlalchemy_engine(g)
+
+    with engine.connect().execution_options(
+        schema_translate_map={None: f"ws_{workspace_id}"},
+    ) as conn:
+        author_teams = conn.execute(get_author_teams_query).fetchall()
+        author_projects = conn.execute(get_author_projects_query).fetchall()
+
+    result: List[AuthorPublicExtended] = []
+    for aid in developer_ids:
+        author = g.backend.authors.get(workspace_id=workspace_id, id_=aid)
+        if author:
+            teams_data_for_author = (
+                [t for t in author_teams if t.id == aid] if is_list_not_empty(author_teams) else None
+            )
+            team_ids = teams_data_for_author[0].teams_ids if is_list_not_empty(teams_data_for_author) else None
+            projects_data_for_author = (
+                [t for t in author_projects if t.id == aid] if is_list_not_empty(author_projects) else None
+            )
+            project_ids = projects_data_for_author[0].teams_ids if is_list_not_empty(projects_data_for_author) else None
+            author_extended = AuthorPublicExtended(
+                id=author.id,
+                name=author.name,
+                active=author.active,
+                aliases=author.aliases,
+                teams=g.backend.teams.get_teams_ids_and_names(workspace_id, team_ids)
+                if is_list_not_empty(team_ids)
+                else [],
+                projects=g.backend.projects.get_projects_ids_and_names(workspace_id, project_ids)
+                if is_list_not_empty(project_ids)
+                else [],
+            )
+            result.append(author_extended)
+
+    return result
+
+
+def list_extended_committer_authors(
     g: GitentialContext, workspace_id: int, author_filters: Optional[AuthorFilters] = None
 ) -> AuthorsPublicExtendedSearchResult:
 
