@@ -100,7 +100,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     def _collect_raw_pull_requests(
         self, repository: RepositoryInDB, client, repo_analysis_limit_in_days: Optional[int] = None
     ) -> list:
-        organization, project, repo = _get_project_organization_and_repository(repository)
+        organization, project, repo = _get_project_organization_and_repository(
+            repository=repository, repo_field_identifier="id"
+        )
         pull_requests = _paginate_with_skip_top(
             client,
             f"https://dev.azure.com/{organization}/{project}/_apis/git/pullrequests?api-version=6.0&searchCriteria.repositoryId={repo}&searchCriteria.status=all",
@@ -319,9 +321,9 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
         repo_data = raw_single_repo_data.get("value")
         if repo_data:
-            last_pushed = repo_data[0].get("committer", {}).get("date")
-            if last_pushed:
-                last_pushed = datetime.strptime(last_pushed, "%Y-%m-%dT%H:%M:%SZ")
+            last_pushed_raw = repo_data[0].get("committer", {}).get("date")
+            if last_pushed_raw:
+                last_pushed = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
                 return last_pushed
         return None
 

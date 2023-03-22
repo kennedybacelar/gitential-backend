@@ -50,9 +50,15 @@ def _parse_its_issue_change_type(field_name: str) -> ITSIssueChangeType:
     return ITSIssueChangeType.other
 
 
-def _get_project_organization_and_repository(repository: RepositoryInDB) -> Tuple[str, str, str]:
+def _get_project_organization_and_repository(
+    repository: RepositoryInDB, repo_field_identifier: str = "name"
+) -> Tuple[str, str, str]:
     organization, project = _get_organization_and_project_from_namespace(repository.namespace)
-    return organization, project, repository.name
+    if repo_field_identifier == "name":
+        repo = repository.name
+    elif repo_field_identifier == "id":
+        repo = repository.extra.get("id", repository.name) if repository.extra else repository.name
+    return organization, project, repo
 
 
 def _parse_azure_repository_url(url: str) -> Tuple[str, str, str]:
