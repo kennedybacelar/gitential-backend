@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Callable, List, Tuple
 from urllib import parse as parse_url
 
@@ -109,6 +109,29 @@ class GitlabIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         else:
             log_api_error(response)
             return []
+
+    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[dict]:
+        api_base_url = self.oauth_register()["api_base_url"]
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+
+        # For some reason, for gitlab, the forward slash has to be encoded in this API call
+        # Otherwise we get 404 error
+        response = client.get(f"{api_base_url}/projects/{repository.namespace}%2F{repository.name}")
+        client.close()
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            log_api_error(response)
+            return None
+
+    def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
+        raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
+        last_pushed_raw = raw_single_repo_data.get("last_activity_at")
+        if last_pushed_raw:
+            last_push = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
+            return last_push
+        return None
 
     def _project_to_repo_create(self, project):
         return RepositoryCreate(

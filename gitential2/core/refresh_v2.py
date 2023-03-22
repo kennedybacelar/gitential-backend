@@ -405,13 +405,15 @@ def _refresh_repository_commits_clone_phase(
             commits_phase=RefreshCommitsPhase.cloning,
         )
 
-        if repository.integration_type in ["github", "vsts"] and not force:
+        if repository.integration_type in ["github", "vsts", "gitlab"] and not force:
             integration = g.integrations.get(repository.integration_name)
             token = credential.to_token_dict(g.fernet)
             update_token = get_update_token_callback(g, credential)
 
             if hasattr(integration, "last_push_at_repository") and integration is not None:
 
+                # This function must return a datetime object with timezone
+                # It should not be a naive datetime object
                 last_push_at_repository: Optional[datetime] = integration.last_push_at_repository(
                     repository=repository, token=token, update_token=update_token
                 )
