@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
 from gitential2.datatypes.users import UserPublic, UserUpdate
 from gitential2.core.context import GitentialContext
-from gitential2.core.users import update_user, delete_user
+from gitential2.core.users import update_user, deactivate_user
 from ..dependencies import gitential_context, current_user
 
 router = APIRouter(tags=["users"])
@@ -43,14 +43,14 @@ def update_current_user(
         raise HTTPException(404, "User not found.")
 
 
-@router.delete("/users/me")
-def delete_current_user(
+@router.post("/users/me/deactivate")
+def deactivate_current_user(
     request: Request,
     g: GitentialContext = Depends(gitential_context),
     current_user=Depends(current_user),
 ):
     if current_user:
-        delete_user(g, user_id=current_user.id)
+        deactivate_user(g, user_id=current_user.id)
         del request.session["current_user_id"]
         return True
     else:

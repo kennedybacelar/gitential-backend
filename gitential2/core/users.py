@@ -103,12 +103,34 @@ def update_user(g: GitentialContext, user_id: int, user_update: UserUpdate):
     return g.backend.users.update(user_id, user)
 
 
-def delete_user(g: GitentialContext, user_id: int):
+def deactivate_user(g: GitentialContext, user_id: int):
     user = g.backend.users.get_or_error(user_id)
     user_update = UserUpdate(**user.dict())
     user_update.is_active = False
     g.backend.users.update(user_id, user_update)
     return True
+
+
+def purge_user_from_application(g: GitentialContext, user_id: int):
+    access_approvals_table = g.backend.access_approvals
+    access_approvals_table.delete().where(access_approvals_table.c.user_id == user_id)
+    access_log_table = g.backend.access_logs
+    access_log_table.delete().where(access_log_table.c.user_id == user_id)
+    credentials_table = g.backend.credentials
+    credentials_table.delete().where(credentials_table.c.user_id == user_id)
+    email_log_table = g.backend.email_log
+    email_log_table.delete().where(email_log_table.c.user_id == user_id)
+    reseller_codes_table = g.backend.reseller_codes
+    reseller_codes_table.delete().where(reseller_codes_table.c.user_id == user_id)
+    subscriptions_table = g.backend.subscriptions
+    subscriptions_table.delete().where(subscriptions_table.c.user_id == user_id)
+    user_infos_table = g.backend.user_infos
+    user_infos_table.delete().where(user_infos_table.c.user_id == user_id)
+    user_its_projects_cache_table = g.backend.user_its_projects_cache
+    user_its_projects_cache_table.delete().where(user_its_projects_cache_table.c.user_id == user_id)
+    user_repositories_projects_cache_table = g.backend.user_repositories_cache
+    user_repositories_projects_cache_table.delete().where(user_repositories_projects_cache_table.c.user_id == user_id)
+    # personal_access_tokens = g.backend.personal_access_tokens
 
 
 def get_profile_picture(g: GitentialContext, user: UserInDB) -> Optional[str]:
