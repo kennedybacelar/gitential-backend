@@ -306,8 +306,8 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
         client = self.get_oauth2_client(
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
-        organization, project = _get_organization_and_project_from_namespace(repository.namespace)
-        get_repo_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repository.name}/commits?$top=1&api-version=6.0"
+        organization, project, repo_name = _get_project_organization_and_repository(repository=repository)
+        get_repo_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repo_name}"
         response = client.get(get_repo_url)
         client.close()
 
