@@ -16,6 +16,7 @@ from gitential2.datatypes.workspaces import WorkspaceCreate
 from .context import GitentialContext
 from .emails import send_email_to_user, send_system_notification_email
 from .reseller_codes import validate_reseller_code
+from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
 
@@ -104,11 +105,17 @@ def update_user(g: GitentialContext, user_id: int, user_update: UserUpdate):
 
 
 def deactivate_user(g: GitentialContext, user_id: int):
-    return g.backend.deactivate_user(user_id=user_id)
+    user = g.backend.users.get(id_=user_id)
+    if user:
+        return g.backend.deactivate_user(user_id=user_id)
+    raise SettingsException(f"Provided user_id=[{user_id}] is invalid!")
 
 
 def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
-    return g.backend.purge_user_from_database(user_id=user_id)
+    user = g.backend.users.get(id_=user_id)
+    if user:
+        return g.backend.purge_user_from_database(user_id=user_id)
+    raise SettingsException(f"Provided user_id=[{user_id}] is invalid!")
 
 
 def get_profile_picture(g: GitentialContext, user: UserInDB) -> Optional[str]:

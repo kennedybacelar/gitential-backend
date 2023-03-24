@@ -73,3 +73,21 @@ def delete_current_user(
             raise HTTPException(500, "Error occurred while trying to delete user.")
     else:
         raise HTTPException(404, "User not found.")
+
+
+@router.delete("/users")
+def delete_current_user(
+    request: Request,
+    user_id: int,
+    g: GitentialContext = Depends(gitential_context),
+    current_user=Depends(current_user),
+):
+    if current_user:
+        result: bool = purge_user_from_database(g, user_id=user_id)
+        if result:
+            del request.session["current_user_id"]
+            return True
+        else:
+            raise HTTPException(500, "Error occurred while trying to delete user.")
+    else:
+        raise HTTPException(404, "User not found.")
