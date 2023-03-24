@@ -292,7 +292,7 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         client.close()
         return [self._repo_to_create_repo(repo) for repo in repository_list]
 
-    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token):
+    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token) -> Optional[dict]:
         client = self.get_oauth2_client(token=token, update_token=update_token)
         api_base_url = self.oauth_register()["api_base_url"]
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
@@ -309,12 +309,22 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
             return None
 
     def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
-        raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
-        last_pushed_raw = raw_single_repo_data.get("pushed_at")
-        if last_pushed_raw:
-            last_push = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
-            return last_push
-        return None
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        api_base_url = self.oauth_register()["api_base_url"]
+        workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
+        url = f"{api_base_url}repositories/{workspace}/{repo_slug}/commits?limit=1"
+        response = client.get(url)
+
+        if response.status_code == 200:
+            commits = response.json()["values"]
+            if len(commits) > 0:
+                last_pushed_raw = commits[0]["date"]
+                last_push_parsed = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
+                return last_push_parsed
+        else:
+            client.close()
+            log_api_error(response)
+            return None
 
     def search_public_repositories(
         self, query: str, token, update_token, provider_user_id: Optional[str]
