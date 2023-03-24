@@ -421,25 +421,37 @@ def _refresh_repository_commits_clone_phase(
 def _should_skip_refresh_clone_phase(
     g: GitentialContext, credential: CredentialInDB, workspace_id: int, repository: RepositoryInDB, force: bool
 ) -> bool:
-    integration = g.integrations.get(repository.integration_name)
 
-    if hasattr(integration, "last_push_at_repository") and not force and integration is not None:
+    try:
+        integration = g.integrations.get(repository.integration_name)
+        if hasattr(integration, "last_push_at_repository") and not force and integration is not None:
 
-        token = credential.to_token_dict(g.fernet)
-        update_token = get_update_token_callback(g, credential)
-        last_push_at_repository: Optional[datetime] = integration.last_push_at_repository(
-            repository=repository, token=token, update_token=update_token
-        )
-        current_state = get_repo_refresh_status(g, workspace_id, repository.id)
-
-        if not _has_remote_repository_been_updated_after_last_project_refresh(last_push_at_repository, current_state):
-            logger.info(
-                "Remote repository has not been updated after last successful refresh - Skipping commits refresh.",
-                workspace_id=workspace_id,
-                repository_id=repository.id,
+            token = credential.to_token_dict(g.fernet)
+            update_token = get_update_token_callback(g, credential)
+            last_push_at_repository: Optional[datetime] = integration.last_push_at_repository(
+                repository=repository, token=token, update_token=update_token
             )
-            return True
-    return False
+            current_state = get_repo_refresh_status(g, workspace_id, repository.id)
+
+            if not _has_remote_repository_been_updated_after_last_project_refresh(
+                last_push_at_repository, current_state
+            ):
+                logger.info(
+                    "Remote repository has not been updated after last successful refresh - Skipping commits refresh.",
+                    workspace_id=workspace_id,
+                    repository_id=repository.id,
+                )
+                return True
+        return False
+    except Exception as error:  # pylint: disable=broad-except
+        logger.exception(
+            "Unexpected error with _should_skip_refresh_clone_phase.",
+            workspace_id=current_state.workspace_id,
+            repository_id=current_state.repository_id,
+            repository_name=current_state.repository_name,
+            error=error,
+        )
+        return False
 
 
 def _has_remote_repository_been_updated_after_last_project_refresh(
