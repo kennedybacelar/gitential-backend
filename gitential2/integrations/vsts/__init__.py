@@ -318,14 +318,24 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             return None
 
     def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
-        raw_single_repo_data = self.get_raw_single_repo_data(repository, token, update_token) or {}
-        repo_data = raw_single_repo_data.get("value")
-        if repo_data:
-            last_pushed_raw = repo_data[0].get("committer", {}).get("date")
-            if last_pushed_raw:
-                last_pushed = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
-                return last_pushed
-        return None
+        client = self.get_oauth2_client(
+            token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
+        )
+        organization, project, repo_name = _get_project_organization_and_repository(repository=repository)
+        last_commit_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repository.name}/commits?$top=1&api-version=6.0"
+        response = client.get(last_commit_url)
+        client.close()
+
+        if response.status_code == 200:
+            last_commit_raw = response.json().get("value")
+            if last_commit_raw:
+                last_pushed_raw = last_commit_raw[0].get("committer", {}).get("date")
+                if last_pushed_raw:
+                    last_pushed = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
+                    return last_pushed
+        else:
+            log_api_error(response)
+            return None
 
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
