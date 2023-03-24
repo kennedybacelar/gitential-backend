@@ -314,17 +314,17 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
         url = f"{api_base_url}repositories/{workspace}/{repo_slug}/commits?limit=1"
         response = client.get(url)
+        client.close()
 
         if response.status_code == 200:
-            commits = response.json()["values"]
-            if len(commits) > 0:
-                last_pushed_raw = commits[0]["date"]
+            last_commit_raw = response.json()["values"]
+            if last_commit_raw:
+                last_pushed_raw = last_commit_raw[0]["date"]
                 last_push_parsed = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
                 return last_push_parsed
         else:
-            client.close()
             log_api_error(response)
-            return None
+        return None
 
     def search_public_repositories(
         self, query: str, token, update_token, provider_user_id: Optional[str]

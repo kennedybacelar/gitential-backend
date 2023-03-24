@@ -423,7 +423,7 @@ def _should_skip_refresh_clone_phase(
 ) -> bool:
     integration = g.integrations.get(repository.integration_name)
 
-    if hasattr(integration, "last_push_at_repository") and not force:
+    if hasattr(integration, "last_push_at_repository") and not force and integration is not None:
 
         token = credential.to_token_dict(g.fernet)
         update_token = get_update_token_callback(g, credential)

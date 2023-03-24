@@ -322,7 +322,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
             token=token, update_token=update_token, token_endpoint_auth_method=self._auth_client_secret_uri
         )
         organization, project, repo_name = _get_project_organization_and_repository(repository=repository)
-        last_commit_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repository.name}/commits?$top=1&api-version=6.0"
+        last_commit_url = f"https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repo_name}/commits?$top=1&api-version=6.0"
         response = client.get(last_commit_url)
         client.close()
 
@@ -335,7 +335,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
                     return last_pushed
         else:
             log_api_error(response)
-            return None
+        return None
 
     def list_available_private_repositories(
         self, token, update_token, provider_user_id: Optional[str], user_organization_name_list: Optional[List[str]]
