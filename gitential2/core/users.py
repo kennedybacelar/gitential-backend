@@ -104,11 +104,7 @@ def update_user(g: GitentialContext, user_id: int, user_update: UserUpdate):
 
 
 def deactivate_user(g: GitentialContext, user_id: int):
-    user = g.backend.users.get_or_error(user_id)
-    user_update = UserUpdate(**user.dict())
-    user_update.is_active = False
-    g.backend.users.update(user_id, user_update)
-    return True
+    return g.backend.deactivate_user(user_id=user_id)
 
 
 def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
