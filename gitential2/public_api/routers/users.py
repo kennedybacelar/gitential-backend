@@ -76,7 +76,7 @@ def delete_current_user(
 
 
 @router.delete("/users")
-def delete_current_user(
+def delete_user_by_id(
     request: Request,
     user_id: int,
     g: GitentialContext = Depends(gitential_context),
