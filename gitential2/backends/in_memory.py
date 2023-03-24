@@ -502,7 +502,10 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
     def refresh_materialized_views_in_workspace(self, workspace_id: int):
         pass
 
-    def purge_user_from_application(self, user_id: int):
+    def deactivate_user(self, user_id: int):
+        pass
+
+    def purge_user_from_database(self, user_id: int):
         pass
 
     def output_handler(self, workspace_id: int) -> OutputHandler:

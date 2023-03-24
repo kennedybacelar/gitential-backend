@@ -38,3 +38,31 @@ def toggle_jira_integration(user_id: int, enable: bool = typer.Option(None, "--e
     g = get_context()
     subscription = enable_or_disable_jira_integration(g, user_id, enable)
     print(subscription)
+
+
+@app.command(name="deactivate")
+def deactivate_user(user_id: int):
+    g = get_context()
+
+    user = g.backend.users.get(id_=user_id)
+    if user:
+        confirm_res = typer.confirm(f"Are you really sure you want to deactivate the user with id=[{user.id}]?")
+        if confirm_res:
+            g.backend.deactivate_user(user_id=user_id)
+    else:
+        logger.exception("Given user_id is invalid!", user_id=user_id)
+
+
+@app.command(name="purge")
+def purge_user_from_database(user_id: int):
+    g = get_context()
+
+    user = g.backend.users.get(id_=user_id)
+    if user:
+        confirm_res = typer.confirm(
+            f"Are you really sure you want to purge the user with id=[{user.id}] from the database?"
+        )
+        if confirm_res:
+            g.backend.purge_user_from_database(user_id=user_id)
+    else:
+        logger.exception("Given user_id is invalid!", user_id=user_id)

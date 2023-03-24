@@ -111,8 +111,8 @@ def deactivate_user(g: GitentialContext, user_id: int):
     return True
 
 
-def purge_user_from_application(g: GitentialContext, user_id: int) -> bool:
-    return g.backend.purge_user_from_application(user_id=user_id)
+def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
+    return g.backend.purge_user_from_database(user_id=user_id)
 
 
 def get_profile_picture(g: GitentialContext, user: UserInDB) -> Optional[str]:

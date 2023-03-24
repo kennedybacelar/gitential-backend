@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
 
 from gitential2.core.context import GitentialContext
-from gitential2.core.users import update_user, deactivate_user, purge_user_from_application
+from gitential2.core.users import update_user, deactivate_user, purge_user_from_database
 from gitential2.datatypes.users import UserPublic, UserUpdate
 from ..dependencies import gitential_context, current_user
 
@@ -65,7 +65,7 @@ def delete_current_user(
     current_user=Depends(current_user),
 ):
     if current_user:
-        result: bool = purge_user_from_application(g, user_id=current_user.id)
+        result: bool = purge_user_from_database(g, user_id=current_user.id)
         if result:
             del request.session["current_user_id"]
             return True

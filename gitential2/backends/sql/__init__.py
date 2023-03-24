@@ -22,6 +22,7 @@ from gitential2.datatypes import (
     WorkspaceMemberInDB,
     AuthorInDB,
     AutoExportInDB,
+    UserUpdate,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
@@ -558,7 +559,14 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
         return result
 
-    def purge_user_from_application(self, user_id: int):
+    def deactivate_user(self, user_id: int):
+        user = self.users.get_or_error(id_=user_id)
+        user_update = UserUpdate(**user.dict())
+        user_update.is_active = False
+        self.users.update(user_id, user_update)
+        return True
+
+    def purge_user_from_database(self, user_id: int):
         logger.info("Started to purge user from application.", user_id=user_id)
 
         repo_names: List[str] = [
@@ -575,18 +583,18 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         ]
 
         for repo_name in repo_names:
-            repo = getattr(self, repo_name, None)
-            if repo and hasattr(repo, "delete_for_user"):
+            sql_repo = getattr(self, repo_name, None)
+            if sql_repo and hasattr(sql_repo, "delete_for_user"):
                 logger.info(f"Attempting to delete rows from {repo_name} table for user.", user_id=user_id)
-                del_count: int = repo.delete_for_user(user_id=user_id)
+                del_count: int = sql_repo.delete_for_user(user_id)
                 logger.info(f"Delete for user was successful in {repo_name} table", number_of_deleted_rows=del_count)
-            elif not repo:
+            elif not sql_repo:
                 logger.exception(
                     "Can not find reference for repository by repository name!",
                     repository_name=repo_name,
                     user_id=user_id,
                 )
-            elif not hasattr(repo, "delete_for_user"):
+            elif not hasattr(sql_repo, "delete_for_user"):
                 logger.exception(
                     "Attribute 'delete_for_user' is not existing for repository!",
                     repository_name=repo_name,
@@ -612,6 +620,10 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
                     logger.exception("Workspace delete was unsuccessful.")
         else:
             logger.info("No workspaces found for the user while trying to purge user.", user_id=user_id)
+
+        logger.info("Attempting to delete user from users table.", user_id=user_id)
+        del_count_user: int = self.users.delete(id_=user_id)
+        logger.info("User deleted from users table.", del_count_user=del_count_user)
 
         logger.info("User purge from database successfully finished.")
 
