@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from threading import Lock
-from typing import Any, Tuple, Set, Optional
+from typing import Any, Tuple, Set, Optional, List
 
 import ibis
 import pandas as pd
@@ -154,7 +154,7 @@ from ...datatypes.thumbnails import ThumbnailInDB
 from ...datatypes.user_its_projects_cache import UserITSProjectCacheInDB
 from ...datatypes.user_repositories_cache import UserRepositoryCacheInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
-from ...utils import get_schema_name
+from ...utils import get_schema_name, is_list_not_empty
 
 logger = get_logger(__name__)
 
@@ -557,6 +557,65 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             result = False
 
         return result
+
+    def purge_user_from_application(self, user_id: int):
+        logger.info("Started to purge user from application.", user_id=user_id)
+
+        repo_names: List[str] = [
+            "access_approvals",
+            "access_logs",
+            "credentials",
+            "email_log",
+            "pats",
+            "reseller_codes",
+            "subscriptions",
+            "user_infos",
+            "user_its_projects_cache",
+            "user_repositories_cache",
+        ]
+
+        for repo_name in repo_names:
+            repo = getattr(self, repo_name, None)
+            if repo and hasattr(repo, "delete_for_user"):
+                logger.info(f"Attempting to delete rows from {repo_name} table for user.", user_id=user_id)
+                del_count: int = repo.delete_for_user(user_id=user_id)
+                logger.info(f"Delete for user was successful in {repo_name} table", number_of_deleted_rows=del_count)
+            elif not repo:
+                logger.exception(
+                    "Can not find reference for repository by repository name!",
+                    repository_name=repo_name,
+                    user_id=user_id,
+                )
+            elif not hasattr(repo, "delete_for_user"):
+                logger.exception(
+                    "Attribute 'delete_for_user' is not existing for repository!",
+                    repository_name=repo_name,
+                    user_id=user_id,
+                )
+
+        wp_members: List[WorkspaceMemberInDB] = self.workspace_members.get_for_user(user_id=user_id)
+        wp_ids_for_user: List[int] = (
+            [wp_member.workspace_id for wp_member in wp_members] if is_list_not_empty(wp_members) else []
+        )
+
+        if is_list_not_empty(wp_ids_for_user):
+            for wid in wp_ids_for_user:
+                logger.info(
+                    "Attempting to delete workspace as part of the user purge.", workspace_id=wid, user_id=user_id
+                )
+                result = self.delete_workspace_sql(workspace_id=wid)
+                if result:
+                    logger.info(
+                        "Workspace successfully deleted as part of the user purge.", workspace_id=wid, user_id=user_id
+                    )
+                else:
+                    logger.exception("Workspace delete was unsuccessful.")
+        else:
+            logger.info("No workspaces found for the user while trying to purge user.", user_id=user_id)
+
+        logger.info("User purge from database successfully finished.")
+
+        return True
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)

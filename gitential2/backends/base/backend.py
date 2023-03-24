@@ -354,6 +354,10 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
+    def purge_user_from_application(self, user_id: int):
+        pass
+
+    @abstractmethod
     def output_handler(self, workspace_id: int) -> OutputHandler:
         pass
 

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Iterable, Optional, Tuple, cast, List
+from typing import Iterable, Optional, Tuple, cast
 
 from structlog import get_logger
 
@@ -11,12 +11,11 @@ from gitential2.datatypes.subscriptions import (
 )
 from gitential2.datatypes.userinfos import UserInfoCreate, UserInfoUpdate
 from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB
-from gitential2.datatypes.workspacemember import WorkspaceRole, WorkspaceMemberInDB
+from gitential2.datatypes.workspacemember import WorkspaceRole
 from gitential2.datatypes.workspaces import WorkspaceCreate
 from .context import GitentialContext
 from .emails import send_email_to_user, send_system_notification_email
 from .reseller_codes import validate_reseller_code
-from ..utils import is_list_not_empty
 
 logger = get_logger(__name__)
 
@@ -112,54 +111,8 @@ def deactivate_user(g: GitentialContext, user_id: int):
     return True
 
 
-def purge_user_from_application(g: GitentialContext, user_id: int):
-    access_approvals_table = g.backend.access_approvals.table  # type: ignore[attr-defined]
-    access_approvals_table.delete().where(access_approvals_table.c.user_id == user_id)
-
-    access_log_table = g.backend.access_logs.table  # type: ignore[attr-defined]
-    access_log_table.delete().where(access_log_table.c.user_id == user_id)
-
-    credentials_table = g.backend.credentials.table  # type: ignore[attr-defined]
-    credentials_table.delete().where(credentials_table.c.owner_id == user_id)
-
-    email_log_table = g.backend.email_log.table  # type: ignore[attr-defined]
-    email_log_table.delete().where(email_log_table.c.user_id == user_id)
-
-    reseller_codes_table = g.backend.reseller_codes.table  # type: ignore[attr-defined]
-    reseller_codes_table.delete().where(reseller_codes_table.c.user_id == user_id)
-
-    subscriptions_table = g.backend.subscriptions.table  # type: ignore[attr-defined]
-    subscriptions_table.delete().where(subscriptions_table.c.user_id == user_id)
-
-    user_infos_table = g.backend.user_infos.table  # type: ignore[attr-defined]
-    user_infos_table.delete().where(user_infos_table.c.user_id == user_id)
-
-    user_its_projects_cache_table = g.backend.user_its_projects_cache.table  # type: ignore[attr-defined]
-    user_its_projects_cache_table.delete().where(user_its_projects_cache_table.c.user_id == user_id)
-
-    user_repositories_projects_cache_table = g.backend.user_repositories_cache.table  # type: ignore[attr-defined]
-    user_repositories_projects_cache_table.delete().where(user_repositories_projects_cache_table.c.user_id == user_id)
-
-    wp_members: List[WorkspaceMemberInDB] = g.backend.workspace_members.get_for_user(user_id=user_id)
-    wp_ids_for_user: List[int] = [wp_member.workspace_id for wp_member in wp_members] if is_list_not_empty(wp_members) else None
-
-    if is_list_not_empty(wp_ids_for_user):
-        for wid in wp_ids_for_user:
-            g.backend.delete_schema_revision(workspace_id=wid)
-
-            g.backend.workspace_api_keys.delete_rows_for_workspace(workspace_id=wid)
-
-            workspace_invitations_table = g.backend.workspace_invitations.table  # type: ignore[attr-defined]
-            workspace_invitations_table.delete().where(workspace_invitations_table.c.workspace_id == wid)  # type: ignore[attr-defined]
-
-            workspace_members_table = g.backend.workspace_members.table  # type: ignore[attr-defined]
-            # workspace_members_table.delete
-
-            pass
-
-
-
-
+def purge_user_from_application(g: GitentialContext, user_id: int) -> bool:
+    return g.backend.purge_user_from_application(user_id=user_id)
 
 
 def get_profile_picture(g: GitentialContext, user: UserInDB) -> Optional[str]:
