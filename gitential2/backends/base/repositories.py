@@ -258,6 +258,10 @@ class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, Works
     def delete_rows_for_workspace(self, workspace_id: int):
         pass
 
+    @abstractmethod
+    def delete_rows_for_user(self, user_id: int) -> int:
+        pass
+
 
 class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]):
     @abstractmethod

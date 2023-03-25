@@ -23,6 +23,7 @@ from gitential2.datatypes import (
     AuthorInDB,
     AutoExportInDB,
     UserUpdate,
+    WorkspaceRole,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
@@ -602,12 +603,13 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
                 )
 
         wp_members: List[WorkspaceMemberInDB] = self.workspace_members.get_for_user(user_id=user_id)
-        wp_ids_for_user: List[int] = (
-            [wp_member.workspace_id for wp_member in wp_members] if is_list_not_empty(wp_members) else []
+        wp_ids_for_user_as_owner: List[int] = (
+            [wp_member.workspace_id for wp_member in wp_members if wp_member.role == WorkspaceRole.owner]
+            if is_list_not_empty(wp_members)
+            else []
         )
-
-        if is_list_not_empty(wp_ids_for_user):
-            for wid in wp_ids_for_user:
+        if is_list_not_empty(wp_ids_for_user_as_owner):
+            for wid in wp_ids_for_user_as_owner:
                 logger.info(
                     "Attempting to delete workspace as part of the user purge.", workspace_id=wid, user_id=user_id
                 )
@@ -620,6 +622,32 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
                     logger.exception("Workspace delete was unsuccessful.")
         else:
             logger.info("No workspaces found for the user while trying to purge user.", user_id=user_id)
+
+        wp_ids_for_user_as_collaborator = (
+            [wp_member.workspace_id for wp_member in wp_members if wp_member.role == WorkspaceRole.collaborator]
+            if is_list_not_empty(wp_members)
+            else []
+        )
+        if is_list_not_empty(wp_ids_for_user_as_collaborator):
+            for wid in wp_ids_for_user_as_collaborator:
+                logger.info(
+                    "Attempting to delete collaborator workspace membership as part of user purge.",
+                    workspace_id=wid,
+                    user_id=user_id
+                )
+                result = self.workspace_members.delete_rows_for_user(user_id=user_id)
+                if result:
+                    logger.info(
+                        "Collaborator workspace membership successfully deleted as part of the user purge.",
+                        workspace_id=wid,
+                        user_id=user_id
+                    )
+                else:
+                    logger.exception(
+                        "Collaborator workspace membership delete was unsuccessful.",
+                        workspace_id=wid,
+                        user_id=user_id
+                    )
 
         logger.info("Attempting to delete user from users table.", user_id=user_id)
         del_count_user: int = self.users.delete(id_=user_id)

@@ -625,6 +625,10 @@ class SQLWorkspaceMemberRepository(
         query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
         return self._execute_query(query, callback_fn=rowcount_)
 
+    def delete_rows_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
 
 class SQLAutoExportRepository(
     AutoExportRepository, SQLRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]
