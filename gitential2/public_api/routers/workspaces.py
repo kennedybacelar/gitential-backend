@@ -11,7 +11,7 @@ from gitential2.core.workspaces import (
     get_accessible_workspaces,
     get_workspace,
     get_members,
-    remove_member,
+    remove_workspace_membership,
     update_workspace,
     delete_workspace,
     get_workspace_subscription,
@@ -155,7 +155,7 @@ def remove_workspace_member(
         workspace_id=workspace_id,
         workspace_member_id=workspace_member_id,
     )
-    return remove_member(g=g, workspace_id=workspace_id, workspace_member_id=workspace_member_id)
+    return remove_workspace_membership(g=g, workspace_id=workspace_id, workspace_member_id=workspace_member_id)
 
 
 @router.get("/workspaces/{workspace_id}/credentials")

@@ -64,5 +64,5 @@ from .workspaces import (
     delete_workspace,
     get_members,
     invite_members,
-    remove_member,
+    remove_workspace_membership,
 )

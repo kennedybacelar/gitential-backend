@@ -82,7 +82,7 @@ def delete_user_by_id(
     g: GitentialContext = Depends(gitential_context),
     current_user=Depends(current_user),
 ):
-    if current_user:
+    if current_user and current_user.is_admin:
         result: bool = purge_user_from_database(g, user_id=user_id)
         if result:
             del request.session["current_user_id"]

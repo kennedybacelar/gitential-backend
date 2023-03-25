@@ -303,6 +303,11 @@ class InMemWorkspaceMemberRepository(
             if item.workspace_id == workspace_id:
                 self.delete(id_=item.id)
 
+    def delete_rows_for_user(self, user_id: int):
+        for item in self._state.values():
+            if item.user_id == user_id:
+                self.delete(id_=item.id)
+
 
 class InMemCredentialRepository(
     CredentialRepository, InMemRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
@@ -506,6 +511,12 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         pass
 
     def purge_user_from_database(self, user_id: int):
+        pass
+
+    def delete_own_workspaces_for_user(self, user_id: int):
+        pass
+
+    def delete_workspace_collaborations_for_user(self, user_id: int):
         pass
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
