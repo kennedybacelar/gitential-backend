@@ -2,9 +2,10 @@ from typing import Optional
 import typer
 from structlog import get_logger
 
-from gitential2.core.users import list_users, set_as_admin
+from gitential2.core.users import list_users, set_as_admin, reset_cache_for_user
 from gitential2.core.subscription import set_as_professional, enable_or_disable_jira_integration
 from .common import get_context, print_results, OutputFormat
+from ..datatypes.cli_v2 import CacheRefreshType
 
 app = typer.Typer()
 logger = get_logger(__name__)
@@ -64,5 +65,6 @@ def purge_user_from_database(user_id: int):
         )
         if confirm_res:
             g.backend.purge_user_from_database(user_id=user_id)
+            reset_cache_for_user(g=g, reset_type=CacheRefreshType.everything, user_id=user_id)
     else:
         logger.exception("Given user_id is invalid!", user_id=user_id)
