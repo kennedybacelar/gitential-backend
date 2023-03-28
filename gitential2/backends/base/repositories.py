@@ -104,6 +104,10 @@ class AccessLogRepository(ABC):
     def last_interaction(self, user_id: int) -> Optional[AccessLog]:
         pass
 
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
+        pass
+
 
 class UserRepository(BaseRepository[int, UserCreate, UserUpdate, UserInDB]):
     @abstractmethod
@@ -122,13 +126,21 @@ class ResellerCodeRepository(BaseRepository[str, ResellerCode, ResellerCode, Res
                 f"Invalid reseller code reseller_id={reseller_id}, reseller_code={reseller_code}, user_id={user_id}"
             )
 
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
+        pass
+
 
 class AccessApprovalRepository(BaseRepository[int, AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB]):
-    pass
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
+        pass
 
 
 class PersonalAccessTokenRepository(BaseRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]):
-    pass
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
+        pass
 
 
 class WorkspaceAPIKeyRepository(BaseRepository[str, WorkspaceAPIKey, WorkspaceAPIKey, WorkspaceAPIKey]):
@@ -170,6 +182,10 @@ class SubscriptionRepository(BaseRepository[int, SubscriptionCreate, Subscriptio
     def get_subscriptions_for_user(self, user_id: int) -> List[SubscriptionInDB]:
         pass
 
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
+        pass
+
 
 class UserInfoRepository(BaseRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
     @abstractmethod
@@ -184,6 +200,10 @@ class UserInfoRepository(BaseRepository[int, UserInfoCreate, UserInfoUpdate, Use
     def get_by_email(self, email: str) -> Optional[UserInfoInDB]:
         pass
 
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
+        pass
+
 
 class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]):
     @abstractmethod
@@ -192,6 +212,10 @@ class CredentialRepository(BaseRepository[int, CredentialCreate, CredentialUpdat
 
     @abstractmethod
     def get_for_user(self, owner_id) -> List[CredentialInDB]:
+        pass
+
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
         pass
 
 
@@ -234,6 +258,10 @@ class WorkspaceMemberRepository(BaseRepository[int, WorkspaceMemberCreate, Works
     def delete_rows_for_workspace(self, workspace_id: int):
         pass
 
+    @abstractmethod
+    def delete_rows_for_user(self, user_id: int) -> int:
+        pass
+
 
 class AutoExportRepository(BaseRepository[int, AutoExportCreate, AutoExportUpdate, AutoExportInDB]):
     @abstractmethod
@@ -268,6 +296,10 @@ class UserRepositoriesCacheRepository(
 
     @abstractmethod
     def get_repo_groups(self, user_id: int) -> List[UserRepositoryGroup]:
+        pass
+
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
         pass
 
 
@@ -309,6 +341,10 @@ class UserITSProjectsCacheRepository(
 
     @abstractmethod
     def get_its_project_groups(self, user_id: int) -> List[UserITSProjectGroup]:
+        pass
+
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
         pass
 
 
@@ -830,4 +866,8 @@ class EmailLogRepository(BaseRepository[int, EmailLogCreate, EmailLogUpdate, Ema
 
     @abstractmethod
     def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
+        pass
+
+    @abstractmethod
+    def delete_for_user(self, user_id: int) -> int:
         pass

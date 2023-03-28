@@ -324,7 +324,7 @@ def _refresh_its_projects_cache_for_credential(
                     or not isinstance(refresh, datetime)
                     or (
                         isinstance(refresh, datetime)
-                        and (g.current_time() - timedelta(days=g.settings.cache.its_projects_cache_life_hours))
+                        and (g.current_time() - timedelta(hours=g.settings.cache.its_projects_cache_life_hours))
                         > refresh
                     )
                 ):

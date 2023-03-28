@@ -445,7 +445,7 @@ def _refresh_repos_cache_for_credential(
                     (refresh_cache and isinstance(refresh, datetime))
                     or (
                         isinstance(refresh, datetime)
-                        and (g.current_time() - timedelta(days=g.settings.cache.repo_cache_life_hours)) > refresh
+                        and (g.current_time() - timedelta(hours=g.settings.cache.repo_cache_life_hours)) > refresh
                     )
                 ) and not force_refresh_cache:
                     repos_newly_created: List[RepositoryCreate] = integration.get_newest_repos_since_last_refresh(

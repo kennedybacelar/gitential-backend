@@ -1,21 +1,23 @@
 from datetime import datetime, timedelta
-from typing import Iterable, Optional, Tuple, cast
+from typing import Iterable, Optional, Tuple, cast, List
+
 from structlog import get_logger
-from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB
+
+from gitential2.core.workspace_common import create_workspace
+from gitential2.datatypes.credentials import CredentialCreate, CredentialUpdate
 from gitential2.datatypes.subscriptions import (
     SubscriptionInDB,
     SubscriptionCreate,
 )
 from gitential2.datatypes.userinfos import UserInfoCreate, UserInfoUpdate
-from gitential2.datatypes.credentials import CredentialCreate, CredentialUpdate
-from gitential2.datatypes.workspaces import WorkspaceCreate
+from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB
 from gitential2.datatypes.workspacemember import WorkspaceRole
-from gitential2.core.workspace_common import create_workspace
-
+from gitential2.datatypes.workspaces import WorkspaceCreate
 from .context import GitentialContext
 from .emails import send_email_to_user, send_system_notification_email
 from .reseller_codes import validate_reseller_code
-
+from ..datatypes.cli_v2 import CacheRefreshType
+from ..exceptions import SettingsException
 
 logger = get_logger(__name__)
 
@@ -103,12 +105,45 @@ def update_user(g: GitentialContext, user_id: int, user_update: UserUpdate):
     return g.backend.users.update(user_id, user)
 
 
-def delete_user(g: GitentialContext, user_id: int):
-    user = g.backend.users.get_or_error(user_id)
-    user_update = UserUpdate(**user.dict())
-    user_update.is_active = False
-    g.backend.users.update(user_id, user_update)
-    return True
+def deactivate_user(g: GitentialContext, user_id: int):
+    user = g.backend.users.get(id_=user_id)
+    if user:
+        return g.backend.deactivate_user(user_id=user_id)
+    raise SettingsException(f"Provided user_id=[{user_id}] is invalid!")
+
+
+def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
+    user = g.backend.users.get(id_=user_id)
+    if user:
+        result = g.backend.purge_user_from_database(user_id=user_id)
+        reset_cache_for_user(g=g, reset_type=CacheRefreshType.everything, user_id=user_id)
+        return result
+    raise SettingsException(f"Provided user_id=[{user_id}] is invalid!")
+
+
+def reset_cache_for_user(g: GitentialContext, reset_type: CacheRefreshType, user_id: int):
+    integration_types: List[str] = list({i.integration_type for i in g.integrations.values()})
+
+    if reset_type in [CacheRefreshType.everything, CacheRefreshType.repos]:
+        delete_count_r: int = g.backend.user_repositories_cache.delete_cache_for_user(user_id=user_id)
+        for integration_type in integration_types:
+            g.kvstore.delete_value(
+                name=f"repository_cache_for_user_last_refresh_datetime--{integration_type}--{user_id}"
+            )
+        logger.info(
+            "Repos cache for user deleted.",
+            number_of_deleted_rows=delete_count_r,
+            user_id=user_id,
+        )
+    if reset_type in [CacheRefreshType.everything, CacheRefreshType.its_projects]:
+        delete_count_its: int = g.backend.user_its_projects_cache.delete_cache_for_user(user_id=user_id)
+        for integration_type in integration_types:
+            g.kvstore.delete_value(name=f"itsp_cache_for_user_last_refresh_datetime--{integration_type}--{user_id}")
+        logger.info(
+            "ITS Projects cache for user deleted.",
+            number_of_deleted_rows=delete_count_its,
+            user_id=user_id,
+        )
 
 
 def get_profile_picture(g: GitentialContext, user: UserInDB) -> Optional[str]:

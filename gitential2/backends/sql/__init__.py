@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from threading import Lock
-from typing import Any, Tuple, Set, Optional
+from typing import Any, Tuple, Set, Optional, List
 
 import ibis
 import pandas as pd
@@ -22,6 +22,8 @@ from gitential2.datatypes import (
     WorkspaceMemberInDB,
     AuthorInDB,
     AutoExportInDB,
+    UserUpdate,
+    WorkspaceRole,
 )
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
@@ -154,7 +156,8 @@ from ...datatypes.thumbnails import ThumbnailInDB
 from ...datatypes.user_its_projects_cache import UserITSProjectCacheInDB
 from ...datatypes.user_repositories_cache import UserRepositoryCacheInDB
 from ...datatypes.workspaces import WorkspaceDuplicate
-from ...utils import get_schema_name
+from ...exceptions import SettingsException
+from ...utils import get_schema_name, is_list_not_empty
 
 logger = get_logger(__name__)
 
@@ -557,6 +560,95 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
             result = False
 
         return result
+
+    def deactivate_user(self, user_id: int):
+        user = self.users.get_or_error(id_=user_id)
+        user_update = UserUpdate(**user.dict())
+        user_update.is_active = False
+        self.users.update(user_id, user_update)
+        return True
+
+    def purge_user_from_database(self, user_id: int):
+        logger.info("Started to purge user from application.", user_id=user_id)
+
+        repo_names: List[str] = [
+            "access_approvals",
+            "access_logs",
+            "credentials",
+            "email_log",
+            "pats",
+            "reseller_codes",
+            "subscriptions",
+            "user_infos",
+            "user_its_projects_cache",
+            "user_repositories_cache",
+        ]
+
+        for repo_name in repo_names:
+            sql_repo = getattr(self, repo_name, None)
+            if sql_repo and hasattr(sql_repo, "delete_for_user"):
+                logger.info(f"Attempting to delete rows from {repo_name} table for user.", user_id=user_id)
+                del_count: int = sql_repo.delete_for_user(user_id)
+                logger.info(f"Delete for user was successful in {repo_name} table", number_of_deleted_rows=del_count)
+            elif not sql_repo:
+                logger.exception(
+                    "Can not find reference for repository by repository name!",
+                    repository_name=repo_name,
+                    user_id=user_id,
+                )
+            elif not hasattr(sql_repo, "delete_for_user"):
+                logger.exception(
+                    "Attribute 'delete_for_user' is not existing for repository!",
+                    repository_name=repo_name,
+                    user_id=user_id,
+                )
+
+        self.delete_own_workspaces_for_user(user_id=user_id)
+
+        self.delete_workspace_collaborations_for_user(user_id=user_id)
+
+        logger.info("Attempting to delete user from users table.", user_id=user_id)
+        del_count_user: int = self.users.delete(id_=user_id)
+        logger.info("User deleted from users table.", del_count_user=del_count_user)
+
+        logger.info("User purge from database successfully finished.")
+
+        return True
+
+    def delete_own_workspaces_for_user(self, user_id: int):
+        user = self.users.get(user_id)
+        if not user:
+            raise SettingsException(f"Can not delete user's own workspaces! Provided user_id={user_id} is invalid!")
+
+        wp_members: List[WorkspaceMemberInDB] = self.workspace_members.get_for_user(user_id=user_id)
+        wp_ids_for_user_as_owner: List[int] = (
+            [wp_member.workspace_id for wp_member in wp_members if wp_member.role == WorkspaceRole.owner]
+            if is_list_not_empty(wp_members)
+            else []
+        )
+        if is_list_not_empty(wp_ids_for_user_as_owner):
+            for wid in wp_ids_for_user_as_owner:
+                logger.info("Attempting to delete workspace.", workspace_id=wid, user_id=user_id)
+                result = self.delete_workspace_sql(workspace_id=wid)
+                if result:
+                    logger.info("Workspace successfully deleted.", workspace_id=wid, user_id=user_id)
+                else:
+                    logger.exception("Workspace delete was unsuccessful.")
+        else:
+            logger.info("No workspaces found for the user while trying to purge user.", user_id=user_id)
+
+    def delete_workspace_collaborations_for_user(self, user_id: int):
+        user = self.users.get(user_id)
+        if not user:
+            raise SettingsException(
+                f"Can not delete workspace collaborations for user! Provided user_id={user_id} is invalid!"
+            )
+
+        result = self.workspace_members.delete_rows_for_user(user_id=user_id)
+        if result:
+            logger.info("Collaborator workspace membership successfully deleted.", user_id=user_id)
+        else:
+            logger.exception("Collaborator workspace membership delete was unsuccessful.", user_id=user_id)
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
         return SQLOutputHandler(workspace_id=workspace_id, backend=self)

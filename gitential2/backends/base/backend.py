@@ -354,6 +354,22 @@ class GitentialBackend(ABC):
         pass
 
     @abstractmethod
+    def deactivate_user(self, user_id: int):
+        pass
+
+    @abstractmethod
+    def purge_user_from_database(self, user_id: int):
+        pass
+
+    @abstractmethod
+    def delete_own_workspaces_for_user(self, user_id: int):
+        pass
+
+    @abstractmethod
+    def delete_workspace_collaborations_for_user(self, user_id: int):
+        pass
+
+    @abstractmethod
     def output_handler(self, workspace_id: int) -> OutputHandler:
         pass
 

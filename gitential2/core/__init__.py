@@ -52,7 +52,7 @@ from .users import (
     register_user,
     get_user,
     update_user,
-    delete_user,
+    deactivate_user,
     get_profile_picture,
     list_users,
     set_as_admin,
@@ -64,5 +64,5 @@ from .workspaces import (
     delete_workspace,
     get_members,
     invite_members,
-    remove_member,
+    remove_workspace_membership,
 )

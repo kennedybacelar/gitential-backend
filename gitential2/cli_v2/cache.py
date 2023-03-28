@@ -4,10 +4,10 @@ import typer
 from structlog import get_logger
 
 from .common import get_context
-from ..core import GitentialContext
 from ..core.credentials import get_workspace_creator_user_id
 from ..core.its import refresh_cache_of_its_projects_for_user_or_users
 from ..core.repositories import refresh_cache_of_repositories_for_user_or_users
+from ..core.users import reset_cache_for_user
 from ..datatypes.cli_v2 import CacheRefreshType
 
 app = typer.Typer()
@@ -81,28 +81,3 @@ def reset_cache(
             logger.exception("Provided ID was incorrect. Can not make a cache reset.")
         else:
             reset_cache_for_user(g=g, reset_type=reset_type, user_id=user.id)
-
-
-def reset_cache_for_user(g: GitentialContext, reset_type: CacheRefreshType, user_id: int):
-    integration_types: List[str] = list({i.integration_type for i in g.integrations.values()})
-
-    if reset_type in [CacheRefreshType.everything, CacheRefreshType.repos]:
-        delete_count_r: int = g.backend.user_repositories_cache.delete_cache_for_user(user_id=user_id)
-        for integration_type in integration_types:
-            g.kvstore.delete_value(
-                name=f"repository_cache_for_user_last_refresh_datetime--{integration_type}--{user_id}"
-            )
-        logger.info(
-            "Repos cache for user deleted.",
-            number_of_deleted_rows=delete_count_r,
-            user_id=user_id,
-        )
-    if reset_type in [CacheRefreshType.everything, CacheRefreshType.its_projects]:
-        delete_count_its: int = g.backend.user_its_projects_cache.delete_cache_for_user(user_id=user_id)
-        for integration_type in integration_types:
-            g.kvstore.delete_value(name=f"itsp_cache_for_user_last_refresh_datetime--{integration_type}--{user_id}")
-        logger.info(
-            "ITS Projects cache for user deleted.",
-            number_of_deleted_rows=delete_count_its,
-            user_id=user_id,
-        )

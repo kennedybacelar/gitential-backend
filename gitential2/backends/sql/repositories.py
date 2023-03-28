@@ -204,6 +204,10 @@ class SQLAccessLogRepository(AccessLogRepository):
             result = connection.execute(query)
             return callback_fn(result)
 
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
 
 class SQLRepository(BaseRepository[IdType, CreateType, UpdateType, InDBType]):  # pylint: disable=unsubscriptable-object
     def __init__(self, table: sa.Table, engine: sa.engine.Engine, in_db_cls: Callable[..., InDBType]):
@@ -445,14 +449,17 @@ class SQLUserRepository(UserRepository, SQLRepository[int, UserCreate, UserUpdat
 
 
 class SQLResellerCodeRepository(ResellerCodeRepository, SQLRepository[str, ResellerCode, ResellerCode, ResellerCode]):
-
-    pass
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLPersonalAccessTokenRepository(
     PersonalAccessTokenRepository, SQLRepository[str, PersonalAccessToken, PersonalAccessToken, PersonalAccessToken]
 ):
-    pass
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLWorkspaceAPIKeyRepository(
@@ -506,7 +513,9 @@ class SQLDeployCommitRepository(
 class SQLAccessApprovalRepository(
     AccessApprovalRepository, SQLRepository[int, AccessApprovalCreate, AccessApprovalUpdate, AccessApprovalInDB]
 ):
-    pass
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLSubscriptionRepository(
@@ -516,6 +525,10 @@ class SQLSubscriptionRepository(
         query = self.table.select().where(self.table.c.user_id == user_id)
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [SubscriptionInDB(**row) for row in rows]
+
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLUserInfoRepository(UserInfoRepository, SQLRepository[int, UserInfoCreate, UserInfoUpdate, UserInfoInDB]):
@@ -536,6 +549,10 @@ class SQLUserInfoRepository(UserInfoRepository, SQLRepository[int, UserInfoCreat
         row = self._execute_query(query, callback_fn=fetchone_)
         return UserInfoInDB(**row) if row else None
 
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
 
 class SQLCredentialRepository(
     CredentialRepository, SQLRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
@@ -551,6 +568,10 @@ class SQLCredentialRepository(
         query = self.table.select().where(self.table.c.owner_id == owner_id)
         rows = self._execute_query(query, callback_fn=fetchall_)
         return [CredentialInDB(**row) for row in rows]
+
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.owner_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLWorkspaceRepository(WorkspaceRepository, SQLRepository[int, WorkspaceCreate, WorkspaceUpdate, WorkspaceInDB]):
@@ -602,6 +623,10 @@ class SQLWorkspaceMemberRepository(
 
     def delete_rows_for_workspace(self, workspace_id: int) -> int:
         query = self.table.delete().where(self.table.c.workspace_id == workspace_id)
+        return self._execute_query(query, callback_fn=rowcount_)
+
+    def delete_rows_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
         return self._execute_query(query, callback_fn=rowcount_)
 
 
@@ -670,6 +695,10 @@ class SQLUserRepositoryCacheRepository(
             )
             for row in rows
         ]
+
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLUserITSProjectsCacheRepository(
@@ -791,6 +820,10 @@ class SQLUserITSProjectsCacheRepository(
             )
             for row in rows
         ]
+
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)
 
 
 class SQLProjectRepository(
@@ -1657,3 +1690,7 @@ class SQLEmailLogRepository(EmailLogRepository, SQLRepository[int, EmailLogCreat
         self._execute_query(query)
         # return [EmailLogInDB(**row) for row in rows]
         return self.get_or_error(user_id)
+
+    def delete_for_user(self, user_id: int) -> int:
+        query = self.table.delete().where(self.table.c.user_id == user_id)
+        return self._execute_query(query, callback_fn=rowcount_)

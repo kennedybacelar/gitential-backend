@@ -237,7 +237,7 @@ def invite_members(
     return len(invitations)
 
 
-def remove_member(g: GitentialContext, workspace_id: int, workspace_member_id: int) -> int:
+def remove_workspace_membership(g: GitentialContext, workspace_id: int, workspace_member_id: int) -> int:
     workspace_member = g.backend.workspace_members.get(workspace_member_id)
     if workspace_member and workspace_member.workspace_id == workspace_id:
         g.backend.workspace_members.delete(workspace_member_id)

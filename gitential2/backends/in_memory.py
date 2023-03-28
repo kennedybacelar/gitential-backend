@@ -83,6 +83,9 @@ class InMemAccessLogRepository(AccessLogRepository):
                     ret = log
         return ret
 
+    def delete_for_user(self, user_id: int):
+        self._logs = [log for log in self._logs if getattr(log, "user_id", None) != user_id]
+
 
 class InMemRepository(
     BaseRepository[IdType, CreateType, UpdateType, InDBType]
@@ -262,6 +265,9 @@ class InMemUserInfoRepository(UserInfoRepository, InMemRepository[int, UserInfoC
     def get_by_email(self, email: str) -> Optional[UserInfoInDB]:
         return None
 
+    def delete_for_user(self, user_id: int):
+        return None
+
 
 class InMemWorkspaceAPIKeyRepository(
     WorkspaceAPIKeyRepository, InMemRepository[str, WorkspaceAPIKey, WorkspaceAPIKey, WorkspaceAPIKey]
@@ -297,6 +303,11 @@ class InMemWorkspaceMemberRepository(
             if item.workspace_id == workspace_id:
                 self.delete(id_=item.id)
 
+    def delete_rows_for_user(self, user_id: int):
+        for item in self._state.values():
+            if item.user_id == user_id:
+                self.delete(id_=item.id)
+
 
 class InMemCredentialRepository(
     CredentialRepository, InMemRepository[int, CredentialCreate, CredentialUpdate, CredentialInDB]
@@ -311,6 +322,9 @@ class InMemCredentialRepository(
 
     def get_for_user(self, owner_id: int) -> List[CredentialInDB]:
         return [cast(CredentialInDB, item) for item in self._state.values() if item.owner_id == owner_id]
+
+    def delete_for_user(self, user_id: int):
+        return None
 
 
 class InMemProjectRepository(
@@ -376,6 +390,9 @@ class InMemEmailLogRepository(EmailLogRepository, InMemRepository[int, EmailLogC
         return []
 
     def cancel_email(self, user_id: int, template: str) -> Optional[EmailLogInDB]:
+        return None
+
+    def delete_for_user(self, user_id: int):
         return None
 
 
@@ -488,6 +505,18 @@ class InMemGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         pass
 
     def refresh_materialized_views_in_workspace(self, workspace_id: int):
+        pass
+
+    def deactivate_user(self, user_id: int):
+        pass
+
+    def purge_user_from_database(self, user_id: int):
+        pass
+
+    def delete_own_workspaces_for_user(self, user_id: int):
+        pass
+
+    def delete_workspace_collaborations_for_user(self, user_id: int):
         pass
 
     def output_handler(self, workspace_id: int) -> OutputHandler:
