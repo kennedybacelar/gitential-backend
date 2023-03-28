@@ -10,6 +10,7 @@ from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.datatypes.refresh_statuses import RefreshCommitsPhase, ITSProjectRefreshPhase, RepositoryRefreshStatus
 from gitential2.datatypes.repositories import GitRepositoryState, RepositoryInDB
 from gitential2.datatypes.extraction import LocalGitRepository
+from gitential2.datatypes.credentials import CredentialInDB
 
 from gitential2.utils.tempdir import TemporaryDirectory
 from gitential2.extraction.repository import extract_incremental_local, clone_repository, extract_branches
@@ -405,31 +406,8 @@ def _refresh_repository_commits_clone_phase(
             commits_phase=RefreshCommitsPhase.cloning,
         )
 
-        if repository.integration_type in ["github", "vsts", "gitlab"] and not force:
-            integration = g.integrations.get(repository.integration_name)
-            token = credential.to_token_dict(g.fernet)
-            update_token = get_update_token_callback(g, credential)
-
-            if hasattr(integration, "last_push_at_repository") and integration is not None:
-
-                # This function must return a datetime object with timezone
-                # It should not be a naive datetime object
-                last_push_at_repository: Optional[datetime] = integration.last_push_at_repository(
-                    repository=repository, token=token, update_token=update_token
-                )
-                current_state = get_repo_refresh_status(g, workspace_id, repository.id)
-
-                if not has_remote_repository_been_updated_after_last_project_refresh(
-                    last_push_at_repository, current_state
-                ):
-                    logger.info(
-                        "Remote repository has not been updated after last successful refresh - Skipping commits refresh.",
-                        workspace_id=workspace_id,
-                        repository_id=repository.id,
-                    )
-                    return None
-            else:
-                return None
+        if _should_skip_refresh_clone_phase(g, credential, workspace_id, repository, force):
+            return None
 
         local_repo = clone_repository(
             repository,
@@ -440,7 +418,43 @@ def _refresh_repository_commits_clone_phase(
     return None
 
 
-def has_remote_repository_been_updated_after_last_project_refresh(
+def _should_skip_refresh_clone_phase(
+    g: GitentialContext, credential: CredentialInDB, workspace_id: int, repository: RepositoryInDB, force: bool
+) -> bool:
+
+    try:
+        integration = g.integrations.get(repository.integration_name)
+        if hasattr(integration, "last_push_at_repository") and not force and integration is not None:
+
+            token = credential.to_token_dict(g.fernet)
+            update_token = get_update_token_callback(g, credential)
+            last_push_at_repository: Optional[datetime] = integration.last_push_at_repository(
+                repository=repository, token=token, update_token=update_token
+            )
+            current_state = get_repo_refresh_status(g, workspace_id, repository.id)
+
+            if not _has_remote_repository_been_updated_after_last_project_refresh(
+                last_push_at_repository, current_state
+            ):
+                logger.info(
+                    "Remote repository has not been updated after last successful refresh - Skipping commits refresh.",
+                    workspace_id=workspace_id,
+                    repository_id=repository.id,
+                )
+                return True
+        return False
+    except Exception as error:  # pylint: disable=broad-except
+        logger.exception(
+            "Unexpected error with _should_skip_refresh_clone_phase.",
+            workspace_id=current_state.workspace_id,
+            repository_id=current_state.repository_id,
+            repository_name=current_state.repository_name,
+            error=error,
+        )
+        return False
+
+
+def _has_remote_repository_been_updated_after_last_project_refresh(
     last_push_at_remote_repository: Optional[datetime], current_state: RepositoryRefreshStatus
 ) -> bool:
     try:

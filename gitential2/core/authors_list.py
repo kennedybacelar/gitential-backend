@@ -87,7 +87,9 @@ def get_authors_extended_by_author_ids(
             projects_data_for_author = (
                 [t for t in author_projects if t.id == aid] if is_list_not_empty(author_projects) else None
             )
-            project_ids = projects_data_for_author[0].teams_ids if is_list_not_empty(projects_data_for_author) else None
+            project_ids = (
+                projects_data_for_author[0].projects_ids if is_list_not_empty(projects_data_for_author) else None
+            )
             author_extended = AuthorPublicExtended(
                 id=author.id,
                 name=author.name,

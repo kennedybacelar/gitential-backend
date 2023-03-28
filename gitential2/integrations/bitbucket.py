@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Callable, List, Tuple
 from urllib.parse import urlparse, urlencode
 
@@ -291,6 +291,40 @@ class BitBucketIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration):
         repository_list = _walk_paginated_results(client, f"{api_base_url}repositories?role=member&pagelen=100")
         client.close()
         return [self._repo_to_create_repo(repo) for repo in repository_list]
+
+    def get_raw_single_repo_data(self, repository: RepositoryInDB, token, update_token) -> Optional[dict]:
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        api_base_url = self.oauth_register()["api_base_url"]
+        workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
+        url = f"{api_base_url}repositories/{workspace}/{repo_slug}"
+        response = client.get(url)
+
+        if response.status_code == 200:
+            json = response.json()
+            client.close()
+            return json
+        else:
+            client.close()
+            log_api_error(response)
+            return None
+
+    def last_push_at_repository(self, repository: RepositoryInDB, token, update_token: Callable) -> Optional[datetime]:
+        client = self.get_oauth2_client(token=token, update_token=update_token)
+        api_base_url = self.oauth_register()["api_base_url"]
+        workspace, repo_slug = self._get_bitbucket_workspace_and_repo_slug(repository)
+        url = f"{api_base_url}repositories/{workspace}/{repo_slug}/commits?limit=1"
+        response = client.get(url)
+        client.close()
+
+        if response.status_code == 200:
+            last_commit_raw = response.json()["values"]
+            if last_commit_raw:
+                last_pushed_raw = last_commit_raw[0]["date"]
+                last_push_parsed = parse_datetime(last_pushed_raw).replace(tzinfo=timezone.utc)
+                return last_push_parsed
+        else:
+            log_api_error(response)
+        return None
 
     def search_public_repositories(
         self, query: str, token, update_token, provider_user_id: Optional[str]
