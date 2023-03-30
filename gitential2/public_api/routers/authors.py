@@ -161,7 +161,7 @@ def delete_author_(
 
 
 @router.get("/workspaces/{workspace_id}/authors-duplicated")
-def run_deduplicator(
+def get_potential_duplicate_authors(
     workspace_id: int,
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
