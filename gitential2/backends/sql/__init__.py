@@ -25,6 +25,7 @@ from gitential2.datatypes import (
     UserUpdate,
     WorkspaceRole,
 )
+from gitential2.datatypes.users import UserPurged
 from gitential2.datatypes.access_approvals import AccessApprovalInDB
 from gitential2.datatypes.api_keys import PersonalAccessToken, WorkspaceAPIKey
 from gitential2.datatypes.calculated import CalculatedCommit, CalculatedPatch
@@ -568,7 +569,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         self.users.update(user_id, user_update)
         return True
 
-    def purge_user_from_database(self, user_id: int):
+    def purge_user_from_database(self, user_id: int) -> UserPurged:
         logger.info("Started to purge user from application.", user_id=user_id)
 
         repo_names: List[str] = [
