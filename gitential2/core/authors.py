@@ -112,8 +112,8 @@ def merge_authors(g: GitentialContext, workspace_id: int, authors: List[AuthorIn
     return g.backend.authors.update(workspace_id, first.id, author_update)
 
 
-def retrieve_and_merge_authors_by_id(g: GitentialContext, workspace_id: int, authors_ids: List[int]) -> AuthorInDB:
-    authors = g.backend.authors.get_authors_by_author_ids(workspace_id, authors_ids)
+def retrieve_and_merge_authors_by_id(g: GitentialContext, workspace_id: int, author_ids: List[int]) -> AuthorInDB:
+    authors = g.backend.authors.get_authors_by_author_ids(workspace_id, author_ids)
     return merge_authors(g, workspace_id, authors)
 
 
