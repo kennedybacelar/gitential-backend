@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from pydantic import Field
 from .common import CoreModel, ExtraFieldMixin, IDModelMixin, DateTimeModelMixin
 from .userinfos import UserInfoBase
@@ -68,3 +68,9 @@ class UserInAdminRepr(IDModelMixin, DateTimeModelMixin):
 
 class UserHeader(IDModelMixin, CoreModel):
     login: Optional[str] = Field(None, max_length=128)
+
+
+class UserPurged(IDModelMixin, DateTimeModelMixin):
+    email: str
+    deleted_at: datetime
+    workspaces_purged: List[Dict[Any]]
