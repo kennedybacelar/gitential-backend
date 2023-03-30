@@ -17,6 +17,7 @@ from gitential2.utils import levenshtein_ratio, is_list_not_empty, is_email_vali
 from .context import GitentialContext
 from ..datatypes.teammembers import TeamMemberInDB
 from ..datatypes.teams import TeamInDB
+from ..exceptions import NotFoundException
 
 logger = get_logger(__name__)
 
@@ -114,7 +115,9 @@ def merge_authors(g: GitentialContext, workspace_id: int, authors: List[AuthorIn
 
 def retrieve_and_merge_authors_by_id(g: GitentialContext, workspace_id: int, author_ids: List[int]) -> AuthorInDB:
     authors = g.backend.authors.get_authors_by_author_ids(workspace_id, author_ids)
-    return merge_authors(g, workspace_id, authors)
+    if len(authors) >= 2:
+        return merge_authors(g, workspace_id, authors)
+    raise NotFoundException(f"Not possible to merge authors {author_ids} from workspace {workspace_id}")
 
 
 def developer_map_callback(
