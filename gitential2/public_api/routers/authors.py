@@ -173,7 +173,7 @@ def run_deduplicator(
 @router.post("/workspaces/{workspace_id}/authors/merge-authors")
 def merge_authors(
     workspace_id: int,
-    author_ids: List[int],
+    author_ids: List[int] = Query(None, alias="author_ids"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
