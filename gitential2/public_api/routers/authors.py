@@ -173,7 +173,7 @@ def get_potential_duplicate_authors(
 @router.post("/workspaces/{workspace_id}/merge-authors")
 def merge_authors(
     workspace_id: int,
-    author_ids: List[int] = Body(None, alias="author_ids"),
+    author_ids: List[int] = Body(None, alias="author_ids", embed=True),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
