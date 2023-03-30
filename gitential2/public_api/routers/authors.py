@@ -13,7 +13,7 @@ from gitential2.core.authors import (
     authors_count,
     get_authors_by_name_pattern,
     move_emails_and_logins_to_author,
-    merge_authors,
+    retrieve_and_merge_authors_by_id,
 )
 from gitential2.core.context import GitentialContext
 from gitential2.core.deduplication import deduplicate_authors
@@ -173,12 +173,12 @@ def run_deduplicator(
 @router.post("/workspaces/{workspace_id}/authors/merge-authors")
 def merge_authors(
     workspace_id: int,
-    cluster: List[AuthorInDB],
+    author_ids: List[int],
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.update, workspace_id=workspace_id)
-    return merge_authors(g, workspace_id, cluster)
+    return retrieve_and_merge_authors_by_id(g, workspace_id, author_ids)
 
 
 @router.get("/workspaces/{workspace_id}/developers-with-projects")
