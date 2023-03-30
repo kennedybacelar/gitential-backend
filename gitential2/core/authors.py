@@ -17,6 +17,7 @@ from gitential2.utils import levenshtein_ratio, is_list_not_empty, is_email_vali
 from .context import GitentialContext
 from ..datatypes.teammembers import TeamMemberInDB
 from ..datatypes.teams import TeamInDB
+from ..exceptions import NotFoundException
 
 logger = get_logger(__name__)
 
@@ -110,6 +111,13 @@ def merge_authors(g: GitentialContext, workspace_id: int, authors: List[AuthorIn
     for author_id in author_ids_to_be_deleted:
         delete_author(g, workspace_id, author_id)
     return g.backend.authors.update(workspace_id, first.id, author_update)
+
+
+def retrieve_and_merge_authors_by_id(g: GitentialContext, workspace_id: int, author_ids: List[int]) -> AuthorInDB:
+    authors = g.backend.authors.get_authors_by_author_ids(workspace_id, author_ids)
+    if len(authors) >= 2:
+        return merge_authors(g, workspace_id, authors)
+    raise NotFoundException(f"Not possible to merge authors {author_ids} from workspace {workspace_id}")
 
 
 def developer_map_callback(
