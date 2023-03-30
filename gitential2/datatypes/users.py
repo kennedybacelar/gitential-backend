@@ -73,4 +73,4 @@ class UserHeader(IDModelMixin, CoreModel):
 class UserPurged(IDModelMixin, DateTimeModelMixin):
     email: str
     deleted_at: datetime
-    workspaces_purged: List[Dict[Any]]
+    workspaces_purged: List[int]

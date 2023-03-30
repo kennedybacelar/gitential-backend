@@ -570,6 +570,8 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
         return True
 
     def purge_user_from_database(self, user_id: int) -> UserPurged:
+
+        user = self.users.get_or_error(id_=user_id)
         logger.info("Started to purge user from application.", user_id=user_id)
 
         repo_names: List[str] = [
@@ -604,7 +606,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
                     user_id=user_id,
                 )
 
-        self.delete_own_workspaces_for_user(user_id=user_id)
+        deleted_workspace_ids = self.delete_own_workspaces_for_user(user_id=user_id)
 
         self.delete_workspace_collaborations_for_user(user_id=user_id)
 
@@ -614,7 +616,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
         logger.info("User purge from database successfully finished.")
 
-        return True
+        return UserPurged(**user.dict(), deleted_at=datetime.utcnow(), workspaces_purged=deleted_workspace_ids)
 
     def delete_own_workspaces_for_user(self, user_id: int) -> List[int]:
         user = self.users.get(user_id)
