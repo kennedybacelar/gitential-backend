@@ -616,7 +616,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
 
         return True
 
-    def delete_own_workspaces_for_user(self, user_id: int):
+    def delete_own_workspaces_for_user(self, user_id: int) -> List[int]:
         user = self.users.get(user_id)
         if not user:
             raise SettingsException(f"Can not delete user's own workspaces! Provided user_id={user_id} is invalid!")
@@ -637,6 +637,7 @@ class SQLGitentialBackend(WithRepositoriesMixin, GitentialBackend):
                     logger.exception("Workspace delete was unsuccessful.")
         else:
             logger.info("No workspaces found for the user while trying to purge user.", user_id=user_id)
+        return wp_ids_for_user_as_owner
 
     def delete_workspace_collaborations_for_user(self, user_id: int):
         user = self.users.get(user_id)
