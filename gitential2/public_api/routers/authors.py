@@ -170,7 +170,7 @@ def get_potential_duplicate_authors(
     return deduplicate_authors(g=g, workspace_id=workspace_id, dry_run=True)
 
 
-@router.post("/workspaces/{workspace_id}/merge-authors")
+@router.post("/workspaces/{workspace_id}/merge-authors", response_model=AuthorInDB)
 def merge_authors(
     workspace_id: int,
     author_ids: List[int] = Body(None, alias="author_ids", embed=True),
