@@ -167,7 +167,7 @@ def run_deduplicator(
     g: GitentialContext = Depends(gitential_context),
 ):
     check_permission(g, current_user, Entity.author, Action.update, workspace_id=workspace_id)
-    return deduplicate_authors(g, workspace_id)
+    return deduplicate_authors(g=g, workspace_id=workspace_id, dry_run=True)
 
 
 @router.post("/workspaces/{workspace_id}/authors/merge-authors")
