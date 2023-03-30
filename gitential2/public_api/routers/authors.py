@@ -160,7 +160,7 @@ def delete_author_(
     return delete_author(g, workspace_id, author_id)
 
 
-@router.get("/workspaces/{workspace_id}/authors/dedup")
+@router.get("/workspaces/{workspace_id}/authors-duplicated")
 def run_deduplicator(
     workspace_id: int,
     current_user=Depends(current_user),
