@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from pydantic import Field
 from .common import CoreModel, ExtraFieldMixin, IDModelMixin, DateTimeModelMixin
 from .userinfos import UserInfoBase
