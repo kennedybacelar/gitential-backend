@@ -665,7 +665,7 @@ class VSTSIntegration(OAuthLoginMixin, GitProviderMixin, BaseIntegration, ITSPro
     def get_work_item_type_id(self, token, its_project: ITSProjectInDB, wit_ref_name: Optional[str]) -> Optional[str]:
 
         organization, _project = _get_organization_and_project_from_namespace(its_project.namespace)
-        process_id = its_project.extra["process_id"]  # type: ignore[index]
+        process_id = its_project.extra.get("process_id") if its_project.extra else None  # type: ignore[index]
 
         if not process_id:
             return None
