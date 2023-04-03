@@ -64,7 +64,8 @@ def purge_user_from_database(user_id: int):
             f"Are you really sure you want to purge the user with id=[{user.id}] from the database?"
         )
         if confirm_res:
-            g.backend.purge_user_from_database(user_id=user_id)
+            purged_user = g.backend.purge_user_from_database(user_id=user_id)
             reset_cache_for_user(g=g, reset_type=CacheRefreshType.everything, user_id=user_id)
+            print_results([purged_user])
     else:
         logger.exception("Given user_id is invalid!", user_id=user_id)
