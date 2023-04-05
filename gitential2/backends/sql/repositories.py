@@ -782,6 +782,7 @@ class SQLUserITSProjectsCacheRepository(
                 integration_name=row["integration_name"],
                 integration_id=row["integration_id"],
                 credential_id=row["credential_id"],
+                extra=row["extra"],
             )
             for row in rows
             if "api_url" in row and row["api_url"]
