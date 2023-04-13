@@ -15,23 +15,15 @@ logger = get_logger(__name__)
 def create_auto_export(
     g: GitentialContext,
     workspace_id: int,
-    cron_schedule_time: int,
-    tempo_access_token: Optional[str],
     emails: List[str],
+    **kwargs,
 ) -> Optional[AutoExportInDB]:
     """
     @desc: create a new scheduled automatic workspace export for a workspace.
     @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recipients)
     """
     # Data input validation
-    auto_export_data = AutoExportCreate(
-        workspace_id=workspace_id,
-        cron_schedule_time=cron_schedule_time,
-        tempo_access_token=tempo_access_token,
-        emails=emails,
-    )
-    schedule_already_exist = g.backend.auto_export.schedule_exists(workspace_id, cron_schedule_time)
-    return None if schedule_already_exist else g.backend.auto_export.create(auto_export_data)
+    g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=dict(kwargs)))
 
 
 def auto_export_task(

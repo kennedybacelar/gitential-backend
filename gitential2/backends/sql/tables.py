@@ -259,13 +259,11 @@ auto_export_table = sa.Table(
     "auto_export",
     metadata,
     sa.Column("id", sa.Integer, primary_key=True),
-    sa.Column("workspace_id", sa.Integer, sa.ForeignKey("workspaces.id"), nullable=False),
-    sa.Column("cron_schedule_time", sa.Integer, nullable=False),
+    sa.Column("workspace_id", sa.Integer, sa.ForeignKey("workspaces.id"), nullable=False, unique=True),
     sa.Column("emails", sa.JSON, nullable=True),
-    sa.Column("tempo_access_token", sa.String, nullable=True),
     sa.Column("created_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
     sa.Column("updated_at", sa.DateTime, default=dt.datetime.utcnow, nullable=False),
-    sa.Column("is_exported", sa.Boolean, default=False),
+    sa.Column("extra", sa.JSON, nullable=True),
 )
 
 user_repositories_cache_table = sa.Table(
