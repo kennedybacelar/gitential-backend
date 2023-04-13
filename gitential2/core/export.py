@@ -2,12 +2,17 @@ from typing import Optional, List
 from pathlib import Path
 from datetime import datetime
 from structlog import get_logger
+from concurrent.futures import ThreadPoolExecutor
 from gitential2.core.workspaces import get_workspace_owner
 from gitential2.core.emails import send_email_to_address
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.core.context import GitentialContext
 from gitential2.datatypes import AutoExportCreate, AutoExportInDB
 from gitential2.core.refresh_v2 import refresh_workspace
+
+# pylint: disable=import-outside-toplevel,cyclic-import
+from gitential2.cli_v2.export import export_full_workspace, ExportFormat
+from gitential2.cli_v2.jira import lookup_tempo_worklogs
 
 logger = get_logger(__name__)
 
@@ -26,59 +31,17 @@ def create_auto_export(
     g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=dict(kwargs)))
 
 
-def auto_export_task(
+def auto_export_workspace(workspace_to_export: AutoExportInDB):
+    pass
+
+
+def process_auto_export_for_all_workspaces(
     g: GitentialContext,
-) -> None:
-    # pylint: disable=import-outside-toplevel,cyclic-import
-    from gitential2.cli_v2.export import export_full_workspace, ExportFormat
-    from gitential2.cli_v2.jira import lookup_tempo_worklogs
-
-    for workspace in g.backend.auto_export.all():
-        if workspace.cron_schedule_time == datetime.now().hour and not workspace.is_exported:
-            workspace_id = workspace.workspace_id
-            # Refresh full workspace
-            logger.info(msg=f"Starting full workspace refresh for workspace {workspace_id}....")
-            refresh_workspace(g, workspace_id, RefreshStrategy.one_by_one, RefreshType.everything, False)
-
-            # Refresh Tempo Data
-            logger.info(msg=f"Starting Tempo data refresh for workspace {workspace_id}....")
-            if workspace.tempo_access_token:
-                lookup_tempo_worklogs(
-                    g=g,
-                    workspace_id=workspace_id,
-                    tempo_access_token=workspace.tempo_access_token,
-                    force=True,
-                    date_from=datetime.min,
-                    rewrite_existing_worklogs=False,
-                )
-
-            # Export full workspace
-            logger.info(msg=f"Starting full workspace export for workspace {workspace_id}....")
-            export_full_workspace(
-                workspace_id=workspace_id,
-                export_format=ExportFormat.xlsx,
-                date_from=datetime.now().min,
-                upload_to_aws_s3=True,
-                aws_s3_location=_generate_destination_path(g, workspace_id),
-            )
-            logger.info(msg="Storage on AWS s3 Complete!:).......")
-
-            # Send Exported Sheet via Email
-            logger.info(msg="Starting Email Dispatch.......")
-            s3_upload_url = construct_aws_object_url(
-                g.settings.connections.s3.bucket_name,
-                "eu-west-2",
-                _generate_destination_path(g, workspace_id),
-                workspace_id,
-            )
-            _dispatch_workspace_data_via_email(g, workspace.emails[0].split(","), s3_upload_url)
-
-            # Update the export schedule row to avoid double exports
-            logger.info(msg=f"Updating Export Schedule for workspace {workspace_id}....")
-            workspace.is_exported = True
-            g.backend.auto_export.create_or_update(workspace)
-
-            logger.info(msg="Export Completed! :)")
+) -> bool:
+    workspaces_to_be_exported = g.backend.auto_export.all()
+    for workspace_to_export in workspaces_to_be_exported:
+        with ThreadPoolExecutor() as executor:
+            executor.submit(auto_export_workspace(workspace_to_export))
 
 
 def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list, s3_upload_url: str):
