@@ -1,8 +1,11 @@
+from datetime import datetime
 from typing import List, Optional, Set
 from collections import defaultdict
 from gitential2.datatypes.stats import FilterName, Query, DimensionName, MetricName, QueryType
+from gitential2.datatypes.authors import AuthorFilters, DateRange
 from .context import GitentialContext
 from .stats_v2 import IbisQuery
+from .authors_list import list_extended_committer_authors
 
 
 def get_repos_projects(g: GitentialContext, workspace_id: int) -> dict:
@@ -124,37 +127,21 @@ def get_developers(
     to_: Optional[str] = None,
     is_dev_active_filter_on: Optional[bool] = True,
 ) -> list:
-    all_active_developers = (
-        {
-            dev.id: {"name": dev.name, "email": dev.email, "id": dev.id}
-            for dev in g.backend.authors.all(workspace_id)
-            if dev.active
-        }
-        if is_dev_active_filter_on
-        else {
-            dev.id: {"name": dev.name, "email": dev.email, "id": dev.id} for dev in g.backend.authors.all(workspace_id)
-        }
+    date_range = DateRange(
+        start=from_ or datetime.min,
+        end=to_ or datetime.max,
+    )
+    author_filters = AuthorFilters(
+        workspace_id=workspace_id,
+        project_ids=[project_id] if project_id else [],
+        repository_ids=[repo_id] if repo_id else [],
+        team_ids=[team_id] if team_id else [],
+        date_range=date_range,
     )
 
-    if project_id or repo_id:
-        dev_repo_commit_counts = _get_commit_counts_by_dev_and_repo(
-            g, workspace_id, project_id=project_id, repo_id=repo_id, from_=from_, to_=to_
-        )
-        ret = []
-        aids = set(row["aid"] for row in dev_repo_commit_counts)
-        for aid in aids:
-            if aid in all_active_developers:
-                ret.append(all_active_developers[aid])
-        return ret
-    elif team_id:
-        ret = []
-        aids = set(g.backend.team_members.get_team_member_author_ids(workspace_id, team_id))
-        for aid in aids:
-            if aid in all_active_developers:
-                ret.append(all_active_developers[aid])
-        return ret
-    else:
-        return list(all_active_developers.values())
+    developers = list_extended_committer_authors(g, workspace_id, author_filters).authors_list
+    ret = [{"name": dev.name, "email": dev.email, "id": dev.id} for dev in developers]
+    return ret
 
 
 def get_devs_assigned_to_active_repos(g: GitentialContext, workspace_id: int, repo_ids: Set[int]) -> List[int]:
