@@ -1,7 +1,7 @@
 from typing import Optional, List
 from structlog import get_logger
 import typer
-from gitential2.core.export import create_auto_export
+from gitential2.core.export import create_auto_export, process_auto_export_for_all_workspaces
 from .common import get_context
 
 
@@ -13,6 +13,8 @@ app = typer.Typer()
 def create_auto_export_(workspace_id: int, emails: List[str], tempo_access_token: Optional[str] = None):
     """ """
     g = get_context()
+    process_auto_export_for_all_workspaces(g)
+    exit()
     workspace = g.backend.workspaces.get(id_=workspace_id)
     if workspace:
         create_auto_export(g, workspace_id, emails, tempo_access_token=tempo_access_token)

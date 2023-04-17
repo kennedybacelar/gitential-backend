@@ -2,7 +2,8 @@ from typing import Optional, List
 from pathlib import Path
 from datetime import datetime
 from structlog import get_logger
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import asyncio
 from gitential2.core.workspaces import get_workspace_owner
 from gitential2.core.emails import send_email_to_address
 from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
@@ -32,16 +33,25 @@ def create_auto_export(
 
 
 def auto_export_workspace(workspace_to_export: AutoExportInDB):
-    pass
+    print(workspace_to_export)
+    import time
+
+    time.sleep(5)
+    print("Running in another thread")
 
 
 def process_auto_export_for_all_workspaces(
     g: GitentialContext,
 ) -> bool:
     workspaces_to_be_exported = g.backend.auto_export.all()
-    for workspace_to_export in workspaces_to_be_exported:
-        with ThreadPoolExecutor() as executor:
-            executor.submit(auto_export_workspace(workspace_to_export))
+    with ThreadPoolExecutor() as executor:
+        tasks = [
+            executor.submit(auto_export_workspace, workspace_to_export)
+            for workspace_to_export in workspaces_to_be_exported
+        ]
+        for task in as_completed(tasks):
+            task.result()
+        print("All tasks complete")
 
 
 def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list, s3_upload_url: str):
