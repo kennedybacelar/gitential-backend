@@ -34,6 +34,7 @@ def create_auto_export(
 
 def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
     refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
+    export_full_workspace(workspace_id=workspace_to_export.workspace_id, export_format=ExportFormat.xlsx)
 
 
 def process_auto_export_for_all_workspaces(
