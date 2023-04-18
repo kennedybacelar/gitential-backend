@@ -5,7 +5,7 @@ from gitential2.datatypes.stats import FilterName, Query, DimensionName, MetricN
 from gitential2.datatypes.authors import AuthorFilters, DateRange
 from .context import GitentialContext
 from .stats_v2 import IbisQuery
-from .authors_list import list_extended_committer_authors
+from .authors_list import list_extended_committer_authors  # pylint: disable=import-outside-toplevel,cyclic-import
 
 
 def get_repos_projects(g: GitentialContext, workspace_id: int) -> dict:
@@ -125,7 +125,7 @@ def get_developers(
     team_id: Optional[int] = None,
     from_: Optional[str] = None,
     to_: Optional[str] = None,
-    is_dev_active_filter_on: Optional[bool] = True,
+    is_dev_active_filter_on: Optional[bool] = True,  # pylint: disable=unused-argument
 ) -> list:
     date_range = DateRange(
         start=from_ or datetime.min,
