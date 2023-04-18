@@ -2,11 +2,12 @@ from typing import Optional, List
 from pathlib import Path
 from datetime import datetime
 from structlog import get_logger
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import asyncio
+import base64
+from cryptography.fernet import Fernet
+from concurrent.futures import ThreadPoolExecutor
 from gitential2.core.workspaces import get_workspace_owner
 from gitential2.core.emails import send_email_to_address
-from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
+from gitential2.datatypes.refresh import RefreshStrategy
 from gitential2.core.context import GitentialContext
 from gitential2.datatypes import AutoExportCreate, AutoExportInDB
 from gitential2.core.refresh_v2 import refresh_workspace
@@ -16,6 +17,16 @@ from gitential2.cli_v2.export import export_full_workspace, ExportFormat
 from gitential2.cli_v2.jira import lookup_tempo_worklogs
 
 logger = get_logger(__name__)
+
+
+def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) -> str:
+    key = g.settings.secret
+    encoded_key = base64.urlsafe_b64encode(key.encode())
+    f = Fernet(encoded_key)
+    encoded_tempo_access_token = f.encrypt(tempo_access_token.encode())
+    encoded_tempo_access_token_str = base64.urlsafe_b64encode(encoded_tempo_access_token).decode("utf-8")
+
+    return encoded_tempo_access_token_str
 
 
 def create_auto_export(
@@ -29,11 +40,22 @@ def create_auto_export(
     @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recipients)
     """
     # Data input validation
-    g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=dict(kwargs)))
+    extra = dict(kwargs)
+    if extra.get("tempo_access_token"):
+        extra["tempo_access_token"] = encrypting_tempo_access_token(g, extra["tempo_access_token"])
+    g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=extra))
 
 
 def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
     refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
+    if workspace_to_export.extra.get("tempo_access_token"):
+        export_params = workspace_to_export.extra
+        lookup_tempo_worklogs(
+            g=g,
+            workspace_id=workspace_to_export.workspace_id,
+            tempo_access_token=export_params["tempo_access_token"],
+            date_from=export_params.get("date_from"),
+        )
     export_full_workspace(workspace_id=workspace_to_export.workspace_id, export_format=ExportFormat.xlsx)
 
 
