@@ -32,12 +32,8 @@ def create_auto_export(
     g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=dict(kwargs)))
 
 
-def auto_export_workspace(workspace_to_export: AutoExportInDB):
-    print(workspace_to_export)
-    import time
-
-    time.sleep(5)
-    print("Running in another thread")
+def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
+    refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
 
 
 def process_auto_export_for_all_workspaces(
@@ -45,13 +41,8 @@ def process_auto_export_for_all_workspaces(
 ) -> bool:
     workspaces_to_be_exported = g.backend.auto_export.all()
     with ThreadPoolExecutor() as executor:
-        tasks = [
-            executor.submit(auto_export_workspace, workspace_to_export)
-            for workspace_to_export in workspaces_to_be_exported
-        ]
-        for task in as_completed(tasks):
-            task.result()
-        print("All tasks complete")
+        for workspace_to_export in workspaces_to_be_exported:
+            executor.submit(auto_export_workspace, g, workspace_to_export)
 
 
 def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list, s3_upload_url: str):

@@ -13,8 +13,6 @@ app = typer.Typer()
 def create_auto_export_(workspace_id: int, emails: List[str], tempo_access_token: Optional[str] = None):
     """ """
     g = get_context()
-    process_auto_export_for_all_workspaces(g)
-    exit()
     workspace = g.backend.workspaces.get(id_=workspace_id)
     if workspace:
         create_auto_export(g, workspace_id, emails, tempo_access_token=tempo_access_token)
