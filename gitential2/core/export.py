@@ -35,11 +35,7 @@ def create_auto_export(
     emails: List[str],
     **kwargs,
 ) -> Optional[AutoExportInDB]:
-    """
-    @desc: create a new scheduled automatic workspace export for a workspace.
-    @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recipients)
-    """
-    # Data input validation
+
     extra = dict(kwargs)
     if extra.get("tempo_access_token"):
         extra["tempo_access_token"] = encrypting_tempo_access_token(g, extra["tempo_access_token"])

@@ -17,7 +17,11 @@ def create_auto_export_(
     tempo_access_token: Optional[str] = typer.Option(None, "--tempo-access-token"),
     date_from: Optional[datetime] = typer.Option(None, "--date-from"),
 ):
-    """ """
+    """Create an entry in the list of workspace export schedules.
+
+    Example usage:
+    g2 auto-export create 2 john@example.com jane@example.com --tempo-access-token secret123 --date-from 2023-01-01
+    """
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id)
     if workspace:
