@@ -45,3 +45,9 @@ def create_auto_export_(
     else:
         logger.info(f"Workspace {workspace_id} not found")
         raise typer.Exit(code=1)
+
+
+@app.command("run")
+def trigger_auto_export_for_all_workspaces():
+    g = get_context()
+    process_auto_export_for_all_workspaces(g)
