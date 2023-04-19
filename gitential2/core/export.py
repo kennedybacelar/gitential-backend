@@ -6,7 +6,6 @@ import base64
 import tempfile
 from cryptography.fernet import Fernet
 from concurrent.futures import ThreadPoolExecutor
-from gitential2.core.workspaces import get_workspace_owner
 from gitential2.core.emails import send_email_to_address
 from gitential2.datatypes.refresh import RefreshStrategy
 from gitential2.core.context import GitentialContext
@@ -69,6 +68,8 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
             export_format=ExportFormat.xlsx,
             date_from=export_params["date_from"],
             destination_directory=Path(tmp_dir),
+            upload_to_aws_s3=True,
+            aws_s3_location=export_params.get("aws_s3_location") or _generate_aws_s3_location_path(),
         )
 
 
@@ -82,22 +83,11 @@ def process_auto_export_for_all_workspaces(
                 executor.submit(auto_export_workspace, g, workspace_to_export)
 
 
+def _generate_aws_s3_location_path():
+    return Path("Exports/production-cloud/")
+
+
 def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list, s3_upload_url: str):
     for recipient in recipient_list:
         send_email_to_address(g, recipient, "export_workspace", s3_upload_url=s3_upload_url)
     logger.info(msg="Email dispatch complete...")
-
-
-def _generate_destination_path(g, workspace_id):
-    date = datetime.utcnow()
-    return Path(f"Exports/production-cloud/{str(date)[:10]}-{get_workspace_owner(g, workspace_id).full_name}")
-
-
-def construct_aws_object_url(bucket_name, region: str, destination_path: str, workspace_id: int):
-    return (
-        f"https://{bucket_name}.s3.{region}.amazonaws.com/{parse_path(destination_path)}/ws_{workspace_id}_export.xlsx"
-    )
-
-
-def parse_path(path_string: str):
-    return str(path_string).replace(" ", "+")

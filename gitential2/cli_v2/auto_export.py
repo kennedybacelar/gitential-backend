@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from structlog import get_logger
+from pathlib import Path
 import typer
 from gitential2.core.export import create_auto_export, process_auto_export_for_all_workspaces
 from .common import get_context
@@ -17,11 +18,12 @@ def create_auto_export_(
     weekday_numbers: str = typer.Option("0,1,2,3,4", "--weekday-numbers"),
     tempo_access_token: Optional[str] = typer.Option(None, "--tempo-access-token"),
     date_from: Optional[datetime] = typer.Option(datetime.min, "--date-from"),
+    aws_s3_location: Path = typer.Option(None, "--aws-s3-location"),
 ):
     """Create an entry in the list of workspace export schedules.
 
     Example usage:
-    g2 auto-export create 2 john@example.com jane@example.com --tempo-access-token secret123 --date-from 2023-01-01 --weekday-numbers 2,5
+    g2 auto-export create 1 john@example.com jane@example.com --tempo-access-token secret123 --date-from 2023-01-01 --weekday-numbers 2,5 --aws-s3-location exports/
     """
     weekday_numbers = [int(x) for x in weekday_numbers.split(",")]
     for n in weekday_numbers:
@@ -38,6 +40,7 @@ def create_auto_export_(
             weekday_numbers=weekday_numbers,
             date_from=date_from,
             tempo_access_token=tempo_access_token,
+            aws_s3_location=aws_s3_location,
         )
     else:
         logger.info(f"Workspace {workspace_id} not found")
