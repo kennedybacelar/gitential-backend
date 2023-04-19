@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Iterable, Optional, Tuple, cast, List
 
+from sqlalchemy import func, select, and_, or_, not_
 from structlog import get_logger
 
 from gitential2.core.workspace_common import create_workspace
@@ -10,7 +11,7 @@ from gitential2.datatypes.subscriptions import (
     SubscriptionCreate,
 )
 from gitential2.datatypes.userinfos import UserInfoCreate, UserInfoUpdate
-from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB
+from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB, InactiveUsers
 from gitential2.datatypes.workspacemember import WorkspaceRole
 from gitential2.datatypes.workspaces import WorkspaceCreate
 from .context import GitentialContext
@@ -119,6 +120,100 @@ def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
         reset_cache_for_user(g=g, reset_type=CacheRefreshType.everything, user_id=user_id)
         return result
     raise SettingsException(f"Provided user_id=[{user_id}] is invalid!")
+
+
+def get_users_ready_for_purging(g: GitentialContext):
+    users_table = g.backend.users.table  # type: ignore[attr-defined]
+    access_log_table = g.backend.access_logs.table  # type: ignore[attr-defined]
+    subscriptions_table = g.backend.subscriptions.table  # type: ignore[attr-defined]
+
+    select_last_login = (
+        select(func.max(access_log_table.c.log_time))
+        .select_from(access_log_table)
+        .where(access_log_table.c.user_id.is_(users_table.c.id))
+    )
+
+    # get_inactive_users_query = (
+    #     select(
+    #         users_table.c.id.label("user_id"),
+    #         users_table.c.is_active,
+    #         users_table.c.email,
+    #         users_table.c.first_name,
+    #         users_table.c.last_name,
+    #         subscriptions_table.c.subscription_end,
+    #         subscriptions_table.c.subscription_type,
+    #         func.max(access_log_table.c.log_time).label("last_login"),
+    #     )
+    #     .select_from(
+    #         users_table.join(access_log_table, users_table.c.id == access_log_table.c.user_id, isouter=True).join(
+    #             subscriptions_table, users_table.c.id == subscriptions_table.c.user_id, isouter=True
+    #         )
+    #     )
+    #     .where(
+    #         and_(
+    #             or_(
+    #                 and_(
+    #                     users_table.c.is_active.is_(False),
+    #                     select_last_login.scalar_subquery()
+    #                     < (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d, %H:%M:%S"),
+    #                 ),
+    #                 (
+    #                     select_last_login.scalar_subquery()
+    #                     < (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d, %H:%M:%S")
+    #                 ),
+    #             ),
+    #             not_(
+    #                 and_(
+    #                     subscriptions_table.c.subscription_type.is_("professional"),
+    #                     or_(
+    #                         subscriptions_table.c.subscription_end.is_(None),
+    #                         subscriptions_table.c.subscription_end >= datetime.now(),
+    #                     ),
+    #                 )
+    #             ),
+    #         )
+    #     )
+    #     .group_by(
+    #         users_table.c.id,
+    #         users_table.c.is_active,
+    #         users_table.c.email,
+    #         users_table.c.first_name,
+    #         users_table.c.last_name,
+    #         subscriptions_table.c.subscription_end,
+    #         subscriptions_table.c.subscription_type,
+    #     )
+    # )
+
+    get_inactive_users_query = (
+        "WITH user_selection AS "
+        "    (SELECT u.id            AS user_id, "
+        "        u.is_active, "
+        "        u.email, "
+        "        u.login, "
+        "        u.first_name, "
+        "        u.last_name, "
+        "        s.subscription_type, "
+        "        s.subscription_end, "
+        "        MAX(a.log_time) AS last_login "
+        "    FROM users u "
+        "        LEFT JOIN access_log AS a ON u.id = a.user_id "
+        "        LEFT JOIN subscriptions AS s ON u.id = s.user_id "
+        "    WHERE NOT (s.subscription_type = 'professional' AND "
+        "        (s.subscription_end IS NULL OR s.subscription_end >= NOW())) "
+        "    GROUP BY u.id, u.email, u.login, u.first_name, u.last_name, s.subscription_type, s.subscription_end) "
+        "SELECT * "
+        "FROM user_selection AS us "
+        "WHERE (us.is_active IS FALSE AND us.last_login < NOW() - INTERVAL '3 days') "
+        "OR (us.last_login < NOW() - INTERVAL '365 days'); "
+    )
+
+    engine = g.backend.users.engine  # type: ignore[attr-defined]
+    with engine.connect().execution_options() as conn:
+        rows = conn.execute(get_inactive_users_query).fetchall()
+
+    results = [InactiveUsers(**row) for row in rows]
+
+    return results
 
 
 def reset_cache_for_user(g: GitentialContext, reset_type: CacheRefreshType, user_id: int):
