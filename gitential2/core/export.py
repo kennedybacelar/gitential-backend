@@ -29,6 +29,16 @@ def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) 
     return encoded_tempo_access_token_str
 
 
+def decrypting_tempo_access_token(g: GitentialContext, encrypted_tempo_access_token: str) -> str:
+    key = g.settings.secret
+    encoded_key = base64.urlsafe_b64encode(key.encode())
+    f = Fernet(encoded_key)
+    decoded_tempo_access_token = base64.urlsafe_b64decode(encrypted_tempo_access_token.encode())
+    decrypted_tempo_access_token = f.decrypt(decoded_tempo_access_token).decode()
+
+    return decrypted_tempo_access_token
+
+
 def create_auto_export(
     g: GitentialContext,
     workspace_id: int,
@@ -49,7 +59,7 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
         lookup_tempo_worklogs(
             g=g,
             workspace_id=workspace_to_export.workspace_id,
-            tempo_access_token=export_params["tempo_access_token"],
+            tempo_access_token=decrypting_tempo_access_token(g, export_params["tempo_access_token"]),
             date_from=export_params["date_from"],
         )
     export_full_workspace(
