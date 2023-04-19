@@ -75,7 +75,8 @@ def process_auto_export_for_all_workspaces(
     workspaces_to_be_exported = g.backend.auto_export.all()
     with ThreadPoolExecutor() as executor:
         for workspace_to_export in workspaces_to_be_exported:
-            executor.submit(auto_export_workspace, g, workspace_to_export)
+            if datetime.now().weekday() in workspace_to_export.extra.get("weekday_numbers", []):
+                executor.submit(auto_export_workspace, g, workspace_to_export)
 
 
 def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list, s3_upload_url: str):

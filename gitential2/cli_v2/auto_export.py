@@ -14,18 +14,31 @@ app = typer.Typer()
 def create_auto_export_(
     workspace_id: int,
     emails: List[str],
+    weekday_numbers: str = typer.Option("0,1,2,3,4", "--weekday-numbers"),
     tempo_access_token: Optional[str] = typer.Option(None, "--tempo-access-token"),
     date_from: Optional[datetime] = typer.Option(datetime.min, "--date-from"),
 ):
     """Create an entry in the list of workspace export schedules.
 
     Example usage:
-    g2 auto-export create 2 john@example.com jane@example.com --tempo-access-token secret123 --date-from 2023-01-01
+    g2 auto-export create 2 john@example.com jane@example.com --tempo-access-token secret123 --date-from 2023-01-01 --weekday-numbers 2,5
     """
+    weekday_numbers = [int(x) for x in weekday_numbers.split(",")]
+    for n in weekday_numbers:
+        if not 0 <= n <= 6:
+            raise ValueError(f"Invalid weekday number: {n}. Must be between 0 and 6.")
+
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id)
     if workspace:
-        create_auto_export(g, workspace_id, emails, tempo_access_token=tempo_access_token, date_from=date_from)
+        create_auto_export(
+            g,
+            workspace_id,
+            emails,
+            weekday_numbers=weekday_numbers,
+            date_from=date_from,
+            tempo_access_token=tempo_access_token,
+        )
     else:
         logger.info(f"Workspace {workspace_id} not found")
         raise typer.Exit(code=1)
