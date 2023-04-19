@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Iterable, Optional, Tuple, cast, List
 
-from sqlalchemy import func, select, and_, or_, not_
 from structlog import get_logger
 
 from gitential2.core.workspace_common import create_workspace
@@ -123,16 +122,16 @@ def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
 
 
 def get_users_ready_for_purging(g: GitentialContext):
-    users_table = g.backend.users.table  # type: ignore[attr-defined]
-    access_log_table = g.backend.access_logs.table  # type: ignore[attr-defined]
-    subscriptions_table = g.backend.subscriptions.table  # type: ignore[attr-defined]
-
-    select_last_login = (
-        select(func.max(access_log_table.c.log_time))
-        .select_from(access_log_table)
-        .where(access_log_table.c.user_id.is_(users_table.c.id))
-    )
-
+    # users_table = g.backend.users.table  # type: ignore[attr-defined]
+    # access_log_table = g.backend.access_logs.table  # type: ignore[attr-defined]
+    # subscriptions_table = g.backend.subscriptions.table  # type: ignore[attr-defined]
+    #
+    # select_last_login = (
+    #     select(func.max(access_log_table.c.log_time))
+    #     .select_from(access_log_table)
+    #     .where(access_log_table.c.user_id.is_(users_table.c.id))
+    # )
+    #
     # get_inactive_users_query = (
     #     select(
     #         users_table.c.id.label("user_id"),

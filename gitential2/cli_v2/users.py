@@ -90,9 +90,9 @@ def cleanup_users():
     if is_list_not_empty(users_to_purge):
         print_results(users_to_purge)
 
-        confirm_res = typer.confirm(f"Do you really want to purge the users above from the system?")
+        confirm_res = typer.confirm("Do you really want to purge the users above from the system?")
         if confirm_res:
             for user in users_to_purge:
-                purge_user_from_database(g=g, user_id=user.user_id)
+                purge_user_from_database(user_id=user.user_id)
     else:
         logger.exception("No users found to purge!")
