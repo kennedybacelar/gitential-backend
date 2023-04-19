@@ -126,6 +126,7 @@ def get_developers(
     from_: Optional[str] = None,
     to_: Optional[str] = None,
     is_dev_active_filter_on: Optional[bool] = True,  # pylint: disable=unused-argument
+    limit: int = 10000,
 ) -> list:
     date_range = DateRange(
         start=from_ or datetime.min,
@@ -137,6 +138,7 @@ def get_developers(
         repository_ids=[repo_id] if repo_id else [],
         team_ids=[team_id] if team_id else [],
         date_range=date_range,
+        limit=limit,
     )
 
     developers = list_extended_committer_authors(g, workspace_id, author_filters).authors_list
