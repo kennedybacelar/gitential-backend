@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime
 from structlog import get_logger
 import base64
+import tempfile
 from cryptography.fernet import Fernet
 from concurrent.futures import ThreadPoolExecutor
 from gitential2.core.workspaces import get_workspace_owner
@@ -62,11 +63,13 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
             tempo_access_token=decrypting_tempo_access_token(g, export_params["tempo_access_token"]),
             date_from=export_params["date_from"],
         )
-    export_full_workspace(
-        workspace_id=workspace_to_export.workspace_id,
-        export_format=ExportFormat.xlsx,
-        date_from=export_params["date_from"],
-    )
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        export_full_workspace(
+            workspace_id=workspace_to_export.workspace_id,
+            export_format=ExportFormat.xlsx,
+            date_from=export_params["date_from"],
+            destination_directory=Path(tmp_dir),
+        )
 
 
 def process_auto_export_for_all_workspaces(
