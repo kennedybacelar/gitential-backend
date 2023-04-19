@@ -24,6 +24,8 @@ def create_auto_export_(
 
     Example usage:
     g2 auto-export create 1 john@example.com jane@example.com --tempo-access-token secret123 --date-from 2023-01-01 --weekday-numbers 2,5 --aws-s3-location exports/
+
+    Make sure that the --aws-s3-location is an existing folder in the bucket specified in settings.yml file.
     """
     weekday_numbers = [int(x) for x in weekday_numbers.split(",")]
     for n in weekday_numbers:
