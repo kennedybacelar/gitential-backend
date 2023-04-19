@@ -50,12 +50,12 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
             g=g,
             workspace_id=workspace_to_export.workspace_id,
             tempo_access_token=export_params["tempo_access_token"],
-            date_from=export_params.get("date_from"),
+            date_from=export_params["date_from"],
         )
     export_full_workspace(
         workspace_id=workspace_to_export.workspace_id,
         export_format=ExportFormat.xlsx,
-        date_from=export_params["date_from"] if export_params.get("date_from") else datetime.min,
+        date_from=export_params["date_from"],
     )
 
 

@@ -15,7 +15,7 @@ def create_auto_export_(
     workspace_id: int,
     emails: List[str],
     tempo_access_token: Optional[str] = typer.Option(None, "--tempo-access-token"),
-    date_from: Optional[datetime] = typer.Option(None, "--date-from"),
+    date_from: Optional[datetime] = typer.Option(datetime.min, "--date-from"),
 ):
     """Create an entry in the list of workspace export schedules.
 
