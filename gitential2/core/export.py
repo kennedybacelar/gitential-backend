@@ -53,6 +53,7 @@ def create_auto_export(
 
 
 def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
+    logger.info("Auto export process started for workspace", workspace_id=workspace_to_export.workspace_id)
     refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
     if workspace_to_export.extra.get("tempo_access_token"):
         export_params = workspace_to_export.extra
@@ -63,6 +64,7 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
             date_from=export_params["date_from"],
         )
     with tempfile.TemporaryDirectory() as tmp_dir:
+        logger.info(f"Export file temporarily stored in {tmp_dir}", workspace_id=workspace_to_export.workspace_id)
         export_full_workspace(
             workspace_id=workspace_to_export.workspace_id,
             export_format=ExportFormat.xlsx,
