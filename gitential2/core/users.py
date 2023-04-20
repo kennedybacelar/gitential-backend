@@ -122,66 +122,8 @@ def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
 
 
 def get_users_ready_for_purging(g: GitentialContext):
-    # users_table = g.backend.users.table  # type: ignore[attr-defined]
-    # access_log_table = g.backend.access_logs.table  # type: ignore[attr-defined]
-    # subscriptions_table = g.backend.subscriptions.table  # type: ignore[attr-defined]
-    #
-    # select_last_login = (
-    #     select(func.max(access_log_table.c.log_time))
-    #     .select_from(access_log_table)
-    #     .where(access_log_table.c.user_id.is_(users_table.c.id))
-    # )
-    #
-    # get_inactive_users_query = (
-    #     select(
-    #         users_table.c.id.label("user_id"),
-    #         users_table.c.is_active,
-    #         users_table.c.email,
-    #         users_table.c.first_name,
-    #         users_table.c.last_name,
-    #         subscriptions_table.c.subscription_end,
-    #         subscriptions_table.c.subscription_type,
-    #         func.max(access_log_table.c.log_time).label("last_login"),
-    #     )
-    #     .select_from(
-    #         users_table.join(access_log_table, users_table.c.id == access_log_table.c.user_id, isouter=True).join(
-    #             subscriptions_table, users_table.c.id == subscriptions_table.c.user_id, isouter=True
-    #         )
-    #     )
-    #     .where(
-    #         and_(
-    #             or_(
-    #                 and_(
-    #                     users_table.c.is_active.is_(False),
-    #                     select_last_login.scalar_subquery()
-    #                     < (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d, %H:%M:%S"),
-    #                 ),
-    #                 (
-    #                     select_last_login.scalar_subquery()
-    #                     < (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d, %H:%M:%S")
-    #                 ),
-    #             ),
-    #             not_(
-    #                 and_(
-    #                     subscriptions_table.c.subscription_type.is_("professional"),
-    #                     or_(
-    #                         subscriptions_table.c.subscription_end.is_(None),
-    #                         subscriptions_table.c.subscription_end >= datetime.now(),
-    #                     ),
-    #                 )
-    #             ),
-    #         )
-    #     )
-    #     .group_by(
-    #         users_table.c.id,
-    #         users_table.c.is_active,
-    #         users_table.c.email,
-    #         users_table.c.first_name,
-    #         users_table.c.last_name,
-    #         subscriptions_table.c.subscription_end,
-    #         subscriptions_table.c.subscription_type,
-    #     )
-    # )
+    exp_days_deactivation = g.backend.settings.cleanup.exp_days_after_user_deactivation
+    exp_days_last_login = g.backend.settings.cleanup.exp_days_since_user_last_login
 
     get_inactive_users_query = (
         "WITH user_selection AS "
@@ -194,17 +136,15 @@ def get_users_ready_for_purging(g: GitentialContext):
         "        MAX(a.log_time) AS last_login "
         "    FROM users u "
         "        LEFT JOIN access_log AS a ON u.id = a.user_id "
-        "        INNER JOIN subscriptions AS s ON u.id = s.user_id "
-        "    WHERE u.id NOT IN (SELECT DISTINCT u.id "
-        "                       FROM public.users AS u "
-        "                           FULL OUTER JOIN subscriptions AS s ON u.id = s.user_id "
-        "                       WHERE (s.subscription_type = 'professional' AND "
-        "                           (s.subscription_end IS NULL OR s.subscription_end >= NOW()))) "
+        "    WHERE u.id NOT IN (SELECT DISTINCT sub.user_id "
+        "                       FROM public.subscriptions AS sub "
+        "                       WHERE (sub.subscription_type = 'professional' AND "
+        "                              (sub.subscription_end IS NULL OR sub.subscription_end >= NOW()))) "
         "    GROUP BY u.id, u.email, u.first_name, u.last_name, u.login) "
         "SELECT DISTINCT us.user_id, us.is_active, us.email, us.first_name, us.last_name, us.login, us.last_login "
         "FROM user_selection AS us "
-        "WHERE (us.is_active IS FALSE AND us.last_login < NOW() - INTERVAL '3 days') "
-        "    OR (us.last_login < NOW() - INTERVAL '365 days'); "
+        f"WHERE (us.is_active IS FALSE AND us.last_login < NOW() - INTERVAL '{exp_days_deactivation} days') "
+        f"    OR (us.last_login < NOW() - INTERVAL '{exp_days_last_login} days'); "
     )
 
     engine = g.backend.users.engine  # type: ignore[attr-defined]

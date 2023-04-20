@@ -116,9 +116,9 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
             "args": (),
         }
 
-    if settings.features.enable_scheduled_data_cleanup:
-        c_day_of_week = settings.features.scheduled_data_cleanup_days_of_week
-        c_hour_of_day = settings.features.scheduled_data_cleanup_hour_of_day
+    if settings.cleanup.enable_scheduled_data_cleanup:
+        c_day_of_week = settings.cleanup.scheduled_data_cleanup_days_of_week
+        c_hour_of_day = settings.cleanup.scheduled_data_cleanup_hour_of_day
         beat_scheduled_conf["scheduled_data_cleanup"] = {
             "task": "gitential2.core.tasks.scheduled_data_cleanup",
             "schedule": crontab(day_of_week=c_day_of_week, hour=c_hour_of_day),
