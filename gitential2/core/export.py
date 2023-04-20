@@ -4,6 +4,7 @@ from datetime import datetime
 from structlog import get_logger
 import base64
 import tempfile
+from pydantic.datetime_parse import parse_datetime
 from cryptography.fernet import Fernet
 from concurrent.futures import ThreadPoolExecutor
 from gitential2.core.emails import send_email_to_address
@@ -56,6 +57,7 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
     logger.info("Auto export process started for workspace", workspace_id=workspace_to_export.workspace_id)
     refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
     export_params = workspace_to_export.extra
+    export_params["date_from"] = parse_datetime(export_params["date_from"])
     if workspace_to_export.extra.get("tempo_access_token"):
         lookup_tempo_worklogs(
             g=g,
