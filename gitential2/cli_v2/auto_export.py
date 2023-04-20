@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
-from structlog import get_logger
 from pathlib import Path
+from structlog import get_logger
 import typer
 from gitential2.core.export import create_auto_export, process_auto_export_for_all_workspaces
 from .common import get_context

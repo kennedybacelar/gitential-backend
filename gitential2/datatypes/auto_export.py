@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple
+from typing import List, Tuple
 from gitential2.datatypes.export import ExportableModel
 from .common import CoreModel, IDModelMixin, DateTimeModelMixin, ExtraFieldMixin
 
