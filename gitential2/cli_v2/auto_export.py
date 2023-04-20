@@ -29,7 +29,7 @@ def create_auto_export_(
     """
     weekday_numbers = [int(x) for x in weekday_numbers.split(",")]
     for n in weekday_numbers:
-        if not 0 <= n <= 6:
+        if not 0 <= int(n) <= 6:  # casting into int again to shut mypy errors
             raise ValueError(f"Invalid weekday number: {n}. Must be between 0 and 6.")
 
     g = get_context()
@@ -44,7 +44,7 @@ def create_auto_export_(
             tempo_access_token=tempo_access_token,
             aws_s3_location=aws_s3_location,
         )
-        print(f"Auto export successfully scheduled")
+        print("Auto export successfully scheduled")
         print_results([auto_export_schedule], format_=OutputFormat.json)
     else:
         logger.info(f"Workspace {workspace_id} not found")

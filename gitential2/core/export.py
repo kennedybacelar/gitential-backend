@@ -88,8 +88,9 @@ def process_auto_export_for_all_workspaces(
     workspaces_to_be_exported = g.backend.auto_export.all()
     with ThreadPoolExecutor() as executor:
         for workspace_to_export in workspaces_to_be_exported:
-            if g.current_time().weekday() in workspace_to_export.extra.get("weekday_numbers", []):
-                executor.submit(auto_export_workspace, g, workspace_to_export)
+            if workspace_to_export.extra:
+                if g.current_time().weekday() in workspace_to_export.extra.get("weekday_numbers", []):
+                    executor.submit(auto_export_workspace, g, workspace_to_export)
 
 
 def _get_s3_upload_url(g: GitentialContext, file_path_str: str) -> str:
