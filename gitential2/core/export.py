@@ -55,32 +55,33 @@ def create_auto_export(
 def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
     logger.info("Auto export process started for workspace", workspace_id=workspace_to_export.workspace_id)
     refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
-    export_params = workspace_to_export.extra or {}
-    export_params["date_from"] = parse_datetime(export_params["date_from"])
-    if export_params.get("tempo_access_token"):
-        logger.info(f"Running lookup tempo JIRA", workspace_id=workspace_to_export.workspace_id)
-        lookup_tempo_worklogs(
-            g=g,
-            workspace_id=workspace_to_export.workspace_id,
-            tempo_access_token=decrypting_tempo_access_token(g, export_params["tempo_access_token"]),
-            date_from=export_params["date_from"],
-            force=True,
-            rewrite_existing_worklogs=False,
+    if workspace_to_export.extra:
+        export_params = workspace_to_export.extra
+        export_params["date_from"] = parse_datetime(export_params["date_from"])
+        if export_params.get("tempo_access_token"):
+            logger.info(f"Running lookup tempo JIRA", workspace_id=workspace_to_export.workspace_id)
+            lookup_tempo_worklogs(
+                g=g,
+                workspace_id=workspace_to_export.workspace_id,
+                tempo_access_token=decrypting_tempo_access_token(g, export_params["tempo_access_token"]),
+                date_from=export_params["date_from"],
+                force=True,
+                rewrite_existing_worklogs=False,
+            )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            logger.info(f"Export file temporarily stored in {tmp_dir}", workspace_id=workspace_to_export.workspace_id)
+            export_full_workspace(
+                workspace_id=workspace_to_export.workspace_id,
+                export_format=ExportFormat.xlsx,
+                date_from=export_params["date_from"],
+                destination_directory=Path(tmp_dir),
+                upload_to_aws_s3=True,
+                aws_s3_location=Path(export_params["aws_s3_location"]),
+                prefix=_get_prefix_filename(g, workspace_to_export),
+            )
+        _send_workspace_export_data_via_email(
+            g, workspace_to_export.workspace_id, workspace_to_export.emails, str(export_params["aws_s3_location"])
         )
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        logger.info(f"Export file temporarily stored in {tmp_dir}", workspace_id=workspace_to_export.workspace_id)
-        export_full_workspace(
-            workspace_id=workspace_to_export.workspace_id,
-            export_format=ExportFormat.xlsx,
-            date_from=export_params["date_from"],
-            destination_directory=Path(tmp_dir),
-            upload_to_aws_s3=True,
-            aws_s3_location=Path(export_params["aws_s3_location"]),
-            prefix=_get_prefix_filename(g, workspace_to_export),
-        )
-    _send_workspace_export_data_via_email(
-        g, workspace_to_export.workspace_id, workspace_to_export.emails, str(export_params["aws_s3_location"])
-    )
 
 
 def process_auto_export_for_all_workspaces(  # type: ignore[return]
