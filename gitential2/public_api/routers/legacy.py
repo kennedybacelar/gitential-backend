@@ -125,12 +125,20 @@ def developers_project_level(
     workspace_id: int,
     project_id: int,
     is_dev_active_filter_on: Optional[bool] = Query(True, alias="is_dev_active_filter_on"),
+    from_: str = Query(None, alias="from"),
+    to_: str = Query(None, alias="to"),
     current_user=Depends(current_user),
     g: GitentialContext = Depends(gitential_context),
 ):  # pylint: disable=unused-argument
     check_permission(g, current_user, Entity.workspace, Action.read, workspace_id=workspace_id)
     return get_developers(
-        g=g, workspace_id=workspace_id, project_id=project_id, is_dev_active_filter_on=is_dev_active_filter_on
+        g=g,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        is_dev_active_filter_on=is_dev_active_filter_on,
+        from_=from_,
+        to_=to_,
+        limit=limit,
     )
 
 
