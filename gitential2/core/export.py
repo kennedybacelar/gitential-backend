@@ -75,6 +75,7 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
             upload_to_aws_s3=True,
             aws_s3_location=export_params.get("aws_s3_location") or _generate_aws_s3_location_path(),
         )
+    _send_workspace_export_data_via_email(g, workspace_to_export.emails)
 
 
 def process_auto_export_for_all_workspaces(
@@ -91,7 +92,8 @@ def _generate_aws_s3_location_path():
     return Path("Exports/production-cloud/")
 
 
-def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list, s3_upload_url: str):
+def _send_workspace_export_data_via_email(g: GitentialContext, recipient_list: list):
+    logger.info(msg="Working starting with Email")
     for recipient in recipient_list:
-        send_email_to_address(g, recipient, "export_workspace", s3_upload_url=s3_upload_url)
+        send_email_to_address(g, recipient, "export_workspace")
     logger.info(msg="Email dispatch complete...")
