@@ -55,9 +55,9 @@ def create_auto_export(
 def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
     logger.info("Auto export process started for workspace", workspace_id=workspace_to_export.workspace_id)
     refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
-    export_params = workspace_to_export.extra
+    export_params = workspace_to_export.extra or {}
     export_params["date_from"] = parse_datetime(export_params["date_from"])
-    if workspace_to_export.extra.get("tempo_access_token"):
+    if export_params.get("tempo_access_token"):
         lookup_tempo_worklogs(
             g=g,
             workspace_id=workspace_to_export.workspace_id,
@@ -82,7 +82,7 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
     )
 
 
-def process_auto_export_for_all_workspaces(
+def process_auto_export_for_all_workspaces(  # type: ignore[return]
     g: GitentialContext,
 ) -> bool:
     workspaces_to_be_exported = g.backend.auto_export.all()

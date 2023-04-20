@@ -27,8 +27,8 @@ def create_auto_export_(
 
     Make sure that the --aws-s3-location is an existing folder in the bucket specified in settings.yml file.
     """
-    weekday_numbers = [int(x) for x in weekday_numbers.split(",")]
-    for n in weekday_numbers:
+    weekday_numbers_list_int = [int(x) for x in weekday_numbers.split(",")]
+    for n in weekday_numbers_list_int:
         if not 0 <= int(n) <= 6:  # casting into int again to shut mypy errors
             raise ValueError(f"Invalid weekday number: {n}. Must be between 0 and 6.")
 
@@ -39,7 +39,7 @@ def create_auto_export_(
             g,
             workspace_id,
             emails,
-            weekday_numbers=weekday_numbers,
+            weekday_numbers=weekday_numbers_list_int,
             date_from=date_from,
             tempo_access_token=tempo_access_token,
             aws_s3_location=aws_s3_location,
