@@ -18,7 +18,7 @@ def create_auto_export_(
     weekday_numbers: str = typer.Option("0,1,2,3,4", "--weekday-numbers"),
     tempo_access_token: Optional[str] = typer.Option(None, "--tempo-access-token"),
     date_from: Optional[datetime] = typer.Option(datetime.min, "--date-from"),
-    aws_s3_location: Path = typer.Option(None, "--aws-s3-location"),
+    aws_s3_location: Path = typer.Option(Path("Exports/production-cloud"), "--aws-s3-location"),
 ):
     """Create an entry in the list of workspace export schedules.
 

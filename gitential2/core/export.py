@@ -12,6 +12,7 @@ from gitential2.datatypes.refresh import RefreshStrategy
 from gitential2.core.context import GitentialContext
 from gitential2.datatypes import AutoExportCreate, AutoExportInDB
 from gitential2.core.refresh_v2 import refresh_workspace
+from gitential2.utils import add_url_params
 
 # pylint: disable=import-outside-toplevel,cyclic-import
 from gitential2.cli_v2.export import export_full_workspace, ExportFormat
@@ -73,9 +74,11 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
             date_from=export_params["date_from"],
             destination_directory=Path(tmp_dir),
             upload_to_aws_s3=True,
-            aws_s3_location=export_params.get("aws_s3_location") or _generate_aws_s3_location_path(),
+            aws_s3_location=Path(export_params["aws_s3_location"]),
         )
-    _send_workspace_export_data_via_email(g, workspace_to_export.emails)
+    _send_workspace_export_data_via_email(
+        g, workspace_to_export.workspace_id, workspace_to_export.emails, str(export_params["aws_s3_location"])
+    )
 
 
 def process_auto_export_for_all_workspaces(
@@ -88,12 +91,16 @@ def process_auto_export_for_all_workspaces(
                 executor.submit(auto_export_workspace, g, workspace_to_export)
 
 
-def _generate_aws_s3_location_path():
-    return Path("Exports/production-cloud/")
+def _get_s3_upload_url(g: GitentialContext, file_path_str: str):
+    bucket_name = g.settings.connections.s3.bucket_name
+    return f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?prefix={file_path_str}/&showversions=false"
 
 
-def _send_workspace_export_data_via_email(g: GitentialContext, recipient_list: list):
-    logger.info(msg="Working starting with Email")
+def _send_workspace_export_data_via_email(
+    g: GitentialContext, workspace_id: int, recipient_list: list, file_path_str: str
+):
+    logger.info("Starting Email dispatch process")
+    s3_upload_url = _get_s3_upload_url(g, file_path_str)
     for recipient in recipient_list:
-        send_email_to_address(g, recipient, "export_workspace")
-    logger.info(msg="Email dispatch complete...")
+        send_email_to_address(g, recipient, "export_workspace", workspace_id=workspace_id, s3_upload_url=s3_upload_url)
+    logger.info(msg="Email dispatch complete")
