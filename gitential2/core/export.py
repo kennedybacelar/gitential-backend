@@ -49,7 +49,7 @@ def create_auto_export(
     extra = dict(kwargs)
     if extra.get("tempo_access_token"):
         extra["tempo_access_token"] = encrypting_tempo_access_token(g, extra["tempo_access_token"])
-    g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=extra))
+    return g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=extra))
 
 
 def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):

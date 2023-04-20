@@ -4,7 +4,7 @@ from pathlib import Path
 from structlog import get_logger
 import typer
 from gitential2.core.export import create_auto_export, process_auto_export_for_all_workspaces
-from .common import get_context
+from .common import get_context, print_results, OutputFormat
 
 
 logger = get_logger(__name__)
@@ -35,7 +35,7 @@ def create_auto_export_(
     g = get_context()
     workspace = g.backend.workspaces.get(id_=workspace_id)
     if workspace:
-        create_auto_export(
+        auto_export_schedule = create_auto_export(
             g,
             workspace_id,
             emails,
@@ -44,6 +44,8 @@ def create_auto_export_(
             tempo_access_token=tempo_access_token,
             aws_s3_location=aws_s3_location,
         )
+        print(f"Auto export successfully scheduled")
+        print_results([auto_export_schedule], format_=OutputFormat.json)
     else:
         logger.info(f"Workspace {workspace_id} not found")
         raise typer.Exit(code=1)

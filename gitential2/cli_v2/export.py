@@ -167,7 +167,7 @@ def _upload_to_aws_s3(list_of_files_to_be_uploaded_to_s3: List[str], aws_s3_loca
 
 
 def _get_exporter(
-    export_format: ExportFormat, destination_directory: Path, workspace_id: int, prefix: str = None
+    export_format: ExportFormat, destination_directory: Path, workspace_id: int, prefix: Optional[str] = None
 ) -> Exporter:
     schema_name = get_schema_name(workspace_id)
     prefix = prefix or f"{schema_name}_"
