@@ -52,13 +52,21 @@ def public_schema_migrations() -> MigrationList:
         MigrationRevision(
             revision_id="001",
             steps=[
-                # Rename existing table to a temporary name
-                "ALTER TABLE auto_export RENAME TO auto_export_old;",
-                # Create the new table with the desired structure
-                "CREATE TABLE auto_export (id serial4 NOT NULL, workspace_id int4 NOT NULL, emails json NULL, created_at timestamp NOT NULL, updated_at timestamp NOT NULL, extra json NULL, CONSTRAINT auto_export_pkey PRIMARY KEY (id), CONSTRAINT auto_export_workspace_id_key UNIQUE (workspace_id));",
-                # Drop the old table
-                # Skipping data copy because the old table is empty - never has been used in production
-                "DROP TABLE auto_export_old;",
+                # Add columns to the existing table
+                "ALTER TABLE public.auto_export ADD COLUMN IF NOT EXISTS emails json;",
+                "ALTER TABLE public.auto_export ADD COLUMN IF NOT EXISTS extra json;",
+                # Drop existing columns from the table
+                "ALTER TABLE public.auto_export DROP COLUMN IF EXISTS cron_schedule_time;",
+                "ALTER TABLE public.auto_export DROP COLUMN IF EXISTS tempo_access_token;",
+                "ALTER TABLE public.auto_export DROP COLUMN IF EXISTS is_exported;",
+                # Drop existing primary key constraint
+                "ALTER TABLE public.auto_export DROP CONSTRAINT IF EXISTS auto_export_pkey;",
+                # Add a new primary key constraint
+                "ALTER TABLE public.auto_export ADD CONSTRAINT auto_export_pkey PRIMARY KEY (id);",
+                # Drop existing foreign key constraint
+                "ALTER TABLE public.auto_export DROP CONSTRAINT IF EXISTS auto_export_workspace_id_fkey;",
+                # Add a new unique constraint
+                "ALTER TABLE public.auto_export ADD CONSTRAINT auto_export_workspace_id_key UNIQUE (workspace_id);",
             ],
         ),
     ]
