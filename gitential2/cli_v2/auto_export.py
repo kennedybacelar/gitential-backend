@@ -51,6 +51,15 @@ def create_auto_export_(
         raise typer.Exit(code=1)
 
 
+@app.command("delete")
+def delete_auto_export_schedule(workspace_id: int):
+    """Deletes any existing workspace auto-export schedule for the given workspace_id"""
+    g = get_context()
+
+    count_ws_deleted = g.backend.auto_export.delete_rows_for_workspace(workspace_id)
+    print(f"{count_ws_deleted} workspace(s) deleted")
+
+
 @app.command("run")
 def trigger_auto_export_for_all_workspaces():
     g = get_context()
