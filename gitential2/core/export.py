@@ -12,9 +12,6 @@ from gitential2.core.context import GitentialContext
 from gitential2.datatypes import AutoExportCreate, AutoExportInDB
 from gitential2.core.refresh_v2 import refresh_workspace
 
-# pylint: disable=import-outside-toplevel,cyclic-import
-from gitential2.cli_v2.export import export_full_workspace, ExportFormat
-from gitential2.cli_v2.jira import lookup_tempo_worklogs
 
 logger = get_logger(__name__)
 
@@ -53,6 +50,11 @@ def create_auto_export(
 
 
 def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
+
+    # pylint: disable=import-outside-toplevel,cyclic-import
+    from gitential2.cli_v2.export import export_full_workspace, ExportFormat
+    from gitential2.cli_v2.jira import lookup_tempo_worklogs
+
     logger.info("Auto export process started for workspace", workspace_id=workspace_to_export.workspace_id)
     refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
     if workspace_to_export.extra:
