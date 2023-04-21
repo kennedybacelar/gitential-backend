@@ -48,7 +48,19 @@ def public_schema_migrations() -> MigrationList:
                 "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(256);",
                 "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS features JSON;",
             ],
-        )
+        ),
+        MigrationRevision(
+            revision_id="001",
+            steps=[
+                # Rename existing table to a temporary name
+                "ALTER TABLE auto_export RENAME TO auto_export_old;",
+                # Create the new table with the desired structure
+                "CREATE TABLE auto_export (id serial4 NOT NULL, workspace_id int4 NOT NULL, emails json NULL, created_at timestamp NOT NULL, updated_at timestamp NOT NULL, extra json NULL, CONSTRAINT auto_export_pkey PRIMARY KEY (id), CONSTRAINT auto_export_workspace_id_key UNIQUE (workspace_id));",
+                # Drop the old table
+                # Skipping data copy because the old table is empty - never has been used in production
+                "DROP TABLE auto_export_old;",
+            ],
+        ),
     ]
 
 

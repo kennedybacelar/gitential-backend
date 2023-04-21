@@ -64,8 +64,8 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
                 g=g,
                 workspace_id=workspace_to_export.workspace_id,
                 tempo_access_token=decrypting_tempo_access_token(g, export_params["tempo_access_token"]),
-                date_from=export_params["date_from"],
                 force=True,
+                date_from=export_params["date_from"],
                 rewrite_existing_worklogs=False,
             )
         with tempfile.TemporaryDirectory() as tmp_dir:
