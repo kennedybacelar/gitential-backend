@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 
 def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) -> str:
-    key = g.settings.secret
+    key = g.settings.connections.s3.secret_key
     encoded_key = base64.urlsafe_b64encode(key.encode())
     f = Fernet(encoded_key)
     encoded_tempo_access_token = f.encrypt(tempo_access_token.encode())
@@ -27,7 +27,7 @@ def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) 
 
 
 def decrypting_tempo_access_token(g: GitentialContext, encrypted_tempo_access_token: str) -> str:
-    key = g.settings.secret
+    key = g.settings.secret_key
     encoded_key = base64.urlsafe_b64encode(key.encode())
     f = Fernet(encoded_key)
     decoded_tempo_access_token = base64.urlsafe_b64decode(encrypted_tempo_access_token.encode())
