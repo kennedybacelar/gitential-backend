@@ -105,7 +105,7 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
     if settings.auto_export.start_auto_export:
         beat_scheduled_conf["schedule_auto_export"] = {
             "task": "gitential2.core.tasks.schedule_auto_export",
-            "schedule": crontab(minute=0, hour=12, day_of_week="*"),
+            "schedule": crontab(minute=0, hour=11, day_of_week="*"),
             "args": (),
         }
 
