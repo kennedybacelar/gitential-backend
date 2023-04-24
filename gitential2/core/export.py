@@ -1,110 +1,116 @@
 from typing import Optional, List
 from pathlib import Path
-from datetime import datetime
+import base64
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from structlog import get_logger
-from gitential2.core.workspaces import get_workspace_owner
+from pydantic.datetime_parse import parse_datetime
+from cryptography.fernet import Fernet
 from gitential2.core.emails import send_email_to_address
-from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
+from gitential2.datatypes.refresh import RefreshStrategy
 from gitential2.core.context import GitentialContext
 from gitential2.datatypes import AutoExportCreate, AutoExportInDB
 from gitential2.core.refresh_v2 import refresh_workspace
 
+
 logger = get_logger(__name__)
+
+
+def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) -> str:
+    key = g.settings.secret
+    encoded_key = base64.urlsafe_b64encode(key.encode())
+    f = Fernet(encoded_key)
+    encoded_tempo_access_token = f.encrypt(tempo_access_token.encode())
+    encoded_tempo_access_token_str = base64.urlsafe_b64encode(encoded_tempo_access_token).decode("utf-8")
+
+    return encoded_tempo_access_token_str
+
+
+def decrypting_tempo_access_token(g: GitentialContext, encrypted_tempo_access_token: str) -> str:
+    key = g.settings.secret
+    encoded_key = base64.urlsafe_b64encode(key.encode())
+    f = Fernet(encoded_key)
+    decoded_tempo_access_token = base64.urlsafe_b64decode(encrypted_tempo_access_token.encode())
+    decrypted_tempo_access_token = f.decrypt(decoded_tempo_access_token).decode()
+
+    return decrypted_tempo_access_token
 
 
 def create_auto_export(
     g: GitentialContext,
     workspace_id: int,
-    cron_schedule_time: int,
-    tempo_access_token: Optional[str],
     emails: List[str],
+    **kwargs,
 ) -> Optional[AutoExportInDB]:
-    """
-    @desc: create a new scheduled automatic workspace export for a workspace.
-    @args: workspace_id, cron_schedule_time, tempo_access_token, emails (List of email recipients)
-    """
-    # Data input validation
-    auto_export_data = AutoExportCreate(
-        workspace_id=workspace_id,
-        cron_schedule_time=cron_schedule_time,
-        tempo_access_token=tempo_access_token,
-        emails=emails,
-    )
-    schedule_already_exist = g.backend.auto_export.schedule_exists(workspace_id, cron_schedule_time)
-    return None if schedule_already_exist else g.backend.auto_export.create(auto_export_data)
+
+    extra = dict(kwargs)
+    if extra.get("tempo_access_token"):
+        extra["tempo_access_token"] = encrypting_tempo_access_token(g, extra["tempo_access_token"])
+    return g.backend.auto_export.create(AutoExportCreate(workspace_id=workspace_id, emails=emails, extra=extra))
 
 
-def auto_export_task(
-    g: GitentialContext,
-) -> None:
+def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportInDB):
+
     # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.cli_v2.export import export_full_workspace, ExportFormat
     from gitential2.cli_v2.jira import lookup_tempo_worklogs
 
-    for workspace in g.backend.auto_export.all():
-        if workspace.cron_schedule_time == datetime.now().hour and not workspace.is_exported:
-            workspace_id = workspace.workspace_id
-            # Refresh full workspace
-            logger.info(msg=f"Starting full workspace refresh for workspace {workspace_id}....")
-            refresh_workspace(g, workspace_id, RefreshStrategy.one_by_one, RefreshType.everything, False)
-
-            # Refresh Tempo Data
-            logger.info(msg=f"Starting Tempo data refresh for workspace {workspace_id}....")
-            if workspace.tempo_access_token:
-                lookup_tempo_worklogs(
-                    g=g,
-                    workspace_id=workspace_id,
-                    tempo_access_token=workspace.tempo_access_token,
-                    force=True,
-                    date_from=datetime.min,
-                    rewrite_existing_worklogs=False,
-                )
-
-            # Export full workspace
-            logger.info(msg=f"Starting full workspace export for workspace {workspace_id}....")
+    logger.info("Auto export process started for workspace", workspace_id=workspace_to_export.workspace_id)
+    refresh_workspace(g=g, workspace_id=workspace_to_export.workspace_id, strategy=RefreshStrategy.one_by_one)
+    if workspace_to_export.extra:
+        export_params = workspace_to_export.extra
+        export_params["date_from"] = parse_datetime(export_params["date_from"])
+        if export_params.get("tempo_access_token"):
+            logger.info("Running lookup tempo JIRA", workspace_id=workspace_to_export.workspace_id)
+            lookup_tempo_worklogs(
+                g=g,
+                workspace_id=workspace_to_export.workspace_id,
+                tempo_access_token=decrypting_tempo_access_token(g, export_params["tempo_access_token"]),
+                force=True,
+                date_from=export_params["date_from"],
+                rewrite_existing_worklogs=False,
+            )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            logger.info(f"Export file temporarily stored in {tmp_dir}", workspace_id=workspace_to_export.workspace_id)
             export_full_workspace(
-                workspace_id=workspace_id,
+                workspace_id=workspace_to_export.workspace_id,
                 export_format=ExportFormat.xlsx,
-                date_from=datetime.now().min,
+                date_from=export_params["date_from"],
+                destination_directory=Path(tmp_dir),
                 upload_to_aws_s3=True,
-                aws_s3_location=_generate_destination_path(g, workspace_id),
+                aws_s3_location=Path(export_params["aws_s3_location"]),
+                prefix=_get_prefix_filename(g, workspace_to_export),
             )
-            logger.info(msg="Storage on AWS s3 Complete!:).......")
-
-            # Send Exported Sheet via Email
-            logger.info(msg="Starting Email Dispatch.......")
-            s3_upload_url = construct_aws_object_url(
-                g.settings.connections.s3.bucket_name,
-                "eu-west-2",
-                _generate_destination_path(g, workspace_id),
-                workspace_id,
-            )
-            _dispatch_workspace_data_via_email(g, workspace.emails[0].split(","), s3_upload_url)
-
-            # Update the export schedule row to avoid double exports
-            logger.info(msg=f"Updating Export Schedule for workspace {workspace_id}....")
-            workspace.is_exported = True
-            g.backend.auto_export.create_or_update(workspace)
-
-            logger.info(msg="Export Completed! :)")
+        _send_workspace_export_data_via_email(
+            g, workspace_to_export.workspace_id, workspace_to_export.emails, str(export_params["aws_s3_location"])
+        )
 
 
-def _dispatch_workspace_data_via_email(g: GitentialContext, recipient_list: list, s3_upload_url: str):
+def process_auto_export_for_all_workspaces(  # type: ignore[return]
+    g: GitentialContext,
+) -> bool:
+    workspaces_to_be_exported = g.backend.auto_export.all()
+    with ThreadPoolExecutor() as executor:
+        for workspace_to_export in workspaces_to_be_exported:
+            if workspace_to_export.extra:
+                if g.current_time().weekday() in workspace_to_export.extra.get("weekday_numbers", []):
+                    executor.submit(auto_export_workspace, g, workspace_to_export)
+
+
+def _get_s3_upload_url(g: GitentialContext, file_path_str: str) -> str:
+    bucket_name = g.settings.connections.s3.bucket_name
+    return f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?prefix={file_path_str}/&showversions=false"
+
+
+def _get_prefix_filename(g: GitentialContext, workspace_to_export: AutoExportInDB):
+    return f"{g.current_time().strftime('%Y%m%d')}_ws_{workspace_to_export.workspace_id}_auto_"
+
+
+def _send_workspace_export_data_via_email(
+    g: GitentialContext, workspace_id: int, recipient_list: list, file_path_str: str
+):
+    logger.info("Starting Email dispatch process")
+    s3_upload_url = _get_s3_upload_url(g, file_path_str)
     for recipient in recipient_list:
-        send_email_to_address(g, recipient, "export_workspace", s3_upload_url=s3_upload_url)
-    logger.info(msg="Email dispatch complete...")
-
-
-def _generate_destination_path(g, workspace_id):
-    date = datetime.utcnow()
-    return Path(f"Exports/production-cloud/{str(date)[:10]}-{get_workspace_owner(g, workspace_id).full_name}")
-
-
-def construct_aws_object_url(bucket_name, region: str, destination_path: str, workspace_id: int):
-    return (
-        f"https://{bucket_name}.s3.{region}.amazonaws.com/{parse_path(destination_path)}/ws_{workspace_id}_export.xlsx"
-    )
-
-
-def parse_path(path_string: str):
-    return str(path_string).replace(" ", "+")
+        send_email_to_address(g, recipient, "export_workspace", workspace_id=workspace_id, s3_upload_url=s3_upload_url)
+    logger.info(msg="Email dispatch complete")
