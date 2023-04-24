@@ -27,7 +27,7 @@ def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) 
 
 
 def decrypting_tempo_access_token(g: GitentialContext, encrypted_tempo_access_token: str) -> str:
-    key = g.settings.secret_key
+    key = g.settings.connections.s3.secret_key
     encoded_key = base64.urlsafe_b64encode(key.encode())
     f = Fernet(encoded_key)
     decoded_tempo_access_token = base64.urlsafe_b64decode(encrypted_tempo_access_token.encode())
