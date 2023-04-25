@@ -18,22 +18,26 @@ logger = get_logger(__name__)
 
 def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) -> str:
     key = g.settings.connections.s3.secret_key
-    encoded_key = base64.urlsafe_b64encode(key.encode())
-    f = Fernet(encoded_key)
-    encoded_tempo_access_token = f.encrypt(tempo_access_token.encode())
-    encoded_tempo_access_token_str = base64.urlsafe_b64encode(encoded_tempo_access_token).decode("utf-8")
+    if key:
+        encoded_key = base64.urlsafe_b64encode(key.encode())
+        f = Fernet(encoded_key)
+        encoded_tempo_access_token = f.encrypt(tempo_access_token.encode())
+        encoded_tempo_access_token_str = base64.urlsafe_b64encode(encoded_tempo_access_token).decode("utf-8")
+        return encoded_tempo_access_token_str
+    logger.info("s3.secret_key not found")
+    return None
 
-    return encoded_tempo_access_token_str
 
-
-def decrypting_tempo_access_token(g: GitentialContext, encrypted_tempo_access_token: str) -> str:
+def decrypting_tempo_access_token(g: GitentialContext, encrypted_tempo_access_token: str) -> Optional[str]:
     key = g.settings.connections.s3.secret_key
-    encoded_key = base64.urlsafe_b64encode(key.encode())
-    f = Fernet(encoded_key)
-    decoded_tempo_access_token = base64.urlsafe_b64decode(encrypted_tempo_access_token.encode())
-    decrypted_tempo_access_token = f.decrypt(decoded_tempo_access_token).decode()
-
-    return decrypted_tempo_access_token
+    if key:
+        encoded_key = base64.urlsafe_b64encode(key.encode())
+        f = Fernet(encoded_key)
+        decoded_tempo_access_token = base64.urlsafe_b64decode(encrypted_tempo_access_token.encode())
+        decrypted_tempo_access_token = f.decrypt(decoded_tempo_access_token).decode()
+        return decrypted_tempo_access_token
+    logger.info("s3.secret_key not found")
+    return None
 
 
 def create_auto_export(
