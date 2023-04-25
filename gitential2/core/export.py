@@ -16,7 +16,7 @@ from gitential2.core.refresh_v2 import refresh_workspace
 logger = get_logger(__name__)
 
 
-def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) -> str:
+def encrypting_tempo_access_token(g: GitentialContext, tempo_access_token: str) -> Optional[str]:
     key = g.settings.connections.s3.secret_key
     if key:
         encoded_key = base64.urlsafe_b64encode(key.encode())
@@ -66,14 +66,16 @@ def auto_export_workspace(g: GitentialContext, workspace_to_export: AutoExportIn
         export_params["date_from"] = parse_datetime(export_params["date_from"])
         if export_params.get("tempo_access_token"):
             logger.info("Running lookup tempo JIRA", workspace_id=workspace_to_export.workspace_id)
-            lookup_tempo_worklogs(
-                g=g,
-                workspace_id=workspace_to_export.workspace_id,
-                tempo_access_token=decrypting_tempo_access_token(g, export_params["tempo_access_token"]),
-                force=True,
-                date_from=export_params["date_from"],
-                rewrite_existing_worklogs=False,
-            )
+            encrypted_tempo_access_token = decrypting_tempo_access_token(g, export_params["tempo_access_token"])
+            if encrypted_tempo_access_token:
+                lookup_tempo_worklogs(
+                    g=g,
+                    workspace_id=workspace_to_export.workspace_id,
+                    tempo_access_token=encrypted_tempo_access_token,
+                    force=True,
+                    date_from=export_params["date_from"],
+                    rewrite_existing_worklogs=False,
+                )
         with tempfile.TemporaryDirectory() as tmp_dir:
             logger.info(f"Export file temporarily stored in {tmp_dir}", workspace_id=workspace_to_export.workspace_id)
             export_full_workspace(
