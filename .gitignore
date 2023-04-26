@@ -111,3 +111,7 @@ tmp/
 
 .mypy_cache/
 
+# Files generated after running celery beat
+celerybeat-schedule.bak
+celerybeat-schedule.dat
+celerybeat-schedule.dir

@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import cast, List
+from typing import cast, List, Optional
 import typer
 import boto3
 from structlog import get_logger
@@ -31,6 +31,7 @@ def export_full_workspace(
     date_from: datetime = datetime.min,
     upload_to_aws_s3: bool = typer.Option(False, "--upload-to-aws-s3"),
     aws_s3_location: Path = Path("export-test/"),
+    prefix: Optional[str] = None,
 ):
     validate_directory_exists(destination_directory)
 
@@ -86,7 +87,7 @@ def export_full_workspace(
         else:
             return False
 
-    exporter = _get_exporter(export_format, destination_directory, workspace_id)
+    exporter = _get_exporter(export_format, destination_directory, workspace_id, prefix)
 
     for name, backend_repository in data_to_export:
         backend_repository = cast(BaseWorkspaceScopedRepository, backend_repository)
@@ -165,9 +166,11 @@ def _upload_to_aws_s3(list_of_files_to_be_uploaded_to_s3: List[str], aws_s3_loca
         client.upload_file(file, g.settings.connections.s3.bucket_name, str(upload_file_key))
 
 
-def _get_exporter(export_format: ExportFormat, destination_directory: Path, workspace_id: int) -> Exporter:
+def _get_exporter(
+    export_format: ExportFormat, destination_directory: Path, workspace_id: int, prefix: Optional[str] = None
+) -> Exporter:
     schema_name = get_schema_name(workspace_id)
-    prefix = f"{schema_name}_"
+    prefix = prefix or f"{schema_name}_"
     if export_format == ExportFormat.csv:
         return CSVExporter(destination_directory, prefix)
     elif export_format == ExportFormat.json:

@@ -38,6 +38,7 @@ from .routers import (
     charts,
     thumbnails,
 )
+from ..datatypes.middlewares import ClickjackingMiddleware
 
 logger = get_logger(__name__)
 
@@ -70,6 +71,7 @@ def _configure_cors(app: FastAPI):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(ClickjackingMiddleware)
 
 
 def _configure_routes(app: FastAPI):

@@ -48,7 +48,27 @@ def public_schema_migrations() -> MigrationList:
                 "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(256);",
                 "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS features JSON;",
             ],
-        )
+        ),
+        MigrationRevision(
+            revision_id="001",
+            steps=[
+                # Add columns to the existing table
+                "ALTER TABLE public.auto_export ADD COLUMN IF NOT EXISTS emails json;",
+                "ALTER TABLE public.auto_export ADD COLUMN IF NOT EXISTS extra json;",
+                # Drop existing columns from the table
+                "ALTER TABLE public.auto_export DROP COLUMN IF EXISTS cron_schedule_time;",
+                "ALTER TABLE public.auto_export DROP COLUMN IF EXISTS tempo_access_token;",
+                "ALTER TABLE public.auto_export DROP COLUMN IF EXISTS is_exported;",
+                # Drop existing primary key constraint
+                "ALTER TABLE public.auto_export DROP CONSTRAINT IF EXISTS auto_export_pkey;",
+                # Add a new primary key constraint
+                "ALTER TABLE public.auto_export ADD CONSTRAINT auto_export_pkey PRIMARY KEY (id);",
+                # Drop existing foreign key constraint
+                "ALTER TABLE public.auto_export DROP CONSTRAINT IF EXISTS auto_export_workspace_id_fkey;",
+                # Add a new unique constraint
+                "ALTER TABLE public.auto_export ADD CONSTRAINT auto_export_workspace_id_key UNIQUE (workspace_id);",
+            ],
+        ),
     ]
 
 

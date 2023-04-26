@@ -105,7 +105,7 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
     if settings.auto_export.start_auto_export:
         beat_scheduled_conf["schedule_auto_export"] = {
             "task": "gitential2.core.tasks.schedule_auto_export",
-            "schedule": crontab(hour="*/1"),
+            "schedule": crontab(minute=0, hour=11, day_of_week="*"),
             "args": (),
         }
 
@@ -248,11 +248,11 @@ def refresh_materialized_views(settings: Optional[GitentialSettings] = None):
 def schedule_auto_export(settings: Optional[GitentialSettings] = None):
     # pylint: disable=import-outside-toplevel,cyclic-import
     from gitential2.core.context import init_context_from_settings
-    from gitential2.core.export import auto_export_task
+    from gitential2.core.export import process_auto_export_for_all_workspaces
 
     settings = settings or load_settings()
     g = init_context_from_settings(settings)
-    auto_export_task(g)
+    process_auto_export_for_all_workspaces(g)
 
 
 @celery_app.task

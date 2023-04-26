@@ -278,7 +278,9 @@ def lookup_tempo_worklogs(
                 continue
 
             if jira_issue_id not in worklogs_for_issue:
-                worklogs_for_issue[jira_issue_id] = _get_tempo_worklogs_for_issue(tempo_access_token, jira_issue_id)
+                worklogs_for_issue[jira_issue_id] = (
+                    _get_tempo_worklogs_for_issue(tempo_access_token, jira_issue_id) or {}
+                )
 
             results_worklogs_for_issue = worklogs_for_issue[jira_issue_id].get("results", [])
 
@@ -313,14 +315,15 @@ def lookup_tempo_worklogs(
             print("-------------------------------------------------------")
 
 
-def _get_tempo_worklogs_for_issue(tempo_access_token: str, jira_issue_id) -> dict:
+def _get_tempo_worklogs_for_issue(tempo_access_token: str, jira_issue_id) -> Optional[dict]:
     response = requests.get(
         f"https://api.tempo.io/core/3/worklogs?issue={jira_issue_id}",
         headers={"Authorization": f"Bearer {tempo_access_token}"},
         timeout=300,
     )
-    response.raise_for_status()
-    return response.json()
+    if response.status_code == 200:
+        return response.json()
+    return None
 
 
 def _author_callback(

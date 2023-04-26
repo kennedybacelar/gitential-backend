@@ -1,5 +1,5 @@
 name: export_workspace
-subject: "Workspace Exports"
+subject: "Workspace {{ workspace_id }} Data Export Available for Download"
 body_html: |
   <div dir="ltr">
     <div>

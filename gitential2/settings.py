@@ -76,6 +76,7 @@ class S3Settings(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     bucket_name: Optional[str] = None
+    secret_key: Optional[str] = None
 
 
 class ConnectionSettings(BaseModel):

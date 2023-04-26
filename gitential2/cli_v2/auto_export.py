@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import Optional, List
+from pathlib import Path
 from structlog import get_logger
 import typer
-from gitential2.core.export import create_auto_export
-from .common import get_context
+from gitential2.core.export import create_auto_export, process_auto_export_for_all_workspaces
+from .common import get_context, print_results, OutputFormat
 
 
 logger = get_logger(__name__)
@@ -11,37 +13,54 @@ app = typer.Typer()
 
 @app.command("create")
 def create_auto_export_(
-    workspace_id: int, cron_schedule_time: int, emails: List[str], tempo_access_token: Optional[str] = None
+    workspace_id: int,
+    emails: List[str],
+    weekday_numbers: str = typer.Option("0,1,2,3,4", "--weekday-numbers"),
+    tempo_access_token: Optional[str] = typer.Option(None, "--tempo-access-token"),
+    date_from: Optional[datetime] = typer.Option(datetime.min, "--date-from"),
+    aws_s3_location: Path = typer.Option(Path("Exports/production-cloud"), "--aws-s3-location"),
 ):
-    """
-    With this command you can create a new scheduled automatic workspace export for a workspace. This schedule will only be created for a workspace that exists, and for a cron schedule time that hasn't already been created for the workspace.
+    """Create an entry in the list of workspace export schedules.
 
-    @args:
-    <workspace_id>: The id of the workspace to be added
-    <cron_schedule_time>: The time of day to launch the export
-    <tempo_access_token>: The tempo access token if tempo is being used by the workspace
-    <emails>: The list of email recipients
+    Example usage:
+    g2 auto-export create 1 john@example.com jane@example.com --tempo-access-token secret123 --date-from 2023-01-01 --weekday-numbers 2,5 --aws-s3-location exports/
 
-    @example:
-    $ g2 auto-export create <workspace_id> <cron_schedule_hour> <tempo_access_token> <emails>
+    Make sure that the --aws-s3-location is an existing folder in the bucket specified in settings.yml file.
     """
+    weekday_numbers_list_int = [int(x) for x in weekday_numbers.split(",")]
+    for n in weekday_numbers_list_int:
+        if not 0 <= int(n) <= 6:  # casting into int again to shut mypy errors
+            raise ValueError(f"Invalid weekday number: {n}. Must be between 0 and 6.")
+
+    g = get_context()
+    workspace = g.backend.workspaces.get(id_=workspace_id)
+    if workspace:
+        auto_export_schedule = create_auto_export(
+            g,
+            workspace_id,
+            emails,
+            weekday_numbers=weekday_numbers_list_int,
+            date_from=date_from,
+            tempo_access_token=tempo_access_token,
+            aws_s3_location=aws_s3_location,
+        )
+        print("Auto export successfully scheduled")
+        print_results([auto_export_schedule], format_=OutputFormat.json)
+    else:
+        logger.info(f"Workspace {workspace_id} not found")
+        raise typer.Exit(code=1)
+
+
+@app.command("delete")
+def delete_auto_export_schedule(workspace_id: int):
+    """Deletes any existing workspace auto-export schedule for the given workspace_id"""
     g = get_context()
 
-    # Validate CLI Inputs
-    if cron_schedule_time > 23 or cron_schedule_time < 0:
-        logger.error(error=f"{cron_schedule_time} is not a valid value for cron_schedule_time")
-        raise typer.Exit(code=1)
+    count_ws_deleted = g.backend.auto_export.delete_rows_for_workspace(workspace_id)
+    print(f"{count_ws_deleted} workspace(s) deleted")
 
-    # Validate Workspace ID
-    if workspace_id not in [workspace.id for workspace in g.backend.workspaces.all()]:
-        logger.error(error=f"Workspace id {workspace_id} does not exist")
-        raise typer.Exit(code=1)
 
-    auto_export_data = create_auto_export(g, workspace_id, cron_schedule_time, tempo_access_token, emails)
-
-    if auto_export_data is None:
-        logger.error(error=f"Schedule already exists on workspace {workspace_id}")
-        raise typer.Exit(code=1)
-
-    logger.info(msg=f"New schedule created for workspace {workspace_id}")
-    logger.info(msg=auto_export_data)
+@app.command("run")
+def trigger_auto_export_for_all_workspaces():
+    g = get_context()
+    process_auto_export_for_all_workspaces(g)
