@@ -12,8 +12,6 @@ class InactiveUsers(CoreModel):
     email: Optional[str]
     first_name: Optional[str]
     last_name: Optional[str]
-    subscription_type: str
-    subscription_end: Optional[datetime]
     last_login: Optional[datetime]
 
 

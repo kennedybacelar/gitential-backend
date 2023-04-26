@@ -94,5 +94,7 @@ def cleanup_users():
         if confirm_res:
             for user in users_to_purge:
                 purge_user_from_database(user_id=user.user_id)
+        else:
+            logger.exception("Dropping collected users. Cleanup aborted.")
     else:
         logger.exception("No users found to purge!")
