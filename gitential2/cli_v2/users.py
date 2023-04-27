@@ -66,9 +66,7 @@ def purge_user_from_database(user_id: int):
             f"Are you really sure you want to purge the user with id=[{user.id}] from the database?"
         )
         if confirm_res:
-            purged_user = g.backend.purge_user_from_database(user_id=user_id)
-            reset_cache_for_user(g=g, reset_type=CacheRefreshType.everything, user_id=user_id)
-            print_results([purged_user])
+            purge_user(g=g, user_id=user_id)
     else:
         logger.exception("Given user_id is invalid!", user_id=user_id)
 
@@ -93,8 +91,14 @@ def cleanup_users():
         confirm_res = typer.confirm("Do you really want to purge the users above from the system?")
         if confirm_res:
             for user in users_to_purge:
-                purge_user_from_database(user_id=user.user_id)
+                purge_user(g=g, user_id=user.user_id)
         else:
             logger.exception("Dropping collected users. Cleanup aborted.")
     else:
         logger.exception("No users found to purge!")
+
+
+def purge_user(g, user_id):
+    purged_user = g.backend.purge_user_from_database(user_id=user_id)
+    reset_cache_for_user(g=g, reset_type=CacheRefreshType.everything, user_id=user_id)
+    print_results([purged_user])
