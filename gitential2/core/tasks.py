@@ -101,7 +101,6 @@ def configure_celery(settings: Optional[GitentialSettings] = None):
             "args": (),
         }
 
-    # Runs every 1 hour and launches scheduled exports based on workspace cron schedules
     if settings.auto_export.start_auto_export:
         beat_scheduled_conf["schedule_auto_export"] = {
             "task": "gitential2.core.tasks.schedule_auto_export",
