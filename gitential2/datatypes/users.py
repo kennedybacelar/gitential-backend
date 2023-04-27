@@ -1,8 +1,18 @@
 from datetime import datetime
 from typing import Optional, List
 from pydantic import Field
+
 from .common import CoreModel, ExtraFieldMixin, IDModelMixin, DateTimeModelMixin
 from .userinfos import UserInfoBase
+
+
+class InactiveUsers(CoreModel):
+    user_id: int
+    login: Optional[str]
+    email: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
+    last_login: Optional[datetime]
 
 
 class UserBase(ExtraFieldMixin, CoreModel):

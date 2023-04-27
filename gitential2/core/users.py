@@ -10,7 +10,7 @@ from gitential2.datatypes.subscriptions import (
     SubscriptionCreate,
 )
 from gitential2.datatypes.userinfos import UserInfoCreate, UserInfoUpdate
-from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB
+from gitential2.datatypes.users import UserCreate, UserRegister, UserUpdate, UserInDB, InactiveUsers
 from gitential2.datatypes.workspacemember import WorkspaceRole
 from gitential2.datatypes.workspaces import WorkspaceCreate
 from .context import GitentialContext
@@ -119,6 +119,41 @@ def purge_user_from_database(g: GitentialContext, user_id: int) -> bool:
         reset_cache_for_user(g=g, reset_type=CacheRefreshType.everything, user_id=user_id)
         return result
     raise SettingsException(f"Provided user_id=[{user_id}] is invalid!")
+
+
+def get_users_ready_for_purging(g: GitentialContext):
+    exp_days_deactivation = g.backend.settings.cleanup.exp_days_after_user_deactivation
+    exp_days_last_login = g.backend.settings.cleanup.exp_days_since_user_last_login
+
+    get_inactive_users_query = (
+        "WITH user_selection AS "
+        "    (SELECT u.id            AS user_id, "
+        "        u.is_active, "
+        "        u.login, "
+        "        u.email, "
+        "        u.first_name, "
+        "        u.last_name, "
+        "        MAX(a.log_time) AS last_login "
+        "    FROM users u "
+        "        LEFT JOIN access_log AS a ON u.id = a.user_id "
+        "    WHERE u.id NOT IN (SELECT DISTINCT sub.user_id "
+        "                       FROM public.subscriptions AS sub "
+        "                       WHERE (sub.subscription_type = 'professional' AND "
+        "                              (sub.subscription_end IS NULL OR sub.subscription_end >= NOW()))) "
+        "    GROUP BY u.id, u.email, u.first_name, u.last_name, u.login) "
+        "SELECT DISTINCT us.user_id, us.is_active, us.email, us.first_name, us.last_name, us.login, us.last_login "
+        "FROM user_selection AS us "
+        f"WHERE (us.is_active IS FALSE AND us.last_login < NOW() - INTERVAL '{exp_days_deactivation} days') "
+        f"    OR (us.last_login < NOW() - INTERVAL '{exp_days_last_login} days'); "
+    )
+
+    engine = g.backend.users.engine  # type: ignore[attr-defined]
+    with engine.connect().execution_options() as conn:
+        rows = conn.execute(get_inactive_users_query).fetchall()
+
+    results = [InactiveUsers(**row) for row in rows]
+
+    return results
 
 
 def reset_cache_for_user(g: GitentialContext, reset_type: CacheRefreshType, user_id: int):

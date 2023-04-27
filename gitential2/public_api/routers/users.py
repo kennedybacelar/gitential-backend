@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
 
 from gitential2.core.context import GitentialContext
-from gitential2.core.users import update_user, deactivate_user, purge_user_from_database
+from gitential2.core.users import update_user, deactivate_user, purge_user_from_database, get_users_ready_for_purging
 from gitential2.datatypes.users import UserPublic, UserUpdate
 from ..dependencies import gitential_context, current_user
 
@@ -82,12 +82,26 @@ def delete_user_by_id(
     g: GitentialContext = Depends(gitential_context),
     current_user=Depends(current_user),
 ):
-    if current_user and current_user.is_admin:
-        result: bool = purge_user_from_database(g, user_id=user_id)
-        if result:
-            del request.session["current_user_id"]
-            return True
+    if current_user:
+        if current_user.is_admin:
+            result: bool = purge_user_from_database(g, user_id=user_id)
+            if result:
+                del request.session["current_user_id"]
+                return True
+            else:
+                raise HTTPException(500, "Error occurred while trying to delete user.")
         else:
-            raise HTTPException(500, "Error occurred while trying to delete user.")
+            raise HTTPException(401, "Unauthorized! User is not an admin!")
+    else:
+        raise HTTPException(404, "User not found.")
+
+
+@router.get("/users/inactive-users")
+def get_inactive_users(g: GitentialContext = Depends(gitential_context), current_user=Depends(current_user)):
+    if current_user:
+        if current_user.is_admin:
+            return get_users_ready_for_purging(g=g)
+        else:
+            raise HTTPException(401, "Unauthorized! User is not an admin!")
     else:
         raise HTTPException(404, "User not found.")

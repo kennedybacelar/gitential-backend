@@ -1,11 +1,13 @@
 from typing import Optional
+
 import typer
 from structlog import get_logger
 
-from gitential2.core.users import list_users, set_as_admin, reset_cache_for_user
 from gitential2.core.subscription import set_as_professional, enable_or_disable_jira_integration
+from gitential2.core.users import list_users, set_as_admin, reset_cache_for_user, get_users_ready_for_purging
 from .common import get_context, print_results, OutputFormat
 from ..datatypes.cli_v2 import CacheRefreshType
+from ..utils import is_list_not_empty
 
 app = typer.Typer()
 logger = get_logger(__name__)
@@ -69,3 +71,30 @@ def purge_user_from_database(user_id: int):
             print_results([purged_user])
     else:
         logger.exception("Given user_id is invalid!", user_id=user_id)
+
+
+@app.command(name="cleanup")
+def cleanup_users():
+    """
+    This command will collect and purge all the users which are ready to purge.
+
+    A user is considered to be ready for purging
+    - IF is_active is set to false AND the last access date was more than 72 hours ago.
+    - OR IF the last access date is older than 1 year
+    - AND the user doesn't have a live professional
+    """
+
+    g = get_context()
+
+    users_to_purge = get_users_ready_for_purging(g=g)
+    if is_list_not_empty(users_to_purge):
+        print_results(users_to_purge)
+
+        confirm_res = typer.confirm("Do you really want to purge the users above from the system?")
+        if confirm_res:
+            for user in users_to_purge:
+                purge_user_from_database(user_id=user.user_id)
+        else:
+            logger.exception("Dropping collected users. Cleanup aborted.")
+    else:
+        logger.exception("No users found to purge!")

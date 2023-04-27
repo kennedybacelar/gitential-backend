@@ -164,6 +164,14 @@ class RefreshSettings(BaseModel):
     interval_minutes: int = 60 * 24
 
 
+class CleanupSettings(BaseModel):
+    enable_scheduled_data_cleanup: bool = False
+    scheduled_data_cleanup_days_of_week: str = "5"  # https://docs.celeryq.dev/en/stable/reference/celery.schedules.html
+    scheduled_data_cleanup_hour_of_day: int = 23
+    exp_days_after_user_deactivation: int = 3
+    exp_days_since_user_last_login: int = 365
+
+
 class AutoExportSettings(BaseModel):
     start_auto_export: bool = False
 
@@ -195,9 +203,6 @@ class FeaturesSettings(BaseModel):
     enable_its_analytics: bool = False
     enable_resellers: bool = False
     access_approval: AccessApprovalSettings = AccessApprovalSettings()
-    enable_scheduled_data_cleanup: bool = False
-    scheduled_data_cleanup_days_of_week: str = "5"
-    scheduled_data_cleanup_hour_of_day: int = 23
 
 
 class ResellerSettings(BaseModel):
@@ -217,6 +222,7 @@ class GitentialSettings(BaseModel):
     extraction: ExtractionSettings = ExtractionSettings()
     cache: CacheSettings = CacheSettings()
     refresh: RefreshSettings = RefreshSettings()
+    cleanup: CleanupSettings = CleanupSettings()
     auto_export: AutoExportSettings = AutoExportSettings()
     recaptcha: RecaptchaSettings = RecaptchaSettings()
     integrations: Dict[str, IntegrationSettings]
