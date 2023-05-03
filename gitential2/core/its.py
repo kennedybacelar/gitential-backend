@@ -18,7 +18,7 @@ from gitential2.datatypes.refresh import RefreshStrategy, RefreshType
 from gitential2.datatypes.refresh_statuses import ITSProjectRefreshPhase, ITSProjectRefreshStatus
 from gitential2.datatypes.userinfos import UserInfoInDB
 from gitential2.settings import IntegrationType
-from gitential2.utils import find_first, is_string_not_empty, get_user_id_or_raise_exception
+from gitential2.utils import find_first, is_string_not_empty, get_user_id_or_raise_exception, is_list_not_empty
 from .credentials import (
     get_fresh_credential,
     list_credentials_for_workspace,
@@ -557,7 +557,17 @@ def collect_and_save_data_for_issue(
 
 def get_available_its_project_groups(g: GitentialContext, workspace_id: int) -> List[UserITSProjectGroup]:
     user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
-    return g.backend.its_projects.get_its_projects_groups_with_cache(workspace_id=workspace_id, user_id=user_id)
+    itsp_groups = g.backend.its_projects.get_its_projects_groups_with_cache(workspace_id=workspace_id, user_id=user_id)
+    if not is_list_not_empty(itsp_groups):
+        refresh_cache_of_its_projects_for_user_or_users(
+            g=g,
+            user_id=user_id,
+            refresh_cache=True,
+        )
+        itsp_groups = g.backend.its_projects.get_its_projects_groups_with_cache(
+            workspace_id=workspace_id, user_id=user_id
+        )
+    return itsp_groups
 
 
 def _save_collected_issue_data(g: GitentialContext, workspace_id: int, issue_data: ITSIssueAllData):
