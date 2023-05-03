@@ -609,7 +609,14 @@ def delete_repositories(g: GitentialContext, workspace_id: int, repository_ids: 
 
 def get_available_repo_groups(g: GitentialContext, workspace_id: int) -> List[UserRepositoryGroup]:
     user_id: int = get_workspace_creator_user_id(g=g, workspace_id=workspace_id)
-    return g.backend.repositories.get_repo_groups_with_repo_cache(workspace_id=workspace_id, user_id=user_id)
+    repo_groups = g.backend.repositories.get_repo_groups_with_repo_cache(workspace_id=workspace_id, user_id=user_id)
+    if not is_list_not_empty(repo_groups):
+        user_id_validated = get_user_id_or_raise_exception(
+            g=g, workspace_id=workspace_id, is_at_least_one_id_is_needed=True
+        )
+        refresh_cache_of_repositories_for_user_or_users(g=g, user_id=user_id_validated, refresh_cache=True)
+        repo_groups = g.backend.repositories.get_repo_groups_with_repo_cache(workspace_id=workspace_id, user_id=user_id)
+    return repo_groups
 
 
 def _save_repos_to_repos_cache(g: GitentialContext, user_id: int, repo_list: List[RepositoryCreate]):
