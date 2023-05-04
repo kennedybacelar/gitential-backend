@@ -92,7 +92,7 @@ body_html: |
                                                     style="color:inherit;font-size:inherit;line-height:inherit">
                                                     <p style="line-height:150%">
                                                       <span style="font-size:13px">
-                                                      Hi Team, please find attached workspace Export for Revenue AI.
+                                                      Hi Team, please find attached workspace data export for workspace {{ workspace_id }}.
                                                       {{ s3_upload_url }}
                                                     </p>
 
@@ -391,7 +391,7 @@ body_html: |
 body_plaintext: |
   [image: gitential_logo_with_text_blackGreen]
 
-  Hi Team, please find attached workspace Export for Revenue AI.
+  Hi Team, please find attached workspace data export for workspace {{ workspace_id }}.
 
   {{ s3_upload_url }}
 
